@@ -63,6 +63,59 @@ struct SILGenCanonicalize final : CanonicalizeInstruction {
     }
     return nextII;
   }
+
+  SILBasicBlock::iterator lowerBuiltins(SILInstruction *inst) {
+    if (auto *bi = dyn_cast<BuiltinInst>(inst)) {
+        switch (bi->getBuiltinInfo().ID) {
+          case BuiltinValueKind::StackAllocWithTailElems: {
+            SubstitutionMap subs = bi->getSubstitutions();
+            OperandValueArrayRef args = bi->getArguments();
+            unsigned NumTailTypes = subs.getReplacementTypes().size() - 1;
+            assert(args.size() == NumTailTypes * 2 + 1 &&
+                   "wrong number of substitutions for stackAllocWithTailElems");
+
+            // The substitution determines the element type for bound memory.
+            auto replacementTypes = subs.getReplacementTypes();
+            SILFunction *F = inst->getFunction();
+            assert(bi->getParent() == F->getEntryBlock() &&
+              "stackAllocWithTailElems only supported in the function entry block");
+            SILType RefType = F->getLoweredType(replacementTypes[0]->
+                                            getCanonicalType()).getObjectType();
+
+            SmallVector<SILValue, 4> Counts;
+            SmallVector<SILType, 4> ElemTypes;
+            for (unsigned Idx = 0; Idx < NumTailTypes; ++Idx) {
+              Counts.push_back(args[Idx * 2 + 1]);
+              ElemTypes.push_back(F->getLoweredType(replacementTypes[Idx+1]->
+                                                    getCanonicalType()).getObjectType());
+            }
+            SILValue Metatype = args[0];
+            assert(isa<MetatypeInst>(Metatype));
+            auto InstanceType =
+              Metatype->getType().castTo<MetatypeType>().getInstanceType();
+            assert(InstanceType == RefType.getASTType() &&
+                   "substituted type does not match operand metatype");
+            (void) InstanceType;
+            SILBuilderWithScope Builder(bi);
+            auto *ARI = Builder.createAllocRef(bi->getLoc(), RefType, false, true,
+                                        ElemTypes, Counts);
+            bi->replaceAllUsesWith(ARI);
+            bi->eraseFromParent();
+            for (SILBasicBlock &BB : *F) {
+              TermInst *term = BB.getTerminator();
+              if (term->isFunctionExiting()) {
+                SILBuilder deallocBuilder(term);
+                deallocBuilder.createDeallocRef(bi->getLoc(), ARI, true);
+              }
+            }
+            return ARI->getIterator();
+          }
+          default:
+            break;
+      }
+    }
+    return inst->getIterator();
+  }
 };
 
 //===----------------------------------------------------------------------===//
@@ -95,6 +148,7 @@ void SILGenCleanup::run() {
     // are simple enough they shouldn't be affected by cycles.
     for (auto &bb : function) {
       for (auto ii = bb.begin(), ie = bb.end(); ii != ie;) {
+        ii = sgCanonicalize.lowerBuiltins(&*ii);
         ii = sgCanonicalize.canonicalize(&*ii);
         ii = sgCanonicalize.deleteDeadOperands(ii);
       }

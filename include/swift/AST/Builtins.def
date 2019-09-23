@@ -477,6 +477,8 @@ BUILTIN_RUNTIME_CALL(IsOptionalType, "isOptional", "")
 /// Triggers a runtime failure if the condition is true.
 BUILTIN_MISC_OPERATION(CondFailMessage, "condfail_message", "", Special)
 
+BUILTIN_MISC_OPERATION(StackAllocWithTailElems, "stackAllocWithTailElems", "", Special)
+
 /// Sizeof has type T.Type -> Int
 BUILTIN_MISC_OPERATION(Sizeof, "sizeof", "n", Special)
 

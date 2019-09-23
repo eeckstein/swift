@@ -666,6 +666,13 @@ static ValueDecl *getAllocWithTailElemsOperation(ASTContext &Context,
   return builder.build(Id);
 }
 
+static ValueDecl *getStackDeallocRefOperation(ASTContext &Context, Identifier Id) {
+  BuiltinGenericSignatureBuilder builder(Context, 1);
+  builder.addParameter(makeGenericParam(0));
+  builder.setResult(makeConcrete(TupleType::getEmpty(Context)));
+  return builder.build(Id);
+}
+
 static ValueDecl *getProjectTailElemsOperation(ASTContext &Context,
                                                Identifier Id) {
   BuiltinGenericSignatureBuilder builder(Context, 2);
@@ -1733,8 +1740,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
       return nullptr;
     return getAtomicStoreOperation(Context, Id, T);
   }
-  if (OperationName.startswith("allocWithTailElems_")) {
-    OperationName = OperationName.drop_front(strlen("allocWithTailElems_"));
+  if (OperationName.startswith("allocWithTailElems_") ||
+      OperationName.startswith("stackAllocWithTailElems_")) {
+    OperationName = OperationName.drop_front(OperationName.find('_') + 1);
     int NumTailTypes = 0;
     if (OperationName.getAsInteger(10, NumTailTypes))
       return nullptr;
@@ -1762,6 +1770,7 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
   case BuiltinValueKind::AtomicLoad:
   case BuiltinValueKind::AtomicStore:
   case BuiltinValueKind::AllocWithTailElems:
+  case BuiltinValueKind::StackAllocWithTailElems:
     llvm_unreachable("Handled above");
   case BuiltinValueKind::None: return nullptr;
 

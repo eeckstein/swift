@@ -765,6 +765,11 @@ extension Array: RandomAccessCollection, MutableCollection {
   public var count: Int {
     return _getCount()
   }
+
+  @inlinable
+  internal mutating func isUniquelyReferenced() -> Bool {
+    return _buffer.isUniquelyReferenced()
+  }
 }
 
 extension Array: ExpressibleByArrayLiteral {
@@ -786,6 +791,28 @@ extension Array: ExpressibleByArrayLiteral {
   public init(arrayLiteral elements: Element...) {
     self = elements
   }
+}
+
+@inlinable
+@_transparent
+public func withStackAllocatedArray<Element, Result>(
+  reservedCapacity: Int, _ body: (inout [Element]) throws -> Result
+) rethrows -> Result {
+  var arr = Array<Element>(
+    _buffer: _ArrayBuffer(
+      _buffer: _ContiguousArrayBuffer<Element>(
+        capacity: reservedCapacity,
+        storage: Builtin.stackAllocWithTailElems_1(
+          _ContiguousArrayStorage<Element>.self,
+          reservedCapacity._builtinWordValue,
+          Element.self)
+      ),
+      shiftedToStartIndex: 0)
+    )
+  let r = try body(&arr)
+  let escaped = !arr.isUniquelyReferenced()
+  Builtin.condfail_message(escaped._value, StaticString("stack allocated array escaped").unsafeRawPointer)
+  return r
 }
 
 extension Array: RangeReplaceableCollection {

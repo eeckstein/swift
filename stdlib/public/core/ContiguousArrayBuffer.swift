@@ -201,6 +201,13 @@ internal struct _ContiguousArrayBuffer<Element>: _ArrayBufferProtocol {
   }
 
   @inlinable
+  internal init(capacity: Int, storage: _ContiguousArrayStorage<Element>) {
+    _storage = storage
+
+    _initStorageHeader(count: 0, capacity: capacity)
+  }
+
+  @inlinable
   internal init(_ storage: __ContiguousArrayStorageBase) {
     _storage = storage
   }

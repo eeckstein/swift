@@ -142,6 +142,7 @@ static bool isBarrier(SILInstruction *inst) {
     // Handle some rare builtins that may be sensitive to object lifetime
     // or deinit side effects conservatively.
     case BuiltinValueKind::AllocRaw:
+    case BuiltinValueKind::StackAllocWithTailElems:
     case BuiltinValueKind::DeallocRaw:
     case BuiltinValueKind::Fence:
     case BuiltinValueKind::AtomicLoad:

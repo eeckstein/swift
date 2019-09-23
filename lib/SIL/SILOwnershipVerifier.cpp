@@ -301,7 +301,8 @@ bool SILValueOwnershipChecker::gatherUsers(
       if (auto *cbi = dyn_cast<CondBranchInst>(user)) {
         addCondBranchToList(lifetimeEndingUsers, cbi, op->getOperandNumber());
       } else {
-        lifetimeEndingUsers.emplace_back(user);
+        if (!(isa<DeallocRefInst>(user) && cast<DeallocRefInst>(user)->canAllocOnStack()))
+          lifetimeEndingUsers.emplace_back(user);
       }
     } else {
       LLVM_DEBUG(llvm::dbgs() << "        Regular User: " << *user);

@@ -55,6 +55,10 @@ static bool cleanFunction(SILFunction &fn) {
             "unknown program error");
           LLVM_FALLTHROUGH;
         }
+        case BuiltinValueKind::StackAllocWithTailElems: {
+          bi->replaceAllUsesWith(SILUndef::get(bi->getType(), fn));
+          LLVM_FALLTHROUGH;
+        }
         case BuiltinValueKind::PoundAssert:
         case BuiltinValueKind::StaticReport:
           // The call to the builtin should get removed before we reach
