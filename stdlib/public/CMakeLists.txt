@@ -15,6 +15,11 @@ if(SWIFT_RUNTIME_USE_SANITIZERS)
   endif()
 endif()
 
+if(SWIFT_TINY)
+  list(APPEND SWIFT_RUNTIME_SWIFT_COMPILE_FLAGS "-Xfrontend" "-tiny-swift")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-DTINY_SWIFT" "-DSWIFT_OBJC_INTEROP=0")
+endif()
+
 list(APPEND SWIFT_RUNTIME_SWIFT_COMPILE_FLAGS "-Xfrontend" "-verify-syntax-tree")
 
 # Build the runtime with -Wall to catch, e.g., uninitialized variables

@@ -86,6 +86,10 @@ option(SWIFT_BUILD_STDLIB_EXTRA_TOOLCHAIN_CONTENT
     "If not building stdlib, controls whether to build 'stdlib/toolchain' content"
     TRUE)
 
+option(SWIFT_TINY
+    "Compile with tiny mode"
+    FALSE)
+
 # In many cases, the CMake build system needs to determine whether to include
 # a directory, or perform other actions, based on whether the stdlib or SDK is
 # being built at all -- statically or dynamically. Please note that these

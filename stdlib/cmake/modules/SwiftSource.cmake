@@ -264,7 +264,7 @@ function(_add_target_variant_swift_compile_flags
     list(APPEND result "-D" "SWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING")
   endif()
 
-  if(SWIFT_STDLIB_OS_VERSIONING)
+  if(SWIFT_STDLIB_OS_VERSIONING AND NOT SWIFT_TINY)
     list(APPEND result "-D" "SWIFT_RUNTIME_OS_VERSIONING")
   endif()
 

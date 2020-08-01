@@ -333,7 +333,7 @@ function(_add_target_variant_c_compile_flags)
     list(APPEND result "-DSWIFT_STDLIB_SINGLE_THREADED_RUNTIME")
   endif()
 
-  if(SWIFT_STDLIB_OS_VERSIONING)
+  if(SWIFT_STDLIB_OS_VERSIONING AND NOT SWIFT_TINY)
     list(APPEND result "-DSWIFT_RUNTIME_OS_VERSIONING")
   endif()
 

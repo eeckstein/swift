@@ -141,6 +141,7 @@ KNOWN_SETTINGS=(
     ## Build ...
     build-llvm                                    "1"               "set to 1 to build LLVM and Clang"
     build-sil-debugging-stdlib                    "0"               "set to 1 to build the Swift standard library with -gsil to enable debugging and profiling on SIL level"
+    tiny-swift                                    "0"               "set to 1 to build in tiny mode"
     build-swift-dynamic-sdk-overlay               ""                "set to 1 to build dynamic variants of the Swift SDK overlay"
     build-swift-dynamic-stdlib                    ""                "set to 1 to build dynamic variants of the Swift standard library"
     build-swift-examples                          "1"               "set to 1 to build examples"
@@ -1786,6 +1787,7 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DSWIFT_INCLUDE_TOOLS:BOOL=$(true_false "${BUILD_SWIFT_TOOLS}")
                     -DSWIFT_BUILD_REMOTE_MIRROR:BOOL=$(true_false "${BUILD_SWIFT_REMOTE_MIRROR}")
                     -DSWIFT_STDLIB_SIL_DEBUGGING:BOOL=$(true_false "${BUILD_SIL_DEBUGGING_STDLIB}")
+                    -DSWIFT_TINY:BOOL=$(true_false "${TINY_SWIFT}")
                     -DSWIFT_CHECK_INCREMENTAL_COMPILATION:BOOL=$(true_false "${CHECK_INCREMENTAL_COMPILATION}")
                     -DSWIFT_REPORT_STATISTICS:BOOL=$(true_false "${REPORT_STATISTICS}")
                     -DSWIFT_BUILD_DYNAMIC_STDLIB:BOOL=$(true_false "${BUILD_SWIFT_DYNAMIC_STDLIB}")
