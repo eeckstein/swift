@@ -74,10 +74,12 @@ bool ArgsToFrontendOptionsConverter::convert(
 
   Opts.EnableTesting |= Args.hasArg(OPT_enable_testing);
   Opts.EnablePrivateImports |= Args.hasArg(OPT_enable_private_imports);
-  Opts.EnableLibraryEvolution |= Args.hasArg(OPT_enable_library_evolution);
+  if (!Args.hasArg(OPT_tiny_swift)) {
+    Opts.EnableLibraryEvolution |= Args.hasArg(OPT_enable_library_evolution);
 
-  // FIXME: Remove this flag
-  Opts.EnableLibraryEvolution |= Args.hasArg(OPT_enable_resilience);
+    // FIXME: Remove this flag
+    Opts.EnableLibraryEvolution |= Args.hasArg(OPT_enable_resilience);
+  }
 
   Opts.EnableImplicitDynamic |= Args.hasArg(OPT_enable_implicit_dynamic);
 

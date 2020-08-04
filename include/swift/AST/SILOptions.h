@@ -84,6 +84,8 @@ public:
   /// Whether to skip emitting non-inlinable function bodies.
   bool SkipNonInlinableFunctionBodies = false;
 
+  bool TinySwift = false;
+
   /// Optimization mode being used.
   OptimizationMode OptMode = OptimizationMode::NotSet;
 

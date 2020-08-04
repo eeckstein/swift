@@ -598,6 +598,11 @@ IRGenModule::~IRGenModule() {
   delete &Types;
 }
 
+bool IRGenModule::isTinySwift() const {
+  return getSILModule().getOptions().TinySwift;
+}
+
+
 static bool isReturnAttribute(llvm::Attribute::AttrKind Attr);
 
 // Explicitly listing these constants is an unfortunate compromise for

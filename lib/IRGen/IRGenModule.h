@@ -739,6 +739,8 @@ public:
   llvm::CallingConv::ID DefaultCC;     /// default calling convention
   llvm::CallingConv::ID SwiftCC;       /// swift calling convention
 
+  bool isTinySwift() const;
+
   Signature getAssociatedTypeWitnessTableAccessFunctionSignature();
 
   /// Get the bit width of an integer type for the target platform.

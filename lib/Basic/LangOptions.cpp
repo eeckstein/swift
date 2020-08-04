@@ -73,6 +73,7 @@ static const SupportedConditionalValue SupportedConditionalCompilationEndianness
 static const SupportedConditionalValue SupportedConditionalCompilationRuntimes[] = {
   "_ObjC",
   "_Native",
+  "_Tiny"
 };
 
 static const SupportedConditionalValue SupportedConditionalCompilationTargetEnvironments[] = {
@@ -348,8 +349,13 @@ std::pair<bool, bool> LangOptions::setTarget(llvm::Triple triple) {
   }
 
   // Set the "runtime" platform condition.
-  addPlatformConditionValue(PlatformConditionKind::Runtime,
-                            EnableObjCInterop ? "_ObjC" : "_Native");
+  if (TinySwift) {
+    addPlatformConditionValue(PlatformConditionKind::Runtime, "_Tiny");
+  } else if (EnableObjCInterop) {
+    addPlatformConditionValue(PlatformConditionKind::Runtime, "_ObjC");
+  } else {
+    addPlatformConditionValue(PlatformConditionKind::Runtime, "_Native");
+  }
 
   // Set the pointer authentication scheme.
   if (Target.getArchName() == "arm64e") {

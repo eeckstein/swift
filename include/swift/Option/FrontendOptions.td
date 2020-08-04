@@ -588,6 +588,9 @@ def debug_on_sil : Flag<["-"], "gsil">,
   HelpText<"Write the SIL into a file and generate debug-info to debug on SIL "
            " level.">;
 
+def tiny_swift : Flag<["-"], "tiny-swift">,
+  HelpText<"Compile in tiny-swift mode">;
+
 def print_llvm_inline_tree : Flag<["-"], "print-llvm-inline-tree">,
   HelpText<"Print the LLVM inline tree.">;
 

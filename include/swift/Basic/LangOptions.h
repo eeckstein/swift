@@ -179,6 +179,8 @@ namespace swift {
     /// configuration options.
     bool EnableObjCInterop = true;
 
+    bool TinySwift = false;
+
     /// Enable C++ interop code generation and build configuration
     /// options. Disabled by default because there is no way to control the
     /// language mode of clang on a per-header or even per-module basis. Also

@@ -597,9 +597,15 @@ static bool ParseLangArgs(LangOptions &Opts, ArgList &Args,
   }
 
   Opts.EnableCXXInterop |= Args.hasArg(OPT_enable_cxx_interop);
+
+  Opts.TinySwift = Args.hasArg(OPT_tiny_swift);
+
   Opts.EnableObjCInterop =
+      !Opts.TinySwift &&
       Args.hasFlag(OPT_enable_objc_interop, OPT_disable_objc_interop,
                    Target.isOSDarwin());
+
+
   Opts.EnableSILOpaqueValues |= Args.hasArg(OPT_enable_sil_opaque_values);
 
   Opts.VerifyAllSubstitutionMaps |= Args.hasArg(OPT_verify_all_substitution_maps);
@@ -1097,6 +1103,9 @@ static bool ParseSILArgs(SILOptions &Opts, ArgList &Args,
   }
   IRGenOpts.OptMode = Opts.OptMode;
 
+
+  Opts.TinySwift = Args.hasArg(OPT_tiny_swift);
+
   if (Args.getLastArg(OPT_AssumeSingleThreaded)) {
     Opts.AssumeSingleThreaded = true;
   }
@@ -1534,7 +1543,7 @@ static bool ParseIRGenArgs(IRGenOptions &Opts, ArgList &Args,
     Opts.SanitizeCoverage.CoverageType = llvm::SanitizerCoverageOptions::SCK_Edge;
   }
 
-  if (Args.hasArg(OPT_disable_reflection_metadata)) {
+  if (Args.hasArg(OPT_disable_reflection_metadata) || SILOpts.TinySwift) {
     Opts.EnableReflectionMetadata = false;
     Opts.EnableReflectionNames = false;
   }

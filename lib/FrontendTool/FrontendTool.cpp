@@ -2100,6 +2100,10 @@ static bool validateTBDIfNeeded(const CompilerInvocation &Invocation,
     if (Invocation.getSILOptions().CrossModuleOptimization) {
       return false;
     }
+    
+    if (Invocation.getSILOptions().TinySwift) {
+      return false;
+    }
 
     // If we can't validate the given input file, bail early. This covers cases
     // like passing raw SIL as a primary file.
