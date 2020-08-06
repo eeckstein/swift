@@ -55,6 +55,8 @@ class CrossModuleSerializationSetup {
       functionsHandled.insert(F);
     }
   }
+  
+  bool shouldSerialize(SILFunction *F);
 
   bool canUseFromInline(SILFunction *F, bool lookIntoThunks);
 
@@ -200,7 +202,11 @@ static llvm::cl::opt<bool> SerializeEverything(
     llvm::cl::Hidden);
 
 /// Decide whether to serialize a function.
-static bool shouldSerialize(SILFunction *F) {
+bool CrossModuleSerializationSetup::shouldSerialize(SILFunction *F) {
+
+  if (M.getOptions().TinySwift && F->getLoweredFunctionType()->isPolymorphic())
+    return true;
+
   // Check if we already handled this function before.
   if (F->isSerialized() == IsSerialized)
     return false;
@@ -215,6 +221,9 @@ static bool shouldSerialize(SILFunction *F) {
   // huge difference if generic functions can be specialized or not.
   if (F->getLoweredFunctionType()->isPolymorphic())
     return true;
+
+  if (M.getOptions().TinySwift)
+    return false;
 
   // Also serialize "small" non-generic functions.
   int size = 0;
@@ -271,11 +280,15 @@ prepareInstructionForSerialization(SILInstruction *inst) {
 void CrossModuleSerializationSetup::handleReferencedFunction(SILFunction *func) {
   if (!func->isDefinition() || func->isAvailableExternally())
     return;
-  if (func->isSerialized() == IsSerialized)
+    
+  if (func->isSerialized() == IsSerialized) {
+    if (M.getOptions().TinySwift)
+      addToWorklistIfNotHandled(func);
     return;
+  }
 
   if (func->getLinkage() == SILLinkage::Shared) {
-    assert(func->isThunk() != IsNotThunk &&
+    assert((M.getOptions().TinySwift || func->isThunk() != IsNotThunk) &&
       "only thunks are accepted to have shared linkage");
     assert(canSerialize(func, /*lookIntoThunks*/ false) &&
       "we should already have checked that the thunk is serializable");
@@ -311,8 +324,22 @@ bool CrossModuleSerializationSetup::canSerialize(SILFunction *F,
   // First step: check if serializing F is even possible.
   for (SILBasicBlock &block : *F) {
     for (SILInstruction &inst : block) {
-      if (!canSerialize(&inst, lookIntoThunks))
+      if (!canSerialize(&inst, lookIntoThunks)) {
+        if (M.getOptions().TinySwift && F->getLoweredFunctionType()->isPolymorphic()) {
+          llvm::dbgs() << "Cannot serialize ";
+          inst.dump();
+          llvm::dbgs() << "In function\n";
+          F->dump();
+          if (auto *FRI = dyn_cast<FunctionRefBaseInst>(&inst)) {
+            if (SILFunction *callee = FRI->getReferencedFunctionOrNull()) {
+              llvm::dbgs() << "Callee:\n";
+              callee->dump();
+            }
+          }
+          assert(false);
+        }
         return false;
+      }
     }
   }
   return true;
@@ -322,7 +349,11 @@ bool CrossModuleSerializationSetup::canSerialize(SILInstruction *inst,
                                                  bool lookIntoThunks) {
   if (auto *FRI = dyn_cast<FunctionRefBaseInst>(inst)) {
     SILFunction *callee = FRI->getReferencedFunctionOrNull();
-    return canUseFromInline(callee, lookIntoThunks);
+    if (canUseFromInline(callee, lookIntoThunks))
+      return true;
+    if (M.getOptions().TinySwift && callee->getLinkage() == SILLinkage::Shared)
+      return true;
+    return false;
   }
   if (auto *KPI = dyn_cast<KeyPathInst>(inst)) {
     bool canUse = true;
@@ -379,7 +410,7 @@ bool CrossModuleSerializationSetup::canUseFromInline(SILFunction *func,
 ///
 /// Returns false in case this is not possible for some reason.
 void CrossModuleSerializationSetup::setUpForSerialization(SILFunction *F) {
-  assert(F->isSerialized() != IsSerialized);
+  assert(M.getOptions().TinySwift || F->isSerialized() != IsSerialized);
 
   // Second step: go through all instructions and prepare them for
   // for serialization.
@@ -433,12 +464,14 @@ class CrossModuleSerializationSetupPass: public SILModuleTransform {
   void run() override {
 
     auto &M = *getModule();
-    if (M.getSwiftModule()->isResilient())
-      return;
-    if (!M.isWholeModule())
-      return;
-    if (!M.getOptions().CrossModuleOptimization)
-      return;
+    if (!M.getOptions().TinySwift) {
+      if (M.getSwiftModule()->isResilient())
+        return;
+      if (!M.isWholeModule())
+        return;
+      if (!M.getOptions().CrossModuleOptimization)
+        return;
+    }
 
     CrossModuleSerializationSetup CMSS(M);
     CMSS.scanModule();
