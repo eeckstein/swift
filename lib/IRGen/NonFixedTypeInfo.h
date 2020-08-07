@@ -120,6 +120,10 @@ public:
   llvm::Constant *getStaticStride(IRGenModule &IGM) const override {
     return nullptr;
   }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for WitnessSizedTypeInfo");
+  }
 };
 }
 }

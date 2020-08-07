@@ -259,6 +259,11 @@ public:
   const override {
     return storeHeapObjectExtraInhabitant(IGF, index, dest);
   }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    return ValuePattern::forReferences();
+  }
+
 };
 
 }

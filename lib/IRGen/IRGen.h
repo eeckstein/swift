@@ -434,6 +434,27 @@ public:
   Offset offsetBy(IRGenFunction &IGF, Size other) const;
 };
 
+class ValuePattern {
+  unsigned pattern;
+  
+  ValuePattern(unsigned pattern) :
+    pattern(pattern) {}
+
+public:
+  ValuePattern() : pattern(0) { }
+
+  static ValuePattern forTrivialTypes() { return ValuePattern(0); }
+  static ValuePattern forReferences() { return ValuePattern(1); }
+
+  void append(const ValuePattern &other, unsigned atWordOffset) {
+    pattern |= other.pattern << (atWordOffset * 2);
+  }
+
+  bool isTrivial() const { return pattern == 0; }
+
+  llvm::Constant *getPatternConst(IRGenFunction &IGF) const;
+};
+
 } // end namespace irgen
 } // end namespace swift
 

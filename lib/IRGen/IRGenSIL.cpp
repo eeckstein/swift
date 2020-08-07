@@ -2253,7 +2253,9 @@ emitWitnessTableForLoweredCallee(IRGenSILFunction &IGF,
   auto substConformance =
       substCalleeType->getWitnessMethodConformanceOrInvalid();
 
-  llvm::Value *argMetadata = IGF.emitTypeMetadataRef(substSelfType);
+  llvm::Value *argMetadata = nullptr;
+  if (!IGF.IGM.isTinySwift())
+    argMetadata = IGF.emitTypeMetadataRef(substSelfType);
   llvm::Value *wtable =
     emitWitnessTableRef(IGF, substSelfType, &argMetadata, substConformance);
 
@@ -2353,8 +2355,10 @@ static CallEmission getCallEmissionForLoweredValue(IRGenSILFunction &IGF,
 
   switch (origCalleeType->getRepresentation()) {
   case SILFunctionType::Representation::WitnessMethod: {
-    auto wtable = emitWitnessTableForLoweredCallee(IGF, substCalleeType);
-    witnessMetadata->SelfWitnessTable = wtable;
+    if (!IGF.IGM.isTinySwift()) {
+      auto wtable = emitWitnessTableForLoweredCallee(IGF, substCalleeType);
+      witnessMetadata->SelfWitnessTable = wtable;
+    }
     break;
   }
 
@@ -2491,9 +2495,13 @@ void IRGenSILFunction::visitFullApplySite(FullApplySite site) {
 
   // Pass the generic arguments.
   if (hasPolymorphicParameters(origCalleeType)) {
-    SubstitutionMap subMap = site.getSubstitutionMap();
-    emitPolymorphicArguments(*this, origCalleeType,
+    if (IGM.isTinySwift()) {
+      assert(origCalleeType->getRepresentation() == SILFunctionType::Representation::WitnessMethod);
+    } else {
+      SubstitutionMap subMap = site.getSubstitutionMap();
+      emitPolymorphicArguments(*this, origCalleeType,
                              subMap, &witnessMetadata, llArgs);
+    }
   }
 
   // Add all those arguments.

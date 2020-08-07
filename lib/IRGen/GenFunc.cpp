@@ -370,6 +370,9 @@ namespace {
       dest = projectFunction(IGF, dest);
       return storeFunctionPointerExtraInhabitant(IGF, index, dest);
     }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("value pattern for FuncTypeInfo not implemented yet");
+    }
   };
 
   /// The type-info class for ObjC blocks, which are represented by an ObjC
@@ -442,6 +445,9 @@ namespace {
     void destroy(IRGenFunction &IGF, Address addr, SILType T,
                  bool isOutlined) const override {
       IGF.unimplemented(SourceLoc(), "destroying @block_storage");
+    }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for BlockStorageTypeInfo");
     }
   };
 } // end anonymous namespace

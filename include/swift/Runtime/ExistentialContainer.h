@@ -21,7 +21,11 @@ namespace swift {
 template <typename Runtime>
 struct TargetOpaqueExistentialContainer {
   TargetValueBuffer<Runtime> Buffer;
+#ifdef TINY_SWIFT
+  intptr_t Pattern;
+#else
   ConstTargetMetadataPointer<Runtime, TargetMetadata> Type;
+#endif
 
   const TargetWitnessTable<Runtime> **getWitnessTables() {
     return reinterpret_cast<const TargetWitnessTable<Runtime> **>(this + 1);
@@ -34,7 +38,11 @@ struct TargetOpaqueExistentialContainer {
 
   void copyTypeInto(swift::TargetOpaqueExistentialContainer<Runtime> *dest,
                     unsigned numTables) const {
+#ifdef TINY_SWIFT
+    dest->Pattern = Pattern;
+#else
     dest->Type = Type;
+#endif
     for (unsigned i = 0; i != numTables; ++i)
       dest->getWitnessTables()[i] = getWitnessTables()[i];
   }

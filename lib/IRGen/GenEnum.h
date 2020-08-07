@@ -402,6 +402,8 @@ public:
   
   virtual unsigned getFixedExtraInhabitantCount(IRGenModule &IGM) const = 0;
   
+  virtual ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const;
+  
   virtual APInt
   getFixedExtraInhabitantValue(IRGenModule &IGM,
                                unsigned bits,

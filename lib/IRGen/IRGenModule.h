@@ -384,6 +384,8 @@ public:
     return GenModules.end();
   }
   
+  bool isTinySwift() const;
+
   /// Emit functions, variables and tables which are needed anyway, e.g. because
   /// they are externally visible.
   void emitGlobalTopLevel(const std::vector<std::string> &LinkerDirectives);
@@ -739,7 +741,7 @@ public:
   llvm::CallingConv::ID DefaultCC;     /// default calling convention
   llvm::CallingConv::ID SwiftCC;       /// swift calling convention
 
-  bool isTinySwift() const;
+  bool isTinySwift() const { return IRGen.isTinySwift(); }
 
   Signature getAssociatedTypeWitnessTableAccessFunctionSignature();
 

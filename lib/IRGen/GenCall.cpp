@@ -1368,8 +1368,13 @@ void SignatureExpansion::expandParameters() {
   }
 
   // Next, the generic signature.
-  if (hasPolymorphicParameters(FnType))
-    expandPolymorphicSignature(IGM, FnType, ParamIRTypes);
+  if (hasPolymorphicParameters(FnType)) {
+    if (IGM.isTinySwift()) {
+      assert(FnType->getRepresentation() == SILFunctionType::Representation::WitnessMethod);
+    } else {
+      expandPolymorphicSignature(IGM, FnType, ParamIRTypes);
+    }
+  }
 
   // Context is next.
   if (hasSelfContext) {
@@ -2815,12 +2820,14 @@ void CallEmission::setArgs(Explosion &original, bool isOutlined,
 
   case SILFunctionTypeRepresentation::WitnessMethod:
     assert(witnessMetadata);
-    assert(witnessMetadata->SelfMetadata->getType() ==
-           IGF.IGM.TypeMetadataPtrTy);
-    assert(witnessMetadata->SelfWitnessTable->getType() ==
-           IGF.IGM.WitnessTablePtrTy);
-    Args.rbegin()[1] = witnessMetadata->SelfMetadata;
-    Args.rbegin()[0] = witnessMetadata->SelfWitnessTable;
+    if (!IGF.IGM.isTinySwift()) {
+      assert(witnessMetadata->SelfMetadata->getType() ==
+             IGF.IGM.TypeMetadataPtrTy);
+      assert(witnessMetadata->SelfWitnessTable->getType() ==
+             IGF.IGM.WitnessTablePtrTy);
+      Args.rbegin()[1] = witnessMetadata->SelfMetadata;
+      Args.rbegin()[0] = witnessMetadata->SelfWitnessTable;
+    }
     LLVM_FALLTHROUGH;
 
   case SILFunctionTypeRepresentation::Closure:

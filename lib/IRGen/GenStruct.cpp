@@ -344,6 +344,9 @@ namespace {
                                    const ClangFieldInfo &field) const {
       llvm_unreachable("non-fixed field in Clang type?");
     }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for LoadableClangRecordTypeInfo");
+    }
   };
 
   class AddressOnlyClangRecordTypeInfo final
@@ -387,6 +390,9 @@ namespace {
     getNonFixedFieldAccessStrategy(IRGenModule &IGM, SILType T,
                                    const ClangFieldInfo &field) const {
       llvm_unreachable("non-fixed field in Clang type?");
+    }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for AddressOnlyClangRecordTypeInfo");
     }
   };
 
@@ -436,6 +442,21 @@ namespace {
                                    const StructFieldInfo &field) const {
       llvm_unreachable("non-fixed field in loadable type?");
     }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      ValuePattern pattern;
+      for (auto &field : getFields()) {
+        Size fieldOffset = field.getFixedByteOffset();
+        auto &fieldTI = cast<LoadableTypeInfo>(field.getTypeInfo());
+        SILType fieldTy = field.getType(IGM, T);
+        ValuePattern fieldPattern = fieldTI.buildValuePattern(IGM, fieldTy);
+        if (fieldOffset.isMultipleOf(IGM.getPointerSize())) {
+          pattern.append(fieldPattern, fieldOffset.getValue() / IGM.getPointerSize().getValue());
+        } else {
+          assert(fieldPattern.isTrivial());
+        }
+      }
+      return pattern;
+    }
   };
 
   /// A type implementation for non-loadable but fixed-size struct types.
@@ -469,6 +490,9 @@ namespace {
     getNonFixedFieldAccessStrategy(IRGenModule &IGM, SILType T,
                                    const StructFieldInfo &field) const {
       llvm_unreachable("non-fixed field in fixed struct?");
+    }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for FixedStructTypeInfo");
     }
   };
   

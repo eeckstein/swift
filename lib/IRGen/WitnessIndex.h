@@ -41,8 +41,8 @@ public:
 
   /// Adjust the index to refer into a protocol witness table (rather than
   /// a value witness table).
-  WitnessIndex forProtocolWitnessTable() const {
-    int NewValue = Value < 0
+  WitnessIndex forProtocolWitnessTable(bool isTinySwift) const {
+    int NewValue = (Value < 0 || isTinySwift)
                      ? Value
                      : Value + WitnessTableFirstRequirementOffset;
     return WitnessIndex(NewValue, IsPrefix);

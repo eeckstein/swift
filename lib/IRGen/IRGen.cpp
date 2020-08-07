@@ -16,6 +16,7 @@
 
 #define DEBUG_TYPE "irgen"
 #include "IRGenModule.h"
+#include "IRGenFunction.h"
 #include "swift/AST/DiagnosticsIRGen.h"
 #include "swift/AST/IRGenOptions.h"
 #include "swift/AST/IRGenRequests.h"
@@ -977,13 +978,15 @@ GeneratedModule IRGenRequest::evaluate(Evaluator &evaluator,
     } else {
       // Emit protocol conformances into a section we can recognize at runtime.
       // In JIT mode these are manually registered above.
-      IGM.emitSwiftProtocols();
-      IGM.emitProtocolConformances();
-      IGM.emitTypeMetadataRecords();
-      IGM.emitBuiltinReflectionMetadata();
-      IGM.emitReflectionMetadataVersion();
-      irgen.emitEagerClassInitialization();
-      irgen.emitDynamicReplacements();
+      if (!IGM.isTinySwift()) {
+        IGM.emitSwiftProtocols();
+        IGM.emitProtocolConformances();
+        IGM.emitTypeMetadataRecords();
+        IGM.emitBuiltinReflectionMetadata();
+        IGM.emitReflectionMetadataVersion();
+        irgen.emitEagerClassInitialization();
+        irgen.emitDynamicReplacements();
+      }
     }
 
     // Emit symbols for eliminated dead methods.
@@ -1360,6 +1363,10 @@ performIRGeneration(FileUnit *file, const IRGenOptions &Opts,
       file, Opts, TBDOpts, SILOpts, SILModPtr->Types, std::move(SILMod),
       ModuleName, PSPs, PrivateDiscriminator, outModuleHash);
   return llvm::cantFail(file->getASTContext().evaluator(IRGenRequest{desc}));
+}
+
+llvm::Constant *ValuePattern::getPatternConst(IRGenFunction &IGF) const {
+  return llvm::ConstantInt::get(IGF.IGM.SizeTy, pattern);
 }
 
 void

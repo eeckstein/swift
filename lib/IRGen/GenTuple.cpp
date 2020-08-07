@@ -240,6 +240,10 @@ namespace {
     llvm::NoneType getNonFixedOffsets(IRGenFunction &IGF, SILType T) const {
       return None;
     }
+    
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("value pattern for LoadableTupleTypeInfo not implemented yet");
+    }
   };
 
   /// Type implementation for fixed-size but non-loadable tuples.
@@ -268,6 +272,9 @@ namespace {
     }
     llvm::NoneType getNonFixedOffsets(IRGenFunction &IGF, SILType T) const {
       return None;
+    }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("value pattern for FixedTupleTypeInfo not implemented yet");
     }
   };
 
@@ -354,6 +361,10 @@ namespace {
       // in the value witness table.
       emitStoreEnumTagSinglePayloadCall(IGF, structType, index,
                                         numEmptyCases, structAddr);
+    }
+    
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for NonFixedTupleTypeInfo");
     }
   };
 

@@ -111,6 +111,12 @@ namespace {
       return IGF.Builder.CreateStructGEP(addr, 1, getFixedBufferSize(IGF.IGM));
     }
     
+    /// Given the address of an existential object, drill down to the
+    /// metadata field.
+    Address projectValuePattern(IRGenFunction &IGF, Address addr) {
+      return IGF.Builder.CreateStructGEP(addr, 1, getFixedBufferSize(IGF.IGM));
+    }
+    
     /// Give the offset of the metadata field of an existential object.
     Size getMetadataRefOffset(IRGenModule &IGM) {
       return getFixedBufferSize(IGM);
@@ -704,6 +710,9 @@ namespace {
     void emitValueDestroy(IRGenFunction &IGF, Address addr) const { \
       IGF.emit##Name##Destroy(addr, Refcounting); \
     } \
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override { \
+      llvm_unreachable("cannot get value pattern for AddressOnly" #Name "ClassExistentialTypeInfoWitnessSizedTypeInfo"); \
+    } \
     StringRef getStructNameSuffix() const { return "." #name "ref"; } \
     REF_STORAGE_HELPER(Name, FixedTypeInfo) \
   };
@@ -755,6 +764,9 @@ namespace {
     getValueTypeInfoForExtraInhabitants(IRGenModule &IGM) const { \
       llvm_unreachable("should have overridden all actual uses of this"); \
     } \
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override { \
+      llvm_unreachable("value pattern for Loadable" #Name "ClassExistentialTypeInfo not implemented yet"); \
+    } \
     REF_STORAGE_HELPER(Name, LoadableTypeInfo) \
   };
 #define SOMETIMES_LOADABLE_CHECKED_REF_STORAGE(Name, name, ...) \
@@ -794,6 +806,9 @@ namespace {
     void emitValueRelease(IRGenFunction &IGF, llvm::Value *value, \
                           Atomicity atomicity) const {} \
     void emitValueFixLifetime(IRGenFunction &IGF, llvm::Value *value) const {} \
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override { \
+      llvm_unreachable("value pattern for " #Name "ClassExistentialTypeInfo not implemented yet"); \
+    } \
   };
 #include "swift/AST/ReferenceStorage.def"
 #undef REF_STORAGE_HELPER
@@ -885,6 +900,17 @@ public:
 
   void initializeWithCopy(IRGenFunction &IGF, Address dest, Address src,
                           SILType T, bool isOutlined) const override {
+                          
+    if (IGF.IGM.isTinySwift()) {
+      llvm::Value *srcArg = IGF.Builder.CreateBitCast(
+          src.getAddress(), IGF.IGM.getExistentialPtrTy(0));
+      llvm::Value *destArg = IGF.Builder.CreateBitCast(
+          dest.getAddress(), IGF.IGM.getExistentialPtrTy(0));
+      llvm::Value *numTables = llvm::ConstantInt::get(IGF.IGM.SizeTy, getNumStoredProtocols());
+      IGF.Builder.CreateCall(IGF.IGM.getCopyExistentialFn(), { destArg, srcArg, numTables });
+      return;
+    }
+
     if (isOutlined) {
       llvm::Value *metadata = copyType(IGF, dest, src);
 
@@ -906,7 +932,7 @@ public:
 
   void initializeWithTake(IRGenFunction &IGF, Address dest, Address src,
                           SILType T, bool isOutlined) const override {
-    if (isOutlined) {
+    if (isOutlined || IGF.IGM.isTinySwift()) {
       // memcpy the existential container. This is safe because: either the
       // value is stored inline and is therefore by convention bitwise takable
       // or the value is stored in a reference counted heap buffer, in which
@@ -922,6 +948,14 @@ public:
 
   void destroy(IRGenFunction &IGF, Address buffer, SILType T,
                bool isOutlined) const override {
+
+    if (IGF.IGM.isTinySwift()) {
+      llvm::Value *arg = IGF.Builder.CreateBitCast(
+          buffer.getAddress(), IGF.IGM.getExistentialPtrTy(0));
+      IGF.Builder.CreateCall(IGF.IGM.getDestroyExistentialFn(), { arg });
+      return;
+    }
+
     // Use copy-on-write existentials?
     auto fn = getDestroyBoxedOpaqueExistentialBufferFunction(
         IGF.IGM, getLayout());
@@ -964,6 +998,10 @@ public:
   const override {
     auto type = getLayout().projectMetadataRef(IGF, dest);
     return storeHeapObjectExtraInhabitant(IGF, index, type);
+  }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for OpaqueExistentialTypeInfo");
   }
 };
 
@@ -1037,6 +1075,10 @@ class ClassExistentialTypeInfo final
   }
 
 public:
+
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("value pattern for ClassExistentialTypeInfo not implemented yet");
+  }
 
   llvm::PointerType *getPayloadType() const {
     auto *ty = getStorageType();
@@ -1343,6 +1385,9 @@ public:
   void emitValueFixLifetime(IRGenFunction &IGF, llvm::Value *value) const {
     // do nothing
   }
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for ExistentialMetatypeTypeInfo");
+  }
 };
 
 /// Type info for error existentials, currently the only kind of boxed
@@ -1526,7 +1571,11 @@ static const TypeInfo *createExistentialTypeInfo(IRGenModule &IGM, CanType T) {
 
   // Set up the first two fields.
   fields[0] = IGM.getFixedBufferTy();
-  fields[1] = IGM.TypeMetadataPtrTy;
+  if (IGM.isTinySwift()) {
+    fields[1] = IGM.SizeTy;
+  } else {
+    fields[1] = IGM.TypeMetadataPtrTy;
+  }
   type->setBody(fields);
 
   OpaqueExistentialLayout opaque(protosWithWitnessTables.size());
@@ -1671,7 +1720,10 @@ Address irgen::emitOpenExistentialBox(IRGenFunction &IGF,
   Address out = box.getContainer();
   auto metadataAddr = IGF.Builder.CreateStructGEP(out, 1,
                                                   IGF.IGM.getPointerSize());
-  auto metadata = IGF.Builder.CreateLoad(metadataAddr);
+  llvm::Value *metadata = nullptr;
+  if (!IGF.IGM.isTinySwift()) {
+    metadata = IGF.Builder.CreateLoad(metadataAddr);
+  }
   auto witnessAddr = IGF.Builder.CreateStructGEP(out, 2,
                                                  2 * IGF.IGM.getPointerSize());
   auto witness = IGF.Builder.CreateLoad(witnessAddr);
@@ -1692,7 +1744,12 @@ OwnedAddress irgen::emitBoxedExistentialContainerAllocation(IRGenFunction &IGF,
            ExistentialRepresentation::Boxed, Type()));
 
   auto &destTI = IGF.getTypeInfo(destType).as<ErrorExistentialTypeInfo>();
-  auto srcMetadata = IGF.emitTypeMetadataRef(formalSrcType);
+  llvm::Value *srcMetadata;
+  if (IGF.IGM.isTinySwift()) {
+    srcMetadata = llvm::ConstantPointerNull::get(IGF.IGM.TypeMetadataPtrTy);
+  } else {
+    srcMetadata = IGF.emitTypeMetadataRef(formalSrcType);
+  }
   // Should only be one conformance, for the Error protocol.
   assert(conformances.size() == 1 && destTI.getStoredProtocols().size() == 1);
   const ProtocolDecl *proto = destTI.getStoredProtocols()[0];
@@ -1793,10 +1850,16 @@ Address irgen::emitOpaqueExistentialContainerInit(IRGenFunction &IGF,
   OpaqueExistentialLayout destLayout = destTI.getLayout();
   assert(destTI.getStoredProtocols().size() == conformances.size());
 
-  // First, write out the metadata.
-  llvm::Value *metadata = IGF.emitTypeMetadataRef(formalSrcType);
-  IGF.Builder.CreateStore(metadata, destLayout.projectMetadataRef(IGF, dest));
-
+  llvm::Value *metadata = nullptr;
+  if (IGF.IGM.isTinySwift()) {
+    ValuePattern valPattern = IGF.getTypeInfo(loweredSrcType).buildValuePattern(IGF.IGM, loweredSrcType);
+    llvm::Constant *pattern = valPattern.getPatternConst(IGF);
+    IGF.Builder.CreateStore(pattern, destLayout.projectValuePattern(IGF, dest));
+  } else {
+    // First, write out the metadata.
+    metadata = IGF.emitTypeMetadataRef(formalSrcType);
+    IGF.Builder.CreateStore(metadata, destLayout.projectMetadataRef(IGF, dest));
+  }
 
   // Next, write the protocol witness tables.
   forEachProtocolWitnessTable(IGF, formalSrcType, &metadata,
@@ -1975,10 +2038,13 @@ irgen::emitClassExistentialProjection(IRGenFunction &IGF,
   ArrayRef<llvm::Value*> wtables;
   llvm::Value *value;
   std::tie(wtables, value) = baseTI.getWitnessTablesAndValue(base);
-  auto metadata = emitDynamicTypeOfHeapObject(IGF, value,
-                                              MetatypeRepresentation::Thick,
-                                              baseTy,
-                                              /*allow artificial*/ false);
+  llvm::Value *metadata = nullptr;
+  if (!IGF.IGM.isTinySwift()) {
+    metadata = emitDynamicTypeOfHeapObject(IGF, value,
+                                           MetatypeRepresentation::Thick,
+                                           baseTy,
+                                           /*allow artificial*/ false);
+  }
   IGF.bindArchetype(openedArchetype, metadata, MetadataState::Complete,
                     wtables);
 
@@ -2343,7 +2409,9 @@ Address irgen::emitOpaqueBoxedExistentialProjection(
   auto &baseTI = IGF.getTypeInfo(existentialTy).as<OpaqueExistentialTypeInfo>();
   auto layout = baseTI.getLayout();
 
-  llvm::Value *metadata = layout.loadMetadataRef(IGF, base);
+  llvm::Value *metadata = nullptr;
+  if (!IGF.IGM.isTinySwift())
+    metadata = layout.loadMetadataRef(IGF, base);
 
   // If we are projecting into an opened archetype, capture the
   // witness tables.
@@ -2354,6 +2422,11 @@ Address irgen::emitOpaqueBoxedExistentialProjection(
     }
     IGF.bindArchetype(openedArchetype, metadata, MetadataState::Complete,
                       wtables);
+  }
+
+  if (IGF.IGM.isTinySwift()) {
+    return Address(IGF.Builder.CreateBitCast(base.getAddress(),
+                                          IGF.IGM.OpaquePtrTy), Alignment(1));
   }
 
   auto *projectFunc =

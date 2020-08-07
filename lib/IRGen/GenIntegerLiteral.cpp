@@ -120,6 +120,10 @@ public:
     dest = projectFirstElement(IGF, dest);
     storeHeapObjectExtraInhabitant(IGF, index, dest);
   }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    return ValuePattern::forTrivialTypes();
+  }
 };
 
 }

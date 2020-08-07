@@ -74,6 +74,10 @@ TypeConverter::Types_t::getTypeLayoutCacheFor(bool isDependent,
                       : IndependentTypeLayoutCache[unsigned(mode)]);
 }
 
+ValuePattern TypeInfo::buildValuePattern(IRGenModule &IGM, SILType T) const {
+    llvm_unreachable("cannot get value pattern for TypeInfo");
+}
+
 void TypeInfo::assign(IRGenFunction &IGF, Address dest, Address src,
                       IsTake_t isTake, SILType T, bool isOutlined) const {
   if (isTake) {
@@ -992,6 +996,9 @@ namespace {
                                           SILType) const override {
       return IGM.typeLayoutCache.getEmptyEntry();
     }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      return ValuePattern();
+    }
   };
 
   /// A TypeInfo implementation for types represented as a single
@@ -1153,7 +1160,10 @@ namespace {
                                unsigned offset) const override {
       target.add(payload.extractValue(IGF, ScalarType, offset));
     }
-  };
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for OpaqueStorageTypeInfo");
+    }
+};
 
   /// A TypeInfo implementation for address-only types which can never
   /// be copied.
@@ -1195,6 +1205,9 @@ namespace {
     void destroy(IRGenFunction &IGF, Address address, SILType T,
                  bool isOutlined) const override {
       llvm_unreachable("cannot opaquely manipulate immovable types!");
+    }
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for ImmovableTypeInfo");
     }
   };
 } // end anonymous namespace
@@ -2184,6 +2197,9 @@ public:
   virtual void destroy(IRGenFunction &IGF, Address address, SILType T,
                        bool isOutlined) const override {
     llvm_unreachable("TypeConverter::Mode::Legacy is not for real values");
+  }
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for LegacyTypeInfo");
   }
 };
 

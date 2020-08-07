@@ -21,11 +21,18 @@ using namespace swift;
 
 template <>
 bool OpaqueExistentialContainer::isValueInline() const {
+#ifdef TINY_SWIFT
+  return true;
+#else
   return Type->getValueWitnesses()->isValueInline();
+#endif
 }
 
 template <>
 const OpaqueValue *OpaqueExistentialContainer::projectValue() const {
+#ifdef TINY_SWIFT
+  return reinterpret_cast<const OpaqueValue *>(&Buffer);
+#else
   auto *vwt = Type->getValueWitnesses();
 
   if (vwt->isValueInline())
@@ -37,10 +44,12 @@ const OpaqueValue *OpaqueExistentialContainer::projectValue() const {
   auto *bytePtr = reinterpret_cast<const char *>(
       *reinterpret_cast<HeapObject *const *const>(&Buffer));
   return reinterpret_cast<const OpaqueValue *>(bytePtr + byteOffset);
+#endif
 }
 
 template <>
 void OpaqueExistentialContainer::deinit() {
+#ifndef TINY_SWIFT
   auto *vwt = Type->getValueWitnesses();
   if (vwt->isValueInline()) {
     return;
@@ -50,6 +59,7 @@ void OpaqueExistentialContainer::deinit() {
   unsigned size = vwt->size;
   swift_deallocObject(*reinterpret_cast<HeapObject **>(&Buffer), size,
                       alignMask);
+#endif
 }
 
 #ifndef NDEBUG
@@ -73,9 +83,58 @@ template <> SWIFT_USED void OpaqueExistentialContainer::dump() const {
   verify();
 
   printf("TargetOpaqueExistentialContainer.\n");
+#ifdef TINY_SWIFT
+  printf("Value pattern: 0x%x.\n", Pattern);
+#else
   printf("Metadata Pointer: %p.\n", Type);
+#endif
   printf("Value Pointer: %p.\n", projectValue());
   printf("Is Value Stored Inline: %s.\n", isValueInline() ? "true" : "false");
 }
 
 #endif
+
+/***************************************************************************/
+/*** Tiny-Swift runtime functions ******************************************/
+/***************************************************************************/
+
+#ifdef TINY_SWIFT
+
+SWIFT_RUNTIME_EXPORT
+void _swift_copyExistential(OpaqueExistentialContainer *dest,
+                            OpaqueExistentialContainer *src,
+                            unsigned numTables) {
+  intptr_t pattern = src->Pattern;
+  for (unsigned idx = 0; idx < 3; idx++) {
+    switch (pattern & 0x3) {
+      case 0:
+        break;
+      case 1:
+        swift_retain(*(HeapObject **)&src->Buffer.PrivateData[idx]);
+        break;
+      default:
+        swift_runtime_unreachable("unsupported value pattern");
+    }
+    pattern >>= 3;
+  }
+  memcpy(dest, src, sizeof(OpaqueExistentialContainer) + numTables * sizeof(void *));
+}
+
+SWIFT_RUNTIME_EXPORT
+void _swift_destroyExistential(OpaqueExistentialContainer *e) {
+  intptr_t pattern = e->Pattern;
+  for (unsigned idx = 0; idx < 3; idx++) {
+    switch (pattern & 0x3) {
+      case 0:
+        break;
+      case 1:
+        swift_release(*(HeapObject **)&e->Buffer.PrivateData[idx]);
+        break;
+      default:
+        swift_runtime_unreachable("unsupported value pattern");
+    }
+    pattern >>= 3;
+  }
+}
+
+#endif // TINY_SWIFT

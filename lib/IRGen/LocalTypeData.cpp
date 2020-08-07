@@ -469,7 +469,7 @@ void IRGenFunction::bindLocalTypeDataFromSelfWitnessTable(
 
           auto table =
               emitInvariantLoadOfOpaqueWitness(*this, selfTable,
-                                        wIndex.forProtocolWitnessTable());
+                            wIndex.forProtocolWitnessTable(IGM.isTinySwift()));
           table = Builder.CreateBitCast(table, IGM.WitnessTablePtrTy);
           setProtocolWitnessTableName(IGM, table, archetype, proto);
 

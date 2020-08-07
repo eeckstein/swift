@@ -103,10 +103,8 @@ namespace irgen {
 
   /// Return the number of trailing arguments necessary for calling a
   /// witness method.
-  inline unsigned getTrailingWitnessSignatureLength(IRGenModule &IGM,
-                                                    CanSILFunctionType type) {
-    return 2;
-  }
+  unsigned getTrailingWitnessSignatureLength(IRGenModule &IGM,
+                                                    CanSILFunctionType type);
 
   /// Add the trailing arguments necessary for calling a witness method.
   void expandTrailingWitnessSignature(IRGenModule &IGM,

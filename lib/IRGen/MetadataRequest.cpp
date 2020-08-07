@@ -2744,6 +2744,8 @@ llvm::Value *IRGenFunction::emitTypeMetadataRef(CanType type) {
 MetadataResponse
 IRGenFunction::emitTypeMetadataRef(CanType type,
                                    DynamicMetadataRequest request) {
+  assert(!IGM.isTinySwift());
+                                   
   type = IGM.getRuntimeReifiedType(type);
   // Look through any opaque types we're allowed to.
   type = IGM.substOpaqueTypesWithUnderlyingTypes(type);

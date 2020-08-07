@@ -472,7 +472,7 @@ void IRGenModule::emitSourceFile(SourceFile &SF) {
   // libraries. This may however cause the library to get pulled in in
   // situations where it isn't useful, such as for dylibs, though this is
   // harmless aside from code size.
-  if (!IRGen.Opts.UseJIT) {
+  if (!IRGen.Opts.UseJIT && !isTinySwift()) {
     auto addBackDeployLib = [&](llvm::VersionTuple version,
                                 StringRef libraryName) {
       Optional<llvm::VersionTuple> compatibilityVersion;
@@ -1317,6 +1317,9 @@ void IRGenerator::addLazyFunction(SILFunction *f) {
 }
 
 bool IRGenerator::hasLazyMetadata(TypeDecl *type) {
+  if (isTinySwift())
+    return false;
+
   assert(isa<NominalTypeDecl>(type) ||
          isa<OpaqueTypeDecl>(type));
   auto found = HasLazyMetadata.find(type);
@@ -2210,6 +2213,9 @@ void swift::irgen::disableAddressSanitizer(IRGenModule &IGM, llvm::GlobalVariabl
 
 /// Emit a global declaration.
 void IRGenModule::emitGlobalDecl(Decl *D) {
+  if (isTinySwift())
+    return;
+
   switch (D->getKind()) {
   case DeclKind::Extension:
     return emitExtension(cast<ExtensionDecl>(D));
@@ -4366,6 +4372,7 @@ llvm::GlobalValue *IRGenModule::defineBaseConformanceDescriptor(
 llvm::Constant *IRGenModule::getAddrOfProtocolConformanceDescriptor(
                                 const RootProtocolConformance *conformance,
                                 ConstantInit definition) {
+  assert(!isTinySwift());
   IRGen.addLazyWitnessTable(conformance);
 
   auto entity = LinkEntity::forProtocolConformanceDescriptor(conformance);

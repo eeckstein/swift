@@ -2724,6 +2724,19 @@ namespace {
 
     }
 
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      switch (CopyDestroyKind) {
+        case POD:
+          return ValuePattern::forTrivialTypes();
+
+        case NullableRefcounted:
+          return ValuePattern::forReferences();
+
+        default:
+          llvm_unreachable("buildValuePattern for single-payload enum not implemented yet");
+      }
+    }
+
     void destroy(IRGenFunction &IGF, Address addr, SILType T,
                  bool isOutlined) const override {
       if (CopyDestroyKind == POD) {
@@ -6272,6 +6285,10 @@ namespace {
                       IsFixedSize_t alwaysFixedSize)
       : FixedEnumTypeInfoBase(strategy, T, S, std::move(SB), A, isPOD, isBT,
                               alwaysFixedSize) {}
+                              
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      llvm_unreachable("cannot get value pattern for FixedEnumTypeInfo");
+    }
   };
 
   /// TypeInfo for loadable enum types.
@@ -6340,6 +6357,10 @@ namespace {
                                 SourceLoc loc, Address addr) const override {
       return LoadedRef(Strategy.loadRefcountedPtr(IGF, loc, addr), false);
     }
+    
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+      return Strategy.buildValuePattern(IGM, T);
+    }
   };
 
   /// TypeInfo for dynamically-sized enum types.
@@ -6404,6 +6425,10 @@ EnumImplStrategy::getFixedEnumTypeInfo(llvm::StructType *T, Size S,
   }
   TI = mutableTI;
   return mutableTI;
+}
+
+ValuePattern EnumImplStrategy::buildValuePattern(IRGenModule &IGM, SILType T) const {
+  llvm_unreachable("buildValuePattern for enum not implemented yet");
 }
 
 TypeInfo *

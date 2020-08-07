@@ -122,6 +122,9 @@ namespace {
                                                ReferenceOwnership::Name, \
                                                ReferenceCounting::Nativeness); \
     } \
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override { \
+      llvm_unreachable("cannot get value pattern for " #Nativeness #Name "ReferenceTypeInfo"); \
+    } \
     llvm::Type *getOptionalIntType() const { \
       return llvm::IntegerType::get( \
           ValueTypeAndIsOptional.getPointer()->getContext(), \
@@ -196,6 +199,9 @@ namespace {
       return IGM.getReferenceStorageExtraInhabitantMask( \
                                                ReferenceOwnership::Name, \
                                                ReferenceCounting::Nativeness); \
+    } \
+    ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override { \
+      llvm_unreachable("cannot get value pattern for " #Nativeness #Name "ReferenceTypeInfo"); \
     } \
   };
 

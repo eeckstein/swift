@@ -160,6 +160,10 @@ public:
          const SpareBitVector &spareBits) {
     return new FixedSizeArchetypeTypeInfo(type, size, align, spareBits);
   }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for FixedSizeArchetypeTypeInfo");
+  }
 };
 
 } // end anonymous namespace
@@ -372,9 +376,12 @@ void IRGenFunction::bindArchetype(ArchetypeType *archetype,
                                   llvm::Value *metadata,
                                   MetadataState metadataState,
                                   ArrayRef<llvm::Value*> wtables) {
-  // Set the metadata pointer.
-  setTypeMetadataName(IGM, metadata, CanType(archetype));
-  setMetadataRef(*this, archetype, metadata, metadataState);
+  assert((metadata == nullptr) == IGM.isTinySwift());
+  if (!IGM.isTinySwift()) {
+    // Set the metadata pointer.
+    setTypeMetadataName(IGM, metadata, CanType(archetype));
+    setMetadataRef(*this, archetype, metadata, metadataState);
+  }
 
   // Set the protocol witness tables.
 

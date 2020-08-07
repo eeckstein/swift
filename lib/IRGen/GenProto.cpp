@@ -326,6 +326,10 @@ bool PolymorphicConvention::considerType(CanType type, IsExact_t isExact,
 }
 
 void PolymorphicConvention::considerWitnessSelf(CanSILFunctionType fnType) {
+
+  if (IGM.isTinySwift())
+    return;
+
   CanType selfTy = fnType->getSelfInstanceType(
       IGM.getSILModule(), IGM.getMaximalTypeExpansionContext());
   auto conformance = fnType->getWitnessMethodConformanceOrInvalid();
@@ -1270,6 +1274,8 @@ public:
     /// Add reference to the protocol conformance descriptor that generated
     /// this table.
     void addProtocolConformanceDescriptor() {
+      if (IGM.isTinySwift())
+        return;
       auto descriptor =
         IGM.getAddrOfProtocolConformanceDescriptor(&Conformance);
       Table.addBitCast(descriptor, IGM.Int8PtrTy);
@@ -1290,7 +1296,7 @@ public:
              && "sil witness table does not match protocol");
       auto piIndex = PI.getBaseIndex(baseProto);
       assert((size_t)piIndex.getValue() ==
-             Table.size() - WitnessTableFirstRequirementOffset &&
+             Table.size() - (IGM.isTinySwift() ? 0 : WitnessTableFirstRequirementOffset) &&
              "offset doesn't match ProtocolInfo layout");
 #endif
 
@@ -1324,7 +1330,7 @@ public:
              && "sil witness table does not match protocol");
       auto piIndex = PI.getFunctionIndex(requirement);
       assert((size_t)piIndex.getValue() ==
-              Table.size() - WitnessTableFirstRequirementOffset &&
+              Table.size() - (IGM.isTinySwift() ? 0 : WitnessTableFirstRequirementOffset) &&
              "offset doesn't match ProtocolInfo layout");
 #endif
 
@@ -1349,6 +1355,8 @@ public:
     }
 
     void addAssociatedType(AssociatedType requirement) {
+      assert(!IGM.isTinySwift());
+    
       auto &entry = SILEntries.front();
       SILEntries = SILEntries.slice(1);
 
@@ -2136,6 +2144,9 @@ void IRGenModule::emitSILWitnessTable(SILWitnessTable *wt) {
   IRGen.ensureRelativeSymbolCollocation(*wt);
 
   auto conf = wt->getConformance();
+  if (isTinySwift() && !conf->getProtocol()->existentialTypeSupported())
+    return;
+
   PrettyStackTraceConformance _st(Context, "emitting witness table for", conf);
 
   unsigned tableSize = 0;
@@ -2183,11 +2194,13 @@ void IRGenModule::emitSILWitnessTable(SILWitnessTable *wt) {
   description.instantiationFn = instantiationFunction;
   description.resilientWitnesses = std::move(resilientWitnesses);
 
-  // Record this conformance descriptor.
-  addProtocolConformance(std::move(description));
+  if (!isTinySwift()) {
+    // Record this conformance descriptor.
+    addProtocolConformance(std::move(description));
 
-  IRGen.noteUseOfTypeContextDescriptor(conf->getType()->getAnyNominal(),
-                                       RequireMetadata);
+    IRGen.noteUseOfTypeContextDescriptor(conf->getType()->getAnyNominal(),
+                                         RequireMetadata);
+  }
 }
 
 /// True if a function's signature in LLVM carries polymorphic parameters.
@@ -2487,7 +2500,7 @@ MetadataResponse MetadataPath::followComponent(IRGenFunction &IGF,
     WitnessIndex index(component.getPrimaryIndex(), /*prefix*/ false);
     auto baseWTable =
       emitInvariantLoadOfOpaqueWitness(IGF, wtable,
-                                       index.forProtocolWitnessTable());
+                        index.forProtocolWitnessTable(IGF.IGM.isTinySwift()));
     baseWTable =
       IGF.Builder.CreateBitCast(baseWTable, IGF.IGM.WitnessTablePtrTy);
     setProtocolWitnessTableName(IGF.IGM, baseWTable, sourceKey.Type,
@@ -2637,6 +2650,9 @@ void irgen::collectTrailingWitnessMetadata(IRGenFunction &IGF,
                                            WitnessMetadata &witnessMetadata) {
   assert(fn.getLoweredFunctionType()->getRepresentation()
            == SILFunctionTypeRepresentation::WitnessMethod);
+
+  if (IGF.IGM.isTinySwift())
+    return;
 
   llvm::Value *wtable = params.takeLast();
   assert(wtable->getType() == IGF.IGM.WitnessTablePtrTy &&
@@ -3261,6 +3277,11 @@ void irgen::expandTrailingWitnessSignature(IRGenModule &IGM,
   assert(polyFn->getRepresentation()
           == SILFunctionTypeRepresentation::WitnessMethod);
 
+  if (IGM.isTinySwift()) {
+    assert(getTrailingWitnessSignatureLength(IGM, polyFn) == 0);
+    return;
+  }
+
   assert(getTrailingWitnessSignatureLength(IGM, polyFn) == 2);
 
   // A witness method always provides Self.
@@ -3269,6 +3290,16 @@ void irgen::expandTrailingWitnessSignature(IRGenModule &IGM,
   // A witness method always provides the witness table for Self.
   out.push_back(IGM.WitnessTablePtrTy);
 }
+
+/// Return the number of trailing arguments necessary for calling a
+/// witness method.
+unsigned irgen::getTrailingWitnessSignatureLength(IRGenModule &IGM,
+                                                  CanSILFunctionType type) {
+  if (IGM.isTinySwift())
+    return 0;
+  return 2;
+}
+
 
 FunctionPointer irgen::emitWitnessMethodValue(IRGenFunction &IGF,
                                               llvm::Value *wtable,
@@ -3284,7 +3315,7 @@ FunctionPointer irgen::emitWitnessMethodValue(IRGenFunction &IGF,
   llvm::Value *slot;
   llvm::Value *witnessFnPtr =
     emitInvariantLoadOfOpaqueWitness(IGF, wtable,
-                                     index.forProtocolWitnessTable(), &slot);
+                  index.forProtocolWitnessTable(IGF.IGM.isTinySwift()), &slot);
 
   auto fnType = IGF.IGM.getSILTypes().getConstantFunctionType(
       IGF.IGM.getMaximalTypeExpansionContext(), member);

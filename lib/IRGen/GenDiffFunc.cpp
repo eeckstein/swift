@@ -125,6 +125,10 @@ public:
   llvm::NoneType getNonFixedOffsets(IRGenFunction &IGF, SILType T) const {
     return None;
   }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for DifferentiableFuncTypeInfo");
+  }
 };
 
 class DifferentiableFuncTypeBuilder
@@ -275,6 +279,10 @@ public:
   llvm::NoneType getNonFixedOffsets(IRGenFunction &IGF) const { return None; }
   llvm::NoneType getNonFixedOffsets(IRGenFunction &IGF, SILType T) const {
     return None;
+  }
+  
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    llvm_unreachable("cannot get value pattern for LinearFuncTypeInfo");
   }
 };
 

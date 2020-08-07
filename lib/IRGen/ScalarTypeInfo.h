@@ -292,6 +292,9 @@ private:
     return IGM.typeLayoutCache.getOrCreateScalarEntry(asDerived(), T);
   }
 
+  ValuePattern buildValuePattern(IRGenModule &IGM, SILType T) const override {
+    return ValuePattern::forTrivialTypes();
+  }
 };
 
 }
