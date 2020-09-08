@@ -16,6 +16,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !_runtime(_Tiny)
+
 /// Called by the casting machinery.
 @_silgen_name("_swift_arrayDownCastIndirect")
 internal func _arrayDownCastIndirect<SourceValue, TargetValue>(
@@ -23,6 +25,8 @@ internal func _arrayDownCastIndirect<SourceValue, TargetValue>(
   _ target: UnsafeMutablePointer<Array<TargetValue>>) {
   target.initialize(to: _arrayForceCast(source.pointee))
 }
+
+#endif
 
 /// Implements `source as! [TargetElement]`.
 ///
@@ -52,6 +56,8 @@ public func _arrayForceCast<SourceElement, TargetElement>(
   return source.map { $0 as! TargetElement }
 }
 
+#if !_runtime(_Tiny)
+
 /// Called by the casting machinery.
 @_silgen_name("_swift_arrayDownCastConditionalIndirect")
 internal func _arrayDownCastConditionalIndirect<SourceValue, TargetValue>(
@@ -64,6 +70,8 @@ internal func _arrayDownCastConditionalIndirect<SourceValue, TargetValue>(
   }
   return false
 }
+
+#endif
 
 /// Implements `source as? [TargetElement]`: convert each element of
 /// `source` to a `TargetElement` and return the resulting array, or
