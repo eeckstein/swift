@@ -2744,7 +2744,13 @@ llvm::Value *IRGenFunction::emitTypeMetadataRef(CanType type) {
 MetadataResponse
 IRGenFunction::emitTypeMetadataRef(CanType type,
                                    DynamicMetadataRequest request) {
-  assert(!IGM.isTinySwift());
+
+  if (IGM.isTinySwift()) {
+    assert(isa<ClassType>(type));
+    return emitDirectTypeMetadataRef(*this, type, request);
+  }
+
+//  assert(!IGM.isTinySwift());
                                    
   type = IGM.getRuntimeReifiedType(type);
   // Look through any opaque types we're allowed to.
@@ -3289,6 +3295,7 @@ llvm::Value *irgen::emitClassHeapMetadataRef(IRGenFunction &IGF, CanType type,
   // Archetypes may or may not be ObjC classes and need unwrapping to get at
   // the class object.
   if (auto archetype = dyn_cast<ArchetypeType>(type)) {
+    assert(!IGF.IGM.isTinySwift());
     // Look up the Swift metadata from context.
     auto archetypeMeta = IGF.emitTypeMetadataRef(type, request).getMetadata();
     // Get the class pointer.
@@ -3301,12 +3308,18 @@ llvm::Value *irgen::emitClassHeapMetadataRef(IRGenFunction &IGF, CanType type,
   
   if (ClassDecl *theClass = type->getClassOrBoundGenericClass()) {
     if (!hasKnownSwiftMetadata(IGF.IGM, theClass)) {
+      assert(!IGF.IGM.isTinySwift());
       llvm::Value *result =
         emitObjCHeapMetadataRef(IGF, theClass, allowUninitialized);
       if (desiredType == MetadataValueType::TypeMetadata)
         result = IGF.Builder.CreateBitCast(result, IGF.IGM.TypeMetadataPtrTy);
       return result;
     }
+  }
+  
+  if (IGF.IGM.isTinySwift()) {
+    llvm::Constant *result = IGF.IGM.getAddrOfTypeMetadata(type);
+    return result;
   }
 
   llvm::Value *result = IGF.emitTypeMetadataRef(type, request).getMetadata();

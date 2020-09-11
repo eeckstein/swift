@@ -67,6 +67,14 @@ public:
     static_assert(MetadataAdjustmentIndex::Class == 2,
                   "Adjustment index must be synchronized with this layout");
 
+    if (IGM.isTinySwift()) {
+      asImpl().noteAddressPoint();
+      asImpl().addSuperclass();
+      asImpl().addDestructorFunction();
+      addClassMembers(Target);
+      return;
+    }
+
     // HeapMetadata header.
     asImpl().addDestructorFunction();
 

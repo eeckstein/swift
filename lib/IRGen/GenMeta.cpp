@@ -2974,6 +2974,10 @@ namespace {
       }
 
       auto *metadata = asImpl().getSuperclassMetadata();
+      if (IGM.isTinySwift() && !metadata) {
+        B.addNullPointer(IGM.TypeMetadataPtrTy);
+        return;
+      }
       assert(metadata != nullptr);
       B.add(metadata);
     }
@@ -3710,7 +3714,8 @@ void irgen::emitClassMetadata(IRGenModule &IGM, ClassDecl *classDecl,
   assert(!classDecl->isForeign());
   PrettyStackTraceDecl stackTraceRAII("emitting metadata for", classDecl);
 
-  emitFieldOffsetGlobals(IGM, classDecl, fragileLayout, resilientLayout);
+  if (!IGM.isTinySwift())
+    emitFieldOffsetGlobals(IGM, classDecl, fragileLayout, resilientLayout);
 
   // Set up a dummy global to stand in for the metadata object while we produce
   // relative references.

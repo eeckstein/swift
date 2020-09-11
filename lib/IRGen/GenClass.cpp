@@ -2415,8 +2415,11 @@ IRGenModule::getClassMetadataStrategy(const ClassDecl *theClass) {
     return ClassMetadataStrategy::Singleton;
 
   // If we have generic ancestry, we have to use the singleton pattern.
-  if (resilientLayout.doesMetadataRequireInitialization())
+  if (resilientLayout.doesMetadataRequireInitialization()) {
+    if (isTinySwift())
+      return ClassMetadataStrategy::Fixed;
     return ClassMetadataStrategy::Singleton;
+  }
 
   // If we have resiliently-sized fields, we might be able to use the
   // update pattern.

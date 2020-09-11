@@ -1073,6 +1073,22 @@ using AnyClassMetadata =
 using ClassIVarDestroyer =
   SWIFT_CC(swift) void(SWIFT_CONTEXT HeapObject *);
 
+#ifdef TINY_SWIFT
+
+/// The prefix on a heap metadata.
+template <typename Runtime>
+struct TinyClassMetadata {
+  
+  /// The metadata for the superclass.  This is null for the root class.
+  ConstTargetMetadataPointer<Runtime, swift::TinyClassMetadata> Superclass;
+
+  /// Destroy the object, returning the allocated size of the object
+  /// or 0 if the object shouldn't be deallocated.
+  TargetSignedPointer<Runtime, HeapObjectDestroyer *__ptrauth_swift_heap_object_destructor> destroy;
+};
+
+#endif
+
 /// The structure of all class metadata.  This structure is embedded
 /// directly within the class's heap metadata structure and therefore
 /// cannot be extended without an ABI break.

@@ -243,6 +243,8 @@ public:
 
 } // end anonymous namespace
 
+#ifndef TINY_SWIFT // TODO
+
 static SimpleGlobalCache<BoxCacheEntry, BoxesTag> Boxes;
 
 BoxPair swift::swift_makeBoxUnique(OpaqueValue *buffer, const Metadata *type,
@@ -299,6 +301,8 @@ OpaqueValue *swift::swift_projectBox(HeapObject *o) {
   auto metadata = static_cast<const GenericBoxHeapMetadata *>(o->metadata);
   return metadata->project(o);
 }
+
+#endif
 
 namespace { // Begin anonymous namespace.
 
@@ -667,7 +671,11 @@ void swift::swift_unownedCheck(HeapObject *object) {
 }
 
 void _swift_release_dealloc(HeapObject *object) {
+#ifdef TINY_SWIFT
+  ((TinyClassMetadata<InProcess> *)object->metadata)->destroy(object);
+#else
   asFullMetadata(object->metadata)->destroy(object);
+#endif
 }
 
 #if SWIFT_OBJC_INTEROP

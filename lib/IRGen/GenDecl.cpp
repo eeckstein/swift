@@ -2213,7 +2213,7 @@ void swift::irgen::disableAddressSanitizer(IRGenModule &IGM, llvm::GlobalVariabl
 
 /// Emit a global declaration.
 void IRGenModule::emitGlobalDecl(Decl *D) {
-  if (isTinySwift())
+  if (isTinySwift() && D->getKind() != DeclKind::Class)
     return;
 
   switch (D->getKind()) {
@@ -3958,7 +3958,8 @@ llvm::GlobalValue *IRGenModule::defineTypeMetadata(CanType concreteType,
           ? LinkEntity::forNoncanonicalSpecializedGenericTypeMetadata(
                 concreteType)
           : LinkEntity::forTypeMetadata(concreteType,
-                                        TypeMetadataAddress::FullMetadata);
+              isTinySwift() ? TypeMetadataAddress::AddressPoint :
+                              TypeMetadataAddress::FullMetadata);
 
   auto DbgTy = DebugTypeInfo::getMetadata(MetatypeType::get(concreteType),
     entity.getDefaultDeclarationType(*this)->getPointerTo(),
@@ -3975,6 +3976,9 @@ llvm::GlobalValue *IRGenModule::defineTypeMetadata(CanType concreteType,
   LinkInfo link = LinkInfo::get(*this, entity, ForDefinition);
   if (link.isUsed())
     addUsedGlobal(var);
+
+  if (isTinySwift())
+    return var;
 
   /// For concrete metadata, we want to use the initializer on the
   /// "full metadata", and define the "direct" address point as an alias.
