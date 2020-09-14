@@ -3152,7 +3152,7 @@ void SILVTable::print(llvm::raw_ostream &OS, bool Verbose) const {
   OS << "sil_vtable ";
   if (isSerialized())
     OS << "[serialized] ";
-  OS << getClass()->getName() << " {\n";
+  OS << getClassType() << " {\n";
 
   for (auto &entry : getEntries()) {
     OS << "  ";

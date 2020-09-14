@@ -174,6 +174,9 @@ private:
   /// Lookup table for SIL vtables from class decls.
   llvm::DenseMap<const ClassDecl *, SILVTable *> VTableMap;
 
+  /// Lookup table for SIL vtables from class decls.
+  llvm::DenseMap<SILType, SILVTable *> SpecializedVTableMap;
+
   /// The list of SILVTables in the module.
   std::vector<SILVTable*> vtables;
 
@@ -589,6 +592,8 @@ public:
 
   /// Look up the VTable mapped to the given ClassDecl. Returns null on failure.
   SILVTable *lookUpVTable(const ClassDecl *C, bool deserializeLazily = true);
+
+  SILVTable *lookUpSpecializedVTable(SILType classTy);
 
   /// Attempt to lookup the function corresponding to \p Member in the class
   /// hierarchy of \p Class.

@@ -5412,7 +5412,7 @@ void SILVTable::verify(const SILModule &M) const {
       entry.getMethod().print(os);
     }
 
-    if (M.getStage() != SILStage::Lowered) {
+    if (M.getStage() != SILStage::Lowered && !isSpecialized()) {
       SILVerifier(*entry.getImplementation())
           .requireABICompatibleFunctionTypes(
               baseInfo.getSILType().castTo<SILFunctionType>(),
@@ -5583,10 +5583,10 @@ void SILModule::verify() const {
   }
 
   // Check all vtables and the vtable cache.
-  llvm::DenseSet<ClassDecl*> vtableClasses;
+  llvm::DenseSet<SILType> vtableClasses;
   unsigned EntriesSZ = 0;
   for (const auto &vt : getVTables()) {
-    if (!vtableClasses.insert(vt->getClass()).second) {
+    if (!vtableClasses.insert(vt->getClassType()).second) {
       llvm::errs() << "Vtable redefined: " << vt->getClass()->getName() << "!\n";
       assert(false && "triggering standard assertion failure routine");
     }

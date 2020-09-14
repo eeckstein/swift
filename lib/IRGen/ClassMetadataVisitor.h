@@ -62,6 +62,9 @@ protected:
     : super(IGM), Target(target),
       VTable(IGM.getSILModule().lookUpVTable(target, /*deserialize*/ false)) {}
 
+  ClassMetadataVisitor(IRGenModule &IGM, ClassDecl *target, SILVTable *vtable)
+    : super(IGM), Target(target), VTable(vtable) {}
+
 public:
   void layout() {
     static_assert(MetadataAdjustmentIndex::Class == 2,
@@ -71,7 +74,7 @@ public:
       asImpl().noteAddressPoint();
       asImpl().addSuperclass();
       asImpl().addDestructorFunction();
-      addClassMembers(Target);
+      addTinyClassMembers(Target);
       return;
     }
 
@@ -118,6 +121,8 @@ public:
 private:
   /// Add fields associated with the given class and its bases.
   void addClassMembers(ClassDecl *theClass) {
+    assert(!IGM.isTinySwift());
+
     // Visit the superclass first.
     if (auto *superclassDecl = theClass->getSuperclassDecl()) {
       if (superclassDecl->hasClangNode()) {
@@ -175,6 +180,23 @@ private:
     // about its metadata layout, so skip the rest of this method.
     if (IGM.hasResilientMetadata(theClass, ResilienceExpansion::Maximal))
       return;
+
+    // Add vtable entries.
+    asImpl().addVTableEntries(theClass);
+  }
+
+  /// Add fields associated with the given class and its bases.
+  void addTinyClassMembers(ClassDecl *theClass) {
+    assert(IGM.isTinySwift());
+  
+    // Visit the superclass first.
+    if (auto *superclassDecl = theClass->getSuperclassDecl()) {
+      addTinyClassMembers(superclassDecl);
+    }
+
+    // Note that we have to emit a global variable storing the metadata
+    // start offset, or access remaining fields relative to one.
+    asImpl().noteStartOfImmediateMembers(theClass);
 
     // Add vtable entries.
     asImpl().addVTableEntries(theClass);

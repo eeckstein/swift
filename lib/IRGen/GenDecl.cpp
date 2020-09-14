@@ -1191,7 +1191,8 @@ void IRGenerator::emitLazyDefinitions() {
          !LazyOpaqueTypeDescriptors.empty() || !LazyFieldDescriptors.empty() ||
          !LazyFunctionDefinitions.empty() || !LazyWitnessTables.empty() ||
          !LazyCanonicalSpecializedMetadataAccessors.empty() ||
-         !LazyMetadataAccessors.empty()) {
+         !LazyMetadataAccessors.empty() ||
+         !LazySpecializedClassMetadata.empty()) {
     // Emit any lazy type metadata we require.
     while (!LazyTypeMetadata.empty()) {
       NominalTypeDecl *type = LazyTypeMetadata.pop_back_val();
@@ -1282,6 +1283,11 @@ void IRGenerator::emitLazyDefinitions() {
       CurrentIGMPtr IGM = getGenModule(nominal->getDeclContext());
       emitLazyMetadataAccessor(*IGM.get(), nominal);
     }
+    while (!LazySpecializedClassMetadata.empty()) {
+      CanType classType = LazySpecializedClassMetadata.pop_back_val();
+      CurrentIGMPtr IGM = getGenModule(classType->getClassOrBoundGenericClass());
+      emitLazySpecializedClassMetadata(*IGM.get(), classType);
+    }
   }
 
   FinishedEmittingLazyDefinitions = true;
@@ -1364,6 +1370,12 @@ bool IRGenerator::hasLazyMetadata(TypeDecl *type) {
   HasLazyMetadata[type] = isLazy;
 
   return isLazy;
+}
+
+void IRGenerator::noteUseOfSpecializedClassMetadata(CanType classType) {
+  if (LazilyEmittedSpecializedClassMetadata.insert(classType.getPointer()).second) {
+    LazySpecializedClassMetadata.push_back(classType);
+  }
 }
 
 void IRGenerator::noteUseOfTypeGlobals(NominalTypeDecl *type,
@@ -2083,7 +2095,7 @@ llvm::Function *irgen::createFunction(IRGenModule &IGM,
 
   // Everything externally visible is considered used in Swift.
   // That mostly means we need to be good at not marking things external.
-  if (linkInfo.isUsed()) {
+  if (linkInfo.isUsed() && !IGM.isTinySwift()) {
     IGM.addUsedGlobal(fn);
   }
 
@@ -3951,16 +3963,18 @@ llvm::GlobalValue *IRGenModule::defineTypeMetadata(CanType concreteType,
     return cast<llvm::GlobalValue>(addr);
   }
 
-  auto entity =
-      (isPrespecialized &&
+  LinkEntity entity =
+    (isTinySwift() ?
+      LinkEntity::forTypeMetadata(concreteType, TypeMetadataAddress::AddressPoint) :
+      ((isPrespecialized &&
        !irgen::isCanonicalInitializableTypeMetadataStaticallyAddressable(
            *this, concreteType))
           ? LinkEntity::forNoncanonicalSpecializedGenericTypeMetadata(
                 concreteType)
-          : LinkEntity::forTypeMetadata(concreteType,
-              isTinySwift() ? TypeMetadataAddress::AddressPoint :
-                              TypeMetadataAddress::FullMetadata);
-
+          : LinkEntity::forTypeMetadata(concreteType, TypeMetadataAddress::FullMetadata)
+      )
+    );
+  
   auto DbgTy = DebugTypeInfo::getMetadata(MetatypeType::get(concreteType),
     entity.getDefaultDeclarationType(*this)->getPointerTo(),
     Size(0), Alignment(1));
@@ -4033,9 +4047,11 @@ IRGenModule::getAddrOfTypeMetadata(CanType concreteType,
 
   // Foreign classes and prespecialized generic types do not use an alias into
   // the full metadata and therefore require a GEP.
-  bool fullMetadata =
-      foreign || (concreteType->getAnyGeneric() &&
-                  concreteType->getAnyGeneric()->isGenericContext());
+  bool fullMetadata = false;
+  if (!isTinySwift()) {
+    fullMetadata = foreign || (concreteType->getAnyGeneric() &&
+                          concreteType->getAnyGeneric()->isGenericContext());
+  }
 
   llvm::Type *defaultVarTy;
   unsigned adjustmentIndex;
@@ -4067,6 +4083,11 @@ IRGenModule::getAddrOfTypeMetadata(CanType concreteType,
   // trigger lazy emission of the metadata.
   if (NominalTypeDecl *nominal = concreteType->getAnyNominal()) {
     IRGen.noteUseOfTypeMetadata(nominal);
+    if (auto *classDecl = dyn_cast<ClassDecl>(nominal)) {
+      if (isTinySwift() && classDecl->isGenericContext()) {
+        IRGen.noteUseOfSpecializedClassMetadata(concreteType);
+      }
+    }
   }
 
   if (shouldPrespecializeGenericMetadata()) {

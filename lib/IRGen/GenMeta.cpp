@@ -2851,6 +2851,14 @@ namespace {
         FieldLayout(fieldLayout),
         MetadataLayout(IGM.getClassMetadataLayout(theClass)) {}
 
+    ClassMetadataBuilderBase(IRGenModule &IGM, ClassDecl *theClass,
+                             ConstantStructBuilder &builder,
+                             const ClassLayout &fieldLayout,
+                             SILVTable *vtable)
+      : super(IGM, theClass, vtable), B(builder),
+        FieldLayout(fieldLayout),
+        MetadataLayout(IGM.getClassMetadataLayout(theClass)) {}
+
   public:
     SILType getLoweredType() {
       return IGM.getLoweredType(Target->getDeclaredTypeInContext());
@@ -2983,6 +2991,13 @@ namespace {
     }
 
     void addDestructorFunction() {
+      if (IGM.isTinySwift()) {
+        auto dtorRef = SILDeclRef(Target->getDestructor(),
+                            SILDeclRef::Kind::Deallocator);
+        addReifiedVTableEntry(dtorRef);
+        return;
+      }
+    
       if (auto ptr = getAddrOfDestructorFunction(IGM, Target)) {
         B.addSignedPointer(*ptr,
                            IGM.getOptions().PointerAuth.HeapDestructors,
@@ -3176,6 +3191,12 @@ namespace {
                               ConstantStructBuilder &builder,
                               const ClassLayout &fieldLayout)
       : super(IGM, theClass, builder, fieldLayout) {}
+
+    FixedClassMetadataBuilder(IRGenModule &IGM, ClassDecl *theClass,
+                              ConstantStructBuilder &builder,
+                              const ClassLayout &fieldLayout,
+                              SILVTable *vtable)
+      : super(IGM, theClass, builder, fieldLayout, vtable) {}
 
     void addFieldOffset(VarDecl *var) {
       addFixedFieldOffset(IGM, B, var, [](DeclContext *dc) {
@@ -3707,10 +3728,41 @@ static void emitObjCClassSymbol(IRGenModule &IGM,
       .to(alias, link.isForDefinition());
 }
 
+void irgen::emitLazySpecializedClassMetadata(IRGenModule &IGM,
+                                             CanType classTy) {
+
+  SILType classType = SILType::getPrimitiveObjectType(classTy);
+  auto &classTI = IGM.getTypeInfo(classType).as<ClassTypeInfo>();
+  
+  auto &fragileLayout =
+    classTI.getClassLayout(IGM, classType, /*forBackwardDeployment=*/true);
+
+  ClassDecl *classDecl = classType.getClassOrBoundGenericClass();
+
+  ConstantInitBuilder initBuilder(IGM);
+  auto init = initBuilder.beginStruct();
+  init.setPacked(true);
+
+  SILVTable *vtable = IGM.getSILModule().lookUpSpecializedVTable(classType);
+  assert(vtable);
+
+  FixedClassMetadataBuilder builder(IGM, classDecl, init, fragileLayout, vtable);
+  builder.layout();
+  bool canBeConstant = builder.canBeConstant();
+
+  StringRef section{};
+  auto var = IGM.defineTypeMetadata(classTy, false, canBeConstant,
+                                    init.finishAndCreateFuture(), section);
+}
+
 /// Emit the type metadata or metadata template for a class.
 void irgen::emitClassMetadata(IRGenModule &IGM, ClassDecl *classDecl,
                               const ClassLayout &fragileLayout,
                               const ClassLayout &resilientLayout) {
+                              
+  if (IGM.isTinySwift() && classDecl->isGenericContext())
+    return;
+
   assert(!classDecl->isForeign());
   PrettyStackTraceDecl stackTraceRAII("emitting metadata for", classDecl);
 

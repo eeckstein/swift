@@ -549,6 +549,15 @@ SILVTable *SILModule::lookUpVTable(const ClassDecl *C,
   return Vtbl;
 }
 
+SILVTable *SILModule::lookUpSpecializedVTable(SILType classTy) {
+  // First try to look up R from the lookup table.
+  auto R = SpecializedVTableMap.find(classTy);
+  if (R != SpecializedVTableMap.end())
+    return R->second;
+
+  return nullptr;
+}
+
 SerializedSILLoader *SILModule::getSILLoader() {
   // If the SILLoader is null, create it.
   if (!SILLoader)

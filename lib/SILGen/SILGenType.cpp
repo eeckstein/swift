@@ -310,6 +310,9 @@ public:
     if (classIsPublic && !isResilient)
       serialized = IsSerialized;
 
+    if (SGM.M.getOptions().TinySwift && theClass->isGenericContext())
+      serialized = IsSerialized;
+
     // Finally, create the vtable.
     SILVTable::create(SGM.M, theClass, serialized, vtableEntries);
   }

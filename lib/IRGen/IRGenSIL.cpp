@@ -1636,6 +1636,9 @@ static void emitLocalSelfMetadata(IRGenSILFunction &IGF) {
 void IRGenModule::emitSILFunction(SILFunction *f) {
   if (f->isExternalDeclaration())
     return;
+    
+  if (isTinySwift() && f->getLoweredFunctionType()->isPolymorphic())
+    return;
 
   // Do not emit bodies of public_external functions.
   if (hasPublicVisibility(f->getLinkage()) && f->isAvailableExternally())

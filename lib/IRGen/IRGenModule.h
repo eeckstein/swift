@@ -264,6 +264,10 @@ private:
   /// queued up.
   llvm::SmallPtrSet<NominalTypeDecl *, 4> LazilyEmittedFieldMetadata;
 
+  llvm::SmallVector<CanType, 4> LazySpecializedClassMetadata;
+  
+  llvm::SmallPtrSet<TypeBase *, 4> LazilyEmittedSpecializedClassMetadata;
+
   /// Maps every generic type whose metadata is specialized within the module
   /// to its specializations.
   llvm::DenseMap<
@@ -454,6 +458,8 @@ public:
       LazyMetadataAccessors.insert(decl);
     }
   }
+
+  void noteUseOfSpecializedClassMetadata(CanType classType);
 
   void noteUseOfTypeMetadata(NominalTypeDecl *type) {
     noteUseOfTypeGlobals(type, true, RequireMetadata);
