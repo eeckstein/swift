@@ -95,6 +95,16 @@ static bool isSpecializableRepresentation(SILFunctionTypeRepresentation Rep,
   llvm_unreachable("Unhandled SILFunctionTypeRepresentation in switch.");
 }
 
+static bool hasMetatypeArgs(SILFunction *F) {
+  for (SILFunctionArgument *arg : F->begin()->getSILFunctionArguments()) {
+    if (MetatypeType *metaType = arg->getType().getAs<MetatypeType>()) {
+      if (metaType->getRepresentation() != MetatypeRepresentation::Thin)
+        return true;
+    }
+  }
+  return false;
+}
+
 /// Returns true if F is a function which the pass knows how to specialize
 /// function signatures for.
 static bool canSpecializeFunction(SILFunction *F,
@@ -106,7 +116,8 @@ static bool canSpecializeFunction(SILFunction *F,
     return false;
 
   // For now ignore functions with indirect results.
-  if (F->getConventions().hasIndirectSILResults())
+  if (F->getConventions().hasIndirectSILResults() &&
+      !(F->getModule().getOptions().TinySwift && hasMetatypeArgs(F)))
     return false;
 
   // For now ignore coroutines.

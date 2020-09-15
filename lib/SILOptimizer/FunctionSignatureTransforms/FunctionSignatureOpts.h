@@ -90,14 +90,14 @@ struct ArgumentDescriptor {
   ArgumentDescriptor(
       SILFunctionArgument *A,
       llvm::SpecificBumpPtrAllocator<ProjectionTreeNode> &Allocator)
-      : Arg(A), PInfo(A->getKnownParameterInfo()), Index(A->getIndex()),
+      : Arg(A), Index(A->getIndex()),
         Decl(A->getDecl()), IsEntirelyDead(false), WasErased(false),
         Explode(false), OwnedToGuaranteed(false),
         IsIndirectResult(A->isIndirectResult()), CalleeRelease(),
         CalleeReleaseInThrowBlock(),
         ProjTree(A->getModule(), A->getType(), Allocator) {
     if (!A->isIndirectResult()) {
-      PInfo = Arg->getKnownParameterInfo();
+      PInfo = A->getKnownParameterInfo();
     }
   }
 
