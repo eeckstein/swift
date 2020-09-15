@@ -1806,6 +1806,7 @@ void IRGenSILFunction::visitSILBasicBlock(SILBasicBlock *BB) {
   bool KeepCurrentLocation = false;
 
   for (auto &I : *BB) {
+    PrettyStackTraceSILNode stackTrace("emitting IR", &I);
     if (IGM.DebugInfo) {
       // Set the debug info location for I, if applicable.
       auto DS = I.getDebugScope();
@@ -2101,6 +2102,13 @@ void IRGenSILFunction::visitBaseAddrForOffsetInst(BaseAddrForOffsetInst *i) {
 
 void IRGenSILFunction::visitMetatypeInst(swift::MetatypeInst *i) {
   auto metaTy = i->getType().castTo<MetatypeType>();
+  if (IGM.isTinySwift() &&
+      metaTy->getRepresentation() != MetatypeRepresentation::Thin &&
+      !isa<ClassType>(CanType(metaTy->getInstanceType()))) {
+    llvm::errs() << "Cannot get metatype of " << i->getType() << " in function "
+                 << i->getFunction()->getName() << '\n';
+    exit(1);
+  }
   Explosion e;
   emitMetatypeRef(*this, metaTy, e);
   setLoweredExplosion(i, e);
