@@ -170,7 +170,7 @@ public:
       return emitAssignWithCopyCall(IGF, T, dest, src);
     }
 
-    if (isOutlined || T.hasOpenedExistential()) {
+    if (isOutlined || T.hasOpenedExistential() || IGF.IGM.isTinySwift()) {
       auto offsets = asImpl().getNonFixedOffsets(IGF, T);
       for (auto &field : getFields()) {
         if (field.isEmpty())
@@ -223,7 +223,7 @@ public:
       return emitInitializeWithCopyCall(IGF, T, dest, src);
     }
 
-    if (isOutlined || T.hasOpenedExistential()) {
+    if (isOutlined || T.hasOpenedExistential() || IGF.IGM.isTinySwift()) {
       auto offsets = asImpl().getNonFixedOffsets(IGF, T);
       for (auto &field : getFields()) {
         if (field.isEmpty())
@@ -278,7 +278,7 @@ public:
       return emitDestroyCall(IGF, T, addr);
     }
 
-    if (isOutlined || T.hasOpenedExistential()) {
+    if (isOutlined || T.hasOpenedExistential() || IGF.IGM.isTinySwift()) {
       auto offsets = asImpl().getNonFixedOffsets(IGF, T);
       for (auto &field : getFields()) {
         if (field.isPOD())
