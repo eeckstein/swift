@@ -220,6 +220,7 @@ public:
   SILInstruction *visitAllocRefDynamicInst(AllocRefDynamicInst *ARDI);
       
   SILInstruction *visitMarkDependenceInst(MarkDependenceInst *MDI);
+  SILInstruction *visitMetatypeInst(MetatypeInst *MI);
   SILInstruction *visitClassifyBridgeObjectInst(ClassifyBridgeObjectInst *CBOI);
   SILInstruction *visitConvertFunctionInst(ConvertFunctionInst *CFI);
   SILInstruction *

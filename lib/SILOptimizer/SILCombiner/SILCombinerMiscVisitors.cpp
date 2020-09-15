@@ -1952,6 +1952,36 @@ SILInstruction *SILCombiner::visitMarkDependenceInst(MarkDependenceInst *mdi) {
   return nullptr;
 }
 
+SILInstruction *SILCombiner::visitMetatypeInst(MetatypeInst *MI) {
+  MetatypeType *metaType = MI->getType().castTo<MetatypeType>();
+  if (metaType->getRepresentation() != MetatypeRepresentation::Thick)
+    return nullptr;
+    
+  for (Operand *use : MI->getUses()) {
+    SILInstruction *user = use->getUser();
+    switch (user->getKind()) {
+      case SILInstructionKind::BuiltinInst: {
+        switch (cast<BuiltinInst>(user)->getBuiltinInfo().ID) {
+          case BuiltinValueKind::Sizeof:
+          case BuiltinValueKind::Strideof:
+          case BuiltinValueKind::Alignof:
+          case BuiltinValueKind::DestroyArray:
+            break;
+          default:
+            return nullptr;
+        }
+        break;
+      }
+      default:
+        return nullptr;
+    }
+  }
+  MetatypeType *thinMT = MetatypeType::get(metaType->getInstanceType(), MetatypeRepresentation::Thin);
+  SILType thinMTTy = SILType::getPrimitiveObjectType(CanType(thinMT));
+  auto *newMI = Builder.createMetatype(MI->getLoc(), thinMTTy);
+  MI->replaceAllUsesWith(newMI);
+  return eraseInstFromFunction(*MI);
+}
 
 SILInstruction *SILCombiner::
 visitClassifyBridgeObjectInst(ClassifyBridgeObjectInst *CBOI) {
