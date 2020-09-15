@@ -63,7 +63,7 @@ protocol _CVarArgAligned: CVarArg {
   var _cVarArgAlignment: Int { get }
 }
 
-#if !_runtime(_ObjC)
+#if !_runtime(_ObjC) && !_runtime(_Tiny)
 /// Some pointers require an alternate object to be retained.  The object
 /// that is returned will be used with _cVarArgEncoding and held until
 /// the closure is complete.  This is required since autoreleased storage
@@ -489,7 +489,7 @@ final internal class __VaListBuilder {
 
   @inlinable // c-abi
   internal func append(_ arg: CVarArg) {
-#if !_runtime(_ObjC)
+#if !_runtime(_ObjC) && !_runtime(_Tiny)
     var arg = arg
 
     // We may need to retain an object that provides a pointer value.
@@ -502,7 +502,11 @@ final internal class __VaListBuilder {
     var encoded = arg._cVarArgEncoding
 
 #if arch(x86_64) || arch(arm64)
+#if _runtime(_Tiny) // TODO: This is a workaround
+    let isDouble = false
+#else
     let isDouble = arg is _CVarArgPassedAsDouble
+#endif
 
     if isDouble && fpRegistersUsed < _countFPRegisters {
       #if arch(arm64)
@@ -586,7 +590,7 @@ final internal class __VaListBuilder {
 
   @inlinable // c-abi
   internal func append(_ arg: CVarArg) {
-#if !_runtime(_ObjC)
+#if !_runtime(_ObjC) && !_runtime(_Tiny)
     var arg = arg
 
     // We may need to retain an object that provides a pointer value.

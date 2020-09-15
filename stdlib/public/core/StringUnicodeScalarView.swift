@@ -206,11 +206,13 @@ extension String.UnicodeScalarView: CustomStringConvertible {
  public var description: String { return String(_guts) }
 }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension String.UnicodeScalarView: CustomDebugStringConvertible {
  public var debugDescription: String {
    return "StringUnicodeScalarView(\(self.description.debugDescription))"
  }
 }
+#endif
 
 extension String {
   /// Creates a string corresponding to the given collection of Unicode

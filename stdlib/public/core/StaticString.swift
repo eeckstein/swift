@@ -300,6 +300,7 @@ extension StaticString: CustomStringConvertible {
   }
 }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension StaticString: CustomDebugStringConvertible {
 
   /// A textual representation of the static string, suitable for debugging.
@@ -307,6 +308,7 @@ extension StaticString: CustomDebugStringConvertible {
     return self.description.debugDescription
   }
 }
+#endif
 
 extension StaticString: CustomReflectable {
 

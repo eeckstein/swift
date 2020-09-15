@@ -61,6 +61,8 @@ internal func _withUninitializedString<R>(
   return (bodyResult, stringResult)
 }
 
+#if !_runtime(_Tiny)
+
 // FIXME(ABI)#51 : this API should allow controlling different kinds of
 // qualification separately: qualification with module names and qualification
 // with type names that we are nested in.
@@ -147,3 +149,5 @@ public func _getMetadataSectionCount()
 public func _getMetadataSectionName(
   _ metadata_section: UnsafeRawPointer)
   -> UnsafePointer<CChar>
+
+#endif // !_runtime(_Tiny)

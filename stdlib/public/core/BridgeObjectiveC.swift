@@ -652,7 +652,7 @@ public func _getObjCTypeEncoding<T>(_ type: T.Type) -> UnsafePointer<Int8> {
 
 //===--- Bridging without the ObjC runtime --------------------------------===//
 
-#if !_runtime(_ObjC)
+#if !_runtime(_ObjC) && !_runtime(_Tiny)
 
 /// Convert `x` from its Objective-C representation to its Swift
 /// representation.

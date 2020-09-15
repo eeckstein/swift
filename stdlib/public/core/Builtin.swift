@@ -634,6 +634,8 @@ internal func _makeBridgeObject(
   )
 }
 
+#if !_runtime(_Tiny)
+
 @_silgen_name("_swift_class_getSuperclass")
 internal func _swift_class_getSuperclass(_ t: AnyClass) -> AnyClass?
 
@@ -651,6 +653,8 @@ public // @testable
 func _getSuperclass(_ t: Any.Type) -> AnyClass? {
   return (t as? AnyClass).flatMap { _getSuperclass($0) }
 }
+
+#endif
 
 //===--- Builtin.IsUnique -------------------------------------------------===//
 // _isUnique functions must take an inout object because they rely on

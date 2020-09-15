@@ -59,6 +59,7 @@ internal final class __EmptyArrayStorage
   }
 #endif
 
+#if !_runtime(_Tiny)
   @inlinable
   override internal func canStoreElements(ofDynamicType _: Any.Type) -> Bool {
     return false
@@ -69,6 +70,7 @@ internal final class __EmptyArrayStorage
   override internal var staticElementType: Any.Type {
     return Void.self
   }
+#endif
 }
 
 /// The empty array prototype.  We use the same object for all empty
@@ -230,6 +232,7 @@ internal final class _ContiguousArrayStorage<
   }
 #endif
 
+#if !_runtime(_Tiny)
   /// Returns `true` if the `proposedElementType` is `Element` or a subclass of
   /// `Element`.  We can't store anything else without violating type
   /// safety; for example, the destructor has static knowledge that
@@ -252,6 +255,7 @@ internal final class _ContiguousArrayStorage<
   internal override var staticElementType: Any.Type {
     return Element.self
   }
+#endif
 
   @inlinable
   internal final var _elementPointer: UnsafeMutablePointer<Element> {
@@ -820,6 +824,7 @@ internal struct _ContiguousArrayBuffer<Element>: _ArrayBufferProtocol {
     return UnsafeRawPointer(firstElementAddress)
   }
   
+#if !_runtime(_Tiny)
   /// Returns `true` iff we have storage for elements of the given
   /// `proposedElementType`.  If not, we'll be treated as immutable.
   @inlinable
@@ -851,6 +856,7 @@ internal struct _ContiguousArrayBuffer<Element>: _ArrayBufferProtocol {
     }
     return true
   }
+#endif
 
   @usableFromInline
   internal var _storage: __ContiguousArrayStorageBase

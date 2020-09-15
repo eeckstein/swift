@@ -497,6 +497,7 @@ internal class __ContiguousArrayStorageBase
   }
 #endif
 
+#if !_runtime(_Tiny)
 @inlinable
   internal func canStoreElements(ofDynamicType _: Any.Type) -> Bool {
     _internalInvariantFailure(
@@ -509,6 +510,7 @@ internal class __ContiguousArrayStorageBase
     _internalInvariantFailure(
       "Concrete subclasses must implement staticElementType")
   }
+#endif
   
   @inlinable
   deinit {

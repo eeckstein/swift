@@ -52,8 +52,10 @@ internal protocol _AnyHashableBox {
   func _rawHashValue(_seed: Int) -> Int
 
   var _base: Any { get }
+#if !_runtime(_Tiny)
   func _unbox<T: Hashable>() -> T?
   func _downCastConditional<T>(into result: UnsafeMutablePointer<T>) -> Bool
+#endif
 }
 
 extension _AnyHashableBox {
@@ -74,9 +76,13 @@ internal struct _ConcreteHashableBox<Base: Hashable>: _AnyHashableBox {
   }
 
   internal func _isEqual(to rhs: _AnyHashableBox) -> Bool? {
+#if _runtime(_Tiny)
+    fatalError("not yet implemented")
+#else
     if let rhs: Base = rhs._unbox() {
       return _baseHashable == rhs
     }
+#endif
     return nil
   }
 
@@ -182,8 +188,12 @@ public struct AnyHashable {
   /// a downcast on `base`.
   internal
   func _downCastConditional<T>(into result: UnsafeMutablePointer<T>) -> Bool {
+#if _runtime(_Tiny)
+    fatalError("not yet implemented")
+#else
     // Attempt the downcast.
     if _box._downCastConditional(into: result) { return true }
+#endif
 
     #if _runtime(_ObjC)
     // Bridge to Objective-C and then attempt the cast from there.

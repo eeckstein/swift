@@ -316,6 +316,7 @@ extension Substring: CustomStringConvertible {
   public var description: String { return String(self) }
 }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension Substring: CustomDebugStringConvertible {
   public var debugDescription: String { return String(self).debugDescription }
 }
@@ -325,6 +326,7 @@ extension Substring: LosslessStringConvertible {
     self = content[...]
   }
 }
+#endif
 
 extension Substring {
   @frozen

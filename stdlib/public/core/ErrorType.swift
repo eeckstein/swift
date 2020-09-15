@@ -207,7 +207,11 @@ public func _getDefaultErrorCode<T: Error>(_ error: T) -> Int
 
 extension Error {
   public var _code: Int {
+#if _runtime(_Tiny)
+    return 0
+#else
     return _getDefaultErrorCode(self)
+#endif
   }
 
   public var _domain: String {

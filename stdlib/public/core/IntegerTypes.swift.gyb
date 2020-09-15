@@ -1800,6 +1800,9 @@ internal struct _IntegerAnyHashableBox<
   }
 
   internal func _isEqual(to box: _AnyHashableBox) -> Bool? {
+#if _runtime(_Tiny)
+    fatalError("not yet implemented")
+#else
     if Base.self == UInt64.self {
       guard let box = box as? _IntegerAnyHashableBox<UInt64> else { return nil }
       return _value == box._value
@@ -1809,6 +1812,7 @@ internal struct _IntegerAnyHashableBox<
       return _value == box._value
     }
     _preconditionFailure("self isn't canonical")
+#endif
   }
 
   internal var _hashValue: Int {

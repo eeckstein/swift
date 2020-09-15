@@ -194,12 +194,14 @@ extension Character: CustomStringConvertible {
 
 extension Character: LosslessStringConvertible { }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension Character: CustomDebugStringConvertible {
  /// A textual representation of the character, suitable for debugging.
  public var debugDescription: String {
    return _str.debugDescription
  }
 }
+#endif
 
 extension String {
   /// Creates a string containing the given character.

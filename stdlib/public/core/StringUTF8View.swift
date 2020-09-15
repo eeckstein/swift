@@ -221,12 +221,13 @@ extension String.UTF8View: CustomStringConvertible {
   public var description: String { return String(_guts) }
 }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension String.UTF8View: CustomDebugStringConvertible {
   public var debugDescription: String {
     return "UTF8View(\(self.description.debugDescription))"
   }
 }
-
+#endif
 
 extension String {
   /// A UTF-8 encoding of `self`.

@@ -670,6 +670,7 @@ extension String: ExpressibleByStringLiteral {
   }
 }
 
+#if !_runtime(_Tiny) // TODO: this is a workaround
 extension String: CustomDebugStringConvertible {
   /// A representation of the string that is suitable for debugging.
   public var debugDescription: String {
@@ -681,6 +682,7 @@ extension String: CustomDebugStringConvertible {
     return result
   }
 }
+#endif
 
 extension String {
   @inlinable // Forward inlinability to append
