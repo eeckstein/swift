@@ -49,6 +49,16 @@
 ///     space (`" "`).
 ///   - terminator: The string to print after all items have been printed. The
 ///     default is a newline (`"\n"`).
+#if _runtime(_Tiny)
+public func print(
+  _ items: CustomStringConvertible...,
+  separator: String = " ",
+  terminator: String = "\n"
+) {
+  var output = _Stdout()
+  _print(items, separator: separator, terminator: terminator, to: &output)
+}
+#else
 public func print(
   _ items: Any...,
   separator: String = " ",
@@ -64,6 +74,7 @@ public func print(
     _print(items, separator: separator, terminator: terminator, to: &output)
   }
 }
+#endif
 
 /// Writes the textual representations of the given items most suitable for
 /// debugging into the standard output.
@@ -105,6 +116,7 @@ public func print(
 ///     space (`" "`).
 ///   - terminator: The string to print after all items have been printed. The
 ///     default is a newline (`"\n"`).
+#if !_runtime(_Tiny)
 public func debugPrint(
   _ items: Any...,
   separator: String = " ",
@@ -120,6 +132,7 @@ public func debugPrint(
     _debugPrint(items, separator: separator, terminator: terminator, to: &output)
   }
 }
+#endif
 
 /// Writes the textual representations of the given items into the given output
 /// stream.
@@ -158,6 +171,16 @@ public func debugPrint(
 ///     default is a newline (`"\n"`).
 ///   - output: An output stream to receive the text representation of each
 ///     item.
+#if _runtime(_Tiny)
+public func print<Target: TextOutputStream>(
+  _ items: CustomStringConvertible...,
+  separator: String = " ",
+  terminator: String = "\n",
+  to output: inout Target
+) {
+  _print(items, separator: separator, terminator: terminator, to: &output)
+}
+#else
 public func print<Target: TextOutputStream>(
   _ items: Any...,
   separator: String = " ",
@@ -166,6 +189,7 @@ public func print<Target: TextOutputStream>(
 ) {
   _print(items, separator: separator, terminator: terminator, to: &output)
 }
+#endif
 
 /// Writes the textual representations of the given items most suitable for
 /// debugging into the given output stream.
@@ -205,6 +229,7 @@ public func print<Target: TextOutputStream>(
 ///     default is a newline (`"\n"`).
 ///   - output: An output stream to receive the text representation of each
 ///     item.
+#if !_runtime(_Tiny)
 public func debugPrint<Target: TextOutputStream>(
   _ items: Any...,
   separator: String = " ",
@@ -213,7 +238,26 @@ public func debugPrint<Target: TextOutputStream>(
 ) {
   _debugPrint(items, separator: separator, terminator: terminator, to: &output)
 }
+#endif
 
+#if _runtime(_Tiny)
+internal func _print<Target: TextOutputStream>(
+  _ items: [CustomStringConvertible],
+  separator: String = " ",
+  terminator: String = "\n",
+  to output: inout Target
+) {
+  var prefix = ""
+  output._lock()
+  defer { output._unlock() }
+  for item in items {
+    output.write(prefix)
+    item.description.write(to: &output)
+    prefix = separator
+  }
+  output.write(terminator)
+}
+#else
 internal func _print<Target: TextOutputStream>(
   _ items: [Any],
   separator: String = " ",
@@ -247,3 +291,5 @@ internal func _debugPrint<Target: TextOutputStream>(
   }
   output.write(terminator)
 }
+#endif
+

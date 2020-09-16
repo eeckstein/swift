@@ -12,6 +12,8 @@
 // FIXME: ExistentialCollection needs to be supported before this will work
 // without the ObjC Runtime.
 
+#if !_runtime(_Tiny)
+
 /// A representation of the substructure and display style of an instance of
 /// any type.
 ///
@@ -707,3 +709,5 @@ extension Mirror: CustomReflectable {
     return Mirror(self, children: [:])
   }
 }
+
+#endif // !_runtime(_Tiny)

@@ -185,6 +185,15 @@ public func _unexpectedError(
   filenameIsASCII: Builtin.Int1,
   line: Builtin.Word
 ) {
+#if _runtime(_Tiny)
+  preconditionFailure(
+    "'try!' expression unexpectedly raised an error",
+    file: StaticString(
+      _start: filenameStart,
+      utf8CodeUnitCount: filenameLength,
+      isASCII: filenameIsASCII),
+    line: UInt(line))
+#else
   preconditionFailure(
     "'try!' expression unexpectedly raised an error: \(String(reflecting: error))",
     file: StaticString(
@@ -192,12 +201,17 @@ public func _unexpectedError(
       utf8CodeUnitCount: filenameLength,
       isASCII: filenameIsASCII),
     line: UInt(line))
+#endif
 }
 
 /// Invoked by the compiler when code at top level throws an uncaught error.
 @_silgen_name("swift_errorInMain")
 public func _errorInMain(_ error: Error) {
+#if _runtime(_Tiny)
+  fatalError("Error raised at top level")
+#else
   fatalError("Error raised at top level: \(String(reflecting: error))")
+#endif
 }
 
 /// Runtime function to determine the default code for an Error-conforming type.
@@ -215,7 +229,11 @@ extension Error {
   }
 
   public var _domain: String {
+#if _runtime(_Tiny)
+    return "Error"
+#else
     return String(reflecting: type(of: self))
+#endif
   }
 
   public var _userInfo: AnyObject? {

@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !_runtime(_Tiny)
+
 extension Float: CustomReflectable {
   /// A mirror that reflects the `Float` instance.
   public var customMirror: Mirror {
@@ -258,3 +260,5 @@ extension Float80: CustomReflectable {
   }
 }
 #endif
+
+#endif // !_runtime(_Tiny)

@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !_runtime(_Tiny)
+
 @_silgen_name("swift_isClassType")
 internal func _isClassType(_: Any.Type) -> Bool
 
@@ -295,3 +297,5 @@ public func _forEachField(
 
   return true
 }
+
+#endif // !_runtime(_Tiny)

@@ -81,7 +81,11 @@ extension CodingKey {
   /// A textual representation of this key.
   public var description: String {
     let intValue = self.intValue?.description ?? "nil"
+#if _runtime(_Tiny)
+    return "CodingKey(stringValue: \"\(stringValue)\", intValue: \(intValue))"
+#else
     return "\(type(of: self))(stringValue: \"\(stringValue)\", intValue: \(intValue))"
+#endif
   }
 
   /// A textual representation of this key, suitable for debugging.
@@ -4538,12 +4542,21 @@ extension RawRepresentable where RawValue == Bool, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4598,12 +4611,21 @@ extension RawRepresentable where RawValue == String, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4658,12 +4680,21 @@ extension RawRepresentable where RawValue == Double, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4718,12 +4749,21 @@ extension RawRepresentable where RawValue == Float, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4812,12 +4852,21 @@ extension RawRepresentable where RawValue == Int, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4872,12 +4921,21 @@ extension RawRepresentable where RawValue == Int8, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4932,12 +4990,21 @@ extension RawRepresentable where RawValue == Int16, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -4992,12 +5059,21 @@ extension RawRepresentable where RawValue == Int32, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5052,12 +5128,21 @@ extension RawRepresentable where RawValue == Int64, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5112,12 +5197,21 @@ extension RawRepresentable where RawValue == UInt, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5172,12 +5266,21 @@ extension RawRepresentable where RawValue == UInt8, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5232,12 +5335,21 @@ extension RawRepresentable where RawValue == UInt16, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5292,12 +5404,21 @@ extension RawRepresentable where RawValue == UInt32, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value
@@ -5352,12 +5473,21 @@ extension RawRepresentable where RawValue == UInt64, Self: Decodable {
   public init(from decoder: Decoder) throws {
     let decoded = try decoder.singleValueContainer().decode(RawValue.self)
     guard let value = Self(rawValue: decoded) else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize from invalid value"
+        )
+      )
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Self.self) from invalid \(RawValue.self) value \(decoded)"
         )
       )
+#endif
     }
 
     self = value

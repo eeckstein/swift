@@ -12,6 +12,7 @@
 
 import SwiftShims
 
+#if !_runtime(_Tiny)
 @frozen // namespace
 public enum _DebuggerSupport {
   private enum CollectionStatus {
@@ -271,3 +272,6 @@ public func _getRetainCount(_ Value: AnyObject) -> UInt
 public func _getUnownedRetainCount(_ Value: AnyObject) -> UInt
 @_silgen_name("swift_weakRetainCount")
 public func _getWeakRetainCount(_ Value: AnyObject) -> UInt
+
+#endif // !_runtime(_Tiny)
+

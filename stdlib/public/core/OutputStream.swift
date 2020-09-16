@@ -270,6 +270,8 @@ public protocol CustomDebugStringConvertible {
 // Default (ad-hoc) printing
 //===----------------------------------------------------------------------===//
 
+#if !_runtime(_Tiny)
+
 @_silgen_name("swift_EnumCaseName")
 internal func _getEnumCaseName<T>(_ value: T) -> UnsafePointer<CChar>?
 
@@ -507,6 +509,7 @@ internal func _dumpPrint_unlocked<T, TargetStream: TextOutputStream>(
 
   _adHocPrint_unlocked(value, mirror, &target, isDebugPrint: true)
 }
+#endif
 
 //===----------------------------------------------------------------------===//
 // OutputStreams

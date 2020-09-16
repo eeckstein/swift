@@ -1067,7 +1067,12 @@ extension Unicode {
       case __swift_stdlib_U_OTHER_SYMBOL: self = .otherSymbol
       case __swift_stdlib_U_INITIAL_PUNCTUATION: self = .initialPunctuation
       case __swift_stdlib_U_FINAL_PUNCTUATION: self = .finalPunctuation
-      default: fatalError("Unknown general category \(rawValue)")
+      default:
+#if _runtime(_Tiny)
+        fatalError("Unknown general category")
+#else
+        fatalError("Unknown general category \(rawValue)")
+#endif
       }
     }
   }
@@ -1371,7 +1376,12 @@ extension Unicode {
       case __swift_stdlib_U_NT_DECIMAL: self = .decimal
       case __swift_stdlib_U_NT_DIGIT: self = .digit
       case __swift_stdlib_U_NT_NUMERIC: self = .numeric
-      default: fatalError("Unknown numeric type \(rawValue)")
+      default:
+#if _runtime(_Tiny)
+        fatalError("Unknown numeric type")
+#else
+        fatalError("Unknown numeric type \(rawValue)")
+#endif
       }
     }
   }

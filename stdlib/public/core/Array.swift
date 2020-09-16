@@ -1413,6 +1413,17 @@ extension Array {
   }
 }
 
+#if _runtime(_Tiny)
+
+extension Array: CustomStringConvertible where Element: CustomStringConvertible {
+  /// A textual representation of the array and its elements.
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+
+#else
+
 extension Array: CustomReflectable {
   /// A mirror that reflects the array.
   public var customMirror: Mirror {
@@ -1436,6 +1447,8 @@ extension Array: CustomStringConvertible, CustomDebugStringConvertible {
     return _makeCollectionDescription()
   }
 }
+
+#endif
 
 extension Array {
   @usableFromInline @_transparent

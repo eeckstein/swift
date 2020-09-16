@@ -1033,6 +1033,14 @@ extension Set: SetAlgebra {
   }
 }
 
+#if _runtime(_Tiny)
+extension Set: CustomStringConvertible where Element: CustomStringConvertible {
+  /// A string that represents the contents of the set.
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+#else
 extension Set: CustomStringConvertible, CustomDebugStringConvertible {
   /// A string that represents the contents of the set.
   public var description: String {
@@ -1044,6 +1052,7 @@ extension Set: CustomStringConvertible, CustomDebugStringConvertible {
     return _makeCollectionDescription(withTypeName: "Set")
   }
 }
+#endif
 
 extension Set {
   /// Removes the elements of the given set from this set.
@@ -1570,6 +1579,7 @@ extension Set.Iterator: IteratorProtocol {
   }
 }
 
+#if !_runtime(_Tiny)
 extension Set.Iterator: CustomReflectable {
   /// A mirror that reflects the iterator.
   public var customMirror: Mirror {
@@ -1586,6 +1596,7 @@ extension Set: CustomReflectable {
     return Mirror(self, unlabeledChildren: self, displayStyle: style)
   }
 }
+#endif
 
 extension Set {
   /// Removes and returns the first element of the set.

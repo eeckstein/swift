@@ -264,6 +264,7 @@ public enum Optional<Wrapped>: ExpressibleByNilLiteral {
   }
 }
 
+#if !_runtime(_Tiny)
 extension Optional: CustomDebugStringConvertible {
   /// A textual representation of this instance, suitable for debugging.
   public var debugDescription: String {
@@ -292,6 +293,7 @@ extension Optional: CustomReflectable {
     }
   }
 }
+#endif
 
 @_transparent
 public // COMPILER_INTRINSIC

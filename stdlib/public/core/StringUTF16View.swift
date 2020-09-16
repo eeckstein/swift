@@ -407,6 +407,7 @@ extension String.UTF16View.Index {
   }
 }
 
+#if !_runtime(_Tiny)
 // Reflection
 extension String.UTF16View: CustomReflectable {
   /// Returns a mirror that reflects the UTF-16 view of a string.
@@ -414,6 +415,7 @@ extension String.UTF16View: CustomReflectable {
     return Mirror(self, unlabeledChildren: self)
   }
 }
+#endif
 
 // Slicing
 extension String.UTF16View {

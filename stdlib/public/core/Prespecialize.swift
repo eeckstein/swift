@@ -86,7 +86,9 @@ internal func _prespecialize() {
   consume(Optional<CodingKey>.self)
   consume(Optional<CodingUserInfoKey>.self)
   consume(Optional<CustomDebugStringConvertible>.self)
+#if !_runtime(_Tiny)
   consume(Optional<CustomReflectable>.self)
+#endif
   consume(Optional<CustomStringConvertible>.self)
   consume(Optional<Dictionary<AnyHashable, Any>>.self)
   consume(Optional<Dictionary<String, Any>>.self)
@@ -96,7 +98,9 @@ internal func _prespecialize() {
   consume(Optional<Double>.self)
   consume(Optional<Int64>.self)
   consume(Optional<Int8>.self)
+#if !_runtime(_Tiny)
   consume(Optional<Mirror.DisplayStyle>.self)
+#endif
   consume(Optional<Optional<Int64>>.self)
   consume(Optional<Optional<String>>.self)
   consume(Optional<Set<String>>.self)

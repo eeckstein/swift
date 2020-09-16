@@ -125,6 +125,28 @@ extension KeyValuePairs: RandomAccessCollection {
   }
 }
 
+#if _runtime(_Tiny)
+
+extension KeyValuePairs: CustomStringConvertible where Key: CustomStringConvertible, Value: CustomStringConvertible {
+  /// A string that represents the contents of the dictionary.
+  public var description: String {
+    var result = "["
+    var first = true
+    for (k, v) in self {
+      if first {
+        first = false
+      } else {
+        result += ", "
+      }
+      result += "(" + k.description + "," + v.description + ")"
+    }
+    result += "]"
+    return result
+  }
+}
+
+#else
+
 extension KeyValuePairs: CustomStringConvertible {
   /// A string that represents the contents of the dictionary.
   public var description: String {
@@ -139,3 +161,5 @@ extension KeyValuePairs: CustomDebugStringConvertible {
     return _makeKeyValuePairDescription()
   }
 }
+
+#endif

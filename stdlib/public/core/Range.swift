@@ -363,14 +363,15 @@ extension Range {
   }
 }
 
-extension Range: CustomStringConvertible {
+#if _runtime(_Tiny)
+extension Range: CustomStringConvertible where Bound: CustomStringConvertible {
   /// A textual representation of the range.
   @inlinable // trivial-implementation
   public var description: String {
     return "\(lowerBound)..<\(upperBound)"
   }
 }
-
+#else
 extension Range: CustomDebugStringConvertible {
   /// A textual representation of the range, suitable for debugging.
   public var debugDescription: String {
@@ -385,6 +386,7 @@ extension Range: CustomReflectable {
       self, children: ["lowerBound": lowerBound, "upperBound": upperBound])
   }
 }
+#endif
 
 extension Range: Equatable {
   /// Returns a Boolean value indicating whether two ranges are equal.
@@ -430,10 +432,17 @@ extension Range: Decodable where Bound: Decodable {
     let lowerBound = try container.decode(Bound.self)
     let upperBound = try container.decode(Bound.self)
     guard lowerBound <= upperBound else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize Range with a lowerBound greater than upperBound"))
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(Range.self) with a lowerBound (\(lowerBound)) greater than upperBound (\(upperBound))"))
+#endif
     }
     self.init(uncheckedBounds: (lower: lowerBound, upper: upperBound))
   }

@@ -158,6 +158,7 @@ extension CollectionOfOne: RandomAccessCollection, MutableCollection {
   }
 }
 
+#if !_runtime(_Tiny)
 extension CollectionOfOne: CustomDebugStringConvertible {
   /// A textual representation of the collection, suitable for debugging.
   public var debugDescription: String {
@@ -170,3 +171,5 @@ extension CollectionOfOne: CustomReflectable {
     return Mirror(self, children: ["element": _element])
   }
 }
+#endif
+

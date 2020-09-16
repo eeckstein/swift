@@ -441,6 +441,16 @@ extension _NativeDictionary {
 internal func KEY_TYPE_OF_DICTIONARY_VIOLATES_HASHABLE_REQUIREMENTS(
   _ keyType: Any.Type
 ) -> Never {
+#if _runtime(_Tiny)
+  _assertionFailure(
+    "Fatal error",
+    """
+    Duplicate keys were found in a Dictionary.
+    This usually means either that the type violates Hashable's requirements, or
+    that members of such a dictionary were mutated after insertion.
+    """,
+    flags: _fatalErrorFlags())
+#else
   _assertionFailure(
     "Fatal error",
     """
@@ -449,6 +459,7 @@ internal func KEY_TYPE_OF_DICTIONARY_VIOLATES_HASHABLE_REQUIREMENTS(
     that members of such a dictionary were mutated after insertion.
     """,
     flags: _fatalErrorFlags())
+#endif
 }
 
 extension _NativeDictionary { // Insertions
@@ -740,7 +751,11 @@ extension _NativeDictionary { // High-level operations
           let newValue = try combine(uncheckedValue(at: bucket), value)
           _values[bucket.offset] = newValue
         } catch _MergeError.keyCollision {
+#if _runtime(_Tiny)
+          fatalError("Duplicate values for key")
+#else
           fatalError("Duplicate values for key: '\(key)'")
+#endif
         }
       } else {
         _insert(at: bucket, key: key, value: value)

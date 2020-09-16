@@ -157,6 +157,7 @@ public struct DefaultStringInterpolation: StringInterpolationProtocol {
     value.description.write(to: &self)
   }
   
+#if !_runtime(_Tiny)
   /// Interpolates the given value's textual representation into the
   /// string literal being created.
   /// 
@@ -183,6 +184,7 @@ public struct DefaultStringInterpolation: StringInterpolationProtocol {
   public mutating func appendInterpolation(_ value: Any.Type) {
 	  _typeName(value, qualified: false).write(to: &self)
   }
+#endif
 
   /// Creates a string from this instance, consuming the instance in the
   /// process.

@@ -344,6 +344,7 @@ extension String.UTF8View.Index {
   }
 }
 
+#if !_runtime(_Tiny)
 // Reflection
 extension String.UTF8View: CustomReflectable {
   /// Returns a mirror that reflects the UTF-8 view of a string.
@@ -351,6 +352,7 @@ extension String.UTF8View: CustomReflectable {
     return Mirror(self, unlabeledChildren: self)
   }
 }
+#endif
 
 //===--- Slicing Support --------------------------------------------------===//
 /// In Swift 3.2, in the absence of type context,

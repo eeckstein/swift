@@ -307,9 +307,11 @@ extension Substring: StringProtocol {
   }
 }
 
+#if !_runtime(_Tiny)
 extension Substring: CustomReflectable {
  public var customMirror: Mirror { return String(self).customMirror }
 }
+#endif
 
 extension Substring: CustomStringConvertible {
   @inlinable @inline(__always)

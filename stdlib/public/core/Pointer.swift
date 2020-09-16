@@ -10,6 +10,26 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if _runtime(_Tiny)
+
+/// A stdlib-internal protocol modeled by the intrinsic pointer types,
+/// UnsafeMutablePointer, UnsafePointer, UnsafeRawPointer,
+/// UnsafeMutableRawPointer, and AutoreleasingUnsafeMutablePointer.
+public protocol _Pointer : Hashable, Strideable {
+  /// A type that represents the distance between two pointers.
+  typealias Distance = Int
+  
+  associatedtype Pointee
+
+  /// The underlying raw pointer value.
+  var _rawValue: Builtin.RawPointer { get }
+
+  /// Creates a pointer from a raw value.
+  init(_ _rawValue: Builtin.RawPointer)
+}
+
+#else
+
 /// A stdlib-internal protocol modeled by the intrinsic pointer types,
 /// UnsafeMutablePointer, UnsafePointer, UnsafeRawPointer,
 /// UnsafeMutableRawPointer, and AutoreleasingUnsafeMutablePointer.
@@ -26,6 +46,8 @@ public protocol _Pointer
   /// Creates a pointer from a raw value.
   init(_ _rawValue: Builtin.RawPointer)
 }
+
+#endif
 
 extension _Pointer {
   /// Creates a new typed pointer from the given opaque pointer.
@@ -220,6 +242,7 @@ extension _Pointer /*: CustomDebugStringConvertible */ {
   }
 }
 
+#if !_runtime(_Tiny)
 extension _Pointer /*: CustomReflectable */ {
   public var customMirror: Mirror {
     let ptrValue = UInt64(
@@ -227,6 +250,7 @@ extension _Pointer /*: CustomReflectable */ {
     return Mirror(self, children: ["pointerValue": ptrValue])
   }
 }
+#endif
 
 extension Int {
   /// Creates a new value with the bit pattern of the given pointer.

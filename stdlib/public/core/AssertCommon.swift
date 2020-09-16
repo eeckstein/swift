@@ -242,9 +242,13 @@ internal func _diagnoseUnexpectedEnumCaseValue<SwitchedValue, RawValue>(
   type: SwitchedValue.Type,
   rawValue: RawValue
 ) -> Never {
+#if _runtime(_Tiny)
+  _assertionFailure("Fatal error", "unexpected enum case", flags: _fatalErrorFlags())
+#else
   _assertionFailure("Fatal error",
                     "unexpected enum case '\(type)(rawValue: \(rawValue))'",
                     flags: _fatalErrorFlags())
+#endif
 }
 
 /// Called when falling off the end of a switch and the value is not safe to
@@ -258,8 +262,14 @@ internal func _diagnoseUnexpectedEnumCaseValue<SwitchedValue, RawValue>(
 internal func _diagnoseUnexpectedEnumCase<SwitchedValue>(
   type: SwitchedValue.Type
 ) -> Never {
+#if _runtime(_Tiny)
+  _assertionFailure(
+    "Fatal error", "unexpected enum case while switching on value",
+    flags: _fatalErrorFlags())
+#else
   _assertionFailure(
     "Fatal error",
     "unexpected enum case while switching on value of type '\(type)'",
     flags: _fatalErrorFlags())
+#endif
 }

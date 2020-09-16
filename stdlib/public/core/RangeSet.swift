@@ -549,6 +549,17 @@ extension RangeSet {
   }
 }
 
+#if _runtime(_Tiny)
+@available(macOS 10.16, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+extension RangeSet: CustomStringConvertible where Bound: CustomStringConvertible {
+  public var description: String {
+    let rangesDescription = _ranges
+      .map { r in "\(r.lowerBound)..<\(r.upperBound)" }
+      .joined(separator: ", ")
+    return "RangeSet(\(rangesDescription))"
+  }
+}
+#else
 @available(macOS 10.16, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 extension RangeSet: CustomStringConvertible {
   public var description: String {
@@ -558,6 +569,7 @@ extension RangeSet: CustomStringConvertible {
     return "RangeSet(\(rangesDescription))"
   }
 }
+#endif
 
 /// A collection of two elements, to avoid heap allocation when calling
 /// `replaceSubrange` with just two elements.

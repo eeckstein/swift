@@ -76,7 +76,39 @@ func _finalizeUninitializedArray<Element>(
   return mutableArray
 }
 
-extension Collection {  
+#if _runtime(_Tiny)
+
+extension Collection where Element: CustomStringConvertible {
+  // Utility method for collections that wish to implement
+  // CustomStringConvertible and CustomDebugStringConvertible using a bracketed
+  // list of elements, like an array.
+  internal func _makeCollectionDescription(
+    withTypeName type: String? = nil
+  ) -> String {
+    var result = ""
+    if let type = type {
+      result += "\(type)(["
+    } else {
+      result += "["
+    }
+
+    var first = true
+    for item in self {
+      if first {
+        first = false
+      } else {
+        result += ", "
+      }
+      result += item.description
+    }
+    result += type != nil ? "])" : "]"
+    return result
+  }
+}
+
+#else // _runtime(_Tiny)
+
+extension Collection {
   // Utility method for collections that wish to implement
   // CustomStringConvertible and CustomDebugStringConvertible using a bracketed
   // list of elements, like an array.
@@ -103,6 +135,8 @@ extension Collection {
     return result
   }
 }
+
+#endif // _runtime(_Tiny)
 
 extension _ArrayBufferProtocol {
   @inlinable // FIXME @useableFromInline https://bugs.swift.org/browse/SR-7588

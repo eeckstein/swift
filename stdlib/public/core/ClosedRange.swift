@@ -370,6 +370,18 @@ extension ClosedRange: Hashable where Bound: Hashable {
   }
 }
 
+#if _runtime(_Tiny)
+
+extension ClosedRange: CustomStringConvertible where Bound: CustomStringConvertible {
+  /// A textual representation of the range.
+  @inlinable // trivial-implementation...
+  public var description: String {
+    return "\(lowerBound)...\(upperBound)"
+  }
+}
+
+#else
+
 extension ClosedRange: CustomStringConvertible {
   /// A textual representation of the range.
   @inlinable // trivial-implementation...
@@ -392,6 +404,7 @@ extension ClosedRange: CustomReflectable {
       self, children: ["lowerBound": lowerBound, "upperBound": upperBound])
   }
 }
+#endif
 
 extension ClosedRange {
   /// Returns a copy of this range clamped to the given limiting range.
@@ -471,10 +484,17 @@ extension ClosedRange: Decodable where Bound: Decodable {
     let lowerBound = try container.decode(Bound.self)
     let upperBound = try container.decode(Bound.self)
     guard lowerBound <= upperBound else {
+#if _runtime(_Tiny)
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Cannot initialize ClosedRange with a lowerBound greater than upperBound"))
+#else
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath,
           debugDescription: "Cannot initialize \(ClosedRange.self) with a lowerBound (\(lowerBound)) greater than upperBound (\(upperBound))"))
+#endif
     }
     self.init(uncheckedBounds: (lower: lowerBound, upper: upperBound))
   }

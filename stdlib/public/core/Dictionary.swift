@@ -1282,8 +1282,7 @@ extension Dictionary {
   /// A view of a dictionary's keys.
   @frozen
   public struct Keys
-    : Collection, Equatable,
-      CustomStringConvertible, CustomDebugStringConvertible {
+    : Collection, Equatable {
     public typealias Element = Key
     public typealias SubSequence = Slice<Dictionary.Keys>
 
@@ -1396,20 +1395,12 @@ extension Dictionary {
 
       return true
     }
-
-    public var description: String {
-      return _makeCollectionDescription()
-    }
-
-    public var debugDescription: String {
-      return _makeCollectionDescription(withTypeName: "Dictionary.Keys")
-    }
   }
 
   /// A view of a dictionary's values.
   @frozen
   public struct Values
-    : MutableCollection, CustomStringConvertible, CustomDebugStringConvertible {
+    : MutableCollection {
     public typealias Element = Value
 
     @usableFromInline
@@ -1479,14 +1470,6 @@ extension Dictionary {
       return count == 0
     }
 
-    public var description: String {
-      return _makeCollectionDescription()
-    }
-
-    public var debugDescription: String {
-      return _makeCollectionDescription(withTypeName: "Dictionary.Values")
-    }
-
     @inlinable
     public mutating func swapAt(_ i: Index, _ j: Index) {
       guard i != j else { return }
@@ -1503,6 +1486,25 @@ extension Dictionary {
     }
   }
 }
+
+#if _runtime(_Tiny)
+extension Dictionary.Keys: CustomStringConvertible where Element: CustomStringConvertible {
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+#else
+extension Dictionary.Keys: CustomStringConvertible, CustomDebugStringConvertible {
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+
+  public var debugDescription: String {
+    return _makeCollectionDescription(withTypeName: "Dictionary.Keys")
+  }
+}
+#endif
+
 
 extension Dictionary.Keys {
   @frozen
@@ -1536,6 +1538,24 @@ extension Dictionary.Keys {
     return Iterator(_variant.makeIterator())
   }
 }
+
+#if _runtime(_Tiny)
+extension Dictionary.Values: CustomStringConvertible where Element: CustomStringConvertible {
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+#else
+extension Dictionary.Values: CustomStringConvertible, CustomDebugStringConvertible {
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+
+  public var debugDescription: String {
+    return _makeCollectionDescription(withTypeName: "Dictionary.Values")
+  }
+}
+#endif
 
 extension Dictionary.Values {
   @frozen
@@ -1670,6 +1690,46 @@ internal struct _DictionaryAnyHashableBox<Key: Hashable, Value: Hashable>
   }
 }
 
+#if _runtime(_Tiny)
+
+extension Collection {
+  // Utility method for KV collections that wish to implement
+  // CustomStringConvertible and CustomDebugStringConvertible using a bracketed
+  // list of elements.
+  // FIXME: Doesn't use the withTypeName argument yet
+  internal func _makeKeyValuePairDescription<K, V>(
+    withTypeName type: String? = nil
+  ) -> String where Element == (key: K, value: V), K: CustomStringConvertible, V: CustomStringConvertible {
+    if self.isEmpty {
+      return "[:]"
+    }
+    
+    var result = "["
+    var first = true
+    for (k, v) in self {
+      if first {
+        first = false
+      } else {
+        result += ", "
+      }
+      result += k.description
+      result += ": "
+      result += v.description
+    }
+    result += "]"
+    return result
+  }
+}
+
+extension Dictionary: CustomStringConvertible where Key: CustomStringConvertible, Value: CustomStringConvertible {
+  /// A string that represents the contents of the dictionary.
+  public var description: String {
+    return _makeKeyValuePairDescription()
+  }
+}
+
+#else
+
 extension Collection {
   // Utility method for KV collections that wish to implement
   // CustomStringConvertible and CustomDebugStringConvertible using a bracketed
@@ -1711,6 +1771,8 @@ extension Dictionary: CustomStringConvertible, CustomDebugStringConvertible {
     return _makeKeyValuePairDescription()
   }
 }
+
+#endif
 
 @usableFromInline
 @frozen
@@ -2034,6 +2096,7 @@ extension Dictionary.Iterator: IteratorProtocol {
   }
 }
 
+#if !_runtime(_Tiny)
 extension Dictionary.Iterator: CustomReflectable {
   /// A mirror that reflects the iterator.
   public var customMirror: Mirror {
@@ -2050,6 +2113,7 @@ extension Dictionary: CustomReflectable {
     return Mirror(self, unlabeledChildren: self, displayStyle: style)
   }
 }
+#endif
 
 extension Dictionary {
   /// Removes and returns the first key-value pair of the dictionary if the

@@ -250,6 +250,7 @@ extension AnyHashable: Hashable {
   }
 }
 
+#if !_runtime(_Tiny)
 extension AnyHashable: CustomStringConvertible {
   public var description: String {
     return String(describing: base)
@@ -269,6 +270,7 @@ extension AnyHashable: CustomReflectable {
       children: ["value": base])
   }
 }
+#endif
 
 /// Returns a default (non-custom) representation of `self`
 /// as `AnyHashable`.

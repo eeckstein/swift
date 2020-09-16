@@ -1116,6 +1116,17 @@ extension ArraySlice: RangeReplaceableCollection {
   }
 }
 
+#if _runtime(_Tiny)
+
+extension ArraySlice: CustomStringConvertible where Element: CustomStringConvertible {
+  /// A textual representation of the array and its elements.
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+
+#else
+
 extension ArraySlice: CustomReflectable {
   /// A mirror that reflects the array.
   public var customMirror: Mirror {
@@ -1138,6 +1149,8 @@ extension ArraySlice: CustomStringConvertible, CustomDebugStringConvertible {
     return _makeCollectionDescription(withTypeName: "ArraySlice")
   }
 }
+
+#endif
 
 extension ArraySlice {
   @usableFromInline @_transparent

@@ -74,7 +74,6 @@ public protocol SIMDScalar {
 public protocol SIMD: SIMDStorage,
                       Codable,
                       Hashable,
-                      CustomStringConvertible,
                       ExpressibleByArrayLiteral {
   /// The mask type resulting from pointwise comparisons of this vector type.
   associatedtype MaskStorage: SIMD
@@ -142,13 +141,6 @@ extension SIMD {
     }
     for i in indices {
       self[i] = try container.decode(Scalar.self)
-    }
-  }
-  
-  /// A textual description of the vector.
-  public var description: String {
-    get {
-      return "\(Self.self)(" + indices.map({"\(self[$0])"}).joined(separator: ", ") + ")"
     }
   }
   
@@ -312,6 +304,18 @@ extension SIMD {
     return result
   }
 }
+
+// TODO: SIMD: CustomStringConvertible in tiny swift mode
+#if !_runtime(_Tiny)
+extension SIMD: CustomStringConvertible {
+  /// A textual description of the vector.
+  public var description: String {
+    get {
+      return "\(Self.self)(" + indices.map({"\(self[$0])"}).joined(separator: ", ") + ")"
+    }
+  }
+}
+#endif
 
 //  Implementations of comparison operations. These should eventually all
 //  be replaced with @_semantics to lower directly to vector IR nodes.

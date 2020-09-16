@@ -346,6 +346,16 @@ extension _NativeSet: _SetBuffer {
 internal func ELEMENT_TYPE_OF_SET_VIOLATES_HASHABLE_REQUIREMENTS(
   _ elementType: Any.Type
 ) -> Never {
+#if _runtime(_Tiny)
+  _assertionFailure(
+    "Fatal error",
+    """
+    Duplicate elements were found in a Set.
+    This usually means either that the type violates Hashable's requirements, or
+    that members of such a set were mutated after insertion.
+    """,
+    flags: _fatalErrorFlags())
+#else
   _assertionFailure(
     "Fatal error",
     """
@@ -354,6 +364,7 @@ internal func ELEMENT_TYPE_OF_SET_VIOLATES_HASHABLE_REQUIREMENTS(
     that members of such a set were mutated after insertion.
     """,
     flags: _fatalErrorFlags())
+#endif
 }
 
 extension _NativeSet { // Insertions

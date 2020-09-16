@@ -1018,6 +1018,17 @@ extension ContiguousArray: RangeReplaceableCollection {
   }
 }
 
+#if _runtime(_Tiny)
+
+extension ContiguousArray: CustomStringConvertible where Element: CustomStringConvertible {
+  /// A textual representation of the array and its elements.
+  public var description: String {
+    return _makeCollectionDescription()
+  }
+}
+
+#else
+
 extension ContiguousArray: CustomReflectable {
   /// A mirror that reflects the array.
   public var customMirror: Mirror {
@@ -1040,6 +1051,8 @@ extension ContiguousArray: CustomStringConvertible, CustomDebugStringConvertible
     return _makeCollectionDescription(withTypeName: "ContiguousArray")
   }
 }
+
+#endif
 
 extension ContiguousArray {
   @usableFromInline @_transparent

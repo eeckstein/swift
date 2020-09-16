@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !_runtime(_Tiny)
+
 /// Print a string as is to stdout.
 public // COMPILER_INTRINSIC
 func _replPrintLiteralString(_ text: String) {
@@ -22,3 +24,6 @@ public // COMPILER_INTRINSIC
 func _replDebugPrintln<T>(_ value: T) {
   debugPrint(value)
 }
+
+#endif
+
