@@ -754,6 +754,32 @@ void irgen::emitDestroyArrayCall(IRGenFunction &IGF,
   // If T is a trivial/POD type, nothing needs to be done.
   if (IGF.IGM.getTypeLowering(T).isTrivial())
     return;
+    
+  if (IGF.IGM.isTinySwift()) {
+    auto *origBB = IGF.Builder.GetInsertBlock();
+    auto *headerBB = IGF.createBasicBlock("loop_header");
+    auto *loopBB = IGF.createBasicBlock("loop_body");
+    auto *exitBB = IGF.createBasicBlock("loop_exit");
+    IGF.Builder.CreateBr(headerBB);
+    IGF.Builder.emitBlock(headerBB);
+    auto *phi = IGF.Builder.CreatePHI(count->getType(), 2);
+    phi->addIncoming(llvm::ConstantInt::get(count->getType(), 0), origBB);
+    llvm::Value *cmp = IGF.Builder.CreateICmpSLT(phi, count);
+    IGF.Builder.CreateCondBr(cmp, loopBB, exitBB);
+    
+    IGF.Builder.emitBlock(loopBB);
+    auto *addr = IGF.Builder.CreateInBoundsGEP(object.getAddress(), phi);
+    
+    const TypeInfo &addrTI = IGF.getTypeInfo(T);
+    addrTI.destroy(IGF, addrTI.getAddressForPointer(addr), T, false /*isOutlined*/);
+
+    auto *add = IGF.Builder.CreateAdd(phi, llvm::ConstantInt::get(count->getType(), 1));
+    phi->addIncoming(add, loopBB);
+    IGF.Builder.CreateBr(headerBB);
+
+    IGF.Builder.emitBlock(exitBB);
+    return;
+  }
 
   auto metadata = IGF.emitTypeMetadataRefForLayout(T);
   auto obj = emitCastToOpaquePtr(IGF, object);
