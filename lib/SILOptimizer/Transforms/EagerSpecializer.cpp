@@ -808,6 +808,11 @@ void EagerSpecializerTransform::run() {
   if (!F.getLoweredFunctionType()->getInvocationGenericSignature())
     return;
 
+  if (F.getModule().getOptions().TinySwift) {
+    F.clearSpecializeAttrs();
+    return;
+  }
+
   // Create a specialized function with ReabstractionInfo for each attribute.
   SmallVector<SILFunction *, 8> SpecializedFuncs;
   SmallVector<ReabstractionInfo, 4> ReInfoVec;
