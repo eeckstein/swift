@@ -990,12 +990,14 @@ extension ${Self}: Hashable {
 }
 
 % if bits != 16:
+#if !_runtime(_Tiny)
 extension ${Self}: _HasCustomAnyHashableRepresentation {
   // Not @inlinable
   public func _toCustomAnyHashable() -> AnyHashable? {
     return AnyHashable(_box: _${Self}AnyHashableBox(self))
   }
 }
+#endif
 % end
 
 ${Availability(bits)}
@@ -1261,6 +1263,7 @@ extension ${Self}: Strideable {
 //===----------------------------------------------------------------------===//
 
 % if bits != 16:
+#if !_runtime(_Tiny)
 internal struct _${Self}AnyHashableBox: _AnyHashableBox {
   internal typealias Base = ${Self}
   internal let _value: Base
@@ -1337,6 +1340,7 @@ internal struct _${Self}AnyHashableBox: _AnyHashableBox {
     return true
   }
 }
+#endif
 % end
 
 //===----------------------------------------------------------------------===//
