@@ -924,48 +924,114 @@ if (Builtin.ID == BuiltinValueKind::id) { \
     llvm::Value *src = args.claimNext();
     llvm::Value *count = args.claimNext();
     
-    auto valueTy = getLoweredTypeAndTypeInfo(IGF.IGM,
-                                             substitutions.getReplacementTypes()[0]);
+    auto tyPair = getLoweredTypeAndTypeInfo(IGF.IGM,
+                                         substitutions.getReplacementTypes()[0]);
+    SILType elemTy = tyPair.first;
+    const TypeInfo &elemTI = tyPair.second;
+
+    if (IGF.IGM.isTinySwift()) {
+    
+      llvm::Value *firstSrcElem = IGF.Builder.CreateBitCast(src,
+                                    elemTI.getStorageType()->getPointerTo());
+      llvm::Value *firstDestElem = IGF.Builder.CreateBitCast(dest,
+                                    elemTI.getStorageType()->getPointerTo());
+    
+      auto *origBB = IGF.Builder.GetInsertBlock();
+      auto *headerBB = IGF.createBasicBlock("loop_header");
+      auto *loopBB = IGF.createBasicBlock("loop_body");
+      auto *exitBB = IGF.createBasicBlock("loop_exit");
+      IGF.Builder.CreateBr(headerBB);
+      IGF.Builder.emitBlock(headerBB);
+      auto *phi = IGF.Builder.CreatePHI(count->getType(), 2);
+      phi->addIncoming(llvm::ConstantInt::get(count->getType(), 0), origBB);
+      llvm::Value *cmp = IGF.Builder.CreateICmpSLT(phi, count);
+      IGF.Builder.CreateCondBr(cmp, loopBB, exitBB);
+      
+      IGF.Builder.emitBlock(loopBB);
+      llvm::Value *idx = phi;
+      
+      switch (Builtin.ID) {
+        case BuiltinValueKind::TakeArrayBackToFront:
+        case BuiltinValueKind::AssignCopyArrayBackToFront: {
+          llvm::Value *countMinusIdx = IGF.Builder.CreateSub(count, phi);
+          idx = IGF.Builder.CreateSub(countMinusIdx, llvm::ConstantInt::get(count->getType(), 1));
+          break;
+        }
+        default:
+          break;
+      }
+      auto *srcElem = IGF.Builder.CreateInBoundsGEP(firstSrcElem, idx);
+      auto *destElem = IGF.Builder.CreateInBoundsGEP(firstDestElem, idx);
+      Address destAddr = elemTI.getAddressForPointer(destElem);
+      Address srcAddr = elemTI.getAddressForPointer(srcElem);
+      
+      switch (Builtin.ID) {
+      case BuiltinValueKind::CopyArray:
+        elemTI.initializeWithCopy(IGF, destAddr, srcAddr, elemTy, false /*isOutlined*/);
+        break;
+      case BuiltinValueKind::TakeArrayNoAlias:
+      case BuiltinValueKind::TakeArrayFrontToBack:
+      case BuiltinValueKind::TakeArrayBackToFront:
+        elemTI.initializeWithTake(IGF, destAddr, srcAddr, elemTy, false /*isOutlined*/);
+        break;
+      case BuiltinValueKind::AssignCopyArrayNoAlias:
+      case BuiltinValueKind::AssignCopyArrayFrontToBack:
+      case BuiltinValueKind::AssignCopyArrayBackToFront:
+        elemTI.assignWithCopy(IGF, destAddr, srcAddr, elemTy, false /*isOutlined*/);
+        break;
+      case BuiltinValueKind::AssignTakeArray:
+        elemTI.assignWithTake(IGF, destAddr, srcAddr, elemTy, false /*isOutlined*/);
+        break;
+      default:
+        llvm_unreachable("out of sync with if condition");
+      }
+      auto *addIdx = IGF.Builder.CreateAdd(phi, llvm::ConstantInt::get(count->getType(), 1));
+      phi->addIncoming(addIdx, loopBB);
+      IGF.Builder.CreateBr(headerBB);
+
+      IGF.Builder.emitBlock(exitBB);
+      return;
+    }
     
     dest = IGF.Builder.CreateBitCast(dest,
-                               valueTy.second.getStorageType()->getPointerTo());
+                               elemTI.getStorageType()->getPointerTo());
     src = IGF.Builder.CreateBitCast(src,
-                               valueTy.second.getStorageType()->getPointerTo());
-    Address destArray = valueTy.second.getAddressForPointer(dest);
-    Address srcArray = valueTy.second.getAddressForPointer(src);
+                               elemTI.getStorageType()->getPointerTo());
+    Address destArray = elemTI.getAddressForPointer(dest);
+    Address srcArray = elemTI.getAddressForPointer(src);
     
     switch (Builtin.ID) {
     case BuiltinValueKind::CopyArray:
-      valueTy.second.initializeArrayWithCopy(IGF, destArray, srcArray, count,
-                                             valueTy.first);
+      elemTI.initializeArrayWithCopy(IGF, destArray, srcArray, count,
+                                             elemTy);
       break;
     case BuiltinValueKind::TakeArrayNoAlias:
-      valueTy.second.initializeArrayWithTakeNoAlias(IGF, destArray, srcArray,
-                                                    count, valueTy.first);
+      elemTI.initializeArrayWithTakeNoAlias(IGF, destArray, srcArray,
+                                                    count, elemTy);
       break;
     case BuiltinValueKind::TakeArrayFrontToBack:
-      valueTy.second.initializeArrayWithTakeFrontToBack(IGF, destArray, srcArray,
-                                                        count, valueTy.first);
+      elemTI.initializeArrayWithTakeFrontToBack(IGF, destArray, srcArray,
+                                                        count, elemTy);
       break;
     case BuiltinValueKind::TakeArrayBackToFront:
-      valueTy.second.initializeArrayWithTakeBackToFront(IGF, destArray, srcArray,
-                                                        count, valueTy.first);
+      elemTI.initializeArrayWithTakeBackToFront(IGF, destArray, srcArray,
+                                                        count, elemTy);
       break;
     case BuiltinValueKind::AssignCopyArrayNoAlias:
-      valueTy.second.assignArrayWithCopyNoAlias(IGF, destArray, srcArray, count,
-                                                valueTy.first);
+      elemTI.assignArrayWithCopyNoAlias(IGF, destArray, srcArray, count,
+                                                elemTy);
       break;
     case BuiltinValueKind::AssignCopyArrayFrontToBack:
-      valueTy.second.assignArrayWithCopyFrontToBack(IGF, destArray, srcArray,
-                                                    count, valueTy.first);
+      elemTI.assignArrayWithCopyFrontToBack(IGF, destArray, srcArray,
+                                                    count, elemTy);
       break;
     case BuiltinValueKind::AssignCopyArrayBackToFront:
-      valueTy.second.assignArrayWithCopyBackToFront(IGF, destArray, srcArray,
-                                                    count, valueTy.first);
+      elemTI.assignArrayWithCopyBackToFront(IGF, destArray, srcArray,
+                                                    count, elemTy);
       break;
     case BuiltinValueKind::AssignTakeArray:
-      valueTy.second.assignArrayWithTake(IGF, destArray, srcArray, count,
-                                         valueTy.first);
+      elemTI.assignArrayWithTake(IGF, destArray, srcArray, count,
+                                         elemTy);
       break;
     default:
       llvm_unreachable("out of sync with if condition");
