@@ -1537,6 +1537,9 @@ void IRGenModule::error(SourceLoc loc, const Twine &message) {
 bool IRGenModule::useDllStorage() { return ::useDllStorage(Triple); }
 
 bool IRGenModule::shouldPrespecializeGenericMetadata() {
+  if (isTinySwift())
+    return false;
+
   auto canPrespecializeTarget =
       (Triple.isOSDarwin() || Triple.isTvOS() || Triple.isOSLinux());
   if (canPrespecializeTarget && isStandardLibrary()) {
