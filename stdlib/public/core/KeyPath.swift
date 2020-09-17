@@ -12,6 +12,8 @@
 
 import SwiftShims
 
+#if !_runtime(_Tiny)
+
 internal func _abstract(
   methodName: StaticString = #function,
   file: StaticString = #file, line: UInt = #line
@@ -3661,3 +3663,6 @@ internal func _instantiateKeyPathBuffer(
       as: RawKeyPathComponent.Header.self)
   }
 }
+
+#endif // !_runtime(_Tiny)
+

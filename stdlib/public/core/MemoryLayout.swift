@@ -223,10 +223,12 @@ extension MemoryLayout {
   ///   is available for the storage referenced by `key`. If the value is
   ///   `nil`, it can be because `key` is computed, has observers, requires
   ///   reabstraction, or overlaps storage with other properties.
+#if !_runtime(_Tiny)
   @_transparent
   public static func offset(of key: PartialKeyPath<T>) -> Int? {
     return key._storedInlineOffset
   }
+#endif
 }
 
 // Not-yet-public alignment conveniences
