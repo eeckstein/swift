@@ -511,7 +511,11 @@ public struct KeyedEncodingContainer<K: CodingKey> :
   public init<Container: KeyedEncodingContainerProtocol>(
     _ container: Container
   ) where Container.Key == Key {
+#if _runtime(_Tiny)
+    fatalError("not supported")
+#else
     _box = _KeyedEncodingContainerBox(container)
+#endif
   }
 
   /// The path of coding keys taken to get to this point in encoding.
@@ -1479,7 +1483,11 @@ public struct KeyedDecodingContainer<K: CodingKey> :
   public init<Container: KeyedDecodingContainerProtocol>(
     _ container: Container
   ) where Container.Key == Key {
+#if _runtime(_Tiny)
+    fatalError("not supported")
+#else
     _box = _KeyedDecodingContainerBox(container)
+#endif
   }
 
   /// The path of coding keys taken to get to this point in decoding.
@@ -3456,6 +3464,429 @@ extension DecodingError {
 // Keyed Encoding Container Implementations
 //===----------------------------------------------------------------------===//
 
+#if _runtime(_Tiny)
+
+final internal class _KeyedEncodingContainerBase {
+  internal init(){}
+
+  deinit {}
+
+  // These must all be given a concrete implementation in _*Box.
+  internal var codingPath: [CodingKey] {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeNil<K: CodingKey>(forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Bool, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: String, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Double, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Float, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Int, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Int8, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Int16, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Int32, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: Int64, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: UInt, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: UInt8, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: UInt16, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: UInt32, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<K: CodingKey>(_ value: UInt64, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encode<T: Encodable, K: CodingKey>(_ value: T, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeConditional<T: AnyObject & Encodable, K: CodingKey>(
+    _ object: T,
+    forKey key: K
+  ) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Bool?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: String?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Double?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Float?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Int?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Int8?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Int16?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Int32?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: Int64?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: UInt?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: UInt8?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: UInt16?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: UInt32?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<K: CodingKey>(_ value: UInt64?, forKey key: K) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func encodeIfPresent<T: Encodable, K: CodingKey>(
+    _ value: T?,
+    forKey key: K
+  ) throws {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func nestedContainer<NestedKey, K: CodingKey>(
+    keyedBy keyType: NestedKey.Type,
+    forKey key: K
+  ) -> KeyedEncodingContainer<NestedKey> {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func nestedUnkeyedContainer<K: CodingKey>(
+    forKey key: K
+  ) -> UnkeyedEncodingContainer {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func superEncoder() -> Encoder {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+
+  internal func superEncoder<K: CodingKey>(forKey key: K) -> Encoder {
+    fatalError("_KeyedEncodingContainerBase cannot be used directly.")
+  }
+}
+
+final internal class _KeyedDecodingContainerBase {
+  internal init(){}
+
+  deinit {}
+
+  internal var codingPath: [CodingKey] {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal var allKeys: [CodingKey] {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func contains<K: CodingKey>(_ key: K) -> Bool {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeNil<K: CodingKey>(forKey key: K) throws -> Bool {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Bool.Type,
+    forKey key: K
+  ) throws -> Bool {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: String.Type,
+    forKey key: K
+  ) throws -> String {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Double.Type,
+    forKey key: K
+  ) throws -> Double {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Float.Type,
+    forKey key: K
+  ) throws -> Float {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Int.Type,
+    forKey key: K
+  ) throws -> Int {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Int8.Type,
+    forKey key: K
+  ) throws -> Int8 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Int16.Type,
+    forKey key: K
+  ) throws -> Int16 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Int32.Type,
+    forKey key: K
+  ) throws -> Int32 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: Int64.Type,
+    forKey key: K
+  ) throws -> Int64 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: UInt.Type,
+    forKey key: K
+  ) throws -> UInt {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: UInt8.Type,
+    forKey key: K
+  ) throws -> UInt8 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: UInt16.Type,
+    forKey key: K
+  ) throws -> UInt16 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: UInt32.Type,
+    forKey key: K
+  ) throws -> UInt32 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<K: CodingKey>(
+    _ type: UInt64.Type,
+    forKey key: K
+  ) throws -> UInt64 {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decode<T: Decodable, K: CodingKey>(
+    _ type: T.Type,
+    forKey key: K
+  ) throws -> T {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Bool.Type,
+    forKey key: K
+  ) throws -> Bool? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: String.Type,
+    forKey key: K
+  ) throws -> String? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Double.Type,
+    forKey key: K
+  ) throws -> Double? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Float.Type,
+    forKey key: K
+  ) throws -> Float? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Int.Type,
+    forKey key: K
+  ) throws -> Int? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Int8.Type,
+    forKey key: K
+  ) throws -> Int8? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Int16.Type,
+    forKey key: K
+  ) throws -> Int16? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Int32.Type,
+    forKey key: K
+  ) throws -> Int32? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: Int64.Type,
+    forKey key: K
+  ) throws -> Int64? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: UInt.Type,
+    forKey key: K
+  ) throws -> UInt? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: UInt8.Type,
+    forKey key: K
+  ) throws -> UInt8? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: UInt16.Type,
+    forKey key: K
+  ) throws -> UInt16? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: UInt32.Type,
+    forKey key: K
+  ) throws -> UInt32? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<K: CodingKey>(
+    _ type: UInt64.Type,
+    forKey key: K
+  ) throws -> UInt64? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func decodeIfPresent<T: Decodable, K: CodingKey>(
+    _ type: T.Type,
+    forKey key: K
+  ) throws -> T? {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func nestedContainer<NestedKey, K: CodingKey>(
+    keyedBy type: NestedKey.Type,
+    forKey key: K
+  ) throws -> KeyedDecodingContainer<NestedKey> {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func nestedUnkeyedContainer<K: CodingKey>(
+    forKey key: K
+  ) throws -> UnkeyedDecodingContainer {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func superDecoder() throws -> Decoder {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+
+  internal func superDecoder<K: CodingKey>(forKey key: K) throws -> Decoder {
+    fatalError("_KeyedDecodingContainerBase cannot be used directly.")
+  }
+}
+
+#else // _runtime(_Tiny)
+
 internal class _KeyedEncodingContainerBase {
   internal init(){}
 
@@ -4489,6 +4920,8 @@ internal final class _KeyedDecodingContainerBox<
     return try concrete.superDecoder(forKey: key)
   }
 }
+
+#endif // _runtime(_Tiny)
 
 //===----------------------------------------------------------------------===//
 // Primitive and RawRepresentable Extensions
