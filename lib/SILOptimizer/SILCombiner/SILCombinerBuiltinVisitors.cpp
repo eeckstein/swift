@@ -576,6 +576,59 @@ SILInstruction *SILCombiner::optimizeStringObject(BuiltinInst *BI) {
                                       setBits & andBits);
 }
 
+
+static void thickToThinMetatypeArg(BuiltinInst *BI, SILBuilder &Builder) {
+  MetatypeType *mt = BI->getArguments()[0]->getType().getAs<MetatypeType>();
+  if (!mt || mt->getRepresentation() == MetatypeRepresentation::Thin)
+    return;
+    
+  MetatypeType *thinMT = MetatypeType::get(mt->getInstanceType(), MetatypeRepresentation::Thin);
+  SILType thinMTTy = SILType::getPrimitiveObjectType(CanType(thinMT));
+  auto *newMI = Builder.createMetatype(BI->getLoc(), thinMTTy);
+  BI->setOperand(0, newMI);
+}
+
+static bool optimizeSameMetatype(BuiltinInst *BI, SILBuilder &Builder) {
+  SILValue lhs = BI->getArguments()[0];
+  SILValue rhs = BI->getArguments()[1];
+  if (auto *IEM = dyn_cast<InitExistentialMetatypeInst>(lhs))
+    lhs = IEM->getOperand();
+  if (auto *IEM = dyn_cast<InitExistentialMetatypeInst>(rhs))
+    rhs = IEM->getOperand();
+    
+  if (!isa<MetatypeInst>(rhs))
+    std::swap(lhs, rhs);
+
+  if (!isa<MetatypeInst>(rhs))
+    return false;
+
+  CanType lhsTy = lhs->getType().castTo<MetatypeType>()->getCanonicalType();
+  CanType rhsTy = rhs->getType().castTo<MetatypeType>()->getCanonicalType();
+  
+  SILModule &mod = BI->getFunction()->getModule();
+  unsigned isEqual;
+
+  switch (classifyDynamicCast(mod.getSwiftModule(), lhsTy, rhsTy,
+          /*isSourceTypeExact*/isa<MetatypeInst>(lhs),
+          mod.isWholeModule())) {
+    case DynamicCastFeasibility::MaySucceed:
+      return false;
+    case DynamicCastFeasibility::WillSucceed:
+      if (classifyDynamicCast(mod.getSwiftModule(), rhsTy, lhsTy,
+          /*isSourceTypeExact*/ false, mod.isWholeModule()) !=
+            DynamicCastFeasibility::WillSucceed)
+        return false;
+      isEqual = 1;
+      break;
+    case DynamicCastFeasibility::WillFail:
+      isEqual = 0;
+      break;
+  }
+  auto *result = Builder.createIntegerLiteral(BI->getLoc(), BI->getType(), isEqual);
+  BI->replaceAllUsesWith(result);
+  return true;
+}
+
 SILInstruction *SILCombiner::visitBuiltinInst(BuiltinInst *I) {
   if (I->getFunction()->hasOwnership())
     return nullptr;
@@ -593,8 +646,10 @@ SILInstruction *SILCombiner::visitBuiltinInst(BuiltinInst *I) {
       I->getBuiltinInfo().ID == BuiltinValueKind::AssignCopyArrayNoAlias ||
       I->getBuiltinInfo().ID == BuiltinValueKind::AssignCopyArrayFrontToBack ||
       I->getBuiltinInfo().ID == BuiltinValueKind::AssignCopyArrayBackToFront ||
-      I->getBuiltinInfo().ID == BuiltinValueKind::AssignTakeArray)
+      I->getBuiltinInfo().ID == BuiltinValueKind::AssignTakeArray) {
+    thickToThinMetatypeArg(I, Builder);
     return optimizeBuiltinArrayOperation(I, Builder);
+  }
 
   if (I->getBuiltinInfo().ID == BuiltinValueKind::TruncOrBitCast) {
     return optimizeBuiltinTruncOrBitCast(I);
@@ -679,8 +734,15 @@ SILInstruction *SILCombiner::visitBuiltinInst(BuiltinInst *I) {
       if (SILElemTy.isTrivial())
         return eraseInstFromFunction(*I);
     }
+    thickToThinMetatypeArg(I, Builder);
     break;
   }
+  case BuiltinValueKind::Sizeof:
+  case BuiltinValueKind::Strideof:
+  case BuiltinValueKind::Alignof:
+  case BuiltinValueKind::IsPOD:
+    thickToThinMetatypeArg(I, Builder);
+    break;
   case BuiltinValueKind::CondFailMessage:
     if (auto *SLI = dyn_cast<StringLiteralInst>(I->getOperand(1))) {
       if (SLI->getEncoding() == StringLiteralInst::Encoding::UTF8) {
@@ -690,6 +752,10 @@ SILInstruction *SILCombiner::visitBuiltinInst(BuiltinInst *I) {
       }
     }
     break;
+  case BuiltinValueKind::IsSameMetatype:
+    if (optimizeSameMetatype(I, Builder))
+      eraseInstFromFunction(*I);
+    return nullptr;
   default:
     break;
   }
