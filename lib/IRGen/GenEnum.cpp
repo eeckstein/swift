@@ -6966,7 +6966,7 @@ const TypeInfo *TypeConverter::convertEnumType(TypeBase *key, CanType type,
 }
 
 void IRGenModule::emitEnumDecl(EnumDecl *theEnum) {
-  if (!IRGen.hasLazyMetadata(theEnum)) {
+  if (!IRGen.hasLazyMetadata(theEnum) && !isTinySwift()) {
     emitEnumMetadata(*this, theEnum);
     emitFieldDescriptor(theEnum);
   }

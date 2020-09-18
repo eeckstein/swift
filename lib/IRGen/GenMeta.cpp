@@ -5112,6 +5112,9 @@ SpecialProtocol irgen::getSpecialProtocolID(ProtocolDecl *P) {
 /// the protocol descriptor, and for ObjC interop, references to the descriptor
 /// that the ObjC runtime uses for uniquing.
 void IRGenModule::emitProtocolDecl(ProtocolDecl *protocol) {
+  if (isTinySwift())
+    return;
+
   PrettyStackTraceDecl stackTraceRAII("emitting metadata for", protocol);
 
   // Emit remote reflection metadata for the protocol.

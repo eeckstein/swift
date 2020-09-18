@@ -2227,9 +2227,6 @@ void swift::irgen::disableAddressSanitizer(IRGenModule &IGM, llvm::GlobalVariabl
 
 /// Emit a global declaration.
 void IRGenModule::emitGlobalDecl(Decl *D) {
-  if (isTinySwift() && D->getKind() != DeclKind::Class)
-    return;
-
   switch (D->getKind()) {
   case DeclKind::Extension:
     return emitExtension(cast<ExtensionDecl>(D));

@@ -1003,7 +1003,7 @@ Optional<unsigned> irgen::getPhysicalStructFieldIndex(IRGenModule &IGM,
 }
 
 void IRGenModule::emitStructDecl(StructDecl *st) {
-  if (!IRGen.hasLazyMetadata(st)) {
+  if (!IRGen.hasLazyMetadata(st) && !isTinySwift()) {
     emitStructMetadata(*this, st);
     emitFieldDescriptor(st);
   }
