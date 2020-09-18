@@ -17,6 +17,7 @@
 
 #define DEBUG_TYPE "sil-generic-specializer"
 
+#include "swift/AST/ProtocolConformance.h"
 #include "swift/SIL/OptimizationRemark.h"
 #include "swift/SIL/SILFunction.h"
 #include "swift/SIL/SILInstruction.h"
@@ -145,6 +146,7 @@ namespace {
 class VTableSpecializer : public SILModuleTransform {
 
   bool specializeVTables(SILModule &module);
+  bool specializeWitnessTable(SpecializedProtocolConformance *specConf, SILModule &module);
   bool specializeVTableFor(AllocRefInst *allocRef, SILModule &module);
   SILFunction *specializeVTableMethod(SILFunction *origMethod,
                                       SubstitutionMap subs, SILModule &module);
@@ -173,6 +175,16 @@ bool VTableSpecializer::specializeVTables(SILModule &module) {
       for (SILInstruction &inst : block) {
         if (auto *allocRef = dyn_cast<AllocRefInst>(&inst)) {
           changed |= specializeVTableFor(allocRef, module);
+        }
+        if (auto *iea = dyn_cast<InitExistentialAddrInst>(&inst)) {
+          for (ProtocolConformanceRef confRef : iea->getConformances()) {
+            if (confRef.isConcrete()) {
+              ProtocolConformance *conf = confRef.getConcrete();
+              if (auto *specConf = dyn_cast<SpecializedProtocolConformance>(conf)) {
+                changed |= specializeWitnessTable(specConf, module);
+              }
+            }
+          }
         }
       }
     }
@@ -209,6 +221,41 @@ bool VTableSpecializer::specializeVTables(SILModule &module) {
   }
   
   return changed;
+}
+
+bool VTableSpecializer::specializeWitnessTable(SpecializedProtocolConformance *specConf, SILModule &module) {
+  if (module.lookUpWitnessTable(specConf, /*deserializeLazily*/ false))
+    return false;
+
+  ProtocolConformance *genericConf = specConf->getGenericConformance();
+  SILWitnessTable *genericTable = module.lookUpWitnessTable(genericConf);
+  assert(genericTable);
+  if (genericTable->isDeclaration()) {
+    llvm::errs() << "No witness table available for " << genericTable->getName() << '\n';
+    abort();
+  }
+  
+  llvm::SmallVector<SILWitnessTable::Entry, 8> entries;
+  
+  for (const SILWitnessTable::Entry &entry : genericTable->getEntries()) {
+    switch (entry.getKind()) {
+      case SILWitnessTable::Method: {
+        const SILWitnessTable::MethodWitness &mw = entry.getMethodWitness();
+        SILFunction *specializedMethod =
+          specializeVTableMethod(mw.Witness, specConf->getSubstitutionMap(), module);
+        entries.push_back(SILWitnessTable::MethodWitness{mw.Requirement, specializedMethod});
+        break;
+      }
+      default:
+        llvm::dbgs() << "Unhandled entry in witness table " << genericTable->getName() << '\n';
+        assert(false);
+    }
+  }
+  
+  SILWitnessTable::create(module, SILLinkage::Shared, IsNotSerialized,
+    specConf, entries, { });
+    
+  return true;
 }
 
 bool VTableSpecializer::specializeVTableFor(AllocRefInst *allocRef, SILModule &module) {

@@ -73,7 +73,7 @@ SILLinkage swift::getSILLinkage(FormalLinkage linkage,
 }
 
 SILLinkage
-swift::getLinkageForProtocolConformance(const RootProtocolConformance *C,
+swift::getLinkageForProtocolConformance(const ProtocolConformance *C,
                                         ForDefinition_t definition) {
   // If the conformance was synthesized by the ClangImporter, give it
   // shared linkage.

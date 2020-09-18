@@ -176,7 +176,7 @@ private:
   SILLinkage Linkage;
 
   /// The conformance mapped to this witness table.
-  RootProtocolConformance *Conformance;
+  ProtocolConformance *Conformance;
 
   /// The various witnesses containing in this witness table. Is empty if the
   /// table has no witness entries or if it is a declaration.
@@ -200,13 +200,13 @@ private:
 
   /// Private constructor for making SILWitnessTable definitions.
   SILWitnessTable(SILModule &M, SILLinkage Linkage, IsSerialized_t Serialized,
-                  StringRef name, RootProtocolConformance *conformance,
+                  StringRef name, ProtocolConformance *conformance,
                   ArrayRef<Entry> entries,
                   ArrayRef<ConditionalConformance> conditionalConformances);
 
   /// Private constructor for making SILWitnessTable declarations.
   SILWitnessTable(SILModule &M, SILLinkage Linkage, StringRef Name,
-                  RootProtocolConformance *conformance);
+                  ProtocolConformance *conformance);
 
   void addWitnessTable();
 
@@ -214,17 +214,17 @@ public:
   /// Create a new SILWitnessTable definition with the given entries.
   static SILWitnessTable *
   create(SILModule &M, SILLinkage Linkage, IsSerialized_t Serialized,
-         RootProtocolConformance *conformance, ArrayRef<Entry> entries,
+         ProtocolConformance *conformance, ArrayRef<Entry> entries,
          ArrayRef<ConditionalConformance> conditionalConformances);
 
   /// Create a new SILWitnessTable declaration.
   static SILWitnessTable *create(SILModule &M, SILLinkage Linkage,
-                                 RootProtocolConformance *conformance);
+                                 ProtocolConformance *conformance);
 
   ~SILWitnessTable();
 
   /// Return the AST ProtocolConformance this witness table represents.
-  RootProtocolConformance *getConformance() const {
+  ProtocolConformance *getConformance() const {
     return Conformance;
   }
 

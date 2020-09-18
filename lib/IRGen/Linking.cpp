@@ -294,7 +294,7 @@ std::string LinkEntity::mangleAsString() const {
     return mangler.mangleFieldOffset(getDecl());
 
   case Kind::ProtocolWitnessTable:
-    return mangler.mangleWitnessTable(getRootProtocolConformance());
+    return mangler.mangleWitnessTable(getProtocolConformance());
 
   case Kind::GenericProtocolWitnessTableInstantiationFunction:
     return mangler.mangleGenericProtocolWitnessTableInstantiationFunction(

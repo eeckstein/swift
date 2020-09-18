@@ -205,7 +205,7 @@ SILModule::lookUpWitnessTable(ProtocolConformanceRef C,
   if (!C.isConcrete())
     return nullptr;
 
-  return lookUpWitnessTable(C.getConcrete());
+  return lookUpWitnessTable(C.getConcrete()->getRootConformance());
 }
 
 SILWitnessTable *
@@ -215,9 +215,8 @@ SILModule::lookUpWitnessTable(const ProtocolConformance *C,
 
   SILWitnessTable *wtable;
 
-  auto rootC = C->getRootConformance();
   // Attempt to lookup the witness table from the table.
-  auto found = WitnessTableMap.find(rootC);
+  auto found = WitnessTableMap.find(C);
   if (found == WitnessTableMap.end()) {
 #ifndef NDEBUG
     // Make sure that all witness tables are in the witness table lookup
@@ -228,7 +227,7 @@ SILModule::lookUpWitnessTable(const ProtocolConformance *C,
     // is the potential for a conformance without a witness table to be passed
     // to this function.
     for (SILWitnessTable &WT : witnessTables)
-      assert(WT.getConformance() != rootC &&
+      assert(WT.getConformance() != C &&
              "Found witness table that is not"
              " in the witness table lookup cache.");
 #endif
@@ -238,9 +237,8 @@ SILModule::lookUpWitnessTable(const ProtocolConformance *C,
     if (!deserializeLazily)
       return nullptr;
 
-    auto linkage = getLinkageForProtocolConformance(rootC, NotForDefinition);
-    wtable = SILWitnessTable::create(*this, linkage,
-                                 const_cast<RootProtocolConformance *>(rootC));
+    auto linkage = getLinkageForProtocolConformance(C, NotForDefinition);
+    wtable = SILWitnessTable::create(*this, linkage, const_cast<ProtocolConformance *>(C));
   } else {
     wtable = found->second;
     assert(wtable != nullptr && "Should never map a conformance to a null witness"
