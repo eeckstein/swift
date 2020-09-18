@@ -222,6 +222,8 @@ public:
                                  ProtocolConformance *conformance);
 
   ~SILWitnessTable();
+  
+  bool hasGenericWitnesses() const;
 
   /// Return the AST ProtocolConformance this witness table represents.
   ProtocolConformance *getConformance() const {

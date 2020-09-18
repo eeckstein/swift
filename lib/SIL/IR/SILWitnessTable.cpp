@@ -137,6 +137,25 @@ SILWitnessTable::~SILWitnessTable() {
   }
 }
 
+bool SILWitnessTable::hasGenericWitnesses() const {
+  for (const Entry &entry : getEntries()) {
+    switch (entry.getKind()) {
+    case Method:
+      if (entry.getMethodWitness().Witness->getLoweredFunctionType()->isPolymorphic())
+        return true;
+      break;
+    case AssociatedType:
+    case AssociatedTypeProtocol:
+      return true;
+    case BaseProtocol:
+    case Invalid:
+      break;
+    }
+  }
+  return false;
+}
+
+
 void SILWitnessTable::convertToDefinition(
     ArrayRef<Entry> entries,
     ArrayRef<ConditionalConformance> conditionalConformances,

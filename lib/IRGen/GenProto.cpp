@@ -2174,8 +2174,12 @@ void IRGenModule::emitSILWitnessTable(SILWitnessTable *wt) {
 
   auto conf = wt->getConformance();
   RootProtocolConformance *rootConf = conf->getRootConformance();
-  if (isTinySwift() && !conf->getProtocol()->existentialTypeSupported())
-    return;
+  if (isTinySwift()) {
+    if (!conf->getProtocol()->existentialTypeSupported())
+      return;
+    if (wt->hasGenericWitnesses())
+      return;
+  }
 
   PrettyStackTraceConformance _st(Context, "emitting witness table for", conf);
 
