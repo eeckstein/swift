@@ -33,7 +33,7 @@ namespace irgen {
 class ConformanceDescription {
 public:
   /// The conformance itself.
-  RootProtocolConformance *conformance;
+  const RootProtocolConformance *conformance;
 
   /// The witness table.
   SILWitnessTable *wtable;
@@ -58,7 +58,7 @@ public:
   /// The resilient witnesses, if any.
   SmallVector<llvm::Constant *, 4> resilientWitnesses;
 
-  ConformanceDescription(RootProtocolConformance *conformance,
+  ConformanceDescription(const RootProtocolConformance *conformance,
                          SILWitnessTable *wtable,
                          llvm::Constant *pattern,
                          uint16_t witnessTableSize,
