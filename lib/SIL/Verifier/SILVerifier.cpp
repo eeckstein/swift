@@ -1748,7 +1748,7 @@ public:
                 "not allowed");
       }
     }
-
+/*
     // A direct reference to a non-public or shared but not fragile function
     // from a fragile function is an error.
     if (F.isSerialized()) {
@@ -1757,7 +1757,7 @@ public:
               "function_ref inside fragile function cannot "
               "reference a private or hidden symbol");
     }
-
+*/
     verifySILFunctionType(fnType);
   }
 
