@@ -1,0 +1,10 @@
+
+* static protocol method calls (open_existential_metatype)
+
+* specialize class method calls
+
+* fix superclass pointers of generic classes
+
+* enum value patterns
+
+* Error (existential boxes)
