@@ -5581,10 +5581,10 @@ void SILModule::verify() const {
   }
 
   // Check all vtables and the vtable cache.
-  llvm::DenseSet<SILType> vtableClasses;
+  llvm::DenseSet<ClassDecl*> vtableClasses;
   unsigned EntriesSZ = 0;
   for (const auto &vt : getVTables()) {
-    if (!vtableClasses.insert(vt->getClassType()).second) {
+    if (!vt->isSpecialized() && !vtableClasses.insert(vt->getClass()).second) {
       llvm::errs() << "Vtable redefined: " << vt->getClass()->getName() << "!\n";
       assert(false && "triggering standard assertion failure routine");
     }
