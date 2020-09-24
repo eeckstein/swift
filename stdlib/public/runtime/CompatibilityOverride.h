@@ -24,7 +24,7 @@
 
 namespace swift {
 
-#ifdef SWIFT_RUNTIME_NO_COMPATIBILITY_OVERRIDES
+#if defined(SWIFT_RUNTIME_NO_COMPATIBILITY_OVERRIDES) || defined(TINY_SWIFT)
 
 #define COMPATIBILITY_OVERRIDE(name, ret, attrs, ccAttrs, namespace, typedArgs, namedArgs) \
   attrs ccAttrs ret namespace swift_ ## name typedArgs {                          \

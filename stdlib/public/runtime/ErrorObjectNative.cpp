@@ -28,6 +28,8 @@
 
 using namespace swift;
 
+#ifndef TINY_SWIFT
+
 /// Determine the size and alignment of an Error box containing the given
 /// type.
 static std::pair<size_t, size_t>
@@ -64,11 +66,16 @@ static const FullMetadata<HeapMetadata> ErrorMetadata{
   HeapMetadata(MetadataKind::ErrorObject),
 };
 
+#endif
+
 BoxPair
 swift::swift_allocError(const swift::Metadata *type,
                         const swift::WitnessTable *errorConformance,
                         OpaqueValue *initialValue,
                         bool isTake) {
+#ifdef TINY_SWIFT
+  llvm_unreachable("error handling not supported yet");
+#else
   auto sizeAndAlign = _getErrorAllocatedSizeAndAlignmentMask(type);
   
   auto allocated = swift_allocObject(&ErrorMetadata,
@@ -89,12 +96,17 @@ swift::swift_allocError(const swift::Metadata *type,
   }
   
   return BoxPair{allocated, valuePtr};
+#endif
 }
 
 void
 swift::swift_deallocError(SwiftError *error, const Metadata *type) {
+#ifdef TINY_SWIFT
+  llvm_unreachable("error handling not supported yet");
+#else
   auto sizeAndAlign = _getErrorAllocatedSizeAndAlignmentMask(type);
   swift_deallocUninitializedObject(error, sizeAndAlign.first, sizeAndAlign.second);
+#endif
 }
 
 void

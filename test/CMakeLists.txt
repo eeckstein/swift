@@ -361,7 +361,7 @@ _Block_release(void) { }\n")
 
       list(APPEND LIT_ARGS "--xunit-xml-output=${SWIFT_TEST_RESULTS_DIR}/lit-tests.xml")
 
-      if(SWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING)
+      if(SWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING AND NOT SWIFT_TINY)
         list(APPEND LIT_ARGS "--param" "differentiable_programming")
       endif()
 

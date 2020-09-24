@@ -91,11 +91,11 @@ if(SWIFT_BUILD_STDLIB)
   add_subdirectory(core)
   add_subdirectory(SwiftOnoneSupport)
 
-  if(SWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING)
+  if(SWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING AND NOT SWIFT_TINY)
     add_subdirectory(Differentiation)
   endif()
 
-  if(SWIFT_ENABLE_EXPERIMENTAL_CONCURRENCY)
+  if(SWIFT_ENABLE_EXPERIMENTAL_CONCURRENCY AND NOT SWIFT_TINY)
     add_subdirectory(Concurrency)
   endif()
 endif()

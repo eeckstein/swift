@@ -1779,6 +1779,10 @@ function(add_swift_target_library name)
       endif()
     endif()
 
+    if (SWIFT_TINY)
+      list(APPEND swiftlib_swift_compile_flags_all "-Xfrontend" "-tiny-swift")
+    endif()
+
 
     # Collect architecture agnostic SDK linker flags
     set(swiftlib_link_flags_all ${SWIFTLIB_LINK_FLAGS})

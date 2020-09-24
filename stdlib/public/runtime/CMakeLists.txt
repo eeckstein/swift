@@ -79,15 +79,24 @@ list(APPEND swift_runtime_library_compile_flags -DswiftCore_EXPORTS)
 list(APPEND swift_runtime_library_compile_flags -I${SWIFT_SOURCE_DIR}/stdlib/include/llvm/Support -I${SWIFT_SOURCE_DIR}/include)
 
 if(SWIFT_TINY)
-  list(REMOVE_ITEM swift_runtime_objc_sources ReflectionMirror.mm)
-  list(REMOVE_ITEM swift_runtime_sources Metadata.cpp)
-  list(REMOVE_ITEM swift_runtime_sources MetadataLookup.cpp)
-  list(REMOVE_ITEM swift_runtime_sources Casting.cpp)
-  list(REMOVE_ITEM swift_runtime_sources Enum.cpp)
-  list(REMOVE_ITEM swift_runtime_sources KeyPaths.cpp)
-  list(REMOVE_ITEM swift_runtime_sources ProtocolConformance.cpp)
-  list(REMOVE_ITEM swift_runtime_sources AnyHashableSupport.cpp)
-  list(REMOVE_ITEM swift_runtime_sources DynamicCast.cpp)
+  set(swift_runtime_objc_sources
+      ErrorObject.mm
+      SwiftObject.mm
+     )
+  set(swift_runtime_sources
+      Array.cpp
+      EnvironmentVariables.cpp
+      ErrorObjectCommon.cpp
+      ErrorObjectNative.cpp
+      Errors.cpp
+      ExistentialContainer.cpp
+      Heap.cpp
+      HeapObject.cpp
+      Numeric.cpp
+      Once.cpp
+      RefCount.cpp
+      SwiftDtoa.cpp
+     )
 endif()
 
 set(sdk "${SWIFT_HOST_VARIANT_SDK}")

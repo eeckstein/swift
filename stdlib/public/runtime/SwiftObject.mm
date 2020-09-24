@@ -1300,6 +1300,8 @@ swift_dynamicCastObjCClassMetatypeUnconditionalImpl(const ClassMetadata *source,
 
 #endif
 
+#ifndef TINY_SWIFT
+
 static const ClassMetadata *
 swift_dynamicCastForeignClassMetatypeImpl(const ClassMetadata *sourceType,
                                           const ClassMetadata *targetType) {
@@ -1319,6 +1321,8 @@ swift_dynamicCastForeignClassMetatypeUnconditionalImpl(
   // the metadata.
   return sourceType;
 }
+
+#endif
 
 #if SWIFT_OBJC_INTEROP
 // Given a non-nil object reference, return true iff the object uses
@@ -1560,8 +1564,13 @@ const ClassMetadata *swift::getRootSuperclass() {
 #endif
 }
 
+#ifndef TINY_SWIFT
+
 #define OVERRIDE_OBJC COMPATIBILITY_OVERRIDE
 #include "CompatibilityOverride.def"
 
 #define OVERRIDE_FOREIGN COMPATIBILITY_OVERRIDE
 #include "CompatibilityOverride.def"
+
+#endif
+
