@@ -1366,7 +1366,7 @@ performIRGeneration(FileUnit *file, const IRGenOptions &Opts,
 }
 
 llvm::Constant *ValuePattern::getPatternConst(IRGenFunction &IGF) const {
-  return llvm::ConstantInt::get(IGF.IGM.SizeTy, pattern);
+  return llvm::ConstantInt::get(IGF.IGM.SizeTy, pattern | patternIDMask);
 }
 
 void

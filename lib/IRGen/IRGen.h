@@ -440,6 +440,8 @@ class ValuePattern {
   ValuePattern(unsigned pattern) :
     pattern(pattern) {}
 
+  static constexpr unsigned patternIDMask = 0x52310000;
+
 public:
   ValuePattern() : pattern(0) { }
 
