@@ -53,6 +53,9 @@ void trySpecializeApplyOfGeneric(
 /// Specifically, it contains information which formal parameters and returns
 /// are changed from indirect values to direct values.
 class ReabstractionInfo {
+
+  SILModule &M;
+
   /// A 1-bit means that this argument (= either indirect return value or
   /// parameter) is converted from indirect to direct.
   SmallBitVector Conversions;
@@ -63,11 +66,11 @@ class ReabstractionInfo {
 
   /// If set, indirect to direct conversions should be performed by the generic
   /// specializer.
-  bool ConvertIndirectToDirect;
+  bool ConvertIndirectToDirect = true;
 
   /// The first NumResults bits in Conversions refer to formal indirect
   /// out-parameters.
-  unsigned NumFormalIndirectResults;
+  unsigned NumFormalIndirectResults = 0;
 
   /// The function type after applying the substitutions used to call the
   /// specialized function.
@@ -78,7 +81,7 @@ class ReabstractionInfo {
   CanSILFunctionType SpecializedType;
 
   /// The generic environment to be used by the specialization.
-  GenericEnvironment *SpecializedGenericEnv;
+  GenericEnvironment *SpecializedGenericEnv = nullptr;
 
   /// The generic signature of the specialization.
   /// It is nullptr if the specialization is not polymorphic.
@@ -102,7 +105,7 @@ class ReabstractionInfo {
   SubstitutionMap ClonerParamSubMap;
 
   // Reference to the original generic non-specialized callee function.
-  SILFunction *Callee;
+  SILFunction *Callee = nullptr;
 
   // The module the specialization is created in.
   ModuleDecl *TargetModule = nullptr;
@@ -113,7 +116,7 @@ class ReabstractionInfo {
   ApplySite Apply;
 
   // Set if a specialized function has unbound generic parameters.
-  bool HasUnboundGenericParams;
+  bool HasUnboundGenericParams = false;
 
   // Substitutions to be used for creating a new function type
   // for the specialized function.
@@ -124,7 +127,7 @@ class ReabstractionInfo {
   SubstitutionMap CallerInterfaceSubs;
 
   // Is the generated specialization going to be serialized?
-  IsSerialized_t Serialized;
+  IsSerialized_t Serialized = IsNotSerialized;
   
   unsigned param2ArgIndex(unsigned ParamIdx) const  {
     return ParamIdx + NumFormalIndirectResults;
@@ -135,7 +138,10 @@ class ReabstractionInfo {
                                            SubstitutionMap SubstMap,
                                            bool HasUnboundGenericParams);
 
+public:
   void createSubstitutedAndSpecializedTypes();
+private:
+
   bool prepareAndCheck(ApplySite Apply, SILFunction *Callee,
                        SubstitutionMap ParamSubs,
                        OptRemark::Emitter *ORE = nullptr);
@@ -147,7 +153,8 @@ class ReabstractionInfo {
   void finishPartialSpecializationPreparation(
       FunctionSignaturePartialSpecializer &FSPS);
 
-  ReabstractionInfo() {}
+  ReabstractionInfo(SILModule &M) : M(M) {}
+
 public:
   /// Constructs the ReabstractionInfo for generic function \p Callee with
   /// substitutions \p ParamSubs.
@@ -165,6 +172,13 @@ public:
   /// a specialization signature.
   ReabstractionInfo(ModuleDecl *targetModule, bool isModuleWholeModule,
                     SILFunction *Callee, GenericSignature SpecializedSig);
+
+
+  ReabstractionInfo(CanSILFunctionType substitutedType,
+                    SILModule &M) :
+    M(M),
+    SubstitutedType(substitutedType),
+    isWholeModule(M.isWholeModule()) {}
 
   IsSerialized_t isSerialized() const {
     return Serialized;
@@ -339,6 +353,9 @@ bool isKnownPrespecialization(StringRef SpecName);
 ///
 /// Issues errors for all missing functions.
 void checkCompletenessOfPrespecializations(SILModule &M);
+
+ApplySite replaceWithSpecializedCallee(ApplySite applySite, SILValue callee,
+                                       const ReabstractionInfo &reInfo);
 
 /// Create a new apply based on an old one, but with a different
 /// function being applied.

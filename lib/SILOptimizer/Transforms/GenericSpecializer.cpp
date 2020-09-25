@@ -150,6 +150,7 @@ class VTableSpecializer : public SILModuleTransform {
   bool specializeVTableFor(AllocRefInst *allocRef, SILModule &module);
   SILFunction *specializeVTableMethod(SILFunction *origMethod,
                                       SubstitutionMap subs, SILModule &module);
+  bool specializeClassMethodInst(ClassMethodInst *cm);
 
   /// The entry point to the transformation.
   void run() override {
@@ -175,6 +176,7 @@ bool VTableSpecializer::specializeVTables(SILModule &module) {
       for (SILInstruction &inst : block) {
         if (auto *allocRef = dyn_cast<AllocRefInst>(&inst)) {
           changed |= specializeVTableFor(allocRef, module);
+          continue;
         }
         if (auto *iea = dyn_cast<InitExistentialAddrInst>(&inst)) {
           for (ProtocolConformanceRef confRef : iea->getConformances()) {
@@ -185,6 +187,11 @@ bool VTableSpecializer::specializeVTables(SILModule &module) {
               }
             }
           }
+          continue;
+        }
+        if (auto *cm = dyn_cast<ClassMethodInst>(&inst)) {
+          changed |= specializeClassMethodInst(cm);
+          continue;
         }
       }
     }
@@ -329,6 +336,53 @@ SILFunction *VTableSpecializer::specializeVTableMethod(SILFunction *origMethod,
 
   return SpecializedF;
 }
+
+bool VTableSpecializer::specializeClassMethodInst(ClassMethodInst *cm) {
+  SILValue instance = cm->getOperand();
+  SILType classTy = instance->getType();
+  CanType astType = classTy.getASTType();
+  BoundGenericClassType *genClassTy = dyn_cast<BoundGenericClassType>(astType);
+  if (!genClassTy)
+    return false;
+
+  ClassDecl *classDecl = genClassTy->getDecl();
+  SubstitutionMap subs = astType->getContextSubstitutionMap(classDecl->getParentModule(), classDecl);
+
+  SILType funcTy = cm->getType();
+
+  SILFunction *f = cm->getFunction();
+  SILModule &m = f->getModule();
+  SILType substitutedType = funcTy.substGenericArgs(m, subs,
+                                  TypeExpansionContext::minimal());
+
+  ReabstractionInfo reInfo(substitutedType.getAs<SILFunctionType>(), m);
+  reInfo.createSubstitutedAndSpecializedTypes();
+  CanSILFunctionType finalFuncTy = reInfo.getSpecializedType();
+  SILType finalSILTy = SILType::getPrimitiveObjectType(finalFuncTy);
+
+  SILBuilder builder(cm);
+  auto *newCM = builder.createClassMethod(cm->getLoc(), cm->getOperand(),
+                                          cm->getMember(), finalSILTy);
+
+  while (!cm->use_empty()) {
+    Operand *use = *cm->use_begin();
+    SILInstruction *user = use->getUser();
+    ApplySite AI = ApplySite::isa(user);
+    if (AI && AI.getCalleeOperand() == use) {
+      replaceWithSpecializedCallee(AI, newCM, reInfo);
+      AI.getInstruction()->eraseFromParent();
+      continue;
+    }
+    llvm::errs() << "unsupported use of class method "
+                 << newCM->getMember().getDecl()->getName() << " in function "
+                 << newCM->getFunction()->getName() << '\n';
+    abort();
+  }
+  
+  // cm->eraseFromParent();
+  return true;
+}
+
 
 SILTransform *swift::createGenericSpecializer() {
   return new GenericSpecializer();

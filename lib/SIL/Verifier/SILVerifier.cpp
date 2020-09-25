@@ -3033,7 +3033,8 @@ public:
     auto member = CMI->getMember();
     auto overrideTy =
         TC.getConstantOverrideType(F.getTypeExpansionContext(), member);
-    if (CMI->getModule().getStage() != SILStage::Lowered) {
+    SILModule &M = CMI->getModule();
+    if (M.getStage() != SILStage::Lowered && !M.getOptions().TinySwift) {
       requireSameType(
           CMI->getType(), SILType::getPrimitiveObjectType(overrideTy),
           "result type of class_method must match abstracted type of method");
