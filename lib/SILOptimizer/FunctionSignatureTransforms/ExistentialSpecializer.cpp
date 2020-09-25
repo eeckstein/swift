@@ -71,7 +71,8 @@ public:
     auto *F = getFunction();
 
     /// Don't optimize functions that should not be optimized.
-    if (!F->shouldOptimize() || !EnableExistentialSpecializer) {
+    if (!F->shouldOptimize() || !EnableExistentialSpecializer ||
+        F->getModule().getOptions().TinySwift) {
       return;
     }
 
