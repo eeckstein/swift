@@ -601,8 +601,81 @@ macro(add_swift_lib_subdirectory name)
   add_llvm_subdirectory(SWIFT LIB ${name})
 endmacro()
 
+function(_link_host_swift_system_libs executable)
+  target_link_directories(${executable} PRIVATE
+    ${CMAKE_OSX_SYSROOT}/usr/lib/swift)
+  set_target_properties(${executable} PROPERTIES
+    BUILD_WITH_INSTALL_RPATH YES
+    INSTALL_RPATH "/usr/lib/swift")
+endfunction()
+
+# Adds all libraries and library pathes needed to link the executable with libswift.
+function(_add_libraries_for_libswift executable)
+  if(LIBSWIFT_BUILD_MODE STREQUAL "DISABLE")
+    return()
+  endif()
+
+  if(${SWIFT_HOST_VARIANT_SDK} IN_LIST SWIFT_APPLE_PLATFORMS)
+
+    if(LIBSWIFT_BUILD_MODE STREQUAL "HOSTTOOLS")
+      # Pick up libswiftCompatibility<n>.a from the host tool chain
+      execute_process(
+          COMMAND "xcrun" "-f" "swiftc"
+          OUTPUT_VARIABLE swiftc_path
+          OUTPUT_STRIP_TRAILING_WHITESPACE)
+      target_link_directories(${executable} PRIVATE
+        "${swiftc_path}/../../lib/swift/macosx")
+
+      # Link against the host swift system libraries
+      _link_host_swift_system_libs(${executable})
+
+    else()
+      message(FATAL_ERROR "Unknown LIBSWIFT_BUILD_MODE '${LIBSWIFT_BUILD_MODE}'")
+    endif()
+
+    # Workaround to make lldb happy: we have to explicitly add all libswift modules
+    # to the linker command line.
+    set(libswift_ast_path_flags "-Wl")
+    foreach(module ${LIBSWIFT_MODULE_FILES})
+      string(APPEND libswift_ast_path_flags ",-add_ast_path,${module}")
+    endforeach()
+
+    set_property(TARGET ${executable} APPEND_STRING PROPERTY
+                 LINK_FLAGS ${libswift_ast_path_flags})
+
+    # Workaround for a linker crash: rdar://77839981
+    set_property(TARGET ${executable} APPEND_STRING PROPERTY
+                 LINK_FLAGS " -lobjc ")
+
+  elseif(SWIFT_HOST_VARIANT_SDK STREQUAL "LINUX")
+
+    target_link_libraries(${executable} PRIVATE "swiftCore")
+
+    if(LIBSWIFT_BUILD_MODE STREQUAL "HOSTTOOLS")
+      # At build time and and run time, link against the swift libraries in the
+      # installed host toolchain.
+      get_filename_component(swift_bin_dir ${HOST_SWIFT_EXEC} DIRECTORY)
+      get_filename_component(swift_dir ${swift_bin_dir} DIRECTORY)
+      set(host_lib_dir "${swift_dir}/lib/swift/linux")
+
+      target_link_directories(${executable} PRIVATE ${host_lib_dir})
+      set_target_properties(${executable} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH YES
+        INSTALL_RPATH  "${host_lib_dir}")
+
+    else()
+      message(FATAL_ERROR "Unknown LIBSWIFT_BUILD_MODE '${LIBSWIFT_BUILD_MODE}'")
+    endif()
+
+  else()
+    # TODO: Windows
+    message(FATAL_ERROR "TODO: libswift build support for ${SWIFT_HOST_VARIANT_SDK}") 
+  endif()
+
+endfunction()
+
 function(add_swift_host_tool executable)
-  set(options)
+  set(options LIBSWIFT)
   set(single_parameter_options SWIFT_COMPONENT)
   set(multiple_parameter_options LLVM_LINK_COMPONENTS)
 
@@ -620,11 +693,11 @@ function(add_swift_host_tool executable)
   _add_host_variant_c_compile_flags(${executable})
   _add_host_variant_link_flags(${executable})
   _add_host_variant_c_compile_link_flags(${executable})
-  target_link_directories(${executable} PRIVATE
-    ${SWIFTLIB_DIR}/${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR})
+
   # Force executables linker language to be CXX so that we do not link using the
   # host toolchain swiftc.
   set_target_properties(${executable} PROPERTIES LINKER_LANGUAGE CXX)
+
   add_dependencies(${executable} ${LLVM_COMMON_DEPENDS})
 
   set_target_properties(${executable} PROPERTIES
@@ -664,6 +737,19 @@ function(add_swift_host_tool executable)
     set_target_properties(${executable} PROPERTIES
       BUILD_WITH_INSTALL_RPATH YES
       INSTALL_RPATH "${RPATH_LIST}")
+  endif()
+
+  if (ASHT_LIBSWIFT)
+    # Add all libraries and library pathes if this executable links with libswift.
+    _add_libraries_for_libswift(${executable})
+  else()
+    target_link_directories(${executable} PRIVATE
+      ${SWIFTLIB_DIR}/${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR})
+    if(${SWIFT_HOST_VARIANT_SDK} IN_LIST SWIFT_APPLE_PLATFORMS)
+      set_target_properties(${executable} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH YES
+        INSTALL_RPATH "@executable_path/../lib/swift/${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR}")
+    endif()
   endif()
 
   llvm_update_compile_flags(${executable})
