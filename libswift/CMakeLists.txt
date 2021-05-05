@@ -134,6 +134,25 @@ elseif(${LIBSWIFT_BUILD_MODE} STREQUAL "HOSTTOOLS")
       SWIFT_EXEC ${HOST_SWIFT_EXEC}
       BUILD_DIR "${CMAKE_BINARY_DIR}/libswift")
 
+elseif(${LIBSWIFT_BUILD_MODE} STREQUAL "BOOTSTRAPPING" OR
+       ${LIBSWIFT_BUILD_MODE} STREQUAL "BOOTSTRAPPING-WITH-HOSTLIBS")
+
+  # Bootstrapping - stage 1, using the compiler from level 0
+
+  add_libswift(libswift-bootstrapping1 unused_var
+      SWIFT_EXEC "${CMAKE_BINARY_DIR}/bootstrapping0/bin/swiftc"
+      BUILD_DIR "${CMAKE_BINARY_DIR}/bootstrapping1/libswift")
+
+  add_dependencies(libswift-bootstrapping1 bootstrapping0-all)
+
+  # The final build, using the compiler from stage 1
+
+  add_libswift(libswift libswift_modules
+      SWIFT_EXEC "${CMAKE_BINARY_DIR}/bootstrapping1/bin/swiftc"
+      BUILD_DIR "${CMAKE_BINARY_DIR}/libswift")
+
+  add_dependencies(libswift bootstrapping1-all)
+
 else()
   message(FATAL_ERROR "Unknown LIBSWIFT_BUILD_MODE '${LIBSWIFT_BUILD_MODE}'")
 endif()

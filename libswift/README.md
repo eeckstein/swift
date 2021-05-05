@@ -18,13 +18,73 @@ Debug builds are done with the package manager (if installed), because it works 
 
 ### Build modes
 
-There are two build modes for _libswift_, which can be selected with the `--libswift <mode>` build-script option:
+There are four build modes for _libswift_, which can be selected with the `--libswift <mode>` build-script option:
 
 * `disable`: the compiler is not built with _libswift_. In this early stage of development this mode is the default. Right now _libswift_ does not contain any optimizations or features which are not available in the existing optimizer. Therefore a compiler with disabled _libswift_ still behaves as a compiler with enabled _libswift_. This will change soon.
 * `hosttools`: _libswift_ is built with a pre-installed swift toolchain, using a `swiftc` which is expected to be in the command search path. This mode is the preferred way to build for local development, because it is the fastest way to build. It requires a 5.3 (or newer) swift toolchain to be installed on the host system.
+* `bootstrapping`: The compiler and _libswift_ are built with a two-stage bootstrapping process. This is the preferred mode if no swift toolchain is available on the system or if the build should not depend on any pre-installed toolchain.
+* `bootstrapping-with-hostlibs`: This mode is only available on macOS. It's similar to `bootstrapping`, but links the compiler against the host system swift libraries instead of the built libraries. The build is faster than with `bootstrapping` because only the swiftmodule files of the bootstrapping libraries have to be built.
 
+The _libswift_ build mode is cached in the `CMakeCache.txt` file in the Swift build directory. When building with a different mode, the `CMakeCache.txt` has to be deleted.
 
 IMPORTANT: **Whenever a _libswift_ source file is added, removed or renamed, cmake needs to re-run**, e.g. by touching any of the swift's CMakeLists.txt file. Otherwise the build dependencies are not tracked correctly.
+
+### Bootstrapping
+
+The bootstrapping process is completely implemented with CMake dependencies. The build-script is not required to build the whole bootstrapping chain. For example, a `ninja swift-frontend` invocation builds all the required bootstrapping steps required for the final `swift-frontend`.
+
+Bootstrapping involves the following steps:
+
+#### 1. The level-0 compiler
+
+The build outputs of level-0 are stored in the `bootstrapping0` directory under the main build directory.
+
+In this first step `swift-frontend` is built, but without _libswift_. When more optimizations are migrated from C++ to _libswift_, this compiler will produce worse code than the final compiler.
+
+
+#### 2. The level-0 library
+
+With the compiler from step 1, a minimal subset of the standard library is built in `bootstrapping0/lib/swift`. The subset contains the swift core library `libswiftCore` and, in case of a debug build, the `libswiftOnoneSupport` library. In the future it will also contain the concurrency library.
+
+This library will be less optimized than the final library build.
+
+In case the build mode is `bootstrapping-with-hostlibs`, only the swiftmodule files of the library are built, but not the binaries. The binaries are not needed because the compiler (and `sil-opt`) link against the system swift libraries.
+
+#### 3. The level-1 _libswift_
+
+The build outputs of level-1 are stored in the `bootstrapping1` directory under the main build directory.
+
+The _libswift_ library is built using the level-0 compiler and standard library from step 1. and 2.
+
+#### 4. The level-1 compiler
+
+In this step, the level-1 `swift-frontend` is built which includes the _libswift_ from step 3. This compiler already produces the exact same code as the final compiler, but might run slower, because its _libswift_ is not optimized as good as in the final build.
+
+Unless the build mode is `bootstrapping-with-hostlibs`, the level-1 compiler dynamically links against the level-1 library. This is specified with the `RPATH` setting in the executable.
+
+#### 5. The level-1 library
+
+Like in step 2, a minimal subset of the standard library is built, using the level-1 compiler from step 4.
+
+Unless the build mode is `bootstrapping-with-hostlibs`, in this step, the build system redirects the compiler's dynamic library path to the level-0 library (by setting `DY/LD_LIBRARY_PATH` in  `SwiftSource.cmake`:`_compile_swift_files`). This is needed because the level-1 libraries are not built, yet.
+
+#### 6. The final _libswift_
+
+The final _libswift_ is built with the level-1 compiler and standard library from step 4. and 5.
+
+#### 7. The final compiler
+
+Now the final `swift-frontend` can be built, linking the final _libswift_ from step 6.
+
+#### 8. The final standard library
+
+With the final compiler from step 7, the final and full standard library is built. This library should be binary equivalent to the level-1 library.
+
+Again, unless the build mode is `bootstrapping-with-hostlibs`, for building the standard library, the build system redirects the compiler's dynamic library path to the level-1 library.
+
+### Using and not using _libswift_
+
+To include _libswift_ in a tool, `initializeLibSwift()` must be called at the start of the tool. This must be done before any SIL objects are created. So ideally, at the start of the tool, e.g. at the place where `INITIALIZE_LLVM()` is called.
 
 Currently the `swift-frontend` and `sil-opt` tools use _libswift_.
 

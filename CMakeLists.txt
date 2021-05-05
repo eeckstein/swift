@@ -193,7 +193,10 @@ set(SWIFT_TOOLS_ENABLE_LTO OFF CACHE STRING "Build Swift tools with LTO. One
 
 set(LIBSWIFT_BUILD_MODE DISABLE CACHE STRING "How to build libswift. Possible values are
     DISABLE:       the compiler is built without libswift
-    HOSTTOOLS:     libswift is built with a pre-installed toolchain")
+    HOSTTOOLS:     libswift is built with a pre-installed toolchain
+    BOOTSTRAPPING: libswift is built with a 2-stage bootstrapping process
+    BOOTSTRAPPING-WITH-HOSTLIBS:   libswift is built with a 2-stage bootstrapping process,
+                   but the compiler links against the host system swift libs (macOS only)")
 
 # The following only works with the Ninja generator in CMake >= 3.0.
 set(SWIFT_PARALLEL_LINK_JOBS "" CACHE STRING
@@ -562,6 +565,13 @@ set(SWIFT_RUNTIME_OUTPUT_INTDIR "${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/bin")
 set(SWIFT_LIBRARY_OUTPUT_INTDIR "${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/lib")
 if("${SWIFT_NATIVE_SWIFT_TOOLS_PATH}" STREQUAL "")
   set(SWIFT_NATIVE_SWIFT_TOOLS_PATH "${SWIFT_RUNTIME_OUTPUT_INTDIR}")
+
+elseif(LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING" OR LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING-WITH-HOSTLIBS")
+  # If cross-compiling we don't have to bootstrap. We can just use the previously
+  # built native swiftc to build libswift.
+  message(STATUS "Building libswift with native host tools instead of bootstrapping")
+  set(LIBSWIFT_BUILD_MODE "HOSTTOOLS")
+  set(HOST_SWIFT_EXEC "${SWIFT_NATIVE_SWIFT_TOOLS_PATH}/swiftc")
 endif()
 
 if(LIBSWIFT_BUILD_MODE STREQUAL "HOSTTOOLS" AND NOT HOST_SWIFT_EXEC)
@@ -1009,6 +1019,9 @@ endif()
 if(SWIFT_ENABLE_DISPATCH)
   include(Libdispatch)
 endif()
+
+add_bootstrapping_target(0)
+add_bootstrapping_target(1)
 
 # Add all of the subdirectories, where we actually do work.
 

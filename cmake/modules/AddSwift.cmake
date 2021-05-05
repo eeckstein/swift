@@ -609,11 +609,25 @@ function(_link_host_swift_system_libs executable)
     INSTALL_RPATH "/usr/lib/swift")
 endfunction()
 
+function(_link_built_compatibility_libs executable)
+  set(platform ${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR})
+  target_link_directories(${executable} PRIVATE
+    ${SWIFTLIB_DIR}/${platform})
+  add_dependencies(${executable}
+    "swiftCompatibility50-${platform}"
+    "swiftCompatibility51-${platform}"
+    "swiftCompatibilityDynamicReplacements-${platform}")
+endfunction()
+
 # Adds all libraries and library pathes needed to link the executable with libswift.
-function(_add_libraries_for_libswift executable)
+# For more information on how bootstrapping works, see libswift/README.md.
+function(_add_libraries_for_libswift executable bootstrapping)
   if(LIBSWIFT_BUILD_MODE STREQUAL "DISABLE")
     return()
   endif()
+
+  get_bootstrapping_swift_lib_dir(bs_lib_dir "${bootstrapping}")
+  set(lib_sub_dir "lib/swift/${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR}")
 
   if(${SWIFT_HOST_VARIANT_SDK} IN_LIST SWIFT_APPLE_PLATFORMS)
 
@@ -629,6 +643,26 @@ function(_add_libraries_for_libswift executable)
       # Link against the host swift system libraries
       _link_host_swift_system_libs(${executable})
 
+    elseif(LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING-WITH-HOSTLIBS")
+      # Pick up the built libswiftCompatibility<n>.a libraries
+      _link_built_compatibility_libs(${executable})
+
+      # Link against the host swift system libraries
+      _link_host_swift_system_libs(${executable})
+
+    elseif(LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING")
+      # Pick up the built libswiftCompatibility<n>.a libraries
+      _link_built_compatibility_libs(${executable})
+
+      # At build time link against the built swift libraries from the
+      # previous bootstrapping stage.
+      target_link_directories(${executable} PRIVATE ${bs_lib_dir})
+
+      # At runtime link against the built swift libraries from the current
+      # bootstrapping stage.
+      set_target_properties(${executable} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH YES
+        INSTALL_RPATH "@executable_path/../${lib_sub_dir}")
     else()
       message(FATAL_ERROR "Unknown LIBSWIFT_BUILD_MODE '${LIBSWIFT_BUILD_MODE}'")
     endif()
@@ -663,6 +697,18 @@ function(_add_libraries_for_libswift executable)
         BUILD_WITH_INSTALL_RPATH YES
         INSTALL_RPATH  "${host_lib_dir}")
 
+    elseif(LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING")
+      # At build time link against the built swift libraries from the
+      # previous bootstrapping stage.
+      target_link_directories(${executable} PRIVATE ${bs_lib_dir})
+
+      # At runtime link against the built swift libraries from the current
+      # bootstrapping stage.
+      set_target_properties(${executable} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH YES
+        INSTALL_RPATH  "$ORIGIN/../${lib_sub_dir}")
+    elseif(LIBSWIFT_BUILD_MODE STREQUAL "BOOTSTRAPPING-WITH-HOSTLIBS")
+      message(FATAL_ERROR "LIBSWIFT_BUILD_MODE 'BOOTSTRAPPING-WITH-HOSTLIBS' not supported on Linux")
     else()
       message(FATAL_ERROR "Unknown LIBSWIFT_BUILD_MODE '${LIBSWIFT_BUILD_MODE}'")
     endif()
@@ -676,7 +722,7 @@ endfunction()
 
 function(add_swift_host_tool executable)
   set(options LIBSWIFT)
-  set(single_parameter_options SWIFT_COMPONENT)
+  set(single_parameter_options SWIFT_COMPONENT BOOTSTRAPPING)
   set(multiple_parameter_options LLVM_LINK_COMPONENTS)
 
   cmake_parse_arguments(ASHT
@@ -699,6 +745,14 @@ function(add_swift_host_tool executable)
   set_target_properties(${executable} PROPERTIES LINKER_LANGUAGE CXX)
 
   add_dependencies(${executable} ${LLVM_COMMON_DEPENDS})
+
+  if(NOT ${ASHT_BOOTSTRAPPING} STREQUAL "")
+    # Strip the "-bootstrapping<n>" suffix from the target name to get the base
+    # executable name.
+    string(REGEX REPLACE "-bootstrapping.*" "" executable_filename ${executable})
+    set_target_properties(${executable}
+        PROPERTIES OUTPUT_NAME ${executable_filename})
+  endif()
 
   set_target_properties(${executable} PROPERTIES
     FOLDER "Swift executables")
@@ -741,7 +795,7 @@ function(add_swift_host_tool executable)
 
   if (ASHT_LIBSWIFT)
     # Add all libraries and library pathes if this executable links with libswift.
-    _add_libraries_for_libswift(${executable})
+    _add_libraries_for_libswift(${executable} "${ASHT_BOOTSTRAPPING}")
   else()
     target_link_directories(${executable} PRIVATE
       ${SWIFTLIB_DIR}/${SWIFT_SDK_${SWIFT_HOST_VARIANT_SDK}_LIB_SUBDIR})
@@ -754,9 +808,14 @@ function(add_swift_host_tool executable)
 
   llvm_update_compile_flags(${executable})
   swift_common_llvm_config(${executable} ${ASHT_LLVM_LINK_COMPONENTS})
+
+  get_bootstrapping_path(out_bin_dir
+      ${SWIFT_RUNTIME_OUTPUT_INTDIR} "${ASHT_BOOTSTRAPPING}")
+  get_bootstrapping_path(out_lib_dir
+      ${SWIFT_LIBRARY_OUTPUT_INTDIR} "${ASHT_BOOTSTRAPPING}")
   set_output_directory(${executable}
-    BINARY_DIR ${SWIFT_RUNTIME_OUTPUT_INTDIR}
-    LIBRARY_DIR ${SWIFT_LIBRARY_OUTPUT_INTDIR})
+    BINARY_DIR ${out_bin_dir}
+    LIBRARY_DIR ${out_lib_dir})
 
   if(SWIFT_HOST_VARIANT_SDK STREQUAL WINDOWS)
     swift_windows_include_for_arch(${SWIFT_HOST_VARIANT_ARCH}
@@ -775,13 +834,15 @@ function(add_swift_host_tool executable)
     endif()
   endif()
 
-  add_dependencies(${ASHT_SWIFT_COMPONENT} ${executable})
-  swift_install_in_component(TARGETS ${executable}
-                             RUNTIME
-                               DESTINATION bin
-                               COMPONENT ${ASHT_SWIFT_COMPONENT})
+  if(NOT ${ASHT_SWIFT_COMPONENT} STREQUAL "no_component")
+    add_dependencies(${ASHT_SWIFT_COMPONENT} ${executable})
+    swift_install_in_component(TARGETS ${executable}
+                               RUNTIME
+                                 DESTINATION bin
+                                 COMPONENT ${ASHT_SWIFT_COMPONENT})
 
-  swift_is_installing_component(${ASHT_SWIFT_COMPONENT} is_installing)
+    swift_is_installing_component(${ASHT_SWIFT_COMPONENT} is_installing)
+  endif()
 
   if(NOT is_installing)
     set_property(GLOBAL APPEND PROPERTY SWIFT_BUILDTREE_EXPORTS ${executable})
