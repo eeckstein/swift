@@ -520,6 +520,14 @@ def create_argument_parser():
                 'extracting symbols. Tweak with caution, since dsymutil'
                 'is memory intensive.')
 
+    option('--libswift', store,
+           choices=['disable', 'hosttools', 'bootstrapping',
+                    'bootstrapping-with-hostlibs'],
+           default='disable',
+           help='The buildmode for libswift: "disable", "hosttools",'
+                '"bootstrapping" or "bootstrapping-with-hostlibs".'
+                'For details see libswift/README.md')
+
     option('--disable-guaranteed-normal-arguments', store_true,
            help='Disable guaranteed normal arguments')
 

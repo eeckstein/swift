@@ -177,6 +177,7 @@ EXPECTED_DEFAULTS = {
     'legacy_impl': False,
     'libdispatch_build_variant': 'Debug',
     'libicu_build_variant': 'Debug',
+    'libswift': 'disable',
     'lit_args': '-sv',
     'llbuild_assertions': True,
     'lldb_assertions': True,
@@ -694,6 +695,9 @@ EXPECTED_OPTIONS = [
     IntOption('-j', dest='build_jobs'),
     IntOption('--dsymutil-jobs', dest='dsymutil_jobs'),
 
+    ChoicesOption('--libswift',
+                  choices=['disable', 'hosttools', 'bootstrapping',
+                           'bootstrapping-with-hostlibs']),
     AppendOption('--cross-compile-hosts'),
     AppendOption('--extra-cmake-options'),
     AppendOption('--extra-swift-args'),
