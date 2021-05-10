@@ -177,7 +177,7 @@ EXPECTED_DEFAULTS = {
     'legacy_impl': False,
     'libdispatch_build_variant': 'Debug',
     'libicu_build_variant': 'Debug',
-    'libswift': 'disable',
+    'libswift': 'bootstrapping',
     'lit_args': '-sv',
     'llbuild_assertions': True,
     'lldb_assertions': True,

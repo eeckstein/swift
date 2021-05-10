@@ -523,7 +523,7 @@ def create_argument_parser():
     option('--libswift', store,
            choices=['disable', 'hosttools', 'bootstrapping',
                     'bootstrapping-with-hostlibs'],
-           default='disable',
+           default='bootstrapping',
            help='The buildmode for libswift: "disable", "hosttools",'
                 '"bootstrapping" or "bootstrapping-with-hostlibs".'
                 'For details see libswift/README.md')
