@@ -54,6 +54,10 @@ typedef struct {
 } BridgedPassContext;
 
 typedef struct {
+  void * _Nonnull streamAddr;
+} BridgedOStream;
+
+typedef struct {
   void * _Null_unspecified word0;
   void * _Null_unspecified word1;
   void * _Null_unspecified word2;
@@ -141,6 +145,8 @@ typedef enum {
 typedef long SwiftInt;
 
 void registerBridgedClass(BridgedStringRef className, SwiftMetatype metatype);
+
+void OStream_write(BridgedOStream os, BridgedStringRef str);
 
 void freeBridgedStringRef(BridgedStringRef str);
 

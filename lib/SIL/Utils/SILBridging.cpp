@@ -146,6 +146,10 @@ void registerBridgedClass(BridgedStringRef className, SwiftMetatype metatype) {
 //                            Bridging C functions
 //===----------------------------------------------------------------------===//
 
+void OStream_write(BridgedOStream os, BridgedStringRef str) {
+  static_cast<raw_ostream *>(os.streamAddr)->write((const char*)(str.data), str.length);
+}
+
 /// Frees a string which was allocated by getCopiedBridgedStringRef.
 void freeBridgedStringRef(BridgedStringRef str) {
   llvm::MallocAllocator().Deallocate(str.data, str.length);
