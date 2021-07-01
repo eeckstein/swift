@@ -223,6 +223,8 @@ PASS(EmitDFDiagnostics, "dataflow-diagnostics",
      "Emit SIL Diagnostics")
 PASS(EscapeAnalysisDumper, "escapes-dump",
      "Dump Escape Analysis Results")
+SWIFT_FUNCTION_PASS(EscapeInfoDumper, "dump-escape-info",
+     "Dumps escape information")
 PASS(FunctionOrderPrinter, "function-order-printer",
      "Print Function Order for Testing")
 PASS(FunctionSignatureOpts, "function-signature-opts",
