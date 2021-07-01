@@ -7,7 +7,5 @@
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 libswift_sources(Optimizer
-  EscapeInfoDumper.swift
-  SILPrinter.swift
-  MergeCondFails.swift
-)
+  EscapeInfo.swift)
+
