@@ -1387,6 +1387,9 @@ ERROR(mutually_exclusive_attrs,none,
 ERROR(invalid_infix_on_func,none,
       "'infix' modifier is not required or allowed on func declarations", ())
 
+ERROR(syntax_error_in_effects_attribute,none,
+      "syntax error in effects attribute", ())
+
 ERROR(expected_in_attribute_list,none,
       "expected ']' or ',' in attribute list", ())
 

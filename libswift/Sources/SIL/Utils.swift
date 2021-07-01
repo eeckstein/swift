@@ -65,6 +65,47 @@ public struct ReverseList<NodeType: ListNode> :
 }
 
 //===----------------------------------------------------------------------===//
+//                            String parsing
+//===----------------------------------------------------------------------===//
+
+public struct StringParser {
+  private var s: Substring
+  
+  private mutating func consumeWhitespace() {
+    s = s.drop { $0.isWhitespace }
+  }
+
+  public init(_ string: String) {
+    s = Substring(string)
+  }
+  
+  mutating func isEmpty() -> Bool {
+    consumeWhitespace()
+    return s.isEmpty
+  }
+
+  public mutating func consume(_ str: String) -> Bool {
+    consumeWhitespace()
+    if !s.starts(with: str) { return false }
+    s = s.dropFirst(str.count)
+    return true
+  }
+
+  public mutating func consumeInt() -> Int? {
+    consumeWhitespace()
+    var intStr = ""
+    s = s.drop {
+      if $0.isNumber {
+        intStr.append($0)
+        return true
+      }
+      return false
+    }
+    return Int(intStr)
+  }
+}
+
+//===----------------------------------------------------------------------===//
 //                            Bridging Utilities
 //===----------------------------------------------------------------------===//
 
@@ -102,18 +143,18 @@ extension Array where Element == Value {
 public typealias SwiftObject = UnsafeMutablePointer<BridgedSwiftObject>
 
 extension UnsafeMutablePointer where Pointee == BridgedSwiftObject {
-  init<T: AnyObject>(_ object: T) {
+  public init<T: AnyObject>(_ object: T) {
     let ptr = Unmanaged.passUnretained(object).toOpaque()
     self = ptr.bindMemory(to: BridgedSwiftObject.self, capacity: 1)
   }
   
-  func getAs<T: AnyObject>(_ objectType: T.Type) -> T {
+  public func getAs<T: AnyObject>(_ objectType: T.Type) -> T {
     return Unmanaged<T>.fromOpaque(self).takeUnretainedValue()
   }
 }
 
 extension Optional where Wrapped == UnsafeMutablePointer<BridgedSwiftObject> {
-  func getAs<T: AnyObject>(_ objectType: T.Type) -> T? {
+  public func getAs<T: AnyObject>(_ objectType: T.Type) -> T? {
     if let pointer = self {
       return Unmanaged<T>.fromOpaque(pointer).takeUnretainedValue()
     }

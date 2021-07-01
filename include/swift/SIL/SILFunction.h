@@ -133,8 +133,9 @@ class SILFunction
   : public llvm::ilist_node<SILFunction>, public SILAllocated<SILFunction>,
     public SwiftObjectHeader {
     
-  static SwiftMetatype registeredMetatype;
-    
+private:
+  void *libswiftSpecificData[1];
+
 public:
   using BlockListType = llvm::iplist<SILBasicBlock>;
 
@@ -393,10 +394,6 @@ private:
   void setHasOwnership(bool newValue) { HasOwnership = newValue; }
 
 public:
-  static void registerBridgedMetatype(SwiftMetatype metatype) {
-    registeredMetatype = metatype;
-  }
-
   ~SILFunction();
 
   SILModule &getModule() const { return Module; }
@@ -895,6 +892,9 @@ public:
     EffectsKindAttr = unsigned(E);
   }
   
+  bool parseEffects(std::string &attrs);
+  void writeEffects(llvm::raw_ostream &OS) const;
+
   Purpose getSpecialPurpose() const { return specialPurpose; }
 
   /// Get this function's global_init attribute.
