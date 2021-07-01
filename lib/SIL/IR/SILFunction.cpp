@@ -14,7 +14,7 @@
 
 #include "swift/SIL/SILArgument.h"
 #include "swift/SIL/SILBasicBlock.h"
-#include "swift/SIL/SILBridging.h"
+#include "swift/SIL/SILBridgingUtils.h"
 #include "swift/SIL/SILFunction.h"
 #include "swift/SIL/SILInstruction.h"
 #include "swift/SIL/SILModule.h"
@@ -125,7 +125,11 @@ SILFunction::create(SILModule &M, SILLinkage linkage, StringRef name,
   return fn;
 }
 
-SwiftMetatype SILFunction::registeredMetatype;
+static SwiftMetatype functionMetatype;
+static FunctionRegisterFn initFunction = nullptr;
+static FunctionRegisterFn destroyFunction = nullptr;
+static FunctionWriteFn writeFunction = nullptr;
+static FunctionParseFn parseFunction = nullptr;
 
 SILFunction::SILFunction(SILModule &Module, SILLinkage Linkage, StringRef Name,
                          CanSILFunctionType LoweredType,
@@ -138,7 +142,7 @@ SILFunction::SILFunction(SILModule &Module, SILLinkage Linkage, StringRef Name,
                          const SILDebugScope *DebugScope,
                          IsDynamicallyReplaceable_t isDynamic,
                          IsExactSelfClass_t isExactSelfClass)
-    : SwiftObjectHeader(registeredMetatype),
+    : SwiftObjectHeader(functionMetatype),
       Module(Module), Availability(AvailabilityContext::alwaysAvailable())  {
   init(Linkage, Name, LoweredType, genericEnv, Loc, isBareSILFunction, isTrans,
        isSerialized, entryCount, isThunk, classSubclassScope, inlineStrategy,
@@ -147,6 +151,8 @@ SILFunction::SILFunction(SILModule &Module, SILLinkage Linkage, StringRef Name,
   // Set our BB list to have this function as its parent. This enables us to
   // splice efficiently basic blocks in between functions.
   BlockList.Parent = this;
+  if (initFunction)
+    initFunction({this}, &libswiftSpecificData, sizeof(libswiftSpecificData));
 }
 
 void SILFunction::init(SILLinkage Linkage, StringRef Name,
@@ -215,6 +221,9 @@ SILFunction::~SILFunction() {
          "Not all BasicBlockBitfields deleted at function destruction");
   if (currentBitfieldID > MaxBitfieldID)
     MaxBitfieldID = currentBitfieldID;
+
+  if (destroyFunction)
+    destroyFunction({this}, &libswiftSpecificData, sizeof(libswiftSpecificData));
 }
 
 void SILFunction::createProfiler(ASTNode Root, SILDeclRef forDecl,
@@ -769,5 +778,28 @@ void SILFunction::forEachSpecializeAttrTargetFunction(
     if (auto *f = attr->getTargetFunction()) {
       action(f);
     }
+  }
+}
+
+void Function_register(SwiftMetatype metatype,
+            FunctionRegisterFn initFn, FunctionRegisterFn destroyFn,
+            FunctionWriteFn writeFn, FunctionParseFn parseFn) {
+  functionMetatype = metatype;
+  initFunction = initFn;
+  destroyFunction = destroyFn;
+  writeFunction = writeFn;
+  parseFunction = parseFn;
+}
+
+bool SILFunction::parseEffects(std::string &attrs) {
+  if (parseFunction) {
+    return parseFunction({this}, getBridgedStringRef(attrs));
+  }
+  return true;
+}
+
+void SILFunction::writeEffects(llvm::raw_ostream &OS) const {
+  if (writeFunction) {
+    writeFunction({const_cast<SILFunction *>(this)}, {&OS});
   }
 }

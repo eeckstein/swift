@@ -146,6 +146,16 @@ typedef long SwiftInt;
 
 void registerBridgedClass(BridgedStringRef className, SwiftMetatype metatype);
 
+typedef void (* _Nonnull FunctionRegisterFn)(BridgedFunction f,
+                                        void * _Nonnull data,
+                                        SwiftInt size);
+typedef void (* _Nonnull FunctionWriteFn)(BridgedFunction, BridgedOStream);
+typedef SwiftInt (* _Nonnull FunctionParseFn)(BridgedFunction, BridgedStringRef);
+
+void Function_register(SwiftMetatype metatype,
+            FunctionRegisterFn initFn, FunctionRegisterFn destroyFn,
+            FunctionWriteFn writeFn, FunctionParseFn parseFn);
+
 void OStream_write(BridgedOStream os, BridgedStringRef str);
 
 void freeBridgedStringRef(BridgedStringRef str);
