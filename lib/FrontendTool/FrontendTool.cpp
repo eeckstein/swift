@@ -692,12 +692,6 @@ static bool writeTBDIfNeeded(CompilerInstance &Instance) {
     return false;
   }
 
-  if (Invocation.getSILOptions().CrossModuleOptimization) {
-    Instance.getDiags().diagnose(SourceLoc(),
-                                 diag::tbd_not_supported_with_cmo);
-    return false;
-  }
-
   const std::string &TBDPath = Invocation.getTBDPathForWholeModule();
 
   return writeTBD(Instance.getMainModule(), TBDPath, tbdOpts);
@@ -1369,11 +1363,6 @@ static bool validateTBDIfNeeded(const CompilerInvocation &Invocation,
   const bool canPerformTBDValidation = [&]() {
     // If the user has requested we skip validation, honor it.
     if (mode == FrontendOptions::TBDValidationMode::None) {
-      return false;
-    }
-
-    // Cross-module optimization does not support TBD.
-    if (Invocation.getSILOptions().CrossModuleOptimization) {
       return false;
     }
 
