@@ -1460,6 +1460,9 @@ static bool ParseSILArgs(SILOptions &Opts, ArgList &Args,
   Opts.DisableSILPerfOptimizations |= Args.hasArg(OPT_disable_sil_perf_optzns);
   Opts.EnablePerformanceAnnotations |=
       Args.hasArg(OPT_ExperimentalPerformanceAnnotations);
+  Opts.CrossModuleOptimization |= !FEOpts.EnableLibraryEvolution &&
+                                  !FEOpts.EnableTesting &&
+                                  !Args.hasArg(OPT_NoCrossModuleOptimization);
   Opts.VerifyAll |= Args.hasArg(OPT_sil_verify_all);
   Opts.VerifyNone |= Args.hasArg(OPT_sil_verify_none);
   Opts.DebugSerialization |= Args.hasArg(OPT_sil_debug_serialization);

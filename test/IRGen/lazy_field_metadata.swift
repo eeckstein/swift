@@ -5,8 +5,8 @@
 
 // Both should be emitted:
 
-// CHECK: @"$s19lazy_field_metadata011GenericWithD5FieldVMn" = hidden constant
-// CHECK: @"$s19lazy_field_metadata24GenericWithConcreteFieldVMn" = hidden constant
+// CHECK: @"$s19lazy_field_metadata011GenericWithD5FieldVMn" = {{.*}}constant
+// CHECK: @"$s19lazy_field_metadata24GenericWithConcreteFieldVMn" = {{.*}}constant
 
 struct GenericWithConcreteField<T> {
   let z = 123

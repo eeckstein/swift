@@ -21,8 +21,8 @@
 
 // CHECK-LABEL: sil [serialized] [canonical] [ossa] @$ss1XVABycfC : $@convention(method) (@thin X.Type) -> X
 // CHECK: bb0
-// CHECK-NEXT: struct $X ()
-// CHECK-NEXT: return
+// CHECK:   struct $X ()
+// CHECK:   return
 
 // CHECK-LABEL: sil{{.*}} @unknown : $@convention(thin) () -> ()
 
@@ -47,8 +47,8 @@
 
 // SIB-CHECK-LABEL: sil [serialized] [canonical] [ossa] @$ss1XVABycfC : $@convention(method) (@thin X.Type) -> X
 // SIB-CHECK: bb0
-// SIB-CHECK-NEXT: struct $X ()
-// SIB-CHECK-NEXT: return
+// SIB-CHECK:   struct $X ()
+// SIB-CHECK:   return
 
 // SIB-CHECK-LABEL: sil [canonical] @unknown : $@convention(thin) () -> ()
 

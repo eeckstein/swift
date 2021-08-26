@@ -878,6 +878,7 @@ bool DeclAttribute::printImpl(ASTPrinter &Printer, const PrintOptions &Options,
     // Handle all of the SIMPLE_DECL_ATTRs.
 #define SIMPLE_DECL_ATTR(X, CLASS, ...) case DAK_##CLASS:
 #include "swift/AST/Attr.def"
+  case DAK_UsableFromInline:
   case DAK_Inline:
   case DAK_AccessControl:
   case DAK_ReferenceOwnership:

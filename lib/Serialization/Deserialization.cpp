@@ -4744,6 +4744,14 @@ llvm::Error DeclDeserializer::deserializeDeclCommon() {
         break;
       }
 
+      case decls_block::UsableFromInline_DECL_ATTR: {
+        bool isImplicit;
+        serialization::decls_block::UsableFromInlineDeclAttrLayout::readRecord(
+            scratch, isImplicit);
+        Attr = new (ctx) UsableFromInlineAttr(isImplicit);
+        break;
+      }
+
 #define SIMPLE_DECL_ATTR(NAME, CLASS, ...) \
       case decls_block::CLASS##_DECL_ATTR: { \
         bool isImplicit; \

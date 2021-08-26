@@ -1,4 +1,4 @@
-// RUN: %target-swift-frontend %s -O -I %t -emit-ir -g -o - | %FileCheck %s
+// RUN: %target-swift-frontend %s -O -no-cmo -I %t -emit-ir -g -o - | %FileCheck %s
 
 func use<T>(_ t: T) {}
 
