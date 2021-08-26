@@ -78,7 +78,7 @@ ParseSILModuleRequest::evaluate(Evaluator &evaluator,
   SILInstruction::resetInstructionCounts();
 
   auto silMod = SILModule::createEmptyModule(desc.context, desc.conv,
-                                             desc.opts);
+                                             desc.opts, desc.TBDGenOpts);
   SILParserState parserState(*silMod.get());
   Parser parser(*bufferID, *SF, &parserState);
   PrettyStackTraceParser StackTrace(parser);
@@ -95,7 +95,8 @@ ParseSILModuleRequest::evaluate(Evaluator &evaluator,
     // back and add a diagnostic after identifying where the SIL parser failed.
     assert(SF->getASTContext().hadError() &&
            "Failed to parse SIL but did not emit any errors!");
-    return SILModule::createEmptyModule(desc.context, desc.conv, desc.opts);
+    return SILModule::createEmptyModule(desc.context, desc.conv, desc.opts,
+                                        desc.TBDGenOpts);
   }
   return silMod;
 }

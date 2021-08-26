@@ -597,10 +597,11 @@ int main(int argc, char **argv) {
 
   std::unique_ptr<SILModule> SILMod;
   if (PerformWMO) {
-    SILMod = performASTLowering(mod, CI.getSILTypes(), CI.getSILOptions());
+    SILMod = performASTLowering(mod, CI.getSILTypes(), CI.getSILOptions(),
+                                CI.getInvocation().getTBDGenOptions());
   } else {
     SILMod = performASTLowering(*mod->getFiles()[0], CI.getSILTypes(),
-                                CI.getSILOptions());
+                    CI.getSILOptions(), CI.getInvocation().getTBDGenOptions());
   }
   SILMod->setSerializeSILAction([]{});
 

@@ -707,7 +707,9 @@ static bool performCompileStepsPostSILGen(CompilerInstance &Instance,
 static bool performCompileStepsPostSema(CompilerInstance &Instance,
                                         int &ReturnValue,
                                         FrontendObserver *observer) {
-  const auto &Invocation = Instance.getInvocation();
+  CompilerInvocation &Invocation = Instance.getInvocation();
+  TBDGenOptions &TBDGenOpts = Invocation.getTBDGenOptions();
+
   const FrontendOptions &opts = Invocation.getFrontendOptions();
 
   auto getSILOptions = [&](const PrimarySpecificPaths &PSPs) -> SILOptions {
@@ -729,7 +731,7 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
     const PrimarySpecificPaths PSPs =
         Instance.getPrimarySpecificPathsForWholeModuleOptimizationMode();
     SILOptions SILOpts = getSILOptions(PSPs);
-    auto SM = performASTLowering(mod, Instance.getSILTypes(), SILOpts);
+    auto SM = performASTLowering(mod, Instance.getSILTypes(), SILOpts, TBDGenOpts);
     return performCompileStepsPostSILGen(Instance, std::move(SM), mod, PSPs,
                                          ReturnValue, observer);
   }
@@ -743,7 +745,7 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
           Instance.getPrimarySpecificPathsForSourceFile(*PrimaryFile);
       SILOptions SILOpts = getSILOptions(PSPs);
       auto SM = performASTLowering(*PrimaryFile, Instance.getSILTypes(),
-                                   SILOpts);
+                                   SILOpts), TBDGenOpts;
       result |= performCompileStepsPostSILGen(Instance, std::move(SM),
                                               PrimaryFile, PSPs, ReturnValue,
                                               observer);
@@ -761,7 +763,8 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
         const PrimarySpecificPaths &PSPs =
             Instance.getPrimarySpecificPathsForPrimary(SASTF->getFilename());
         SILOptions SILOpts = getSILOptions(PSPs);
-        auto SM = performASTLowering(*SASTF, Instance.getSILTypes(), SILOpts);
+        auto SM = performASTLowering(*SASTF, Instance.getSILTypes(), SILOpts,
+                                     TBDGenOpts);
         result |= performCompileStepsPostSILGen(Instance, std::move(SM), mod,
                                                 PSPs, ReturnValue, observer);
       }
@@ -1315,7 +1318,7 @@ static bool serializeModuleSummary(SILModule *SM,
 }
 
 static GeneratedModule
-generateIR(const IRGenOptions &IRGenOpts, const TBDGenOptions &TBDOpts,
+generateIR(const IRGenOptions &IRGenOpts, TBDGenOptions &TBDOpts,
            std::unique_ptr<SILModule> SM,
            const PrimarySpecificPaths &PSPs,
            StringRef OutputFilename, ModuleOrSourceFile MSF,
@@ -1480,7 +1483,7 @@ static bool performCompileStepsPostSILGen(CompilerInstance &Instance,
                                           const PrimarySpecificPaths &PSPs,
                                           int &ReturnValue,
                                           FrontendObserver *observer) {
-  const auto &Invocation = Instance.getInvocation();
+  CompilerInvocation &Invocation = Instance.getInvocation();
   const auto &opts = Invocation.getFrontendOptions();
   FrontendOptions::ActionType Action = opts.RequestedAction;
   const ASTContext &Context = Instance.getASTContext();

@@ -1995,6 +1995,11 @@ namespace decls_block {
   >;
 #include "swift/AST/Attr.def"
 
+  using UsableFromInlineDeclAttrLayout = BCRecordLayout<
+    UsableFromInline_DECL_ATTR,
+    BCFixed<1> /* implicit flag */
+  >;
+
   using DynamicReplacementDeclAttrLayout = BCRecordLayout<
     DynamicReplacement_DECL_ATTR,
     BCFixed<1>, // implicit flag

@@ -179,12 +179,12 @@ namespace swift {
   /// SIL of all files in the module is present in the SILModule.
   std::unique_ptr<SILModule>
   performASTLowering(ModuleDecl *M, Lowering::TypeConverter &TC,
-                     const SILOptions &options);
+                     const SILOptions &options, TBDGenOptions &TBDGenOpts);
 
   /// Turn a source file into SIL IR.
   std::unique_ptr<SILModule>
   performASTLowering(FileUnit &SF, Lowering::TypeConverter &TC,
-                     const SILOptions &options);
+                     const SILOptions &options, TBDGenOptions &TBDGenOpts);
 
   using ModuleOrSourceFile = PointerUnion<ModuleDecl *, SourceFile *>;
 
@@ -217,7 +217,7 @@ namespace swift {
   /// To compile and output the generated code, call \c performLLVM.
   GeneratedModule
   performIRGeneration(ModuleDecl *M, const IRGenOptions &Opts,
-                      const TBDGenOptions &TBDOpts,
+                      TBDGenOptions &TBDOpts,
                       std::unique_ptr<SILModule> SILMod,
                       StringRef ModuleName, const PrimarySpecificPaths &PSPs,
                       ArrayRef<std::string> parallelOutputFilenames,
@@ -227,7 +227,7 @@ namespace swift {
   /// To compile and output the generated code, call \c performLLVM.
   GeneratedModule
   performIRGeneration(FileUnit *file, const IRGenOptions &Opts, 
-                      const TBDGenOptions &TBDOpts,
+                      TBDGenOptions &TBDOpts,
                       std::unique_ptr<SILModule> SILMod,
                       StringRef ModuleName, const PrimarySpecificPaths &PSPs,
                       StringRef PrivateDiscriminator,

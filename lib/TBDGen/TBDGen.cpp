@@ -772,6 +772,11 @@ void TBDGenVisitor::visitAccessorDecl(AccessorDecl *AD) {
 }
 
 void TBDGenVisitor::visitAbstractStorageDecl(AbstractStorageDecl *ASD) {
+  if (auto *ubiAttr = ASD->getAttrs().getAttribute<UsableFromInlineAttr>()) {
+    if (ubiAttr->addedByCMO)
+      return;
+  }
+
   // Add the property descriptor if the decl needs it.
   if (ASD->exportsPropertyDescriptor()) {
     addSymbol(LinkEntity::forPropertyDescriptor(ASD));
@@ -1196,6 +1201,10 @@ void TBDGenVisitor::visitFile(FileUnit *file) {
 void TBDGenVisitor::visit(const TBDGenDescriptor &desc) {
   // Add any autolinking force_load symbols.
   addFirstFileSymbols();
+
+  for (const std::string &sym : Opts.publicCMOSymbols) {
+    addSymbol(sym, SymbolSource::forUnknown());
+  }
   
   if (auto *singleFile = desc.getSingleFile()) {
     assert(SwiftModule == singleFile->getParentModule() &&

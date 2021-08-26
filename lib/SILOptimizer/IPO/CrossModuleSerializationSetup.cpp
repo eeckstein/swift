@@ -24,6 +24,7 @@
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILInliner.h"
+#include "swift/TBDGen/TBDGen.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
@@ -150,7 +151,8 @@ static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M) {
     // TODO: find a way to do this without modifying the AST. The AST should be
     // immutable at this point.
     auto &ctx = decl->getASTContext();
-    auto *attr = new (ctx) UsableFromInlineAttr(/*implicit=*/true);
+    auto *attr = new (ctx) UsableFromInlineAttr(/*implicit=*/true,
+                                                /*addedByCMO*/true);
     decl->getAttrs().add(attr);
   }
   if (auto *nominalCtx = dyn_cast<NominalTypeDecl>(decl->getDeclContext())) {
@@ -237,8 +239,11 @@ static bool shouldSerialize(SILFunction *F) {
 }
 
 static void makeFunctionUsableFromInline(SILFunction *F) {
-  if (!isAvailableExternally(F->getLinkage()))
+  if (!isAvailableExternally(F->getLinkage()) &&
+    F->getLinkage() != SILLinkage::Public) {
     F->setLinkage(SILLinkage::Public);
+    F->getModule().getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
+  }
 }
 
 /// Prepare \p inst for serialization and in case it's a function_ref, put the
@@ -253,11 +258,14 @@ prepareInstructionForSerialization(SILInstruction *inst) {
     return;
   }
   if (auto *GAI = dyn_cast<GlobalAddrInst>(inst)) {
-    SILGlobalVariable *gl = GAI->getReferencedGlobal();
-    if (canSerialize(gl)) {
-      setUpForSerialization(gl);
+    SILGlobalVariable *global = GAI->getReferencedGlobal();
+    if (canSerialize(global)) {
+      setUpForSerialization(global);
     }
-    gl->setLinkage(SILLinkage::Public);
+    if (global->getLinkage() != SILLinkage::Public) {
+      global->setLinkage(SILLinkage::Public);
+      M.getTBDGenOptions().publicCMOSymbols.push_back(global->getName().str());
+    }
     return;
   }
   if (auto *MI = dyn_cast<MethodInst>(inst)) {
@@ -344,7 +352,7 @@ bool CrossModuleSerializationSetup::canSerialize(SILInstruction *inst,
           if (!canUseFromInline(func, lookIntoThunks))
             canUse = false;
         },
-        [&](SILDeclRef method) {
+        [&](SILDeclRef method) {  
           if (method.isForeign)
             canUse = false;
         });
@@ -442,16 +450,9 @@ void CrossModuleSerializationSetup::setUpForSerialization(SILFunction *F) {
   }
   F->setSerialized(IsSerialized);
 
-  if (F->getLoweredFunctionType()->isPolymorphic() ||
-      F->getLinkage() != SILLinkage::Public) {
-    // As a code size optimization, make serialized functions
-    // @alwaysEmitIntoClient.
-    // Also, for shared thunks it's required to make them @alwaysEmitIntoClient.
-    // SILLinkage::Public would not work for shared functions, because it could
-    // result in duplicate-symbol linker errors.
-    F->setLinkage(SILLinkage::PublicNonABI);
-  } else {
+  if (F->getLinkage() != SILLinkage::Public) {
     F->setLinkage(SILLinkage::Public);
+    M.getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
   }
 }
 

@@ -29,6 +29,7 @@ class LangOptions;
 class ModuleDecl;
 class SILModule;
 class SILOptions;
+struct TBDGenOptions;
 
 namespace Lowering {
   class TypeConverter;
@@ -47,6 +48,7 @@ struct ASTLoweringDescriptor {
   llvm::PointerUnion<FileUnit *, ModuleDecl *> context;
   Lowering::TypeConverter &conv;
   const SILOptions &opts;
+  TBDGenOptions &TBDGenOpts;
 
   /// A specific set of SILDeclRefs to emit. If set, only these refs will be
   /// emitted. Otherwise the entire \c context will be emitted.
@@ -74,15 +76,17 @@ struct ASTLoweringDescriptor {
 public:
   static ASTLoweringDescriptor
   forFile(FileUnit &sf, Lowering::TypeConverter &conv, const SILOptions &opts,
+          TBDGenOptions &TBDGenOpts,
           Optional<SILRefsToEmit> refsToEmit = None) {
-    return ASTLoweringDescriptor{&sf, conv, opts, refsToEmit};
+    return ASTLoweringDescriptor{&sf, conv, opts, TBDGenOpts, refsToEmit};
   }
 
   static ASTLoweringDescriptor
   forWholeModule(ModuleDecl *mod, Lowering::TypeConverter &conv,
                  const SILOptions &opts,
+                  TBDGenOptions &TBDGenOpts,
                  Optional<SILRefsToEmit> refsToEmit = None) {
-    return ASTLoweringDescriptor{mod, conv, opts, refsToEmit};
+    return ASTLoweringDescriptor{mod, conv, opts, TBDGenOpts, refsToEmit};
   }
 
   /// Retrieves the files to generate SIL for. If the descriptor is configured

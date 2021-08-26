@@ -29,6 +29,7 @@
 #include "swift/AST/TypeRepr.h"
 #include "swift/AST/Types.h"
 #include "swift/Basic/Mangler.h"
+#include "swift/TBDGen/TBDGen.h"
 #include "swift/ClangImporter/ClangImporter.h"
 #include "swift/Demangling/Demangler.h"
 #include "llvm/ADT/StringSwitch.h"
@@ -61,6 +62,7 @@ namespace {
 struct IRGenContext {
   const IRGenOptions IROpts;
   SILOptions SILOpts;
+  TBDGenOptions TBDGenOpts;
   Lowering::TypeConverter TC;
   std::unique_ptr<SILModule> SILMod;
   irgen::IRGenerator IRGen;
@@ -70,7 +72,7 @@ private:
   IRGenContext(ASTContext &ctx, ModuleDecl *module)
     : IROpts(createIRGenOptions()),
       TC(*module),
-      SILMod(SILModule::createEmptyModule(module, TC, SILOpts)),
+      SILMod(SILModule::createEmptyModule(module, TC, SILOpts, TBDGenOpts)),
       IRGen(IROpts, *SILMod),
       IGM(IRGen, IRGen.createTargetMachine()) {}
 

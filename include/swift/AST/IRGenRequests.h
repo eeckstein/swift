@@ -136,7 +136,7 @@ struct IRGenDescriptor {
   SymsToEmit SymbolsToEmit;
 
   const IRGenOptions &Opts;
-  const TBDGenOptions &TBDOpts;
+  TBDGenOptions &TBDOpts;
   const SILOptions &SILOpts;
 
   Lowering::TypeConverter &Conv;
@@ -169,7 +169,7 @@ struct IRGenDescriptor {
 public:
   static IRGenDescriptor
   forFile(FileUnit *file, const IRGenOptions &Opts,
-          const TBDGenOptions &TBDOpts, const SILOptions &SILOpts,
+          TBDGenOptions &TBDOpts, const SILOptions &SILOpts,
           Lowering::TypeConverter &Conv, std::unique_ptr<SILModule> &&SILMod,
           StringRef ModuleName, const PrimarySpecificPaths &PSPs,
           StringRef PrivateDiscriminator, SymsToEmit symsToEmit = None,
@@ -190,7 +190,7 @@ public:
 
   static IRGenDescriptor
   forWholeModule(ModuleDecl *M, const IRGenOptions &Opts,
-                 const TBDGenOptions &TBDOpts, const SILOptions &SILOpts,
+                 TBDGenOptions &TBDOpts, const SILOptions &SILOpts,
                  Lowering::TypeConverter &Conv,
                  std::unique_ptr<SILModule> &&SILMod, StringRef ModuleName,
                  const PrimarySpecificPaths &PSPs, SymsToEmit symsToEmit = None,

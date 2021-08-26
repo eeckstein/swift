@@ -93,9 +93,10 @@ class SILModule::SerializationCallback final
 };
 
 SILModule::SILModule(llvm::PointerUnion<FileUnit *, ModuleDecl *> context,
-                     Lowering::TypeConverter &TC, const SILOptions &Options)
+                     Lowering::TypeConverter &TC, const SILOptions &Options,
+                     TBDGenOptions &TBDGenOpts)
     : Stage(SILStage::Raw), indexTrieRoot(new IndexTrieNode()),
-      Options(Options), serialized(false),
+      Options(Options), TBDGenOpts(TBDGenOpts), serialized(false),
       regDeserializationNotificationHandlerForNonTransparentFuncOME(false),
       regDeserializationNotificationHandlerForAllFuncOME(false),
       prespecializedFunctionDeclsImported(false), SerializeSILAction(),
@@ -205,8 +206,10 @@ void SILModule::checkForLeaksAfterDestruction() {
 
 std::unique_ptr<SILModule> SILModule::createEmptyModule(
     llvm::PointerUnion<FileUnit *, ModuleDecl *> context,
-    Lowering::TypeConverter &TC, const SILOptions &Options) {
-  return std::unique_ptr<SILModule>(new SILModule(context, TC, Options));
+    Lowering::TypeConverter &TC, const SILOptions &Options,
+    TBDGenOptions &TBDGenOpts) {
+  return std::unique_ptr<SILModule>(new SILModule(context, TC, Options,
+                                                  TBDGenOpts));
 }
 
 ASTContext &SILModule::getASTContext() const {

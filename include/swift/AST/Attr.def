@@ -390,7 +390,7 @@ DECL_ATTR(_cdecl, CDecl,
   LongAttribute | UserInaccessible |
   ABIStableToAdd | ABIStableToRemove | APIStableToAdd | APIStableToRemove,
   63)
-SIMPLE_DECL_ATTR(usableFromInline, UsableFromInline,
+DECL_ATTR(usableFromInline, UsableFromInline,
   OnAbstractFunction | OnVar | OnSubscript | OnNominalType | OnTypeAlias |
   LongAttribute |
   ABIStableToAdd | ABIStableToRemove | APIStableToAdd | APIStableToRemove,

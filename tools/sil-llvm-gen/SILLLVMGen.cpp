@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
   auto *mod = CI.getMainModule();
   assert(mod->getFiles().size() == 1);
 
-  const auto &TBDOpts = Invocation.getTBDGenOptions();
+  auto &TBDOpts = Invocation.getTBDGenOptions();
   const auto &SILOpts = Invocation.getSILOptions();
   auto &SILTypes = CI.getSILTypes();
   auto moduleName = CI.getMainModule()->getName().str();

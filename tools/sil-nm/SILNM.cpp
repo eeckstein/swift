@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     return 1;
 
   auto SILMod = performASTLowering(CI.getMainModule(), CI.getSILTypes(),
-                                   CI.getSILOptions());
+                    CI.getSILOptions(), CI.getInvocation().getTBDGenOptions());
   nmModule(SILMod.get());
 
   return CI.getASTContext().hadError();

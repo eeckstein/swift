@@ -189,8 +189,11 @@ int modulewrap_main(ArrayRef<const char *> Args, const char *Argv0,
   
   ASTCtx.addModuleLoader(ClangImporter::create(ASTCtx, ""), true);
   ModuleDecl *M = ModuleDecl::create(ASTCtx.getIdentifier("swiftmodule"), ASTCtx);
+  SILOptions SILOpts;
+  TBDGenOptions TBDGenOpts;
   std::unique_ptr<Lowering::TypeConverter> TC(new Lowering::TypeConverter(*M));
-  std::unique_ptr<SILModule> SM = SILModule::createEmptyModule(M, *TC, SILOpts);
+  std::unique_ptr<SILModule> SM =
+    SILModule::createEmptyModule(M, *TC, SILOpts, TBDGenOpts);
   createSwiftModuleObjectFile(*SM, (*ErrOrBuf)->getBuffer(),
                               Invocation.getOutputFilename());
   return 0;

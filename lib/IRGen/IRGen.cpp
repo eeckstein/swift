@@ -1059,7 +1059,7 @@ GeneratedModule IRGenRequest::evaluate(Evaluator &evaluator,
   auto SILMod = std::unique_ptr<SILModule>(desc.SILMod);
   if (!SILMod) {
     auto loweringDesc = ASTLoweringDescriptor{
-        desc.Ctx, desc.Conv, desc.SILOpts,
+        desc.Ctx, desc.Conv, desc.SILOpts, desc.TBDOpts,
         symsToEmit.map([](const auto &x) { return x.silRefsToEmit; })};
     SILMod = llvm::cantFail(Ctx.evaluator(LoweredSILRequest{loweringDesc}));
 
@@ -1469,7 +1469,7 @@ static void performParallelIRGeneration(IRGenDescriptor desc) {
 
 GeneratedModule swift::performIRGeneration(
     swift::ModuleDecl *M, const IRGenOptions &Opts,
-    const TBDGenOptions &TBDOpts, std::unique_ptr<SILModule> SILMod,
+    TBDGenOptions &TBDOpts, std::unique_ptr<SILModule> SILMod,
     StringRef ModuleName, const PrimarySpecificPaths &PSPs,
     ArrayRef<std::string> parallelOutputFilenames,
     llvm::GlobalVariable **outModuleHash) {
@@ -1493,7 +1493,7 @@ GeneratedModule swift::performIRGeneration(
 
 GeneratedModule swift::
 performIRGeneration(FileUnit *file, const IRGenOptions &Opts,
-                    const TBDGenOptions &TBDOpts,
+                    TBDGenOptions &TBDOpts,
                     std::unique_ptr<SILModule> SILMod,
                     StringRef ModuleName, const PrimarySpecificPaths &PSPs,
                     StringRef PrivateDiscriminator,

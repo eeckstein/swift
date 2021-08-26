@@ -519,6 +519,24 @@ public:
   }
 };
 
+/// Defines the @usableFromInline attribute.
+class UsableFromInlineAttr : public DeclAttribute {
+public:
+  UsableFromInlineAttr(SourceLoc AtLoc, SourceRange Range, bool Implicit,
+                       bool addedByCMO = false)
+    : DeclAttribute(DAK_UsableFromInline, AtLoc, Range, Implicit),
+      addedByCMO(addedByCMO) {}
+
+  UsableFromInlineAttr(bool Implicit, bool addedByCMO = false)
+    : UsableFromInlineAttr(SourceLoc(), SourceRange(), Implicit, addedByCMO) {}
+
+  bool addedByCMO;
+
+  static bool classof(const DeclAttribute *DA) {
+    return DA->getKind() == DAK_UsableFromInline;
+  }
+};
+
 /// Defines the @_semantics attribute.
 class SemanticsAttr : public DeclAttribute {
 public:

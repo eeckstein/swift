@@ -1215,6 +1215,8 @@ StringRef DeclAttribute::getAttrName() const {
   case DAK_##CLASS: \
     return #NAME;
 #include "swift/AST/Attr.def"
+  case DAK_UsableFromInline:
+    return "usableFromInline";
   case DAK_SILGenName:
     return "_silgen_name";
   case DAK_Alignment:

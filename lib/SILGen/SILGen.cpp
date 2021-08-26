@@ -2157,7 +2157,7 @@ ASTLoweringRequest::evaluate(Evaluator &evaluator,
   SILInstruction::resetInstructionCounts();
 
   auto silMod = SILModule::createEmptyModule(desc.context, desc.conv,
-                                             desc.opts);
+                                             desc.opts, desc.TBDGenOpts);
 
   // If all function bodies are being skipped there's no reason to do any
   // SIL generation.
@@ -2199,15 +2199,15 @@ ASTLoweringRequest::evaluate(Evaluator &evaluator,
 
 std::unique_ptr<SILModule>
 swift::performASTLowering(ModuleDecl *mod, Lowering::TypeConverter &tc,
-                          const SILOptions &options) {
-  auto desc = ASTLoweringDescriptor::forWholeModule(mod, tc, options);
+                          const SILOptions &options, TBDGenOptions &TBDGenOpts) {
+  auto desc = ASTLoweringDescriptor::forWholeModule(mod, tc, options, TBDGenOpts);
   return llvm::cantFail(
       mod->getASTContext().evaluator(ASTLoweringRequest{desc}));
 }
 
 std::unique_ptr<SILModule>
 swift::performASTLowering(FileUnit &sf, Lowering::TypeConverter &tc,
-                          const SILOptions &options) {
-  auto desc = ASTLoweringDescriptor::forFile(sf, tc, options);
+                          const SILOptions &options, TBDGenOptions &TBDGenOpts) {
+  auto desc = ASTLoweringDescriptor::forFile(sf, tc, options, TBDGenOpts);
   return llvm::cantFail(sf.getASTContext().evaluator(ASTLoweringRequest{desc}));
 }

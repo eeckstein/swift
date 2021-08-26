@@ -111,6 +111,7 @@ class SerializedSILLoader;
 class SILFunctionBuilder;
 class SILOptFunctionBuilder;
 class SILRemarkStreamer;
+struct TBDGenOptions;
 
 namespace Lowering {
 class SILGenModule;
@@ -340,6 +341,7 @@ private:
 
   /// The options passed into this SILModule.
   const SILOptions &Options;
+  TBDGenOptions &TBDGenOpts;
 
   /// Set if the SILModule was serialized already. It is used
   /// to ensure that the module is serialized only once.
@@ -360,7 +362,8 @@ private:
   ActionCallback SerializeSILAction;
 
   SILModule(llvm::PointerUnion<FileUnit *, ModuleDecl *> context,
-            Lowering::TypeConverter &TC, const SILOptions &Options);
+            Lowering::TypeConverter &TC, const SILOptions &Options,
+            TBDGenOptions &TBDGenOpts);
 
   SILModule(const SILModule&) = delete;
   void operator=(const SILModule&) = delete;
@@ -472,7 +475,8 @@ public:
   /// single-file mode, and a ModuleDecl in whole-module mode.
   static std::unique_ptr<SILModule>
   createEmptyModule(llvm::PointerUnion<FileUnit *, ModuleDecl *> context,
-                    Lowering::TypeConverter &TC, const SILOptions &Options);
+                    Lowering::TypeConverter &TC, const SILOptions &Options,
+                    TBDGenOptions &TBDGenOpts);
 
   /// Get the Swift module associated with this SIL module.
   ModuleDecl *getSwiftModule() const { return TheSwiftModule; }
@@ -505,6 +509,7 @@ public:
   bool isOptimizedOnoneSupportModule() const;
 
   const SILOptions &getOptions() const { return Options; }
+  TBDGenOptions &getTBDGenOptions() { return TBDGenOpts; }
 
   using iterator = FunctionListType::iterator;
   using const_iterator = FunctionListType::const_iterator;

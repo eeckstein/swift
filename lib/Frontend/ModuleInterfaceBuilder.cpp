@@ -268,9 +268,10 @@ bool ModuleInterfaceBuilder::buildSwiftModuleInternal(
       return std::error_code();
 
     SILOptions &SILOpts = subInvocation.getSILOptions();
+    TBDGenOptions &TBDGenOpts = subInvocation.getTBDGenOptions();
     auto Mod = SubInstance.getMainModule();
     auto &TC = SubInstance.getSILTypes();
-    auto SILMod = performASTLowering(Mod, TC, SILOpts);
+    auto SILMod = performASTLowering(Mod, TC, SILOpts, TBDGenOpts);
     if (!SILMod) {
       LLVM_DEBUG(llvm::dbgs() << "SILGen did not produce a module\n");
       return std::make_error_code(std::errc::not_supported);

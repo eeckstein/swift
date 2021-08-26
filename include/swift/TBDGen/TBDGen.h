@@ -71,6 +71,8 @@ struct TBDGenOptions {
   /// are embeded in the current dylib.
   std::vector<std::string> embedSymbolsFromModules;
 
+  std::vector<std::string> publicCMOSymbols;
+
   friend bool operator==(const TBDGenOptions &lhs, const TBDGenOptions &rhs) {
     return lhs.HasMultipleIGMs == rhs.HasMultipleIGMs &&
            lhs.IsInstallAPI == rhs.IsInstallAPI &&

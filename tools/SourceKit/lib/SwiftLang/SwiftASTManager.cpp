@@ -1138,7 +1138,8 @@ ASTUnitRef ASTBuildOperation::buildASTUnit(std::string &Error) {
     if (auto SF = CompIns.getPrimarySourceFile()) {
       SILOptions SILOpts = Invocation.getSILOptions();
       auto &TC = CompIns.getSILTypes();
-      std::unique_ptr<SILModule> SILMod = performASTLowering(*SF, TC, SILOpts);
+      std::unique_ptr<SILModule> SILMod = performASTLowering(*SF, TC, SILOpts,
+          Invocation.getTBDGenOptions());
       runSILDiagnosticPasses(*SILMod);
     }
   }
