@@ -1,5 +1,4 @@
 // RUN: %target-swift-frontend -O -emit-sil %s | %FileCheck %s
-// RUN: %target-swift-frontend -O -emit-sil %s | %FileCheck %s
 
 // REQUIRES: objc_interop
 
@@ -935,7 +934,7 @@ class MyThing: Hashable {
     }
 }
 
-// CHECK-LABEL: sil hidden [noinline] @$s21bridged_casts_folding26doSomethingWithAnyHashableyys0gH0VF : $@convention(thin) (@in_guaranteed AnyHashable) -> () {
+// CHECK-LABEL: sil [noinline] @$s21bridged_casts_folding26doSomethingWithAnyHashableyys0gH0VF : $@convention(thin) (@in_guaranteed AnyHashable) -> () {
 // CHECK: %2 = alloc_stack $AnyHashable
 // CHECK: copy_addr %0 to [initialization] %2 : $*AnyHashable
 // CHECK: checked_cast_addr_br take_always AnyHashable in %2 : $*AnyHashable to MyThing

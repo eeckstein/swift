@@ -405,8 +405,8 @@ PASS(SimplifyUnreachableContainingBlocks, "simplify-unreachable-containing-block
      "Utility pass. Removes all non-term insts from blocks with unreachable terms")
 PASS(SerializeSILPass, "serialize-sil",
      "Utility pass. Serializes the current SILModule")
-PASS(CMOSerializeSILPass, "cmo-serialize-sil",
-     "Utility pass. Serializes the current SILModule for cross-module-optimization")
+PASS(CMOFakeSerializePass, "cmo-fake-serialize",
+     "Utility pass.")
 PASS(YieldOnceCheck, "yield-once-check",
     "Check correct usage of yields in yield-once coroutines")
 PASS(OSLogOptimization, "os-log-optimization", "Optimize os log calls")

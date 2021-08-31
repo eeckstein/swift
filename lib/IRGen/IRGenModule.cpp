@@ -1138,6 +1138,11 @@ bool IRGenerator::canEmitWitnessTableLazily(SILWitnessTable *wt) {
       return PrimaryIGM->getSILModule().isWholeModule();
 
     default:
+      if (auto *ubiAttr = ConformingTy->getAttrs().getAttribute<UsableFromInlineAttr>()) {
+        if (ubiAttr->addedByCMO)
+          return true;
+      }
+
       return false;
   }
   llvm_unreachable("switch does not handle all cases");

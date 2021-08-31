@@ -155,6 +155,7 @@ static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M) {
                                                 /*addedByCMO*/true);
     decl->getAttrs().add(attr);
   }
+  
   if (auto *nominalCtx = dyn_cast<NominalTypeDecl>(decl->getDeclContext())) {
     makeDeclUsableFromInline(nominalCtx, M);
   } else if (auto *extCtx = dyn_cast<ExtensionDecl>(decl->getDeclContext())) {
@@ -262,6 +263,15 @@ prepareInstructionForSerialization(SILInstruction *inst) {
     if (canSerialize(global)) {
       setUpForSerialization(global);
     }
+    if (global->getLinkage() != SILLinkage::Public) {
+      global->setLinkage(SILLinkage::Public);
+      M.getTBDGenOptions().publicCMOSymbols.push_back(global->getName().str());
+    }
+    return;
+  }
+  if (auto *GVI = dyn_cast<GlobalValueInst>(inst)) {
+    SILGlobalVariable *global = GVI->getReferencedGlobal();
+    global->setSerialized(IsSerialized);
     if (global->getLinkage() != SILLinkage::Public) {
       global->setLinkage(SILLinkage::Public);
       M.getTBDGenOptions().publicCMOSymbols.push_back(global->getName().str());
@@ -387,9 +397,8 @@ bool CrossModuleSerializationSetup::canSerialize(SILType type) {
       
         // Exclude types which are defined in an @_implementationOnly imported
         // module. Such modules are not transitively available.
-        if (!mod->canBeUsedForCrossModuleOptimization(subNT)) {
+        if (!mod->canBeUsedForCrossModuleOptimization(subNT))
           return true;
-        }
       }
       return false;
     });
@@ -420,15 +429,15 @@ bool CrossModuleSerializationSetup::canUseFromInline(SILFunction *func,
       return true;
     }
     return false;
+  case SILLinkage::HiddenExternal:
+    return false;
   case SILLinkage::Public:
   case SILLinkage::Hidden:
   case SILLinkage::Private:
   case SILLinkage::PublicExternal:
   case SILLinkage::SharedExternal:
-  case SILLinkage::HiddenExternal:
-    break;
+    return true;
   }
-  return true;
 }
 
 /// Setup the function \p param F for serialization and put callees onto the
@@ -494,12 +503,9 @@ class CrossModuleSerializationSetupPass: public SILModuleTransform {
   void run() override {
 
     auto &M = *getModule();
-    if (M.getSwiftModule()->isResilient())
-      return;
-    if (!M.isWholeModule())
-      return;
-    if (!M.getOptions().CrossModuleOptimization)
-      return;
+    assert(M.getOptions().CrossModuleOptimization);
+    assert(!M.getSwiftModule()->isResilient());
+    assert(M.isWholeModule());
 
     CrossModuleSerializationSetup CMSS(M);
     CMSS.scanModule();

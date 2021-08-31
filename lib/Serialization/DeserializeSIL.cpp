@@ -646,6 +646,11 @@ SILDeserializer::readSILFunctionChecked(DeclID FID, SILFunction *existingFn,
       MF->fatal();
     }
 
+    if (IsThunk_t(isThunk) == IsSignatureOptimizedThunk) {
+      fn->setThunk(IsThunk_t(isThunk));
+      fn->setInlineStrategy(Inline_t(inlineStrategy));
+    }
+
   } else {
     // Otherwise, create a new function.
     fn = builder.createDeclaration(name, ty, loc);

@@ -404,7 +404,7 @@ void updateOpaqueArchetypes(SILFunction &F) {
 /// pipeline.
 class SerializeSILPass : public SILModuleTransform {
     
-  bool onlyForCrossModuleOptimization;
+  bool clearFlagsOnly;
     
   /// Removes [serialized] from all functions. This allows for more
   /// optimizations and for a better dead function elimination.
@@ -437,8 +437,8 @@ class SerializeSILPass : public SILModuleTransform {
   }
 
 public:
-  SerializeSILPass(bool onlyForCrossModuleOptimization)
-    : onlyForCrossModuleOptimization(onlyForCrossModuleOptimization)
+  SerializeSILPass(bool clearFlagsOnly)
+    : clearFlagsOnly(clearFlagsOnly)
   { }
   
   void run() override {
@@ -446,22 +446,20 @@ public:
     // Nothing to do if the module was serialized already.
     if (M.isSerialized())
       return;
-    
-    if (onlyForCrossModuleOptimization &&
-        !M.getOptions().CrossModuleOptimization)
-      return;
 
-    LLVM_DEBUG(llvm::dbgs() << "Serializing SILModule in SerializeSILPass\n");
-    M.serialize();
+    if (!clearFlagsOnly) {
+      LLVM_DEBUG(llvm::dbgs() << "Serializing SILModule in SerializeSILPass\n");
+      M.serialize();
+    }
 
     removeSerializedFlagFromAllFunctions(M);
   }
 };
 
 SILTransform *swift::createSerializeSILPass() {
-  return new SerializeSILPass(/* onlyForCrossModuleOptimization */ false);
+  return new SerializeSILPass(/* clearFlagsOnly */ false);
 }
 
-SILTransform *swift::createCMOSerializeSILPass() {
-  return new SerializeSILPass(/* onlyForCrossModuleOptimization */ true);
+SILTransform *swift::createCMOFakeSerializePass() {
+  return new SerializeSILPass(/* clearFlagsOnly */ true);
 }

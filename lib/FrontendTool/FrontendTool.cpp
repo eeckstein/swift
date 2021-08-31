@@ -735,6 +735,9 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
     return performCompileStepsPostSILGen(Instance, std::move(SM), mod, PSPs,
                                          ReturnValue, observer);
   }
+  // Cross-module optimization only works with whole-module optimization.
+  SILOpts.CrossModuleOptimization = false;
+
   // If there are primary source files, build a separate SILModule for
   // each source file, and run the remaining SILOpt-Serialize-IRGen-LLVM
   // once for each such input.

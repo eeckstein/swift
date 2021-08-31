@@ -772,10 +772,12 @@ void TBDGenVisitor::visitAccessorDecl(AccessorDecl *AD) {
 }
 
 void TBDGenVisitor::visitAbstractStorageDecl(AbstractStorageDecl *ASD) {
+/*
   if (auto *ubiAttr = ASD->getAttrs().getAttribute<UsableFromInlineAttr>()) {
     if (ubiAttr->addedByCMO)
       return;
   }
+*/
 
   // Add the property descriptor if the decl needs it.
   if (ASD->exportsPropertyDescriptor()) {

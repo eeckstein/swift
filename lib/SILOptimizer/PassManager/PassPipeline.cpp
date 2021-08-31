@@ -570,14 +570,6 @@ static void addPerfEarlyModulePassPipeline(SILPassPipelinePlan &P) {
 
   // Add the outliner pass (Osize).
   P.addOutliner();
-
-  P.addCrossModuleSerializationSetup();
-  
-  // In case of cross-module-optimization, we need to serialize right after
-  // CrossModuleSerializationSetup. Eventually we want to serialize early
-  // anyway, but for now keep the SerializeSILPass at the later stage of the
-  // pipeline in case cross-module-optimization is not enabled.
-  P.addCMOSerializeSILPass();
 }
 
 // The "high-level" pipeline serves two purposes:
@@ -616,19 +608,6 @@ static void addHighLevelModulePipeline(SILPassPipelinePlan &P) {
 
   P.addGlobalOpt();
   P.addLetPropertiesOpt();
-}
-
-static void addSerializePipeline(SILPassPipelinePlan &P) {
-  P.startPipeline("Serialize");
-  // It is important to serialize before any of the @_semantics
-  // functions are inlined, because otherwise the information about
-  // uses of such functions inside the module is lost,
-  // which reduces the ability of the compiler to optimize clients
-  // importing this module.
-  P.addSerializeSILPass();
-
-  // Strip any transparent functions that still have ownership.
-  P.addOwnershipModelEliminator();
 }
 
 static void addMidLevelFunctionPipeline(SILPassPipelinePlan &P) {
@@ -856,7 +835,20 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
     P.addSemanticARCOpts();
   }
 
-  addSerializePipeline(P);
+  if (P.getOptions().CrossModuleOptimization) {
+    P.addCMOFakeSerializePass();
+  } else {
+    // It is important to serialize before any of the @_semantics
+    // functions are inlined, because otherwise the information about
+    // uses of such functions inside the module is lost,
+    // which reduces the ability of the compiler to optimize clients
+    // importing this module.
+    P.addSerializeSILPass();
+  }
+
+  // Strip any transparent functions that still have ownership.
+  P.addOwnershipModelEliminator();
+
   if (Options.StopOptimizationAfterSerialization)
     return P;
 
@@ -875,6 +867,19 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   addLateLoopOptPassPipeline(P);
 
   addLastChanceOptPassPipeline(P);
+
+  if (P.getOptions().CrossModuleOptimization) {
+    P.addCrossModuleSerializationSetup();
+  
+    // In case of cross-module-optimization, we need to serialize right after
+    // CrossModuleSerializationSetup. Eventually we want to serialize early
+    // anyway, but for now keep the SerializeSILPass at the later stage of the
+    // pipeline in case cross-module-optimization is not enabled.
+    P.addSerializeSILPass();
+    
+    // Needed to remove alwaysEmitIntoClient functions.
+    P.addDeadFunctionAndGlobalElimination();
+  }
 
   // Has only an effect if the -sil-based-debuginfo option is specified.
   addSILDebugInfoGeneratorPipeline(P);

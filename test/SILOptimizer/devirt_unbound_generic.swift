@@ -178,7 +178,7 @@ public func test5() -> Int32? {
 //
 // rdar://25891588
 //
-// CHECK-LABEL: sil private [noinline] @{{.*}}test6
+// CHECK-LABEL: sil [noinline] @{{.*}}test6
 // CHECK-NOT: class_method
 // CHECK-NOT: checked_cast_br
 // CHECK-NOT: class_method
@@ -192,7 +192,7 @@ public func doTest6() {
   test6(CP<Base1>(1))
 }
 
-// CHECK-LABEL: sil private [noinline] @{{.*}}test7
+// CHECK-LABEL: sil [noinline] @{{.*}}test7
 // CHECK-NOT: class_method
 // CHECK: checked_cast_br
 // CHECK-NOT: class_method

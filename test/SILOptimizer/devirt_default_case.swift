@@ -111,7 +111,7 @@ public func testfoo3() -> Int {
 
 // Check that call to A3.f() can be devirtualized.
 //
-// CHECK-NORMAL: sil hidden [noinline] @$s19devirt_default_case3fooySiAA2A3CF
+// CHECK-NORMAL: sil [noinline] @$s19devirt_default_case3fooySiAA2A3CF
 // CHECK-NORMAL: function_ref @$s19devirt_default_case2B3C1fSiyFTf4d_n
 // CHECK-NORMAL: function_ref @$s19devirt_default_case2A3C1fSiyFTf4d_n
 // CHECK-NORMAL-NOT: class_method

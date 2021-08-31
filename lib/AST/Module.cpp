@@ -2364,17 +2364,19 @@ canBeUsedForCrossModuleOptimization(DeclContext *ctxt) const {
   // See if context is imported in a "regular" way, i.e. not with
   // @_implementationOnly or @_spi.
   ModuleDecl::ImportFilter filter = {
-    ModuleDecl::ImportFilterKind::Exported,
-    ModuleDecl::ImportFilterKind::Default};
+    ModuleDecl::ImportFilterKind::ImplementationOnly,
+    ModuleDecl::ImportFilterKind::SPIAccessControl,
+    ModuleDecl::ImportFilterKind::ShadowedByCrossImportOverlay
+  };
   SmallVector<ImportedModule, 4> results;
   getImportedModules(results, filter);
 
   auto &imports = getASTContext().getImportCache();
   for (auto &desc : results) {
     if (imports.isImportedBy(moduleOfCtxt, desc.importedModule))
-      return true;
+      return false;
   }
-  return false;
+  return true;
 }
 
 void SourceFile::lookupImportedSPIGroups(
