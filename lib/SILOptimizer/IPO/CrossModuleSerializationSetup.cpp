@@ -241,7 +241,11 @@ static bool shouldSerialize(SILFunction *F) {
 
 static void makeFunctionUsableFromInline(SILFunction *F) {
   if (!isAvailableExternally(F->getLinkage()) &&
-    F->getLinkage() != SILLinkage::Public) {
+      F->getLinkage() != SILLinkage::Public) {
+      
+    if (F->getLinkage() == SILLinkage::Shared)
+      F->setIsExportedShared(true);
+
     F->setLinkage(SILLinkage::Public);
     F->getModule().getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
   }
@@ -299,18 +303,6 @@ void CrossModuleSerializationSetup::handleReferencedFunction(SILFunction *func) 
   if (func->isSerialized() == IsSerialized)
     return;
 
-  if (func->getLinkage() == SILLinkage::Shared) {
-    assert(func->isThunk() != IsNotThunk &&
-      "only thunks are accepted to have shared linkage");
-    assert(canSerialize(func, /*lookIntoThunks*/ false) &&
-      "we should already have checked that the thunk is serializable");
-    
-    // We cannot make shared functions "usableFromInline", i.e. make them Public
-    // because this could result in duplicate-symbol errors. Instead we make
-    // them "@alwaysEmitIntoClient"
-    setUpForSerialization(func);
-    return;
-  }
   if (shouldSerialize(func)) {
     addToWorklistIfNotHandled(func);
     return;
@@ -423,12 +415,7 @@ bool CrossModuleSerializationSetup::canUseFromInline(SILFunction *func,
   case SILLinkage::PublicNonABI:
     return func->isSerialized() != IsNotSerialized;
   case SILLinkage::Shared:
-    if (func->isThunk() != IsNotThunk && lookIntoThunks &&
-        // Don't recursively lookIntoThunks to avoid infinite loops.
-        canSerialize(func, /*lookIntoThunks*/ false)) {
-      return true;
-    }
-    return false;
+    return true;
   case SILLinkage::HiddenExternal:
     return false;
   case SILLinkage::Public:

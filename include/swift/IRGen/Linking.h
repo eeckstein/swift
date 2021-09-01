@@ -1447,6 +1447,8 @@ public:
     return getKind() == Kind::DynamicallyReplaceableFunctionKey;
   }
 
+  bool isExportedShared() const;
+
   /// Determine whether this entity will be weak-imported.
   bool isWeakImported(ModuleDecl *module) const;
   

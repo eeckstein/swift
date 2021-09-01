@@ -338,6 +338,8 @@ private:
   /// The function is in a statically linked module.
   unsigned IsStaticallyLinked : 1;
 
+  unsigned IsExportedShared : 1;
+
   static void
   validateSubclassScope(SubclassScope scope, IsThunk_t isThunk,
                         const GenericSpecializationInformation *genericInfo) {
@@ -565,6 +567,12 @@ public:
 
   void setIsStaticallyLinked(bool value) {
     IsStaticallyLinked = value;
+  }
+
+  bool isExportedShared() const { return IsExportedShared; }
+
+  void setIsExportedShared(bool value) {
+    IsExportedShared = value;
   }
 
   /// Returns true if this is a reabstraction thunk of escaping function type

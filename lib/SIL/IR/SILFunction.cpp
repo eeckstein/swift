@@ -185,6 +185,7 @@ void SILFunction::init(SILLinkage Linkage, StringRef Name,
   this->HasOwnership = true,
   this->WasDeserializedCanonical = false;
   this->IsStaticallyLinked = false;
+  this->IsExportedShared = false;
   this->IsWithoutActuallyEscapingThunk = false;
   this->OptMode = unsigned(OptimizationMode::NotSet);
   this->perfConstraints = PerformanceConstraints::None;

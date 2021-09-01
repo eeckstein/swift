@@ -2063,7 +2063,7 @@ void IRGenerator::emitEntryPointInfo() {
 static IRLinkage
 getIRLinkage(const UniversalLinkageInfo &info, SILLinkage linkage,
              ForDefinition_t isDefinition, bool isWeakImported,
-             bool isKnownLocal = false) {
+             bool isKnownLocal = false, bool isExportedShared = false) {
 #define RESULT(LINKAGE, VISIBILITY, DLL_STORAGE)                               \
   IRLinkage{llvm::GlobalValue::LINKAGE##Linkage,                               \
             llvm::GlobalValue::VISIBILITY##Visibility,                         \
@@ -2085,6 +2085,10 @@ getIRLinkage(const UniversalLinkageInfo &info, SILLinkage linkage,
 
   switch (linkage) {
   case SILLinkage::Public:
+    if (isExportedShared) {
+      return {llvm::GlobalValue::LinkOnceODRLinkage, PublicDefinitionVisibility,
+              ExportedStorage};
+    }
     return {llvm::GlobalValue::ExternalLinkage, PublicDefinitionVisibility,
             ExportedStorage};
 
@@ -2157,7 +2161,8 @@ void irgen::updateLinkageForDefinition(IRGenModule &IGM,
 
   auto IRL =
       getIRLinkage(linkInfo, entity.getLinkage(ForDefinition),
-                   ForDefinition, weakImported, isKnownLocal);
+                   ForDefinition, weakImported, isKnownLocal,
+                   entity.isExportedShared());
   ApplyIRLinkage(IRL).to(global);
 
   LinkInfo link = LinkInfo::get(IGM, entity, ForDefinition);
@@ -2192,7 +2197,8 @@ LinkInfo LinkInfo::get(const UniversalLinkageInfo &linkInfo,
 
   bool weakImported = entity.isWeakImported(swiftModule);
   result.IRL = getIRLinkage(linkInfo, entity.getLinkage(isDefinition),
-                            isDefinition, weakImported, isKnownLocal);
+                            isDefinition, weakImported, isKnownLocal,
+                            entity.isExportedShared());
   result.ForDefinition = isDefinition;
   return result;
 }

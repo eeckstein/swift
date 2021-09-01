@@ -509,6 +509,18 @@ SILDeclRef LinkEntity::getSILDeclRef() const {
                  reinterpret_cast<uintptr_t>(SecondaryPointer)));
 }
 
+bool LinkEntity::isExportedShared() const {
+  switch (getKind()) {
+  case Kind::SILGlobalVariable:
+  case Kind::DynamicallyReplaceableFunctionKey:
+  case Kind::DynamicallyReplaceableFunctionVariable:
+  case Kind::SILFunction:
+    return getSILFunction()->isExportedShared();
+  default:
+    return false;
+  }
+}
+
 SILLinkage LinkEntity::getLinkage(ForDefinition_t forDefinition) const {
   // For when `this` is a protocol conformance of some kind.
   auto getLinkageAsConformance = [&] {
