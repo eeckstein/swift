@@ -43,7 +43,7 @@ class Derived<T> : Base<T> {
 }
 
 // Check that testDevirt is specialized and uses speculative devirtualization.
-// CHECK-LABEL: sil shared [noinline] @{{.*}}testDevirt
+// CHECK-LABEL: sil {{.*}} @{{.*}}testDevirt
 // CHECK: checked_cast_br [exact] %{{.*}} : $CC<Int32> to CC<Int32>
 // CHECK: class_method
 // CHECK: }
@@ -55,7 +55,7 @@ public func testDevirt<T>(_ c: CC<T>) -> T? {
 
 // Check that the instance method Derived<T>.foo can be devirtualized, because Derived.foo is an internal function,
 // Derived has no subclasses and it is a WMO compilation.
-// CHECK-LABEL: sil shared [noinline] @$s22devirt_unbound_generic5test2yyAA7DerivedCyxGlFTf4d_n
+// CHECK-LABEL: sil {{.*}} @$s22devirt_unbound_generic5test2yyAA7DerivedCyxGlFTf4d_n
 // CHECK-NOT: class_method
 // CHECK-NOT: witness_method
 // CHECK-NOT: apply
@@ -72,7 +72,7 @@ public func doTest2<T>(_ t:T) {
 
 // Check that the class method Derived<T>.boo can be devirtualized, because Derived.boo is an internal function,
 // Derived has no subclasses and it is a WMO compilation.
-// CHECK: sil shared [noinline] @$s22devirt_unbound_generic5test3yyAA7DerivedCyxGlFTf4d_n
+// CHECK: sil {{.*}} @$s22devirt_unbound_generic5test3yyAA7DerivedCyxGlFTf4d_n
 // CHECK-NOT: class_method
 // CHECK-NOT: witness_method
 // CHECK-NOT: apply

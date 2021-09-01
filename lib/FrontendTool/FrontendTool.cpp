@@ -1365,7 +1365,11 @@ static bool processCommandLineAndRunImmediately(CompilerInstance &Instance,
 static bool validateTBDIfNeeded(const CompilerInvocation &Invocation,
                                 ModuleOrSourceFile MSF,
                                 const llvm::Module &IRModule) {
-  const auto mode = Invocation.getFrontendOptions().ValidateTBDAgainstIR;
+  auto mode = Invocation.getFrontendOptions().ValidateTBDAgainstIR;
+  if (mode == FrontendOptions::TBDValidationMode::All &&
+      Invocation.getSILOptions().CrossModuleOptimization)
+    mode = FrontendOptions::TBDValidationMode::MissingFromTBD;
+
   const bool canPerformTBDValidation = [&]() {
     // If the user has requested we skip validation, honor it.
     if (mode == FrontendOptions::TBDValidationMode::None) {

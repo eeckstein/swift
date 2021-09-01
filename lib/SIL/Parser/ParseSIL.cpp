@@ -6412,7 +6412,6 @@ bool SILParserState::parseDeclSILStage(Parser &P) {
 /// will still incorrectly diagnose this as an "invalid redeclaration" and give
 /// all but the first declaration an error type.
 static Optional<VarDecl *> lookupGlobalDecl(Identifier GlobalName,
-                                            SILLinkage GlobalLinkage,
                                             SILType GlobalType, Parser &P) {
   // Create a set of DemangleOptions to produce the global variable's
   // identifier, which is used as a search key in the declaration context.
@@ -6438,8 +6437,7 @@ static Optional<VarDecl *> lookupGlobalDecl(Identifier GlobalName,
   for (ValueDecl *ValDecl : CurModuleResults) {
     auto *VD = cast<VarDecl>(ValDecl);
     CanType DeclTy = VD->getType()->getCanonicalType();
-    if (DeclTy == GlobalType.getASTType()
-        && getDeclSILLinkage(VD) == GlobalLinkage) {
+    if (DeclTy == GlobalType.getASTType()) {
       return VD;
     }
   }
@@ -6482,7 +6480,7 @@ bool SILParserState::parseSILGlobal(Parser &P) {
 
   // Lookup the global variable declaration for this sil_global.
   auto VD =
-      lookupGlobalDecl(GlobalName, GlobalLinkage.getValue(), GlobalType, P);
+      lookupGlobalDecl(GlobalName, GlobalType, P);
   if (!VD) {
     P.diagnose(NameLoc, diag::sil_global_variable_not_found, GlobalName);
     return true;

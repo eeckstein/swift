@@ -5,7 +5,7 @@
 // CHECK: sil private @top_level_code
 // CHECK: sil public_external [serialized] @$ss1XVABycfC{{.*}}
 // CHECK: sil public_external [serialized] @$ss17the_thing_it_does1xys1XV_tF{{.*}}
-// CHECK: sil shared_external [serializable] [noinline] @$ss9the_thing1tyx_tlFs1XV_Tgq5{{.*}}
+// CHECK: sil public_external [serialized] [noinline] @$ss9the_thing1tyx_tlFs1XV_Tgq5{{.*}}
 
 sil_stage canonical
 

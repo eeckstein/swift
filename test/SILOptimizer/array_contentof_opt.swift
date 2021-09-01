@@ -65,7 +65,7 @@ public func dontPropagateContiguousArray(_ a: inout ContiguousArray<UInt8>) {
 
 // Check if the specialized Array.append<A>(contentsOf:) is reasonably optimized for Array<Int>.
 
-// CHECK-LABEL: sil shared {{.*}}@$sSa6append10contentsOfyqd__n_t7ElementQyd__RszSTRd__lFSi_SaySiGTg5
+// CHECK-LABEL: sil {{.*}}@$sSa6append10contentsOfyqd__n_t7ElementQyd__RszSTRd__lFSi_SaySiGTg5
 
 // There should only be a single call to _createNewBuffer or reserveCapacityForAppend/reserveCapacityImpl.
 

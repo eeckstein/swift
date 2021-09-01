@@ -136,9 +136,9 @@ public struct CC2<T : PP> {
 
 // CHECK-LABEL: sil [_specialize exported: false, kind: full, where T == Klass1, U == FakeString] [_specialize exported: false, kind: full, where T == Int, U == Float] [ossa] @$s15specialize_attr0A4This_1uyx_q_tr0_lF : $@convention(thin) <T, U> (@in_guaranteed T, @in_guaranteed U) -> () {
 
-// CHECK-OPT-DAG: sil shared [noinline] @$s15specialize_attr2CCC3foo_1gqd___AA2GGVyxGtqd___AHtAA2QQRd__lFAA12RRNonTrivialV_AA05SSNonH0VTg5 : $@convention(method) (@guaranteed SSNonTrivial, @guaranteed GG<RRNonTrivial>, @guaranteed CC<RRNonTrivial>) -> (@owned SSNonTrivial, @out GG<RRNonTrivial>) {
+// CHECK-OPT-DAG: sil [noinline] @$s15specialize_attr2CCC3foo_1gqd___AA2GGVyxGtqd___AHtAA2QQRd__lFAA12RRNonTrivialV_AA05SSNonH0VTg5 : $@convention(method) (@guaranteed SSNonTrivial, @guaranteed GG<RRNonTrivial>, @guaranteed CC<RRNonTrivial>) -> (@owned SSNonTrivial, @out GG<RRNonTrivial>) {
 
-// CHECK-OPT-DAG: sil shared [noinline] @$s15specialize_attr2CCC4foo2_1gqd___AA2GGVyxGtqd__n_AHntAA2QQRd__lFAA2RRV_AA2SSVTg5 : $@convention(method) (SS, GG<RR>, @guaranteed CC<RR>) -> (SS, @out GG<RR>) {
+// CHECK-OPT-DAG: sil [noinline] @$s15specialize_attr2CCC4foo2_1gqd___AA2GGVyxGtqd__n_AHntAA2QQRd__lFAA2RRV_AA2SSVTg5 : $@convention(method) (SS, GG<RR>, @guaranteed CC<RR>) -> (SS, @out GG<RR>) {
 
 // CHECK-OPT-DAG: sil [noinline] @$s15specialize_attr2CCC4foo2_1gqd___AA2GGVyxGtqd__n_AHntAA2QQRd__lF : $@convention(method) <T where T : PP><U where U : QQ> (@in U, @in GG<T>, @guaranteed CC<T>) -> (@out U, @out GG<T>) {
 

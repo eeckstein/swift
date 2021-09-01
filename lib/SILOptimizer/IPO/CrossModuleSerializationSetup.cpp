@@ -68,9 +68,13 @@ class CrossModuleSerializationSetup {
 
   bool canSerialize(SILType type);
 
+  bool canSerialize(SILWitnessTable &WT);
+
   void setUpForSerialization(SILFunction *F);
 
   void setUpForSerialization(SILGlobalVariable *global);
+
+  void setUpForSerialization(SILWitnessTable &WT);
 
   void prepareInstructionForSerialization(SILInstruction *inst);
 
@@ -217,6 +221,11 @@ static bool shouldSerialize(SILFunction *F) {
 
   if (F->hasSemanticsAttr("optimize.no.crossmodule"))
     return false;
+
+  if (F->getLinkage() == SILLinkage::PublicNonABI)
+    return true;
+
+return true;
 
   if (SerializeEverything)
     return true;
@@ -398,6 +407,18 @@ bool CrossModuleSerializationSetup::canSerialize(SILType type) {
   return success;
 }
 
+bool CrossModuleSerializationSetup::canSerialize(SILWitnessTable &WT) {
+  for (const auto &entry : WT.getEntries()) {
+    if (entry.getKind() == SILWitnessTable::WitnessKind::Method) {
+      if (SILFunction *F = entry.getMethodWitness().Witness) {
+        if (!canUseFromInline(F, /*lookIntoThunks*/ true))
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
 /// Returns true if the function \p func can be used from a serialized function.
 ///
 /// If \p lookIntoThunks is true, serializable shared thunks are also accepted.
@@ -446,7 +467,8 @@ void CrossModuleSerializationSetup::setUpForSerialization(SILFunction *F) {
   }
   F->setSerialized(IsSerialized);
 
-  if (F->getLinkage() != SILLinkage::Public) {
+  if (F->getLinkage() != SILLinkage::Public &&
+      F->getLinkage() != SILLinkage::PublicNonABI) {
     F->setLinkage(SILLinkage::Public);
     M.getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
   }
@@ -460,15 +482,33 @@ setUpForSerialization(SILGlobalVariable *global) {
   global->setSerialized(IsSerialized);
 }
 
+void CrossModuleSerializationSetup::setUpForSerialization(SILWitnessTable &WT) {
+  for (const auto &entry : WT.getEntries()) {
+    if (entry.getKind() == SILWitnessTable::WitnessKind::Method) {
+      if (SILFunction *F = entry.getMethodWitness().Witness)
+        handleReferencedFunction(F);
+    }
+  }
+  WT.setSerialized(IsSerialized);
+}
+
 /// Select functions in the module which should be serialized.
 void CrossModuleSerializationSetup::scanModule() {
 
   // Start with public functions.
   for (SILFunction &F : M) {
-    if (F.getLinkage() == SILLinkage::Public)
+    SILLinkage l = F.getLinkage();
+    if (l == SILLinkage::Public || l == SILLinkage::PublicNonABI)
       addToWorklistIfNotHandled(&F);
   }
 
+  for (auto &WT : M.getWitnessTables()) {
+    if (canSerialize(WT))
+      setUpForSerialization(WT);
+  }
+  
+  // TODO: vtables
+  
   // Continue with called functions.
   while (!workList.empty()) {
     SILFunction *F = workList.pop_back_val();

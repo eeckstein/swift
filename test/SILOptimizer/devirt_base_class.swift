@@ -23,7 +23,7 @@ private func foo(_ a: A) -> Int {
 // though f is defined by one of the A's superclasses.
 //
 
-// CHECK-LABEL: sil private [noinline] @{{.*}}foo
+// CHECK-LABEL: sil {{.*}} @{{.*}}foo
 // CHECK-NOT: class_method
 // CHECK: checked_cast_br
 // CHECK: function_ref
@@ -34,7 +34,7 @@ private func foo(_ a: A) -> Int {
 
 // Check that invocation of addConstraint() gets completely devirtualized and inlined
 //
-// CHECK-LABEL: sil private [noinline] @$s17devirt_base_class2F233_{{.*}}4test
+// CHECK-LABEL: sil {{.*}} @$s17devirt_base_class2F233_{{.*}}4test
 // CHECK-NOT: class_method
 // CHECK-NOT: function_ref
 // CHECK: return

@@ -66,7 +66,7 @@ public func testOutlining() {
 // CHECK:  switch_enum [[RES]]
 // CHECK: } // end sil function '$s8outliner9dontCrash1ayyp_tF'
 
-// CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC14stringPropertySSSgvgToTeab_ : $@convention(thin) (@in_guaranteed Gizmo) -> @owned Optional<String>
+// CHECK-LABEL: sil {{.*}} @$sSo5GizmoC14stringPropertySSSgvgToTeab_ : $@convention(thin) (@in_guaranteed Gizmo) -> @owned Optional<String>
 // CHECK: bb0(%0 : $*Gizmo):
 // CHECK:   %1 = load %0 : $*Gizmo
 // CHECK:   %2 = objc_method %1 : $Gizmo, #Gizmo.stringProperty!getter.foreign : (Gizmo) -> () -> String?
@@ -86,7 +86,7 @@ public func testOutlining() {
 // CHECK:   return %14 : $Optional<String>
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvgToTeab_'
 
-// CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC14stringPropertySSSgvgToTepb_ : $@convention(thin) (Gizmo) -> @owned Optional<String>
+// CHECK-LABEL: sil {{.*}} @$sSo5GizmoC14stringPropertySSSgvgToTepb_ : $@convention(thin) (Gizmo) -> @owned Optional<String>
 // CHECK: bb0(%0 : $Gizmo):
 // CHECK:  %1 = objc_method %0 : $Gizmo, #Gizmo.stringProperty!getter.foreign : (Gizmo) -> () -> String?
 // CHECK:  %2 = apply %1(%0) : $@convention(objc_method) (Gizmo) -> @autoreleased Optional<NSString>
@@ -105,7 +105,7 @@ public func testOutlining() {
 // CHECK:  return %13 : $Optional<String>
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvgToTepb_'
 
-// CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC14stringPropertySSSgvsToTembnn_ : $@convention(thin) (@owned String, Gizmo) -> () {
+// CHECK-LABEL: sil {{.*}} @$sSo5GizmoC14stringPropertySSSgvsToTembnn_ : $@convention(thin) (@owned String, Gizmo) -> () {
 // CHECK: bb0(%0 : $String, %1 : $Gizmo):
 // CHECK:   %2 = objc_method %1 : $Gizmo, #Gizmo.stringProperty!setter.foreign : (Gizmo) -> (String?) -> ()
 // CHECK:   %3 = function_ref @$sSS10FoundationE19_bridgeToObjectiveCSo8NSStringCyF : $@convention(method) (@guaranteed String) -> @owned NSString
@@ -117,7 +117,7 @@ public func testOutlining() {
 // CHECK:   return %7 : $()
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvsToTembnn_'
 
-// CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC12modifyString_10withNumber0D6FoobarSSSgAF_SiypSgtFToTembnnnb_ : $@convention(thin) (@owned String, Int, Optional<AnyObject>, Gizmo) -> @owned Optional<String> {
+// CHECK-LABEL: sil {{.*}} @$sSo5GizmoC12modifyString_10withNumber0D6FoobarSSSgAF_SiypSgtFToTembnnnb_ : $@convention(thin) (@owned String, Int, Optional<AnyObject>, Gizmo) -> @owned Optional<String> {
 // CHECK: bb0(%0 : $String, %1 : $Int, %2 : $Optional<AnyObject>, %3 : $Gizmo):
 // CHECK:   %4 = objc_method %3 : $Gizmo, #Gizmo.modifyString!foreign : (Gizmo) -> (String?, Int, Any?) -> String?
 // CHECK:   %5 = function_ref @$sSS10FoundationE19_bridgeToObjectiveCSo8NSStringCyF : $@convention(method) (@guaranteed String) -> @owned NSString
@@ -144,7 +144,7 @@ public func testOutlining() {
 // CHECK:   return %21 : $Optional<String>
 // CHECK: } // end sil function '$sSo5GizmoC12modifyString_10withNumber0D6FoobarSSSgAF_SiypSgtFToTembnnnb_'
 
-// CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC11doSomethingyypSgSaySSGSgFToTembgnn_ : $@convention(thin) (@guaranteed Array<String>, Gizmo) -> @owned Optional<AnyObject> {
+// CHECK-LABEL: sil {{.*}} @$sSo5GizmoC11doSomethingyypSgSaySSGSgFToTembgnn_ : $@convention(thin) (@guaranteed Array<String>, Gizmo) -> @owned Optional<AnyObject> {
 // CHECK: bb0(%0 : $Array<String>, %1 : $Gizmo):
 // CHECK:   %2 = objc_method %1 : $Gizmo, #Gizmo.doSomething!foreign : (Gizmo) -> ([String]?) -> Any?
 // CHECK:   %3 = function_ref @$sSa10FoundationE19_bridgeToObjectiveCSo7NSArrayCyF : $@convention(method) <{{.*}}> (@guaranteed Array<{{.*}}>) -> @owned NSArray

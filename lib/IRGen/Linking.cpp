@@ -510,15 +510,9 @@ SILDeclRef LinkEntity::getSILDeclRef() const {
 }
 
 bool LinkEntity::isExportedShared() const {
-  switch (getKind()) {
-  case Kind::SILGlobalVariable:
-  case Kind::DynamicallyReplaceableFunctionKey:
-  case Kind::DynamicallyReplaceableFunctionVariable:
-  case Kind::SILFunction:
+  if (hasSILFunction())
     return getSILFunction()->isExportedShared();
-  default:
-    return false;
-  }
+  return false;
 }
 
 SILLinkage LinkEntity::getLinkage(ForDefinition_t forDefinition) const {

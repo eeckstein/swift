@@ -3,7 +3,7 @@
 
 // Also link to make sure we don't eliminate any needed symbols.
 
-// RUN: %target-swift-frontend -parse-as-library -emit-module -emit-module-path=%t/Module.swiftmodule -module-name=Module -DMODULE %s -O -c -o module.o
+// RUN: %target-swift-frontend -parse-as-library -emit-module -emit-module-path=%t/Module.swiftmodule -module-name=Module -DMODULE %s -O -c -o %t/module.o
 // RUN: %target-build-swift -DMAIN %s -I%t -O -o %t/a.out
 
 #if MODULE

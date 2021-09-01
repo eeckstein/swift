@@ -844,13 +844,13 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
     // which reduces the ability of the compiler to optimize clients
     // importing this module.
     P.addSerializeSILPass();
+
+    if (Options.StopOptimizationAfterSerialization)
+      return P;
   }
 
   // Strip any transparent functions that still have ownership.
   P.addOwnershipModelEliminator();
-
-  if (Options.StopOptimizationAfterSerialization)
-    return P;
 
   // After serialization run the function pass pipeline to iteratively lower
   // high-level constructs like @_semantics calls.
@@ -877,6 +877,9 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
     // pipeline in case cross-module-optimization is not enabled.
     P.addSerializeSILPass();
     
+    if (Options.StopOptimizationAfterSerialization)
+      return P;
+
     // Needed to remove alwaysEmitIntoClient functions.
     P.addDeadFunctionAndGlobalElimination();
   }

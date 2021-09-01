@@ -68,7 +68,7 @@ internal func testEmitIntoClient<T>(t: T) {
 // OPT:   apply [[F5]]({{.*}}) : $@convention(thin) (Int) -> ()
 // OPT: } // end sil function '$s14pre_specialize28usePrespecializedEntryPointsyyF'
 
-// OPT: sil {{.*}} @$s22pre_specialized_module16useInternalThingyyxlFSi_Tg5 : $@convention(thin) (Int) -> () {
+// OPT: sil {{.*}}@$s22pre_specialized_module16useInternalThingyyxlFSi_Tg5 : $@convention(thin) (Int) -> () {
 // OPT:   [[F1:%.*]] = function_ref @$s22pre_specialized_module14InternalThing2V7computexyFSi_Ts5 : $@convention(method) (InternalThing2<Int>) -> Int
 // OPT:   apply [[F1]](
 // OPT:   [[F2:%.*]] = function_ref @$s22pre_specialized_module14InternalThing2V9computedXxvgSi_Ts5 : $@convention(method) (InternalThing2<Int>) -> Int

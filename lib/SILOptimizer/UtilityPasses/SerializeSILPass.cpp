@@ -423,7 +423,8 @@ class SerializeSILPass : public SILModuleTransform {
 
       // After serialization we don't need to keep @alwaysEmitIntoClient
       // functions alive, i.e. we don't need to treat them as public functions.
-      if (F.getLinkage() == SILLinkage::PublicNonABI && M.isWholeModule())
+      if (!clearFlagsOnly &&
+          F.getLinkage() == SILLinkage::PublicNonABI && M.isWholeModule())
         F.setLinkage(SILLinkage::Shared);
     }
 

@@ -38,7 +38,7 @@ func cast0(_ o: AnyObject) -> Bool {
   return o is CX
 }
 
-// CHECK-LABEL: sil hidden [noinline] @$s17cast_folding_objc5test0SbyF
+// CHECK-LABEL: sil {{.*}} @$s17cast_folding_objc5test0SbyF
 // CHECK: bb0
 // Check that cast is not eliminated even though cast0 is a conversion
 // from a class to struct, because it casts to a struct implementing
