@@ -2468,6 +2468,8 @@ lookupOrCreatePrespecialization(SILOptFunctionBuilder &funcBuilder,
   auto *declaration =
       GenericCloner::createDeclaration(funcBuilder, origF, reInfo, clonedName);
   declaration->setLinkage(SILLinkage::PublicExternal);
+  declaration->setDebugScope(new (origF->getModule())
+    SILDebugScope(declaration->getLocation(), declaration));
 
   return declaration;
 }

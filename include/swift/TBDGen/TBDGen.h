@@ -14,6 +14,7 @@
 
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringSet.h"
+#include "llvm/ADT/SetVector.h"
 #include "swift/Basic/Version.h"
 #include <vector>
 
@@ -72,6 +73,19 @@ struct TBDGenOptions {
   std::vector<std::string> embedSymbolsFromModules;
 
   std::vector<std::string> publicCMOSymbols;
+
+  llvm::StringSet<> publicCMOSymbolSet;
+
+  void addPublicCMOSymbol(StringRef symbol) {
+    if (publicCMOSymbolSet.count(symbol) == 0) {
+      publicCMOSymbols.push_back(symbol.str());
+      publicCMOSymbolSet.insert(symbol);
+    }
+  }
+
+  bool isPublicCMOSymbol(StringRef symbol) const {
+    return publicCMOSymbolSet.count(symbol) != 0;
+  }
 
   friend bool operator==(const TBDGenOptions &lhs, const TBDGenOptions &rhs) {
     return lhs.HasMultipleIGMs == rhs.HasMultipleIGMs &&

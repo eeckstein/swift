@@ -225,6 +225,9 @@ static bool shouldSerialize(SILFunction *F) {
   if (F->getLinkage() == SILLinkage::PublicNonABI)
     return true;
 
+  if (F->hasPrespecialization())
+    return false;
+
 return true;
 
   if (SerializeEverything)
@@ -256,7 +259,7 @@ static void makeFunctionUsableFromInline(SILFunction *F) {
       F->setIsExportedShared(true);
 
     F->setLinkage(SILLinkage::Public);
-    F->getModule().getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
+    F->getModule().getTBDGenOptions().addPublicCMOSymbol(F->getName().str());
   }
 }
 
@@ -278,7 +281,7 @@ prepareInstructionForSerialization(SILInstruction *inst) {
     }
     if (global->getLinkage() != SILLinkage::Public) {
       global->setLinkage(SILLinkage::Public);
-      M.getTBDGenOptions().publicCMOSymbols.push_back(global->getName().str());
+      M.getTBDGenOptions().addPublicCMOSymbol(global->getName().str());
     }
     return;
   }
@@ -287,7 +290,7 @@ prepareInstructionForSerialization(SILInstruction *inst) {
     global->setSerialized(IsSerialized);
     if (global->getLinkage() != SILLinkage::Public) {
       global->setLinkage(SILLinkage::Public);
-      M.getTBDGenOptions().publicCMOSymbols.push_back(global->getName().str());
+      M.getTBDGenOptions().addPublicCMOSymbol(global->getName().str());
     }
     return;
   }
@@ -307,7 +310,7 @@ prepareInstructionForSerialization(SILInstruction *inst) {
 }
 
 void CrossModuleSerializationSetup::handleReferencedFunction(SILFunction *func) {
-  if (!func->isDefinition() || func->isAvailableExternally())
+  if (!func->isDefinition() || func->getLinkage() == SILLinkage::PublicExternal)
     return;
   if (func->isSerialized() == IsSerialized)
     return;
@@ -470,7 +473,7 @@ void CrossModuleSerializationSetup::setUpForSerialization(SILFunction *F) {
   if (F->getLinkage() != SILLinkage::Public &&
       F->getLinkage() != SILLinkage::PublicNonABI) {
     F->setLinkage(SILLinkage::Public);
-    M.getTBDGenOptions().publicCMOSymbols.push_back(F->getName().str());
+    M.getTBDGenOptions().addPublicCMOSymbol(F->getName().str());
   }
 }
 

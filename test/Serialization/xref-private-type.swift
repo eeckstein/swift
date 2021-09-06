@@ -1,6 +1,6 @@
 // RUN: %empty-directory(%t)
-// RUN: %target-build-swift -swift-version 4 -O  -whole-module-optimization -emit-module-path %t/LibCore.swiftmodule %S/Inputs/xref-private-type/LibCore.swift
-// RUN: %target-build-swift -swift-version 4 -O -I %t  -whole-module-optimization -emit-module-path %t/Lib.swiftmodule %S/Inputs/xref-private-type/Lib.swift 
+// RUN: %target-build-swift -swift-version 4 -O -Xfrontend -no-cmo -whole-module-optimization -emit-module-path %t/LibCore.swiftmodule %S/Inputs/xref-private-type/LibCore.swift
+// RUN: %target-build-swift -swift-version 4 -O -Xfrontend -no-cmo -I %t  -whole-module-optimization -emit-module-path %t/Lib.swiftmodule %S/Inputs/xref-private-type/Lib.swift 
 // RUN: %target-build-swift -swift-version 4 -O -I %t -emit-sil %s | %FileCheck %s
 
 import Lib

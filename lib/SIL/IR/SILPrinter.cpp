@@ -2856,6 +2856,14 @@ void SILFunction::print(SILPrintContext &PrintCtx) const {
   OS << "// " << demangleSymbol(getName()) << '\n';
   printClangQualifiedNameCommentIfPresent(OS, getClangDecl());
 
+/*
+  if (const SILDebugScope *sc = getDebugScope()) {
+    OS << "// ";
+    SILPrinter P(PrintCtx);
+    P.printDebugScope(sc, getModule().getASTContext().SourceMgr);
+    OS << '\n';
+  }
+*/
   OS << "sil ";
   printLinkage(OS, getLinkage(), isDefinition());
 

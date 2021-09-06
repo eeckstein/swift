@@ -1,5 +1,5 @@
 // RUN: %empty-directory(%t)
-// RUN: %target-swift-frontend -parse-as-library -emit-module -emit-module-path=%t/Module.swiftmodule -module-name=Module -DMODULE %s -O -emit-sil -o %t/module.sil
+// RUN: %target-swift-frontend -parse-as-library -emit-module -emit-module-path=%t/Module.swiftmodule -no-cmo -module-name=Module -DMODULE %s -O -emit-sil -o %t/module.sil
 // RUN: %target-swift-frontend -module-name=main -DMAIN %s -I%t -O -emit-sil | %FileCheck %s
 
 // REQUIRES: swift_stdlib_no_asserts,optimized_stdlib

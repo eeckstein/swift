@@ -390,12 +390,12 @@ struct PA : P4 {
   }
 }
 
-// CHECK-LABEL: sil private [transparent] [thunk] @$s1A2PAVAA2P4A2aDP4testyyFTW
+// CHECK-LABEL: sil {{(private )?}}[transparent] [thunk] @$s1A2PAVAA2P4A2aDP4testyyFTW
 // CHECK:   [[V:%.*]] = load %0 : $*PA
 // CHECK:   [[F:%.*]] = function_ref @$s1A2PAV4testyyF
 // CHECK:   apply [[F]]([[V]])
 
-// CHECK-64-LABEL: sil hidden @$s1A2PAV4testyyF : $@convention(method) (PA) -> ()
+// CHECK-64-LABEL: sil {{(hidden )?}}@$s1A2PAV4testyyF : $@convention(method) (PA) -> ()
 // CHECK-64:   [[V:%.*]] = integer_literal $Builtin.Int64, 5
 // CHECK-64:   [[I:%.*]] = struct $Int64 ([[V]] : $Builtin.Int64)
 // CHECK-64:   [[F:%.*]] = function_ref @$s1A4usePyyxAA1PRzlFs5Int64V_Tg5
@@ -409,7 +409,7 @@ func testIt<T>(cl: (Int64) throws -> T) {
  } catch (_) {}
 }
 
-// CHECK-LABEL: sil shared [noinline] @$s1A16testPartialApplyyyxAA2P4RzlFAA2PAV_Tg5
+// CHECK-LABEL: sil {{(shared )?}}[noinline] @$s1A16testPartialApplyyyxAA2P4RzlFAA2PAV_Tg5
 // CHECK:  [[PA:%.*]] = alloc_stack $PA
 // CHECK:  store %0 to [[PA]] : $*PA
 // CHECK:  [[F:%.*]] = function_ref @$s1A16testPartialApplyyyxAA2P4RzlF2ATQzs5Int64Vcxcfu_AeGcfu0_AA2PAV_TG5 : $@convention(thin) (Int64, @in_guaranteed PA) -> @out Int64
@@ -560,13 +560,13 @@ public func rdar56410009_inlinedOuter() {
 } // CHECK: end sil function '$s1A25rdar56410009_inlinedOuteryyF'
 
 // Specialized from above
-// CHECK-LABEL: sil shared [noinline] @$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFAA08externalD0QryFQOyQo__Tg5
+// CHECK-LABEL: sil {{(shared )?}}[noinline] @$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFAA08externalD0QryFQOyQo__Tg5
 // CHECK: [[WRAPPER_INIT:%.+]] = function_ref @$s9External29WrapperP2VyACyxGxcfC
 // CHECK: = apply [[WRAPPER_INIT]]<@_opaqueReturnTypeOf("$s9External217externalResilientQryF", 0) __>({{%.+}}, {{%.+}}, {{%.+}}) : $@convention(method) <τ_0_0 where τ_0_0 : ExternalP2> (@in τ_0_0, @thin WrapperP2<τ_0_0>.Type) -> @out WrapperP2<τ_0_0>
 // CHECK: end sil function '$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFAA08externalD0QryFQOyQo__Tg5'
 
 // Specialized from below
-// CHECK-LABEL: sil shared [noinline] @$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFs5Int64V_Tg5
+// CHECK-LABEL: sil {{(shared )?}}[noinline] @$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFs5Int64V_Tg5
 // CHECK: [[WRAPPER_INIT:%.+]] = function_ref @$s9External29WrapperP2VyACyxGxcfC
 // CHECK: = apply [[WRAPPER_INIT]]<Int64>({{%.+}}, {{%.+}}, {{%.+}}) : $@convention(method) <τ_0_0 where τ_0_0 : ExternalP2> (@in τ_0_0, @thin WrapperP2<τ_0_0>.Type) -> @out WrapperP2<τ_0_0>
 // CHECK: end sil function '$s9External233inlinableExternalResilientWrapperyQrxAA0C2P2RzlFs5Int64V_Tg5'
