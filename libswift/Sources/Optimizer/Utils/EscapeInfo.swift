@@ -73,11 +73,9 @@ struct EscapeInfo {
       
       var isValueField: Bool {
         switch self {
-          case .root, .anything:
-            fatalError("Cannot decide if \(self) is a value field")
           case .anyValueField, .structField, .tupleField, .enumCase:
             return true
-          case .classField, .tailElements:
+          case .root, .anything, .classField, .tailElements:
             return false
         }
       }
@@ -206,12 +204,10 @@ struct EscapeInfo {
       var p = self
       while true {
         let (k, _, numBits) = p.top
-        switch k {
-          case .structField, .tupleField, .enumCase, .anyValueField:
-            p = p.pop(numBits: numBits)
-          case .root, .anything, .classField, .tailElements:
-            return p
+        if !k.isValueField {
+          return p
         }
+        p = p.pop(numBits: numBits)
       }
     }
     
@@ -224,78 +220,114 @@ struct EscapeInfo {
       }
     }
     
-    /*
+    func merge(with rhs: Path) -> Path {
+      if self == rhs { return self }
+      
+      let (lhsKind, lhsIdx, lhsBits) = top
+      let (rhsKind, rhsIdx, rhsBits) = rhs.top
+      if lhsKind == rhsKind && lhsIdx == rhsIdx {
+        assert(lhsBits == rhsBits)
+        let subPath = pop(numBits: lhsBits).merge(with: rhs.pop(numBits: rhsBits))
+        if subPath.top.kind == .anyValueField && lhsKind.isValueField {
+          return subPath
+        }
+        return subPath.push(kind: lhsKind, index: lhsIdx)
+      }
+      if lhsKind.isValueField && rhsKind.isValueField {
+        let subPath = popAllValueFields().merge(with: rhs.popAllValueFields())
+        assert(!subPath.top.kind.isValueField)
+        return subPath.push(kind: .anyValueField)
+      }
+      return Path.matchingAll
+    }
+
     static func unitTest() {
-      let p = Path()
-      let p1 = p.push(kind: .structField, index: 3)
-      let p2 = p1.push(kind: .classField, index: 12345678)
-      let t = p2.top
-      let (k3, i3, p3) = p2.pop()
-      let (k4, i4, p4) = p3.pop()
-      let po = p2.push(kind: .enumCase, index: 12345678)
-      let to = po.pop()
-    }
-    */
-  }
-
-  enum UpDown {
-    case up, down
-  }
-
-  private struct VisitedKey : Hashable {
-    let value: HashableValue
-    let path: Path
-    let followStores: Bool
-    let upDown: UpDown
-  }
-
-  private struct VisitCounter {
-    var numVisits = 0
-    mutating func recordVisit() -> Int {
-      numVisits += 1
-      return numVisits
+      func basicPushPop() {
+        let p1 = Path().push(kind: .structField, index: 3).push(kind: .classField, index: 12345678)
+        let t = p1.top
+        assert(t.kind == .classField && t.index == 12345678)
+        let (k2, i2, p2) = p1.pop()
+        assert(k2 == .classField && i2 == 12345678)
+        let (k3, i3, p3) = p2.pop()
+        assert(k3 == .structField && i3 == 3)
+        assert(p3.isEmpty)
+        let (k4, i4, _) = p2.push(kind: .enumCase, index: 876).pop()
+        assert(k4 == .enumCase && i4 == 876)
+      }
+      
+      func merging() {
+        let p1 = Path().push(kind: .classField).push(kind: .structField).push(kind: .structField).push(kind: .tailElements)
+        let p2 = Path().push(kind: .classField).push(kind: .structField).push(kind: .enumCase).push(kind: .structField).push(kind: .tailElements)
+        let p3 = p1.merge(with: p2)
+        assert(p3 == Path().push(kind: .classField).push(kind: .anyValueField).push(kind: .tailElements))
+      }
+      
+      basicPushPop()
+      merging()
     }
   }
 
-  private var visitedValues = Set<VisitedKey>()
-  
-  private var numPathesPerValue = Dictionary<HashableValue, VisitCounter>()
+  private struct CacheEntry {
+    private(set) var path = Path()
+    private(set) var followStores = false
+    private var valid = false
+
+    mutating func needWalk(path: Path, followStores: Bool) -> CacheEntry? {
+      if !valid {
+        valid = true
+        self.path = path
+        self.followStores = followStores
+        return self
+      }
+      if self.path != path || (!self.followStores && followStores) {
+        let newFS = self.followStores || followStores
+        let newPath = self.path.merge(with: path)
+        if newPath != self.path || newFS != self.followStores {
+          self.followStores = newFS
+          self.path = newPath
+          return self
+        }
+      }
+      return nil
+    }
+  }
+
+  private var walkedDownCache = Dictionary<HashableValue, CacheEntry>()
+  private var walkedUpCache = Dictionary<HashableValue, CacheEntry>()
   
   private let calleeAnalysis: CalleeAnalysis
   
   init(calleeAnalysis: CalleeAnalysis) { self.calleeAnalysis = calleeAnalysis }
 
   public mutating func escapes(_ allocRef: AllocRefInst) -> Escapes {
-    assert(numPathesPerValue.isEmpty)
-    let result = walkAndCache(allocRef,
+  
+    Path.unitTest()
+  
+    assert(walkedDownCache.isEmpty && walkedUpCache.isEmpty)
+    let result = walkDownAndCache(allocRef,
                               path: Path(),
-                              followStores: false,
-                              direction: .down)
-    numPathesPerValue.removeAll(keepingCapacity: true)
-    visitedValues.removeAll(keepingCapacity: true)
+                              followStores: false)
+    walkedDownCache.removeAll(keepingCapacity: true)
+    walkedUpCache.removeAll(keepingCapacity: true)
     return result
   }
 
-  private mutating func walkAndCache(_ value: Value,
-                                     path: Path,
-                                     followStores: Bool,
-                                     direction: UpDown) -> Escapes {
-    var p = path
-    let key = VisitedKey(value: value.hashable, path: p,
-                         followStores: followStores, upDown: direction)
-    if !visitedValues.insert(key).inserted {
-      return Escapes()
+  private mutating func walkDownAndCache(_ value: Value,
+                                         path: Path,
+                                         followStores: Bool) -> Escapes {
+    if let entry = walkedDownCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
+      return walkDown(value, path: entry.path, followStores: entry.followStores)
     }
-    // print("  --- cache \(direction): \(path) \(value)")
-    if numPathesPerValue[value.hashable, default: VisitCounter()].recordVisit() >= 8 {
-      p = Path.matchingAll
+    return Escapes()
+  }
+
+  private mutating func walkUpAndCache(_ value: Value,
+                                       path: Path,
+                                       followStores: Bool) -> Escapes {
+    if let entry = walkedUpCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
+      return walkUp(value, path: entry.path, followStores: entry.followStores)
     }
-    switch direction {
-      case .up:
-        return walkUp(value, path: p, followStores: followStores)
-      case .down:
-        return walkDown(value, path: p, followStores: followStores)
-    }
+    return Escapes()
   }
 
   private mutating func walkDown(_ value: Value,
@@ -392,8 +424,8 @@ struct EscapeInfo {
             return Escapes.toGlobal
           }
         case let br as BranchInst:
-          result |= walkAndCache(br.getArgument(for: use), path: path,
-                                 followStores: followStores, direction: .down)
+          result |= walkDownAndCache(br.getArgument(for: use), path: path,
+                                     followStores: followStores)
         case is ReturnInst:
           result |= Escapes.toReturn
         case let ap as ApplyInst:
@@ -511,11 +543,9 @@ struct EscapeInfo {
     while true {
       switch val {
         case is AllocRefInst, is AllocStackInst:
-          return walkAndCache(val, path: p, followStores: fSt,
-                              direction: .down)
+          return walkDownAndCache(val, path: p, followStores: fSt)
         case let arg as FunctionArgument:
-          let result = walkAndCache(arg, path: p, followStores: fSt,
-                                    direction: .down)
+          let result = walkDownAndCache(arg, path: p, followStores: fSt)
           let argIdx = arg.index
           if argIdx > Escapes.maxArgs {
             return Escapes.toGlobal
@@ -525,8 +555,7 @@ struct EscapeInfo {
           if arg.isPhiArgument {
             var result = Escapes()
             for incoming in arg.incomingPhiValues {
-              result |= walkAndCache(incoming, path: p, followStores: fSt,
-                                     direction: .up)
+              result |= walkUpAndCache(incoming, path: p, followStores: fSt)
             }
             return result
           }

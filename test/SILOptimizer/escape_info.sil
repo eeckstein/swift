@@ -60,7 +60,8 @@ bb0(%0 : $*X):
 }
 
 // CHECK-LABEL: Escape information for test_value_projection:
-// CHECK: {}:       %0 = alloc_ref $X
+// %0 is conservatively calculated as "return" because of path merging
+// CHECK: {return}: %0 = alloc_ref $X
 // CHECK: {return}: %1 = alloc_ref $X
 // CHECK: {}:       %2 = alloc_ref $Y
 // CHECK: End function test_value_projection
@@ -82,7 +83,8 @@ bb0:
 }
 
 // CHECK-LABEL: Escape information for test_addr_projection:
-// CHECK: {}:       %0 = alloc_ref $X
+// %0 is conservatively calculated as "return" because of path merging
+// CHECK: {return}: %0 = alloc_ref $X
 // CHECK: {return}: %1 = alloc_ref $X
 // CHECK: {}:       %2 = alloc_ref $Y
 // CHECK: End function test_addr_projection
@@ -145,8 +147,9 @@ bb3(%5 : $X, %6 : $Y):
 }
 
 // CHECK-LABEL: Escape information for test_phiterms_merge_up:
-// CHECK: {}:            %3 = alloc_ref $LinkedNode
-// CHECK: {arg0,arg1}:   %4 = alloc_ref $X
+// CHECK: {}:               %3 = alloc_ref $LinkedNode
+// %4 is conservatively calculated as "arg2" because of path merging
+// CHECK: {arg0,arg1,arg2}: %4 = alloc_ref $X
 // CHECK: End function test_phiterms_merge_up
 sil @test_phiterms_merge_up : $@convention(thin) (@inout X, @inout X, @inout X) -> () {
 bb0(%0 : $*X, %1 : $*X, %2 : $*X):
