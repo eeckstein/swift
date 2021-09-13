@@ -427,7 +427,7 @@ struct EscapeInfo {
   }
   
   private mutating func walkDownInstructionResults(
-                        results: InstructionResults, fieldKind: Path.FieldKind,
+                        results: Instruction.Results, fieldKind: Path.FieldKind,
                         path: Path, followStores: Bool) -> Escapes {
     if let (index, newPath) = path.pop(kind: fieldKind) {
       return walkDown(results[index], path: newPath, followStores: followStores)

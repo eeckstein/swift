@@ -40,8 +40,17 @@ public class Instruction : ListNode, CustomStringConvertible, Hashable {
   fileprivate var resultCount: Int { 0 }
   fileprivate func getResult(index: Int) -> Value { fatalError() }
 
-  final public var results: InstructionResults {
-    InstructionResults(inst: self, numResults: resultCount)
+  public struct Results : RandomAccessCollection {
+    fileprivate let inst: Instruction
+    fileprivate let numResults: Int
+
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { numResults }
+    public subscript(_ index: Int) -> Value { inst.getResult(index: index) }
+  }
+
+  final public var results: Results {
+    Results(inst: self, numResults: resultCount)
   }
 
   final public var location: Location {
@@ -103,15 +112,6 @@ extension BridgedInstruction {
 
 extension OptionalBridgedInstruction {
   var instruction: Instruction? { obj.getAs(Instruction.self) }
-}
-
-public struct InstructionResults : RandomAccessCollection {
-  let inst: Instruction
-  let numResults: Int
-
-  public var startIndex: Int { 0 }
-  public var endIndex: Int { numResults }
-  public subscript(_ index: Int) -> Value { inst.getResult(index: index) }
 }
 
 public class SingleValueInstruction : Instruction, Value {
