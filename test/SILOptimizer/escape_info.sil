@@ -440,3 +440,45 @@ bb0:
   return %4 : $()
 }
 
+sil [ossa] [escapes_to_return(0, **)] @arg_to_return : $@convention(thin) (@owned X) -> @owned Str
+
+// CHECK-LABEL: Escape information for call_arg_to_return:
+// CHECK: {}:         %0 = alloc_ref $X
+// CHECK: {return}:   %1 = alloc_ref $X
+// CHECK: End function call_arg_to_return
+sil [ossa] @call_arg_to_return : $@convention(thin) () -> @owned X {
+bb0:
+  %0 = alloc_ref $X
+  %1 = alloc_ref $X
+  %2 = function_ref @arg_to_return : $@convention(thin) (@owned X) -> @owned Str
+  %3 = apply %2(%0) : $@convention(thin) (@owned X) -> @owned Str
+  destroy_value %3 : $Str
+  %5 = apply %2(%1) : $@convention(thin) (@owned X) -> @owned Str
+  (%6, %7) = destructure_struct %5 : $Str
+  destroy_value %7 : $(X, X)
+  return %6 : $X
+}
+
+sil [ossa] [escapes_to_argument_0(1, **)] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
+
+// CHECK-LABEL: Escape information for call_arg_to_arg:
+// CHECK: {}:         %0 = alloc_ref $X
+// CHECK: {return}:   %1 = alloc_ref $X
+// CHECK: End function call_arg_to_arg
+sil [ossa] @call_arg_to_arg : $@convention(thin) () -> @owned X {
+bb0:
+  %0 = alloc_ref $X
+  %1 = alloc_ref $X
+  %2 = function_ref @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
+  %3 = alloc_stack $Str
+  %4 = apply %2(%3, %0) : $@convention(thin) (@owned X) -> @out Str
+  destroy_addr %3 : $*Str
+  dealloc_stack %3 : $*Str
+  %7 = alloc_stack $Str
+  %8 = apply %2(%7, %1) : $@convention(thin) (@owned X) -> @out Str
+  %9 = struct_element_addr %7 : $*Str, #Str.a
+  %10 = load [copy] %9 : $*X
+  destroy_addr %7 : $*Str
+  dealloc_stack %7 : $*Str
+  return %10 : $X
+}

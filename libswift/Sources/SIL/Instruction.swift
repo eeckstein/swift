@@ -40,7 +40,9 @@ public class Instruction : ListNode, CustomStringConvertible, Hashable {
   fileprivate var resultCount: Int { 0 }
   fileprivate func getResult(index: Int) -> Value { fatalError() }
 
-  final public var results: InstructionResults { InstructionResults(self) }
+  final public var results: InstructionResults {
+    InstructionResults(inst: self, numResults: resultCount)
+  }
 
   final public var location: Location {
     return Location(bridgedLocation: SILInstruction_getLocation(bridged))
@@ -103,24 +105,13 @@ extension OptionalBridgedInstruction {
   var instruction: Instruction? { obj.getAs(Instruction.self) }
 }
 
-public struct InstructionResults : Sequence, IteratorProtocol {
+public struct InstructionResults : RandomAccessCollection {
   let inst: Instruction
   let numResults: Int
-  var index: Int = 0
 
-  init(_ inst: Instruction) {
-    self.inst = inst
-    numResults = inst.resultCount
-  }
-
-  public mutating func next() -> Value? {
-    let idx = index
-    if idx < numResults {
-      index += 1
-      return inst.getResult(index: idx)
-    }
-    return nil
-  }
+  public var startIndex: Int { 0 }
+  public var endIndex: Int { numResults }
+  public subscript(_ index: Int) -> Value { inst.getResult(index: index) }
 }
 
 public class SingleValueInstruction : Instruction, Value {
@@ -135,9 +126,11 @@ public final class MultipleValueInstructionResult : Value {
     SILNode_debugDescription(bridgedNode).takeString()
   }
 
-  public var definingInstruction: Instruction? {
+  public var instruction: Instruction {
     MultiValueInstResult_getParent(bridged).instruction
   }
+
+  public var definingInstruction: Instruction? { instruction }
 
   var bridged: BridgedMultiValueResult {
     BridgedMultiValueResult(obj: SwiftObject(self))

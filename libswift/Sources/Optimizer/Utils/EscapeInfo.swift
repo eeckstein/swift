@@ -64,11 +64,23 @@ struct EscapeInfo {
     enum FieldKind : Int {
       case root = 0
       case anything = 1
-      case structField = 2
-      case tupleField = 3
-      case enumCase = 4
-      case classField = 5
-      case tailElements = 6
+      case anyValueField = 2
+      case structField = 3
+      case tupleField = 4
+      case enumCase = 5
+      case classField = 6
+      case tailElements = 7
+      
+      var isValueField: Bool {
+        switch self {
+          case .root, .anything:
+            fatalError("Cannot decide if \(self) is a value field")
+          case .anyValueField, .structField, .tupleField, .enumCase:
+            return true
+          case .classField, .tailElements:
+            return false
+        }
+      }
     }
 
     init() { self.bytes = 0 }
@@ -88,13 +100,14 @@ struct EscapeInfo {
         let (kind, idx, numBits) = p.top
         let s: String
         switch kind {
-          case .root:         fatalError()
-          case .anything:     s = "*"
-          case .structField:  s = "s#\(idx)"
-          case .tupleField:   s = "t#\(idx)"
-          case .enumCase:     s = "e#\(idx)"
-          case .classField:   s = "c#\(idx)"
-          case .tailElements: s = "tail"
+          case .root:          fatalError()
+          case .anything:      s = "**"
+          case .anyValueField: s = "*"
+          case .structField:   s = "s#\(idx)"
+          case .tupleField:    s = "t#\(idx)"
+          case .enumCase:      s = "e#\(idx)"
+          case .classField:    s = "c#\(idx)"
+          case .tailElements:  s = "tail"
         }
         descr = s + (descr.isEmpty ? "" : ".\(descr)")
         p = p.pop(numBits: max(numBits, 8))
@@ -155,6 +168,11 @@ struct EscapeInfo {
       switch k {
         case .anything:
           return self
+        case .anyValueField:
+          if kind.isValueField {
+            return self
+          }
+          return pop(numBits: numBits).popIfMatches(kind: kind, index: index)
         case kind:
           if idx != index { return nil }
           return pop(numBits: numBits)
@@ -168,6 +186,11 @@ struct EscapeInfo {
       switch k {
         case .anything:
           return self
+        case .anyValueField:
+          if anyOfKind.isValueField {
+            return self
+          }
+          return pop(numBits: numBits).popIfMatches(anyOfKind: anyOfKind)
         case anyOfKind:
           return pop(numBits: numBits)
         default:
@@ -175,12 +198,16 @@ struct EscapeInfo {
       }
     }
 
+    var matchesAnyValueField: Bool {
+      top.kind == .anyValueField
+    }
+
     func popAllValueFields() -> Path {
       var p = self
       while true {
         let (k, _, numBits) = p.top
         switch k {
-          case .structField, .tupleField, .enumCase:
+          case .structField, .tupleField, .enumCase, .anyValueField:
             p = p.pop(numBits: numBits)
           case .root, .anything, .classField, .tailElements:
             return p
@@ -293,6 +320,12 @@ struct EscapeInfo {
           if let newPath = path.popIfMatches(kind: .structField, index: se.fieldIndex) {
             result |= walkDown(se, path: newPath, followStores: followStores)
           }
+        case let ds as DestructureStructInst:
+          result |= walkDownInstructionResults(results: ds.results,
+                fieldKind: .structField, path: path, followStores: followStores)
+        case let dt as DestructureTupleInst:
+          result |= walkDownInstructionResults(results: dt.results,
+                fieldKind: .tupleField, path: path, followStores: followStores)
         case let sea as StructElementAddrInst:
           if let newPath = path.popIfMatches(kind: .structField, index: sea.fieldIndex) {
             result |= walkDown(sea, path: newPath, followStores: followStores)
@@ -316,14 +349,22 @@ struct EscapeInfo {
             result |= walkDown(ued, path: newPath, followStores: followStores)
           }
         case let se as SwitchEnumInst:
-          guard let (caseIdx, newPath) = path.pop(kind: .enumCase) else {
-            return Escapes.toGlobal
-          }
-          if let succBlock = se.getUniqueSuccessor(forCaseIndex: caseIdx) {
-            if let payload = succBlock.arguments.first {
-              result |= walkDown(payload, path: newPath,
-                                 followStores: followStores)
+          if let (caseIdx, newPath) = path.pop(kind: .enumCase) {
+            if let succBlock = se.getUniqueSuccessor(forCaseIndex: caseIdx) {
+              if let payload = succBlock.arguments.first {
+                result |= walkDown(payload, path: newPath,
+                                   followStores: followStores)
+              }
             }
+          } else if path.matchesAnyValueField {
+            for succBlock in se.block.successors {
+              if let payload = succBlock.arguments.first {
+                result |= walkDown(payload, path: path,
+                                   followStores: followStores)
+              }
+            }
+          } else {
+            return Escapes.toGlobal
           }
         case let store as StoreInst:
           if use == store.sourceOperand {
@@ -385,6 +426,21 @@ struct EscapeInfo {
     return result
   }
   
+  private mutating func walkDownInstructionResults(
+                        results: InstructionResults, fieldKind: Path.FieldKind,
+                        path: Path, followStores: Bool) -> Escapes {
+    if let (index, newPath) = path.pop(kind: fieldKind) {
+      return walkDown(results[index], path: newPath, followStores: followStores)
+    } else if path.matchesAnyValueField {
+      var escaping = Escapes()
+      for elem in results {
+        escaping |= walkDown(elem, path: path, followStores: followStores)
+      }
+      return escaping
+    }
+    return Escapes.toGlobal
+  }
+
   private mutating func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
                                      path: Path,
                                      followStores: Bool) -> Escapes {
@@ -416,17 +472,22 @@ struct EscapeInfo {
           case .escapesToReturn(let argInfo):
             if path.matches(pattern: argInfo.pattern) {
               if let result = apply.singleDirectResult {
-                escaping |= walkDown(result, path: Path.matchingAll,
-                                   followStores: false)
+                escaping |= walkDown(result,
+                                     path: Path().push(kind: .anyValueField),
+                                     followStores: false)
               } else {
                 return Escapes.toGlobal
               }
               escapeEffectFound = true
             }
           case .escapesToArgument(let argInfo, let destArgIdx):
-            if path.matches(pattern: argInfo.pattern) {
-              escaping |= walkUp(apply.arguments[destArgIdx], path: path,
-                               followStores: false)
+            if destArgIdx == argIdx {
+              escapeEffectFound = true
+            } else if path.matches(pattern: argInfo.pattern) {
+              assert(argInfo.argIndex == argIdx)
+              escaping |= walkUp(apply.arguments[destArgIdx],
+                                 path: Path().push(kind: .anyValueField),
+                                 followStores: false)
               escapeEffectFound = true
             }
           default:
@@ -482,6 +543,7 @@ struct EscapeInfo {
           }
         case let str as StructInst:
           guard let (structField, poppedPath) = p.pop(kind: .structField) else {
+            // TODO: handle anyValueField by iterating over all operands
             return Escapes.toGlobal
           }
           val = str.operands[structField].value
@@ -491,6 +553,7 @@ struct EscapeInfo {
           p = p.push(kind: .structField, index: se.fieldIndex)
         case let t as TupleInst:
           guard let (tupleField, poppedPath) = p.pop(kind: .tupleField) else {
+            // TODO: handle anyValueField by iterating over all operands
             return Escapes.toGlobal
           }
           val = t.operands[tupleField].value
@@ -527,6 +590,18 @@ struct EscapeInfo {
         case is UpcastInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst:
           val = (val as! Instruction).operands[0].value
+        case let mvr as MultipleValueInstructionResult:
+          let inst = mvr.instruction
+          switch inst {
+            case is DestructureStructInst, is DestructureTupleInst:
+              val = inst.operands[0].value
+              // TODO: push the specific result index.
+              // But currently there is no O(0) method to get the result index
+              // from a result value.
+              p = p.popAllValueFields().push(kind: .anyValueField)
+            default:
+              return Escapes.toGlobal
+          }
         default:
           return Escapes.toGlobal
       }

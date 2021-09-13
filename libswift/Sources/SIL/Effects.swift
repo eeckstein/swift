@@ -154,13 +154,14 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
   public func forArgument(_ index: Int) -> LazyFilterCollection<FunctionEffects> {
     return self.lazy.filter {
       switch $0 {
-        case .noReadGlobal:                      return false
-        case .noWriteGlobal:                     return false
-        case .noRead(let argInfo):               return argInfo.argIndex == index
-        case .noWrite(let argInfo):              return argInfo.argIndex == index
-        case .noEscape(let argInfo):             return argInfo.argIndex == index
-        case .escapesToReturn(let argInfo):      return argInfo.argIndex == index
-        case .escapesToArgument(let argInfo, _): return argInfo.argIndex == index
+        case .noReadGlobal:                 return false
+        case .noWriteGlobal:                return false
+        case .noRead(let argInfo):          return argInfo.argIndex == index
+        case .noWrite(let argInfo):         return argInfo.argIndex == index
+        case .noEscape(let argInfo):        return argInfo.argIndex == index
+        case .escapesToReturn(let argInfo): return argInfo.argIndex == index
+        case .escapesToArgument(let argInfo, let destArgIdx):
+          return argInfo.argIndex == index || destArgIdx == index
       }
     }
   }
