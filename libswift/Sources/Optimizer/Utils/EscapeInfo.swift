@@ -356,7 +356,8 @@ struct EscapeInfo {
         case is ReturnInst:
           result |= Escapes.toReturn
         case let ap as ApplyInst:
-          result |= handleArgumentEffects(argOp: use, apply: ap, path: path)
+          result |= handleArgumentEffects(argOp: use, apply: ap, path: path,
+                                          followStores: followStores)
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
              // Only handle "upcasts" for now, because down casts are not
@@ -367,7 +368,7 @@ struct EscapeInfo {
           result |= walkDown(user as! SingleValueInstruction, path: path,
                              followStores: followStores)
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,
-             is DebugValueInst, is DebugValueAddrInst, is ValueMetatypeInst,
+             is DebugValueInst, is ValueMetatypeInst,
              is InitExistentialMetatypeInst, is OpenExistentialMetatypeInst,
              is ExistentialMetatypeInst, is DeallocRefInst, is SetDeallocatingInst,
              is FixLifetimeInst, is ClassifyBridgeObjectInst,
@@ -384,11 +385,17 @@ struct EscapeInfo {
     return result
   }
   
-  private func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
-                                     path: Path) -> Escapes {
+  private mutating func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
+                                     path: Path,
+                                     followStores: Bool) -> Escapes {
     guard let argIdx = apply.argumentIndex(of: argOp) else {
       // The callee or a type dependend operand does not let escape anything.
       return Escapes()
+    }
+    
+    if followStores {
+      // We don't know if something is stored to an argument.
+      return Escapes.toGlobal
     }
   
     let callees = calleeAnalysis.getCallees(callee: apply.callee)
@@ -396,33 +403,44 @@ struct EscapeInfo {
       return Escapes.toGlobal
     }
 
-    var result = Escapes()
+    var escaping = Escapes()
 
     for callee in callees {
-      var argEsc: Escapes? = nil
+      var escapeEffectFound = false
       for effect in callee.effects.forArgument(argIdx) {
-        switch effect.kind {
-          case .escape(let pattern):
-            var m = path.matches(pattern: pattern)
-            if argEsc == nil || m {
-              switch effect.sign {
-                case .no:         m = !m
-                case .may, .must: break
+        switch effect {
+          case .noEscape(let argInfo):
+            if path.matches(pattern: argInfo.pattern) {
+              escapeEffectFound = true
+            }
+          case .escapesToReturn(let argInfo):
+            if path.matches(pattern: argInfo.pattern) {
+              if let result = apply.singleDirectResult {
+                escaping |= walkDown(result, path: Path.matchingAll,
+                                   followStores: false)
+              } else {
+                return Escapes.toGlobal
               }
-              argEsc = m ? Escapes.toGlobal : Escapes()
+              escapeEffectFound = true
+            }
+          case .escapesToArgument(let argInfo, let destArgIdx):
+            if path.matches(pattern: argInfo.pattern) {
+              escaping |= walkUp(apply.arguments[destArgIdx], path: path,
+                               followStores: false)
+              escapeEffectFound = true
             }
           default:
             break
         }
+        if escaping.contains(Escapes.toGlobal) { return Escapes.toGlobal }
       }
-      guard let esc = argEsc else { return Escapes.toGlobal }
-
-      result |= esc
-      if result.contains(Escapes.toGlobal) { return Escapes.toGlobal }
+      if !escapeEffectFound {
+        return Escapes.toGlobal
+      }
     }
-    return result
+    return escaping
   }
-  
+
   private mutating func walkUp(_ value: Value,
                                path: Path,
                                followStores: Bool) -> Escapes {

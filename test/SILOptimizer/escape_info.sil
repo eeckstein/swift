@@ -424,3 +424,19 @@ bb0:
   return %9 : $()
 }
 
+sil [ossa] [noescape(1, **)] @unknown_function : $@convention(thin) (@owned X, @owned Y) -> ()
+
+// CHECK-LABEL: Escape information for call_unknown:
+// CHECK: {global}:   %0 = alloc_ref $X
+// CHECK: {}:         %1 = alloc_ref $Y
+// CHECK: End function call_unknown
+sil [ossa] @call_unknown : $@convention(thin) () -> () {
+bb0:
+  %0 = alloc_ref $X
+  %1 = alloc_ref $Y
+  %2 = function_ref @unknown_function : $@convention(thin) (@owned X, @owned Y) -> ()
+  %3 = apply %2(%0, %1) : $@convention(thin) (@owned X, @owned Y) -> ()
+  %4 = tuple ()
+  return %4 : $()
+}
+
