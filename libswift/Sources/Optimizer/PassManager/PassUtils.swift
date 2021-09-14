@@ -56,6 +56,11 @@ struct PassContext {
 
     SILInstruction_setOperand(instruction.bridged, index, value.bridged)
   }
+  
+  func modifyEffects(in function: Function, _ body: (inout FunctionEffects) -> ()) {
+    function._modifyEffects(body)
+    // TODO: do we need to notify any changes?
+  }
 }
 
 struct FunctionPass {

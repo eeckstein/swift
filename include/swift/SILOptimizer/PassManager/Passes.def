@@ -225,8 +225,8 @@ PASS(EscapeAnalysisDumper, "escapes-dump",
      "Dump Escape Analysis Results")
 SWIFT_FUNCTION_PASS(EscapeInfoDumper, "dump-escape-info",
      "Dumps escape information")
-SWIFT_FUNCTION_PASS(CalculateEffects, "calculate-effects",
-     "Calculates function effects")
+SWIFT_FUNCTION_PASS(ComputeEffects, "compute-effects",
+     "Computes function effects")
 PASS(FunctionOrderPrinter, "function-order-printer",
      "Print Function Order for Testing")
 PASS(FunctionSignatureOpts, "function-signature-opts",

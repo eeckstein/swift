@@ -312,6 +312,10 @@ SwiftInt SILType_isAddress(BridgedType type) {
   return castToSILType(type).isAddress();
 }
 
+SwiftInt SILType_isTrivial(BridgedType type, BridgedFunction function) {
+  return castToSILType(type).isTrivial(*castToFunction(function));
+}
+
 //===----------------------------------------------------------------------===//
 //                            SILGlobalVariable
 //===----------------------------------------------------------------------===//

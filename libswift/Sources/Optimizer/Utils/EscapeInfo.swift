@@ -12,12 +12,7 @@
 
 import SIL
 
-public enum Escapes {
-  case noEscape
-  case toGlobal
-  case toReturn
-  case toArgument(Int)
-
+extension Escapes {
   public static func |(lhs: Escapes, rhs: Escapes) -> Escapes {
     switch (lhs, rhs) {
       case (.noEscape, let rhs): return rhs
@@ -439,11 +434,7 @@ struct EscapeInfo {
                                        followStores: followStores)
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
-             // Only handle "upcasts" for now, because down casts are not
-             // representable in the projection path. E.g. if a base class is
-             // downcast to two distinct derived classes, the same projection path
-             // can cover distinct fields in the derived classes.
-             is UpcastInst:
+             is UpcastInst, is UncheckedRefCastInst:
           esc |= walkDown(user as! SingleValueInstruction, path: path,
                           followStores: followStores)
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,
@@ -501,36 +492,37 @@ struct EscapeInfo {
 
     for callee in callees {
       var escapeEffectFound = false
-      for effect in callee.effects.forArgument(argIdx) {
-        switch effect {
-          case .noEscape(let argInfo):
-            if path.matches(pattern: argInfo.pattern) {
-              escapeEffectFound = true
-            }
-          case .escapesToReturn(let argInfo):
-            if path.matches(pattern: argInfo.pattern) {
-              if let result = apply.singleDirectResult {
+      for effect in callee.effects {
+        if case .escaping(let argInfo, let escapes) = effect.kind {
+          if argInfo.argIndex == argIdx &&
+             path.matches(pattern: argInfo.pattern) {
+            escapeEffectFound = true
+        
+            switch escapes {
+              case .noEscape:
+                break
+              case .toReturn:
+                guard let result = apply.singleDirectResult else {
+                  return Escapes.toGlobal
+                }
                 esc |= walkDown(result, path: Path().push(kind: .anyValueField),
                                 followStores: false)
-              } else {
-                return Escapes.toGlobal
-              }
-              escapeEffectFound = true
+              case .toArgument(let destArgIdx):
+                esc |= walkUp(apply.arguments[destArgIdx],
+                              path: Path().push(kind: .anyValueField),
+                              followStores: false)
+              case .toGlobal:
+                return .toGlobal
             }
-          case .escapesToArgument(let argInfo, let destArgIdx):
+            if case .toGlobal = esc {
+              return .toGlobal
+            }
+          } else if case .toArgument(let destArgIdx) = escapes {
             if destArgIdx == argIdx {
               escapeEffectFound = true
-            } else if path.matches(pattern: argInfo.pattern) {
-              assert(argInfo.argIndex == argIdx)
-              esc |= walkUp(apply.arguments[destArgIdx],
-                            path: Path().push(kind: .anyValueField),
-                            followStores: false)
-              escapeEffectFound = true
             }
-          default:
-            break
+          }
         }
-        if case .toGlobal = esc { return .toGlobal }
       }
       if !escapeEffectFound {
         return .toGlobal
@@ -618,8 +610,8 @@ struct EscapeInfo {
         case let ued as UncheckedEnumDataInst:
           val = ued.operand
           p = p.push(kind: .enumCase, index: ued.caseIndex)
-        case is UpcastInst, is InitExistentialRefInst, is OpenExistentialRefInst,
-             is BeginAccessInst, is BeginBorrowInst:
+        case is UpcastInst, is UncheckedRefCastInst, is InitExistentialRefInst,
+             is OpenExistentialRefInst, is BeginAccessInst, is BeginBorrowInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:
           let inst = mvr.instruction

@@ -10,7 +10,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-public enum Effect : CustomStringConvertible {
+public enum Escapes {
+  case noEscape
+  case toGlobal
+  case toReturn
+  case toArgument(Int)
+}
+
+public struct Effect : CustomStringConvertible {
 
   // TODO: extend this to support something like "x.y.*.z.**"
   public enum Pattern : CustomStringConvertible {
@@ -41,6 +48,11 @@ public enum Effect : CustomStringConvertible {
     public let argIndex: Int
     public let pattern: Pattern
     
+    public init(index: Int, pattern: Pattern) {
+      self.argIndex = index
+      self.pattern = pattern
+    }
+    
     public init?(parser: inout StringParser, for function: Function) {
       if !parser.consume("(") { return nil }
       guard let argIdx = parser.consumeInt() else { return nil }
@@ -61,40 +73,50 @@ public enum Effect : CustomStringConvertible {
     public var description: String { "(\(argIndex), \(pattern))" }
   }
 
-  case noReadGlobal
-  case noWriteGlobal
-  case noRead(ArgInfo)
-  case noWrite(ArgInfo)
-  case noEscape(ArgInfo)
-  case escapesToReturn(ArgInfo)
-  case escapesToArgument(ArgInfo, Int)
+  public enum Kind {
+    case noReadGlobal
+    case noWriteGlobal
+    case noRead(ArgInfo)
+    case noWrite(ArgInfo)
+    case escaping(ArgInfo, Escapes)
+  }
+  
+  public let kind: Kind
+  public let isComputed: Bool
+
+  public init(kind: Kind, isComputed: Bool) {
+    self.kind = kind
+    self.isComputed = isComputed
+  }
 
   public init?(parser: inout StringParser, for function: Function) {
 
+    isComputed = parser.consume("+")
+
     if parser.consume("noread_global") {
-      self = .noReadGlobal
+      kind = .noReadGlobal
     } else if parser.consume("nowrite_global") {
-      self = .noWriteGlobal
+      kind = .noWriteGlobal
     } else if parser.consume("noread") {
       guard let argInfo = ArgInfo(parser: &parser, for: function) else {
         return nil
       }
-      self = .noRead(argInfo)
+      kind = .noRead(argInfo)
     } else if parser.consume("nowrite") {
       guard let argInfo = ArgInfo(parser: &parser, for: function) else {
         return nil
       }
-      self = .noWrite(argInfo)
+      kind = .noWrite(argInfo)
     } else if parser.consume("noescape") {
       guard let argInfo = ArgInfo(parser: &parser, for: function) else {
         return nil
       }
-      self = .noEscape(argInfo)
+      kind = .escaping(argInfo, .noEscape)
     } else if parser.consume("escapes_to_return") {
       guard let argInfo = ArgInfo(parser: &parser, for: function) else {
         return nil
       }
-      self = .escapesToReturn(argInfo)
+      kind = .escaping(argInfo, .toReturn)
     } else if parser.consume("escapes_to_argument_") {
       guard let destArgIdx = parser.consumeInt(withWhiteSpace: false) else {
         return nil
@@ -102,23 +124,30 @@ public enum Effect : CustomStringConvertible {
       guard let argInfo = ArgInfo(parser: &parser, for: function) else {
         return nil
       }
-      self = .escapesToArgument(argInfo, destArgIdx)
+      kind = .escaping(argInfo, .toArgument(destArgIdx))
     } else {
       return nil
     }
   }
  
   public var description: String {
-    switch self {
-      case .noReadGlobal:                 return "noread_global"
-      case .noWriteGlobal:                return "nowrite_global"
-      case .noRead(let argInfo):          return "noread\(argInfo)"
-      case .noWrite(let argInfo):         return "nowrite\(argInfo)"
-      case .noEscape(let argInfo):        return "noescape\(argInfo)"
-      case .escapesToReturn(let argInfo): return "escapes_to_return\(argInfo)"
-      case .escapesToArgument(let argInfo, let destArgIdx):
-        return "escapes_to_argument_\(destArgIdx)\(argInfo)"
+    let d: String
+    switch kind {
+      case .noReadGlobal:                 d = "noread_global"
+      case .noWriteGlobal:                d = "nowrite_global"
+      case .noRead(let argInfo):          d = "noread\(argInfo)"
+      case .noWrite(let argInfo):         d = "nowrite\(argInfo)"
+      case .escaping(let argInfo, let escapes):
+        switch escapes {
+          case .noEscape: d = "noescape\(argInfo)"
+          case .toReturn: d = "escapes_to_return\(argInfo)"
+          case .toArgument(let argIdx):
+            d = "escapes_to_argument_\(argIdx)\(argInfo)"
+          case .toGlobal:
+            fatalError("cannot define a global-escaping effect")
+        }
     }
+    return (isComputed ? "+" : "") + d
   }
 }
 
@@ -150,22 +179,13 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
       if !parser.consume(",") { return false }
     }
   }
-  
-  public func forArgument(_ index: Int) -> LazyFilterCollection<FunctionEffects> {
-    return self.lazy.filter {
-      switch $0 {
-        case .noReadGlobal:                 return false
-        case .noWriteGlobal:                return false
-        case .noRead(let argInfo):          return argInfo.argIndex == index
-        case .noWrite(let argInfo):         return argInfo.argIndex == index
-        case .noEscape(let argInfo):        return argInfo.argIndex == index
-        case .escapesToReturn(let argInfo): return argInfo.argIndex == index
-        case .escapesToArgument(let argInfo, let destArgIdx):
-          return argInfo.argIndex == index || destArgIdx == index
-      }
-    }
+
+  public mutating func removeComputedEffects() {
+    effects = effects.filter { !$0.isComputed }
   }
-  
+
+  public mutating func append(_ effect: Effect) { effects.append(effect) }
+
   public var description: String {
     if effects.isEmpty {
       return ""

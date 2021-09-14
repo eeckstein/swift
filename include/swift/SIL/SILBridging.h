@@ -200,6 +200,7 @@ OptionalBridgedOperand SILValue_firstUse(BridgedValue value);
 BridgedType SILValue_getType(BridgedValue value);
 
 SwiftInt SILType_isAddress(BridgedType);
+SwiftInt SILType_isTrivial(BridgedType, BridgedFunction);
 
 BridgedBasicBlock SILArgument_getParent(BridgedArgument argument);
 

@@ -35,6 +35,15 @@ final public class Function : CustomStringConvertible {
     return ReverseList(startAt: SILFunction_lastBlock(bridged).block)
   }
 
+  public var arguments: LazyMapSequence<ArgumentArray, FunctionArgument> {
+    entryBlock.arguments.lazy.map { $0 as! FunctionArgument }
+  }
+  
+  // Only to be called by PassContext
+  public func _modifyEffects(_ body: (inout FunctionEffects) -> ()) {
+    body(&effects)
+  }
+
   static func register() {
     func checkLayout(_ p: UnsafeMutablePointer<FunctionEffects>,
                      data: UnsafeMutableRawPointer, size: Int) {
