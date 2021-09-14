@@ -45,9 +45,9 @@ enum E {
 }
 
 // CHECK-LABEL: Escape information for test_simple:
-// CHECK: {return}: %1 = alloc_ref $X
-// CHECK: {}:       %2 = alloc_ref $Y
-// CHECK: {arg0}:   %3 = alloc_ref $X
+// CHECK: toReturn:      %1 = alloc_ref $X
+// CHECK: noEscape:      %2 = alloc_ref $Y
+// CHECK: toArgument(0): %3 = alloc_ref $X
 // CHECK: End function test_simple
 sil [ossa] @test_simple : $@convention(thin) (@inout X) -> @owned X {
 bb0(%0 : $*X):
@@ -61,9 +61,9 @@ bb0(%0 : $*X):
 
 // CHECK-LABEL: Escape information for test_value_projection:
 // %0 is conservatively calculated as "return" because of path merging
-// CHECK: {return}: %0 = alloc_ref $X
-// CHECK: {return}: %1 = alloc_ref $X
-// CHECK: {}:       %2 = alloc_ref $Y
+// CHECK: toReturn:   %0 = alloc_ref $X
+// CHECK: toReturn:   %1 = alloc_ref $X
+// CHECK: noEscape:   %2 = alloc_ref $Y
 // CHECK: End function test_value_projection
 sil @test_value_projection : $@convention(thin) () -> @owned X {
 bb0:
@@ -84,9 +84,9 @@ bb0:
 
 // CHECK-LABEL: Escape information for test_addr_projection:
 // %0 is conservatively calculated as "return" because of path merging
-// CHECK: {return}: %0 = alloc_ref $X
-// CHECK: {return}: %1 = alloc_ref $X
-// CHECK: {}:       %2 = alloc_ref $Y
+// CHECK: toReturn:   %0 = alloc_ref $X
+// CHECK: toReturn:   %1 = alloc_ref $X
+// CHECK: noEscape:   %2 = alloc_ref $Y
 // CHECK: End function test_addr_projection
 sil @test_addr_projection : $@convention(thin) () -> @owned X {
 bb0:
@@ -108,8 +108,8 @@ bb0:
 }
 
 // CHECK-LABEL: Escape information for test_follow_stores:
-// CHECK: {arg0}:   %1 = alloc_ref $X
-// CHECK: {}:       %2 = alloc_ref $Z
+// CHECK: toArgument(0): %1 = alloc_ref $X
+// CHECK: noEscape:      %2 = alloc_ref $Z
 // CHECK: End function test_follow_stores
 sil @test_follow_stores : $@convention(thin) (Y) -> () {
 bb0(%0 : $Y):
@@ -126,10 +126,10 @@ bb0(%0 : $Y):
 }
 
 // CHECK-LABEL: Escape information for test_phiterms_merge_down:
-// CHECK: {return}:   %1 = alloc_ref $X
-// CHECK: {}:         %2 = alloc_ref $Y
-// CHECK: {return}:   %4 = alloc_ref $X
-// CHECK: {}:         %5 = alloc_ref $Y
+// CHECK: toReturn:   %1 = alloc_ref $X
+// CHECK: noEscape:   %2 = alloc_ref $Y
+// CHECK: toReturn:   %4 = alloc_ref $X
+// CHECK: noEscape:   %5 = alloc_ref $Y
 // CHECK: End function test_phiterms_merge_down
 sil @test_phiterms_merge_down : $@convention(thin) () -> @owned X {
 bb0:
@@ -147,9 +147,8 @@ bb3(%5 : $X, %6 : $Y):
 }
 
 // CHECK-LABEL: Escape information for test_phiterms_merge_up:
-// CHECK: {}:               %3 = alloc_ref $LinkedNode
-// %4 is conservatively calculated as "arg2" because of path merging
-// CHECK: {arg0,arg1,arg2}: %4 = alloc_ref $X
+// CHECK: noEscape:   %3 = alloc_ref $LinkedNode
+// CHECK: toGlobal:   %4 = alloc_ref $X
 // CHECK: End function test_phiterms_merge_up
 sil @test_phiterms_merge_up : $@convention(thin) (@inout X, @inout X, @inout X) -> () {
 bb0(%0 : $*X, %1 : $*X, %2 : $*X):
@@ -184,8 +183,8 @@ bb3(%9 : $LinkedNode):
 }
 
 // CHECK-LABEL: Escape information for test_cycle:
-// CHECK: {}:         %0 = alloc_ref $LinkedNode
-// CHECK: {return}:   %1 = alloc_ref $X
+// CHECK: noEscape:   %0 = alloc_ref $LinkedNode
+// CHECK: toReturn:   %1 = alloc_ref $X
 // CHECK: End function test_cycle
 sil @test_cycle : $@convention(thin) () -> @owned X {
 bb0:
@@ -210,8 +209,8 @@ bb3:
 }
 
 // CHECK-LABEL: Escape information for test_switch_enum_walk_down:
-// CHECK: {arg0}:   %1 = alloc_ref $Z
-// CHECK: {}:       %2 = alloc_ref $Z
+// CHECK: toArgument(0): %1 = alloc_ref $Z
+// CHECK: noEscape:      %2 = alloc_ref $Z
 // CHECK: End function test_switch_enum_walk_down
 sil @test_switch_enum_walk_down : $@convention(thin) () -> @out Z {
 bb0(%0 : $*Z):
@@ -243,9 +242,9 @@ bb6:
 }
 
 // CHECK-LABEL: Escape information for test_switch_enum_walk_up:
-// CHECK: {arg0}:   %1 = alloc_ref $Y
-// CHECK: {}:       %2 = alloc_ref $Y
-// CHECK: {}:       %6 = alloc_ref $Z
+// CHECK: toArgument(0): %1 = alloc_ref $Y
+// CHECK: noEscape:      %2 = alloc_ref $Y
+// CHECK: noEscape:      %6 = alloc_ref $Z
 // CHECK: End function test_switch_enum_walk_up
 sil @test_switch_enum_walk_up : $@convention(thin) (@guaranteed Z) -> () {
 bb0(%0 : $Z):
@@ -281,8 +280,8 @@ bb6:
 }
 
 // CHECK-LABEL: Escape information for test_enum_data_walk_down:
-// CHECK: {}:       %1 = alloc_ref $Z
-// CHECK: {arg0}:   %2 = alloc_ref $Z
+// CHECK: noEscape:      %1 = alloc_ref $Z
+// CHECK: toArgument(0): %2 = alloc_ref $Z
 // CHECK: End function test_enum_data_walk_down
 sil @test_enum_data_walk_down : $@convention(thin) () -> @out Z {
 bb0(%0 : $*Z):
@@ -306,9 +305,9 @@ bb3(%7 : $E):
 }
 
 // CHECK-LABEL: Escape information for test_enum_data_walk_up:
-// CHECK: {}:       %1 = alloc_ref $Y
-// CHECK: {arg0}:   %2 = alloc_ref $Y
-// CHECK: {}:       %4 = alloc_ref $Z
+// CHECK: noEscape:      %1 = alloc_ref $Y
+// CHECK: toArgument(0): %2 = alloc_ref $Y
+// CHECK: noEscape:      %4 = alloc_ref $Z
 // CHECK: End function test_enum_data_walk_up
 sil @test_enum_data_walk_up : $@convention(thin) (@guaranteed Z) -> () {
 bb0(%0 : $Z):
@@ -339,8 +338,8 @@ bb3(%9 : $E):
 }
 
 // CHECK-LABEL: Escape information for test_cast_and_existentials_walk_down:
-// CHECK: {return}:   %0 = alloc_ref $Derived
-// CHECK: {}:         %1 = alloc_ref $Derived
+// CHECK: toReturn:   %0 = alloc_ref $Derived
+// CHECK: noEscape:   %1 = alloc_ref $Derived
 // CHECK: End function test_cast_and_existentials_walk_down
 sil @test_cast_and_existentials_walk_down : $@convention(thin) () -> ClassP {
 bb0:
@@ -359,9 +358,9 @@ bb0:
 }
 
 // CHECK-LABEL: Escape information for test_cast_walk_up:
-// CHECK: {}:   %1 = alloc_ref $Y
-// CHECK: {arg0}:   %2 = alloc_ref $Y
-// CHECK: {}:   %3 = alloc_ref $DerivedZ
+// CHECK: noEscape:      %1 = alloc_ref $Y
+// CHECK: toArgument(0): %2 = alloc_ref $Y
+// CHECK: noEscape:      %3 = alloc_ref $DerivedZ
 // CHECK: End function test_cast_walk_up
 sil @test_cast_walk_up : $@convention(thin) (@guaranteed DerivedZ) -> () {
 bb0(%0 : $DerivedZ):
@@ -382,7 +381,7 @@ bb0(%0 : $DerivedZ):
 }
 
 // CHECK-LABEL: Escape information for test_copy_addr:
-// CHECK: {arg0}:   %2 = alloc_ref $X
+// CHECK: toArgument(0): %2 = alloc_ref $X
 // CHECK: End function test_copy_addr
 sil [ossa] @test_copy_addr : $@convention(thin) (@in_guaranteed X) -> @out X {
 bb0(%0 : $*X, %1 : $*X):
@@ -407,8 +406,8 @@ bb3:
 }
 
 // CHECK-LABEL: Escape information for test_ossa:
-// CHECK: {global}:   %0 = alloc_ref $Y
-// CHECK: {}:   %1 = alloc_ref $Z
+// CHECK: toGlobal:   %0 = alloc_ref $Y
+// CHECK: noEscape:   %1 = alloc_ref $Z
 // CHECK: End function test_ossa
 sil [ossa] @test_ossa : $@convention(thin) () -> () {
 bb0:
@@ -430,8 +429,8 @@ bb0:
 sil [ossa] [noescape(1, **)] @unknown_function : $@convention(thin) (@owned X, @owned Y) -> ()
 
 // CHECK-LABEL: Escape information for call_unknown:
-// CHECK: {global}:   %0 = alloc_ref $X
-// CHECK: {}:         %1 = alloc_ref $Y
+// CHECK: toGlobal:   %0 = alloc_ref $X
+// CHECK: noEscape:   %1 = alloc_ref $Y
 // CHECK: End function call_unknown
 sil [ossa] @call_unknown : $@convention(thin) () -> () {
 bb0:
@@ -446,8 +445,8 @@ bb0:
 sil [ossa] [escapes_to_return(0, **)] @arg_to_return : $@convention(thin) (@owned X) -> @owned Str
 
 // CHECK-LABEL: Escape information for call_arg_to_return:
-// CHECK: {}:         %0 = alloc_ref $X
-// CHECK: {return}:   %1 = alloc_ref $X
+// CHECK: noEscape:   %0 = alloc_ref $X
+// CHECK: toReturn:   %1 = alloc_ref $X
 // CHECK: End function call_arg_to_return
 sil [ossa] @call_arg_to_return : $@convention(thin) () -> @owned X {
 bb0:
@@ -465,8 +464,8 @@ bb0:
 sil [ossa] [escapes_to_argument_0(1, **)] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
 
 // CHECK-LABEL: Escape information for call_arg_to_arg:
-// CHECK: {}:         %0 = alloc_ref $X
-// CHECK: {return}:   %1 = alloc_ref $X
+// CHECK: noEscape:   %0 = alloc_ref $X
+// CHECK: toReturn:   %1 = alloc_ref $X
 // CHECK: End function call_arg_to_arg
 sil [ossa] @call_arg_to_arg : $@convention(thin) () -> @owned X {
 bb0:

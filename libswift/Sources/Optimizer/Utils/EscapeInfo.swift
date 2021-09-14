@@ -12,48 +12,26 @@
 
 import SIL
 
-public struct Escapes : OptionSet, CustomStringConvertible {
-  public var rawValue: Int
+public enum Escapes {
+  case noEscape
+  case toGlobal
+  case toReturn
+  case toArgument(Int)
 
-  public init(rawValue: Int = 0) { self.rawValue = rawValue }
-
-  static let invalid = Escapes(rawValue: -1)
-  static let toGlobal = Escapes(rawValue: 1 << 0)
-  static let toReturn = Escapes(rawValue: 1 << 1)
-  static func toArg(_ index: Int) -> Escapes {
-    return Escapes(rawValue: 1 << (index + 2))
-  }
-  static let maxArgs = Int.bitWidth - 2
-  
-  public var description: String {
-    var str = "{"
-    var separator = ""
-    if contains(Escapes.toGlobal) {
-      str += "global"
-      separator = ","
-    }
-    if contains(Escapes.toReturn) {
-      str += separator + "return"
-      separator = ","
-    }
-    for i in 0..<Escapes.maxArgs {
-      if contains(Escapes.toArg(i)) {
-        str += separator + "arg\(i)"
-        separator = ","
-      }
-    }
-    str += "}"
-    return str
-  }
-  
   public static func |(lhs: Escapes, rhs: Escapes) -> Escapes {
-    return Escapes(rawValue: lhs.rawValue | rhs.rawValue)
+    switch (lhs, rhs) {
+      case (.noEscape, let rhs): return rhs
+      case (let lhs, .noEscape): return lhs
+      case (.toReturn, .toReturn): return .toReturn
+      case (.toArgument(let lhsArg), .toArgument(let rhsArg)) where lhsArg == rhsArg:
+        return .toArgument(lhsArg)
+      default:
+        return .toGlobal
+    }
   }
   public static func |=(lhs: inout Escapes, rhs: Escapes) {
-    lhs.rawValue |= rhs.rawValue
+    lhs = lhs | rhs
   }
-  
-  var isValid: Bool { rawValue != -1 }
 }
 
 struct EscapeInfo {
@@ -82,6 +60,14 @@ struct EscapeInfo {
     }
 
     init() { self.bytes = 0 }
+    
+    init(pattern: Effect.Pattern) {
+      self.init()
+      switch pattern {
+        case .firstLevel: self = push(kind: .anyValueField)
+        case .transitive: self = push(kind: .anything)
+      }
+    }
 
     static var matchingAll: Path {
       Path().push(kind: .anything)
@@ -297,19 +283,39 @@ struct EscapeInfo {
   
   private let calleeAnalysis: CalleeAnalysis
   
-  init(calleeAnalysis: CalleeAnalysis) { self.calleeAnalysis = calleeAnalysis }
+  init(calleeAnalysis: CalleeAnalysis) {
+    self.calleeAnalysis = calleeAnalysis
+    
+    // TODO: move this to a separate test file
+    Path.unitTest()
+  }
 
   public mutating func escapes(_ allocRef: AllocRefInst) -> Escapes {
-  
-    Path.unitTest()
-  
-    assert(walkedDownCache.isEmpty && walkedUpCache.isEmpty)
+    start()
     let result = walkDownAndCache(allocRef,
                               path: Path(),
                               followStores: false)
+    cleanup()
+    return result
+  }
+
+  public mutating func escapes(argument: FunctionArgument,
+                               pattern: Effect.Pattern) -> Escapes {
+    start()
+    let result = walkDownAndCache(argument,
+                              path: Path(pattern: pattern),
+                              followStores: false)
+    cleanup()
+    return result
+  }
+
+  private func start() {
+    assert(walkedDownCache.isEmpty && walkedUpCache.isEmpty)
+  }
+
+  private mutating func cleanup() {
     walkedDownCache.removeAll(keepingCapacity: true)
     walkedUpCache.removeAll(keepingCapacity: true)
-    return result
   }
 
   private mutating func walkDownAndCache(_ value: Value,
@@ -318,7 +324,7 @@ struct EscapeInfo {
     if let entry = walkedDownCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkDown(value, path: entry.path, followStores: entry.followStores)
     }
-    return Escapes()
+    return .noEscape
   }
 
   private mutating func walkUpAndCache(_ value: Value,
@@ -327,71 +333,71 @@ struct EscapeInfo {
     if let entry = walkedUpCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkUp(value, path: entry.path, followStores: entry.followStores)
     }
-    return Escapes()
+    return .noEscape
   }
 
   private mutating func walkDown(_ value: Value,
                                  path: Path,
                                  followStores: Bool) -> Escapes {
-    var result = Escapes()
+    var esc = Escapes.noEscape
     for use in value.uses {
       let user = use.instruction
       switch user {
         case let rta as RefTailAddrInst:
           if let newPath = path.popIfMatches(anyOfKind: .tailElements) {
-            result |= walkDown(rta, path: newPath, followStores: followStores)
+            esc |= walkDown(rta, path: newPath, followStores: followStores)
           }
         case let rea as RefElementAddrInst:
           if let newPath = path.popIfMatches(kind: .classField, index: rea.fieldIndex) {
-            result |= walkDown(rea, path: newPath, followStores: followStores)
+            esc |= walkDown(rea, path: newPath, followStores: followStores)
           }
         case let str as StructInst:
-          result |= walkDown(str, path: path.push(kind: .structField, index: use.index),
+          esc |= walkDown(str, path: path.push(kind: .structField, index: use.index),
                              followStores: followStores)
         case let se as StructExtractInst:
           if let newPath = path.popIfMatches(kind: .structField, index: se.fieldIndex) {
-            result |= walkDown(se, path: newPath, followStores: followStores)
+            esc |= walkDown(se, path: newPath, followStores: followStores)
           }
         case let ds as DestructureStructInst:
-          result |= walkDownInstructionResults(results: ds.results,
+          esc |= walkDownInstructionResults(results: ds.results,
                 fieldKind: .structField, path: path, followStores: followStores)
         case let dt as DestructureTupleInst:
-          result |= walkDownInstructionResults(results: dt.results,
+          esc |= walkDownInstructionResults(results: dt.results,
                 fieldKind: .tupleField, path: path, followStores: followStores)
         case let sea as StructElementAddrInst:
           if let newPath = path.popIfMatches(kind: .structField, index: sea.fieldIndex) {
-            result |= walkDown(sea, path: newPath, followStores: followStores)
+            esc |= walkDown(sea, path: newPath, followStores: followStores)
           }
         case let t as TupleInst:
-          result |= walkDown(t, path: path.push(kind: .tupleField, index: use.index),
+          esc |= walkDown(t, path: path.push(kind: .tupleField, index: use.index),
                              followStores: followStores)
         case let te as TupleExtractInst:
           if let newPath = path.popIfMatches(kind: .tupleField, index: te.fieldIndex) {
-            result |= walkDown(te, path: newPath, followStores: followStores)
+            esc |= walkDown(te, path: newPath, followStores: followStores)
           }
         case let tea as TupleElementAddrInst:
           if let newPath = path.popIfMatches(kind: .tupleField, index: tea.fieldIndex) {
-            result |= walkDown(tea, path: newPath, followStores: followStores)
+            esc |= walkDown(tea, path: newPath, followStores: followStores)
           }
         case let e as EnumInst:
-          result |= walkDown(e, path: path.push(kind: .enumCase, index: e.caseIndex),
+          esc |= walkDown(e, path: path.push(kind: .enumCase, index: e.caseIndex),
                              followStores: followStores)
         case let ued as UncheckedEnumDataInst:
           if let newPath = path.popIfMatches(kind: .enumCase, index: ued.caseIndex) {
-            result |= walkDown(ued, path: newPath, followStores: followStores)
+            esc |= walkDown(ued, path: newPath, followStores: followStores)
           }
         case let se as SwitchEnumInst:
           if let (caseIdx, newPath) = path.pop(kind: .enumCase) {
             if let succBlock = se.getUniqueSuccessor(forCaseIndex: caseIdx) {
               if let payload = succBlock.arguments.first {
-                result |= walkDown(payload, path: newPath,
+                esc |= walkDown(payload, path: newPath,
                                    followStores: followStores)
               }
             }
           } else if path.matchesAnyValueField {
             for succBlock in se.block.successors {
               if let payload = succBlock.arguments.first {
-                result |= walkDown(payload, path: path,
+                esc |= walkDown(payload, path: path,
                                    followStores: followStores)
               }
             }
@@ -400,20 +406,20 @@ struct EscapeInfo {
           }
         case let store as StoreInst:
           if use == store.sourceOperand {
-            result |= walkUp(store.destination, path: path,
-                             followStores: followStores)
+            esc |= walkUp(store.destination, path: path,
+                          followStores: followStores)
           } else if followStores {
             assert(use == store.destinationOperand)
-            result |= walkUp(store.source, path: path, followStores: followStores)
+            esc |= walkUp(store.source, path: path, followStores: followStores)
           }
         case let copyAddr as CopyAddrInst:
           if use == copyAddr.sourceOperand {
-            result |= walkUp(copyAddr.destination, path: path,
-                             followStores: followStores)
+            esc |= walkUp(copyAddr.destination, path: path,
+                          followStores: followStores)
           } else if followStores {
             assert(use == copyAddr.destinationOperand)
-            result |= walkUp(copyAddr.source, path: path,
-                             followStores: followStores)
+            esc |= walkUp(copyAddr.source, path: path,
+                          followStores: followStores)
           }
         case is DestroyValueInst, is ReleaseValueInst, is StrongReleaseInst,
              is DestroyAddrInst:
@@ -424,13 +430,13 @@ struct EscapeInfo {
             return Escapes.toGlobal
           }
         case let br as BranchInst:
-          result |= walkDownAndCache(br.getArgument(for: use), path: path,
-                                     followStores: followStores)
+          esc |= walkDownAndCache(br.getArgument(for: use), path: path,
+                                  followStores: followStores)
         case is ReturnInst:
-          result |= Escapes.toReturn
+          esc |= Escapes.toReturn
         case let ap as ApplyInst:
-          result |= handleArgumentEffects(argOp: use, apply: ap, path: path,
-                                          followStores: followStores)
+          esc |= handleArgumentEffects(argOp: use, apply: ap, path: path,
+                                       followStores: followStores)
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
              // Only handle "upcasts" for now, because down casts are not
@@ -438,8 +444,8 @@ struct EscapeInfo {
              // downcast to two distinct derived classes, the same projection path
              // can cover distinct fields in the derived classes.
              is UpcastInst:
-          result |= walkDown(user as! SingleValueInstruction, path: path,
-                             followStores: followStores)
+          esc |= walkDown(user as! SingleValueInstruction, path: path,
+                          followStores: followStores)
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,
              is DebugValueInst, is ValueMetatypeInst,
              is InitExistentialMetatypeInst, is OpenExistentialMetatypeInst,
@@ -451,11 +457,11 @@ struct EscapeInfo {
         default:
           return Escapes.toGlobal
       }
-      if result.contains(Escapes.toGlobal) {
-        return Escapes.toGlobal
+      if case .toGlobal = esc {
+        return .toGlobal
       }
     }
-    return result
+    return esc
   }
   
   private mutating func walkDownInstructionResults(
@@ -464,11 +470,11 @@ struct EscapeInfo {
     if let (index, newPath) = path.pop(kind: fieldKind) {
       return walkDown(results[index], path: newPath, followStores: followStores)
     } else if path.matchesAnyValueField {
-      var escaping = Escapes()
+      var esc = Escapes.noEscape
       for elem in results {
-        escaping |= walkDown(elem, path: path, followStores: followStores)
+        esc |= walkDown(elem, path: path, followStores: followStores)
       }
-      return escaping
+      return esc
     }
     return Escapes.toGlobal
   }
@@ -478,7 +484,7 @@ struct EscapeInfo {
                                      followStores: Bool) -> Escapes {
     guard let argIdx = apply.argumentIndex(of: argOp) else {
       // The callee or a type dependend operand does not let escape anything.
-      return Escapes()
+      return .noEscape
     }
     
     if followStores {
@@ -491,7 +497,7 @@ struct EscapeInfo {
       return Escapes.toGlobal
     }
 
-    var escaping = Escapes()
+    var esc = Escapes.noEscape
 
     for callee in callees {
       var escapeEffectFound = false
@@ -504,9 +510,8 @@ struct EscapeInfo {
           case .escapesToReturn(let argInfo):
             if path.matches(pattern: argInfo.pattern) {
               if let result = apply.singleDirectResult {
-                escaping |= walkDown(result,
-                                     path: Path().push(kind: .anyValueField),
-                                     followStores: false)
+                esc |= walkDown(result, path: Path().push(kind: .anyValueField),
+                                followStores: false)
               } else {
                 return Escapes.toGlobal
               }
@@ -517,21 +522,21 @@ struct EscapeInfo {
               escapeEffectFound = true
             } else if path.matches(pattern: argInfo.pattern) {
               assert(argInfo.argIndex == argIdx)
-              escaping |= walkUp(apply.arguments[destArgIdx],
-                                 path: Path().push(kind: .anyValueField),
-                                 followStores: false)
+              esc |= walkUp(apply.arguments[destArgIdx],
+                            path: Path().push(kind: .anyValueField),
+                            followStores: false)
               escapeEffectFound = true
             }
           default:
             break
         }
-        if escaping.contains(Escapes.toGlobal) { return Escapes.toGlobal }
+        if case .toGlobal = esc { return .toGlobal }
       }
       if !escapeEffectFound {
-        return Escapes.toGlobal
+        return .toGlobal
       }
     }
-    return escaping
+    return esc
   }
 
   private mutating func walkUp(_ value: Value,
@@ -545,19 +550,16 @@ struct EscapeInfo {
         case is AllocRefInst, is AllocStackInst:
           return walkDownAndCache(val, path: p, followStores: fSt)
         case let arg as FunctionArgument:
-          let result = walkDownAndCache(arg, path: p, followStores: fSt)
+          let esc = walkDownAndCache(arg, path: p, followStores: fSt)
           let argIdx = arg.index
-          if argIdx > Escapes.maxArgs {
-            return Escapes.toGlobal
-          }
-          return result | Escapes.toArg(argIdx)
+          return esc | Escapes.toArgument(argIdx)
         case let arg as BlockArgument:
           if arg.isPhiArgument {
-            var result = Escapes()
+            var esc = Escapes.noEscape
             for incoming in arg.incomingPhiValues {
-              result |= walkUpAndCache(incoming, path: p, followStores: fSt)
+              esc |= walkUpAndCache(incoming, path: p, followStores: fSt)
             }
-            return result
+            return esc
           }
           let block = arg.block
           switch block.singlePredecessor!.terminator {
@@ -609,7 +611,7 @@ struct EscapeInfo {
           val = tea.operand
         case let e as EnumInst:
           guard let newPath = p.popIfMatches(kind: .enumCase, index: e.caseIndex) else {
-            return Escapes()
+            return .noEscape
           }
           p = newPath
           val = e.operand

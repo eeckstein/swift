@@ -39,6 +39,7 @@ private func registerSwiftPasses() {
   registerPass(silPrinterPass, { silPrinterPass.run($0) })
   registerPass(mergeCondFailsPass, { mergeCondFailsPass.run($0) })
   registerPass(escapeInfoDumper, { escapeInfoDumper.run($0) })
+  registerPass(calculateEffects, { calculateEffects.run($0) })
   registerPass(simplifyGlobalValuePass, { simplifyGlobalValuePass.run($0) })
   registerPass(simplifyStrongRetainPass, { simplifyStrongRetainPass.run($0) })
   registerPass(simplifyStrongReleasePass, { simplifyStrongReleasePass.run($0) })
