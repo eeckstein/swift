@@ -61,6 +61,8 @@ public func registerSILClasses() {
   register(UncheckedRefCastInst.self)
   register(RawPointerToRefInst.self)
   register(AddressToPointerInst.self)
+  register(PointerToAddressInst.self)
+  register(IndexAddrInst.self)
   register(InitExistentialRefInst.self)
   register(OpenExistentialRefInst.self)
   register(InitExistentialMetatypeInst.self)

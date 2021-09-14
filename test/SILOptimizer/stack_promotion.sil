@@ -1,4 +1,4 @@
-// RUN: %target-sil-opt -stack-promotion -enable-sil-verify-all %s | %FileCheck %s
+// RUN: %target-sil-opt -compute-effects -stack-promotion -enable-sil-verify-all %s | %FileCheck %s
 
 sil_stage canonical
 
@@ -245,7 +245,7 @@ bb2:
   return %t : $()
 }
 
-// CHECK-LABEL: sil @dont_promote_use_before_alloc
+// CHECK-LABEL: sil {{.*}} @dont_promote_use_before_alloc
 // CHECK: alloc_ref $XX
 // CHECK-NOT: dealloc_ref
 // CHECK: return
@@ -568,8 +568,8 @@ bb0(%0 : $Int):
   return %11 : $Array<Int>
 }
 
-sil [_semantics "array.uninitialized"] @init_array_with_buffer : $@convention(thin) (@owned DummyArrayStorage<Int>, Int32, @thin Array<Int>.Type) -> @owned (Array<Int>, UnsafeMutablePointer<Int>)
-sil [_semantics "array.withUnsafeMutableBufferPointer"] @withUnsafeMutableBufferPointer : $@convention(method) (@owned @callee_owned (@inout Int) -> (@out (), @error Error), @inout Array<Int>) -> (@out (), @error Error)
+sil [escapes_to_return(0, **)] [_semantics "array.uninitialized"] @init_array_with_buffer : $@convention(thin) (@owned DummyArrayStorage<Int>, Int32, @thin Array<Int>.Type) -> @owned (Array<Int>, UnsafeMutablePointer<Int>)
+sil [noescape(2, *)] [_semantics "array.withUnsafeMutableBufferPointer"] @withUnsafeMutableBufferPointer : $@convention(method) (@owned @callee_owned (@inout Int) -> (@out (), @error Error), @inout Array<Int>) -> (@out (), @error Error)
 
 sil @take_array : $@convention(thin) (@owned Array<Int>) -> () {
 bb0(%0 : $Array<Int>):

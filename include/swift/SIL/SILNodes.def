@@ -449,8 +449,8 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
     SINGLE_VALUE_INST_RANGE(AllocationInst, AllocStackInst, AllocExistentialBoxInst)
 
   ABSTRACT_SINGLE_VALUE_INST(IndexingInst, SingleValueInstruction)
-    SINGLE_VALUE_INST(IndexAddrInst, index_addr,
-                      IndexingInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(IndexAddrInst, index_addr,
+                              IndexingInst, None, DoesNotRelease)
     SINGLE_VALUE_INST(TailAddrInst, tail_addr,
                       IndexingInst, None, DoesNotRelease)
     SINGLE_VALUE_INST(IndexRawPointerInst, index_raw_pointer,
@@ -499,7 +499,7 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
                       ConversionInst, None, DoesNotRelease)
     BRIDGED_SINGLE_VALUE_INST(AddressToPointerInst, address_to_pointer,
                       ConversionInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(PointerToAddressInst, pointer_to_address,
+    BRIDGED_SINGLE_VALUE_INST(PointerToAddressInst, pointer_to_address,
                       ConversionInst, None, DoesNotRelease)
     BRIDGED_SINGLE_VALUE_INST(UncheckedRefCastInst, unchecked_ref_cast,
                       ConversionInst, None, DoesNotRelease)

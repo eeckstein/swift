@@ -16,6 +16,7 @@ import OptimizerBridging
 @_cdecl("initializeLibSwift")
 public func initializeLibSwift() {
   registerSILClasses()
+  registerAnalysis()
   registerSwiftPasses()
 }
 
@@ -33,6 +34,10 @@ private func registerPass<InstType: Instruction>(
   pass.name.withBridgedStringRef { nameStr in
     SILCombine_registerInstructionPass(nameStr, runFn)
   }
+}
+
+private func registerAnalysis() {
+  AliasAnalysis.register()
 }
 
 private func registerSwiftPasses() {

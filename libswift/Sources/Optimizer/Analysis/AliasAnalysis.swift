@@ -43,4 +43,14 @@ struct AliasAnalysis {
         return false
     }
   }
+  
+  static func register() {
+    AliasAnalysis_register({ (inst: BridgedInstruction, ca: BridgedCalleeAnalysis) -> Int in
+      var escapeInfo = EscapeInfo(calleeAnalysis: CalleeAnalysis(bridged: ca))
+      switch escapeInfo.escapes(inst.getAs(AllocRefInst.self)) {
+        case .noEscape: return 0
+        default:        return 1
+      }
+    })
+  }
 }

@@ -68,6 +68,11 @@ SwiftInt BridgedFunctionArray_size(BridgedCalleeList callees);
 BridgedFunction BridgedFunctionArray_get(BridgedCalleeList callees,
                                          SwiftInt index);
 
+typedef SwiftInt (* _Nonnull AliasAnalysisEscapingFn)(BridgedInstruction,
+                                                  BridgedCalleeAnalysis);
+
+void AliasAnalysis_register(AliasAnalysisEscapingFn isEscapingFn);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

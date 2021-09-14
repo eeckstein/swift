@@ -826,3 +826,16 @@ BridgedMemoryBehavior AliasAnalysis_getMemBehavior(BridgedAliasAnalysis aa,
   return (BridgedMemoryBehavior)castToAliasAnalysis(aa)->
     computeMemoryBehavior(castToInst(inst), castToSILValue(addr));
 }
+
+static AliasAnalysisEscapingFn isEscapingFunction = nullptr;
+
+void AliasAnalysis_register(AliasAnalysisEscapingFn isEscapingFn) {
+  isEscapingFunction = isEscapingFn;
+}
+
+bool AliasAnalysis::isEscaping(AllocRefInst *ari, BasicCalleeAnalysis *bca) {
+  if (isEscapingFunction) {
+    return isEscapingFunction({ari}, {bca}) != 0;
+  }
+  return true;
+}

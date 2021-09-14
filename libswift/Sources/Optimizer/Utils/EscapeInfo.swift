@@ -432,9 +432,13 @@ struct EscapeInfo {
         case let ap as ApplyInst:
           esc |= handleArgumentEffects(argOp: use, apply: ap, path: path,
                                        followStores: followStores)
+        case let tap as TryApplyInst:
+          esc |= handleArgumentEffects(argOp: use, apply: tap, path: path,
+                                       followStores: followStores)
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
-             is UpcastInst, is UncheckedRefCastInst:
+             is UpcastInst, is UncheckedRefCastInst,
+             is PointerToAddressInst, is IndexAddrInst:
           esc |= walkDown(user as! SingleValueInstruction, path: path,
                           followStores: followStores)
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,

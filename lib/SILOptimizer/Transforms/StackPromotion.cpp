@@ -15,6 +15,7 @@
 #include "swift/SIL/SILArgument.h"
 #include "swift/SIL/SILBuilder.h"
 #include "swift/SILOptimizer/Analysis/EscapeAnalysis.h"
+#include "swift/SILOptimizer/Analysis/AliasAnalysis.h"
 #include "swift/SILOptimizer/PassManager/Passes.h"
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
@@ -27,6 +28,11 @@
 STATISTIC(NumStackPromoted, "Number of objects promoted to the stack");
 
 using namespace swift;
+
+llvm::cl::opt<bool>
+RelaxEscapeCheck("relax-escape", llvm::cl::init(false),
+                llvm::cl::desc("for testing"));
+
 
 namespace {
 
@@ -108,13 +114,24 @@ bool StackPromotion::tryPromoteAlloc(AllocRefInst *ARI, EscapeAnalysis *EA,
 
   auto *ConGraph = EA->getConnectionGraph(ARI->getFunction());
   auto *contentNode = ConGraph->getValueContent(ARI);
-  if (!contentNode)
-    return false;
 
   // The most important check: does the object escape the current function?
-  if (contentNode->escapes())
-    return false;
+  bool doesEscape = !contentNode || contentNode->escapes();
 
+  bool newDoesEscape = AliasAnalysis::isEscaping(ARI, EA->getCalleeAnalysis());
+
+  if (doesEscape && !newDoesEscape) {
+    llvm::errs() << "+++ no escape in " << ARI->getFunction()->getName() << " of " << *ARI;
+  }
+  if (!doesEscape && newDoesEscape) {
+    llvm::errs() << "--- escape in " << ARI->getFunction()->getName() << " of " << *ARI;
+    if (!RelaxEscapeCheck)
+      llvm_unreachable("nix");
+  }
+    
+  if (doesEscape)
+    return false;
+    
   LLVM_DEBUG(llvm::dbgs() << "Promote " << *ARI);
 
   // Collect all use-points of the allocation. These are refcount instructions

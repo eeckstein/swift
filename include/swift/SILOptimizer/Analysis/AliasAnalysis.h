@@ -22,6 +22,7 @@ namespace swift {
 
 class SideEffectAnalysis;
 class EscapeAnalysis;
+class BasicCalleeAnalysis;
 
 /// This class is a simple wrapper around an alias analysis cache. This is
 /// needed since we do not have an "analysis" infrastructure.
@@ -206,6 +207,8 @@ public:
 
   /// Returns true if \p Ptr may be released by the builtin \p BI.
   bool canBuiltinDecrementRefCount(BuiltinInst *BI, SILValue Ptr);
+  
+  static bool isEscaping(AllocRefInst *ari, BasicCalleeAnalysis *bca);
 };
 
 

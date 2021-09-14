@@ -265,6 +265,12 @@ final public
 class AddressToPointerInst : SingleValueInstruction, UnaryInstruction {}
 
 final public
+class PointerToAddressInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class IndexAddrInst : SingleValueInstruction {}
+
+final public
 class InitExistentialRefInst : SingleValueInstruction, UnaryInstruction {}
 
 final public

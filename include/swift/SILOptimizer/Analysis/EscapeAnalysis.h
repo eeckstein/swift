@@ -1214,6 +1214,8 @@ public:
   /// is not in the same points-to chain based on access inside this function.
   bool canPointToSameMemory(SILValue V1, SILValue V2);
 
+  BasicCalleeAnalysis *getCalleeAnalysis() const { return BCA; }
+
   /// Invalidate all information in this analysis.
   virtual void invalidate() override;
 
