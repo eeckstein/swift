@@ -47,7 +47,7 @@ enum E {
 sil [ossa] @unknown_function : $@convention(thin) (@owned X) -> ()
 sil [ossa] @unknown_function_y : $@convention(thin) (@owned Y) -> ()
 
-// CHECK-LABEL: sil [+escapes_to_argument_3(1, **), +escapes_to_return(2, **), +noescape(2, *), +noescape(3, **)] [ossa] @test_simple
+// CHECK-LABEL: sil [+escapes_to_argument3(1, **), +escapes_to_return(2, **), +noescape(2, *), +noescape(3, **)] [ossa] @test_simple
 sil [ossa] @test_simple : $@convention(thin) (@owned X, @guaranteed Str, @guaranteed Z, @inout X) -> @owned Y {
 bb0(%0 : @owned $X, %1 : @guaranteed $Str, %2 : @guaranteed $Z, %3 : $*X):
   // %0 escapes to global

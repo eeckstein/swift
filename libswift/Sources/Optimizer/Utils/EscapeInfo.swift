@@ -495,44 +495,43 @@ struct EscapeInfo {
     var esc = Escapes.noEscape
 
     for callee in callees {
-      var escapeEffectFound = false
-      for effect in callee.effects {
-        if case .escaping(let argInfo, let escapes) = effect.kind {
-          if argInfo.argIndex == argIdx &&
-             path.matches(pattern: argInfo.pattern) {
-            escapeEffectFound = true
-        
-            switch escapes {
-              case .noEscape:
-                break
-              case .toReturn:
-                guard let result = apply.singleDirectResult else {
-                  return Escapes.toGlobal
-                }
-                esc |= walkDown(result, path: Path().push(kind: .anyValueField),
-                                followStores: false)
-              case .toArgument(let destArgIdx):
-                esc |= walkUp(apply.arguments[destArgIdx],
-                              path: Path().push(kind: .anyValueField),
-                              followStores: false)
-              case .toGlobal:
-                return .toGlobal
-            }
-            if case .toGlobal = esc {
-              return .toGlobal
-            }
-          } else if case .toArgument(let destArgIdx) = escapes {
-            if destArgIdx == argIdx {
-              escapeEffectFound = true
-            }
-          }
-        }
-      }
-      if !escapeEffectFound {
+      esc |= handleArgument(argIdx: argIdx, argPath: path, apply: apply,
+                            callee: callee)
+      if case .toGlobal = esc {
         return .toGlobal
       }
     }
     return esc
+  }
+  
+  private mutating func handleArgument(argIdx: Int, argPath: Path,
+                            apply: FullApplySite, callee: Function) -> Escapes {
+    for effect in callee.effects {
+      guard case .escaping(let argInfo, let escapes) = effect.kind else {
+        continue
+      }
+      if argInfo.argIndex == argIdx && argPath.matches(pattern: argInfo.pattern) {
+        switch escapes {
+          case .noEscape, .toGlobal:
+            return escapes
+          case .toReturn:
+            if let result = apply.singleDirectResult {
+              return walkDown(result, path: Path().push(kind: .anyValueField),
+                              followStores: false)
+            }
+            return Escapes.toGlobal
+          case .toArgument(let destArgIdx):
+            return walkUp(apply.arguments[destArgIdx],
+                          path: Path().push(kind: .anyValueField),
+                          followStores: false)
+        }
+      } else if case .toArgument(let destArgIdx) = escapes {
+        if destArgIdx == argIdx {
+          return .noEscape
+        }
+      }
+    }
+    return .toGlobal
   }
 
   private mutating func walkUp(_ value: Value,

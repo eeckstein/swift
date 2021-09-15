@@ -461,7 +461,7 @@ bb0:
   return %6 : $X
 }
 
-sil [ossa] [escapes_to_argument_0(1, **)] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
+sil [ossa] [escapes_to_argument0(1, **)] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
 
 // CHECK-LABEL: Escape information for call_arg_to_arg:
 // CHECK: noEscape:   %0 = alloc_ref $X

@@ -160,7 +160,7 @@ public struct Effect : CustomStringConvertible {
           case .noEscape: d = "noescape\(argInfo)"
           case .toReturn: d = "escapes_to_return\(argInfo)"
           case .toArgument(let argIdx):
-            d = "escapes_to_argument_\(argIdx)\(argInfo)"
+            d = "escapes_to_argument\(argIdx)\(argInfo)"
           case .toGlobal:
             fatalError("cannot define a global-escaping effect")
         }
