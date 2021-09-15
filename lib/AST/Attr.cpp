@@ -1227,6 +1227,8 @@ StringRef DeclAttribute::getAttrName() const {
         return "_effects(readwrite)";
       case EffectsKind::Unspecified:
         return "_effects(unspecified)";
+      case EffectsKind::Custom:
+        return "_effects";
     }
   case DAK_AccessControl:
   case DAK_SetterAccess: {

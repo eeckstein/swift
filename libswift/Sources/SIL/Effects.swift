@@ -53,9 +53,13 @@ public struct Effect : CustomStringConvertible {
       self.pattern = pattern
     }
     
-    public init?(parser: inout StringParser, for function: Function) {
+    public init?(parser: inout StringParser, for function: Function,
+                 fromSIL: Bool) {
       if !parser.consume("(") { return nil }
-      guard let argIdx = parser.consumeInt() else { return nil }
+      guard let argIdx = parser.consumeArgumentIndex(for: function,
+                                                     fromSIL: fromSIL) else {
+        return nil
+      }
       let pattern: Pattern
       if parser.consume(",") {
         guard let p = Pattern(parser: &parser, for: function, argIdx: argIdx) else {
@@ -89,7 +93,7 @@ public struct Effect : CustomStringConvertible {
     self.isComputed = isComputed
   }
 
-  public init?(parser: inout StringParser, for function: Function) {
+  public init?(parser: inout StringParser, for function: Function, fromSIL: Bool) {
 
     isComputed = parser.consume("+")
 
@@ -98,30 +102,44 @@ public struct Effect : CustomStringConvertible {
     } else if parser.consume("nowrite_global") {
       kind = .noWriteGlobal
     } else if parser.consume("noread") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function) else {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else {
         return nil
       }
       kind = .noRead(argInfo)
     } else if parser.consume("nowrite") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function) else {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else {
         return nil
       }
       kind = .noWrite(argInfo)
     } else if parser.consume("noescape") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function) else {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else {
         return nil
       }
       kind = .escaping(argInfo, .noEscape)
     } else if parser.consume("escapes_to_return") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function) else {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else {
         return nil
       }
-      kind = .escaping(argInfo, .toReturn)
-    } else if parser.consume("escapes_to_argument_") {
-      guard let destArgIdx = parser.consumeInt(withWhiteSpace: false) else {
+      if !fromSIL && function.numIndirectResultArguments > 0 {
+        if function.numIndirectResultArguments != 1 {
+          // Currently not supported
+          return nil
+        }
+        kind = .escaping(argInfo, .toArgument(0))
+      } else {
+        kind = .escaping(argInfo, .toReturn)
+      }
+    } else if parser.consume("escapes_to_argument") {
+      guard let destArgIdx = parser.consumeArgumentIndex(for: function,
+                                                         fromSIL: fromSIL) else {
         return nil
       }
-      guard let argInfo = ArgInfo(parser: &parser, for: function) else {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else {
         return nil
       }
       kind = .escaping(argInfo, .toArgument(destArgIdx))
@@ -162,20 +180,17 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
   public subscript(_ index: Int) -> Effect { effects[index] }
   
   mutating public func parse(parser: inout StringParser,
-                             for function: Function) -> Bool {
+                             for function: Function,
+                             fromSIL: Bool) -> Bool {
     if parser.isEmpty() { return true }
 
-    if !parser.consume("[") { return false }
-
     while true {
-      guard let effect = Effect(parser: &parser, for: function) else {
+      guard let effect = Effect(parser: &parser, for: function,
+                                fromSIL: fromSIL) else {
         return false
       }
       effects.append(effect)
-      if parser.consume("]") {
-        if !parser.isEmpty() { return false }
-        return true
-      }
+      if parser.isEmpty() { return true }
       if !parser.consume(",") { return false }
     }
   }
@@ -191,5 +206,18 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
       return ""
     }
     return "[" + effects.map { $0.description }.joined(separator: ", ") + "]"
+  }
+}
+
+extension StringParser {
+  mutating func consumeArgumentIndex(for function: Function,
+                                     fromSIL: Bool) -> Int? {
+    if consume("self") && function.hasSelfArgument {
+      return function.selfArgumentIndex
+    }
+    guard let argIdx = consumeInt() else {
+      return nil
+    }
+    return fromSIL ? argIdx : argIdx + function.numIndirectResultArguments
   }
 }

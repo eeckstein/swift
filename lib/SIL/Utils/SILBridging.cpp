@@ -182,6 +182,18 @@ OptionalBridgedBasicBlock SILFunction_lastBlock(BridgedFunction function) {
   return {&*f->rbegin()};
 }
 
+SwiftInt SILFunction_numIndirectResultArguments(BridgedFunction function) {
+  return castToFunction(function)->getLoweredFunctionType()->
+          getNumIndirectFormalResults();
+}
+
+SwiftInt SILFunction_getSelfArgumentIndex(BridgedFunction function) {
+  CanSILFunctionType fTy = castToFunction(function)->getLoweredFunctionType();
+  if (!fTy->hasSelfParam())
+    return -1;
+  return fTy->getNumParameters() + fTy->getNumIndirectFormalResults() - 1;
+}
+
 //===----------------------------------------------------------------------===//
 //                               SILBasicBlock
 //===----------------------------------------------------------------------===//

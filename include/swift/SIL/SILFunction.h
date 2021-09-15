@@ -892,7 +892,7 @@ public:
     EffectsKindAttr = unsigned(E);
   }
   
-  bool parseEffects(std::string &attrs);
+  bool parseEffects(StringRef attrs, bool fromSIL);
   void writeEffects(llvm::raw_ostream &OS) const;
 
   Purpose getSpecialPurpose() const { return specialPurpose; }

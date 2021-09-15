@@ -1150,11 +1150,9 @@ static bool parseDeclSILOptional(bool *isTransparent,
       SP.P.parseToken(tok::r_square, diag::expected_in_attribute_list);
       continue;
     } else if (effectsStr) {
-      *effectsStr = "[";
-      *effectsStr += SP.P.Tok.getText();
       while (SP.P.Tok.isNot(tok::r_square)) {
-        SP.P.consumeToken();
         *effectsStr += SP.P.Tok.getText();
+        SP.P.consumeToken();
       }
       SP.P.consumeToken(tok::r_square);
       continue;
@@ -6256,7 +6254,7 @@ bool SILParserState::parseDeclSIL(Parser &P) {
     FunctionState.F->setInlineStrategy(inlineStrategy);
     FunctionState.F->setOptimizationMode(optimizationMode);
     FunctionState.F->setEffectsKind(MRK);
-    if (!FunctionState.F->parseEffects(effectsStr)) {
+    if (!FunctionState.F->parseEffects(effectsStr, /*fromSIL*/true)) {
       P.diagnose(P.Tok, diag::syntax_error_in_effects_attribute);
       return true;
     }

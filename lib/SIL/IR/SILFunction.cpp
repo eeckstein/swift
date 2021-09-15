@@ -791,9 +791,9 @@ void Function_register(SwiftMetatype metatype,
   parseFunction = parseFn;
 }
 
-bool SILFunction::parseEffects(std::string &attrs) {
+bool SILFunction::parseEffects(StringRef attrs, bool fromSIL) {
   if (parseFunction) {
-    return parseFunction({this}, getBridgedStringRef(attrs));
+    return parseFunction({this}, getBridgedStringRef(attrs), (SwiftInt)fromSIL);
   }
   return true;
 }

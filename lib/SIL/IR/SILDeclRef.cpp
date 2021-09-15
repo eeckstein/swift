@@ -701,10 +701,9 @@ bool SILDeclRef::hasEffectsAttribute() const {
   return getDecl()->getAttrs().hasAttribute<EffectsAttr>();
 }
 
-EffectsKind SILDeclRef::getEffectsAttribute() const {
+EffectsAttr *SILDeclRef::getEffectsAttribute() const {
   assert(hasEffectsAttribute());
-  EffectsAttr *MA = getDecl()->getAttrs().getAttribute<EffectsAttr>();
-  return MA->getKind();
+  return getDecl()->getAttrs().getAttribute<EffectsAttr>();
 }
 
 bool SILDeclRef::isAnyThunk() const {

@@ -39,6 +39,20 @@ final public class Function : CustomStringConvertible {
     entryBlock.arguments.lazy.map { $0 as! FunctionArgument }
   }
   
+  public var numIndirectResultArguments: Int {
+    SILFunction_numIndirectResultArguments(bridged)
+  }
+  
+  public var hasSelfArgument: Bool {
+    SILFunction_getSelfArgumentIndex(bridged) >= 0
+  }
+  
+  public var selfArgumentIndex: Int {
+    let selfIdx = SILFunction_getSelfArgumentIndex(bridged)
+    assert(selfIdx >= 0)
+    return selfIdx
+  }
+
   // Only to be called by PassContext
   public func _modifyEffects(_ body: (inout FunctionEffects) -> ()) {
     body(&effects)
@@ -68,9 +82,10 @@ final public class Function : CustomStringConvertible {
         }
         s.withBridgedStringRef { OStream_write(os, $0) }
       },
-      { (f: BridgedFunction, str: BridgedStringRef) -> Int in
+      { (f: BridgedFunction, str: BridgedStringRef, fromSIL: Int) -> Int in
         var parser = StringParser(str.string)
-        if f.function.effects.parse(parser: &parser, for: f.function) {
+        if f.function.effects.parse(parser: &parser, for: f.function,
+                                    fromSIL: fromSIL != 0) {
           return 1
         }
         return 0

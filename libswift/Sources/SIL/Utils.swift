@@ -91,10 +91,8 @@ public struct StringParser {
     return true
   }
 
-  public mutating func consumeInt(withWhiteSpace: Bool = true) -> Int? {
-    if withWhiteSpace {
-      consumeWhitespace()
-    }
+  public mutating func consumeInt() -> Int? {
+    consumeWhitespace()
     var intStr = ""
     s = s.drop {
       if $0.isNumber {

@@ -150,7 +150,8 @@ typedef void (* _Nonnull FunctionRegisterFn)(BridgedFunction f,
                                         void * _Nonnull data,
                                         SwiftInt size);
 typedef void (* _Nonnull FunctionWriteFn)(BridgedFunction, BridgedOStream);
-typedef SwiftInt (* _Nonnull FunctionParseFn)(BridgedFunction, BridgedStringRef);
+typedef SwiftInt (* _Nonnull FunctionParseFn)(BridgedFunction,
+                                              BridgedStringRef, SwiftInt);
 
 void Function_register(SwiftMetatype metatype,
             FunctionRegisterFn initFn, FunctionRegisterFn destroyFn,
@@ -174,6 +175,8 @@ BridgedStringRef SILFunction_getName(BridgedFunction function);
 BridgedStringRef SILFunction_debugDescription(BridgedFunction function);
 OptionalBridgedBasicBlock SILFunction_firstBlock(BridgedFunction function);
 OptionalBridgedBasicBlock SILFunction_lastBlock(BridgedFunction function);
+SwiftInt SILFunction_numIndirectResultArguments(BridgedFunction function);
+SwiftInt SILFunction_getSelfArgumentIndex(BridgedFunction function);
 
 BridgedStringRef SILGlobalVariable_getName(BridgedGlobalVar global);
 BridgedStringRef SILGlobalVariable_debugDescription(BridgedGlobalVar global);

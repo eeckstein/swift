@@ -1665,6 +1665,7 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
     }
 
     EffectsKind kind;
+    SourceLoc customStart, customEnd;
     if (Tok.getText() == "readonly")
       kind = EffectsKind::ReadOnly;
     else if (Tok.getText() == "readnone")
@@ -1674,12 +1675,26 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
     else if (Tok.getText() == "releasenone")
       kind = EffectsKind::ReleaseNone;
     else {
-      diagnose(Loc, diag::attr_unknown_option,
-               Tok.getText(), AttrName);
-      return false;
+      int parenDepth = 1;
+      customStart = customEnd = Tok.getLoc();
+      while (Tok.isNot(tok::eof)) {
+        if (Tok.is(tok::l_paren)) {
+          ++parenDepth;
+        } else if (Tok.is(tok::r_paren)) {
+          if (--parenDepth == 0) {
+            customEnd = Tok.getLoc();
+            break;
+          }
+        }
+        consumeToken();
+      }
+      kind = EffectsKind::Custom;
+      AttrRange = SourceRange(Loc, customEnd);
     }
-    AttrRange = SourceRange(Loc, Tok.getRange().getStart());
-    consumeToken(tok::identifier);
+    if (kind != EffectsKind::Custom) {
+      AttrRange = SourceRange(Loc, Tok.getRange().getStart());
+      consumeToken(tok::identifier);
+    }
 
     if (!consumeIf(tok::r_paren)) {
       diagnose(Loc, diag::attr_expected_rparen, AttrName,
@@ -1687,8 +1702,15 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
       return false;
     }
 
-    if (!DiscardAttribute)
-      Attributes.add(new (Context) EffectsAttr(AtLoc, AttrRange, kind));
+    if (!DiscardAttribute) {
+      if (kind == EffectsKind::Custom) {
+        StringRef customStr = SourceMgr.extractText(
+                          CharSourceRange(SourceMgr, customStart, customEnd));
+        Attributes.add(new (Context) EffectsAttr(AtLoc, AttrRange, customStr));
+      } else {
+        Attributes.add(new (Context) EffectsAttr(AtLoc, AttrRange, kind));
+      }
+    }
     break;
   }
 

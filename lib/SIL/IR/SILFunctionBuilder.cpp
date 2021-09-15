@@ -14,6 +14,7 @@
 #include "swift/AST/AttrKind.h"
 #include "swift/AST/Availability.h"
 #include "swift/AST/Decl.h"
+#include "swift/AST/DiagnosticsParse.h"
 #include "swift/AST/SemanticAttrs.h"
 
 using namespace swift;
@@ -200,9 +201,9 @@ SILFunction *SILFunctionBuilder::getOrCreateFunction(
       constant.isTransparent() ? IsTransparent : IsNotTransparent;
   IsSerialized_t IsSer = constant.isSerialized();
 
-  EffectsKind EK = constant.hasEffectsAttribute()
-                       ? constant.getEffectsAttribute()
-                       : EffectsKind::Unspecified;
+  EffectsAttr *effectsAttr = nullptr;
+  if (constant.hasEffectsAttribute())
+    effectsAttr = constant.getEffectsAttribute();
 
   Inline_t inlineStrategy = InlineDefault;
   if (constant.isNoinline())
@@ -221,8 +222,17 @@ SILFunction *SILFunctionBuilder::getOrCreateFunction(
                                 IsNotBare, IsTrans, IsSer, entryCount, IsDyn,
                                 IsNotExactSelfClass,
                                 IsNotThunk, constant.getSubclassScope(),
-                                inlineStrategy, EK);
+                                inlineStrategy,
+                                effectsAttr ? effectsAttr->getKind() :
+                                              EffectsKind::Unspecified);
   F->setDebugScope(new (mod) SILDebugScope(loc, F));
+
+  if (effectsAttr && effectsAttr->getKind() == EffectsKind::Custom) {
+    if (!F->parseEffects(effectsAttr->getCustomString(), /*fromSIL*/ false)) {
+      mod.getASTContext().Diags.diagnose(effectsAttr->getLocation(),
+        diag::syntax_error_in_effects_attribute);
+    }
+  }
 
   if (constant.isGlobal())
     F->setSpecialPurpose(SILFunction::Purpose::GlobalInit);

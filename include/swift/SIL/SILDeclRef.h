@@ -42,6 +42,7 @@ namespace swift {
   class AutoClosureExpr;
   class ASTContext;
   class ClassDecl;
+  class EffectsAttr;
   class FileUnit;
   class SILFunctionType;
   enum IsSerialized_t : unsigned char;
@@ -335,7 +336,7 @@ struct SILDeclRef {
   bool hasEffectsAttribute() const;
 
   /// \return the effects kind of the function.
-  EffectsKind getEffectsAttribute() const;
+  EffectsAttr *getEffectsAttribute() const;
 
   /// Return the expected linkage of this declaration.
   SILLinkage getLinkage(ForDefinition_t forDefinition) const;
