@@ -599,8 +599,8 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
   SINGLE_VALUE_INST(IsUniqueInst, is_unique,
                     SingleValueInstruction, MayHaveSideEffects, DoesNotRelease)
 
-  SINGLE_VALUE_INST(EndCOWMutationInst, end_cow_mutation,
-                    SingleValueInstruction, None, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(EndCOWMutationInst, end_cow_mutation,
+                            SingleValueInstruction, None, DoesNotRelease)
 
   SINGLE_VALUE_INST(IsEscapingClosureInst, is_escaping_closure,
                     SingleValueInstruction, MayRead, DoesNotRelease)

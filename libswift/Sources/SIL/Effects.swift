@@ -201,6 +201,12 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
 
   public mutating func append(_ effect: Effect) { effects.append(effect) }
 
+  public mutating func append<S: Sequence>(from source: S) where S.Element == Effect {
+    for elem in source {
+      append(elem)
+    }
+  }
+
   public var description: String {
     if effects.isEmpty {
       return ""

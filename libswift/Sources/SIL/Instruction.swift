@@ -370,6 +370,8 @@ final public class BeginBorrowInst : SingleValueInstruction, UnaryInstruction {}
 
 final public class CopyValueInst : SingleValueInstruction, UnaryInstruction {}
 
+final public class EndCOWMutationInst : SingleValueInstruction, UnaryInstruction {}
+
 final public
 class ClassifyBridgeObjectInst : SingleValueInstruction, UnaryInstruction {}
 
@@ -412,6 +414,8 @@ final public class AllocExistentialBoxInst : SingleValueInstruction, Allocation 
 //===----------------------------------------------------------------------===//
 
 final public class BeginCOWMutationInst : MultipleValueInstruction {
+  public var uniquenessResult: Value { return getResult(index: 0) }
+  public var bufferResult: Value { return getResult(index: 1) }
 }
 
 final public class DestructureStructInst : MultipleValueInstruction {

@@ -437,9 +437,12 @@ struct EscapeInfo {
                                        followStores: followStores)
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
-             is UpcastInst, is UncheckedRefCastInst,
+             is UpcastInst, is UncheckedRefCastInst, is EndCOWMutationInst,
              is PointerToAddressInst, is IndexAddrInst:
           esc |= walkDown(user as! SingleValueInstruction, path: path,
+                          followStores: followStores)
+        case let bcm as BeginCOWMutationInst:
+          esc |= walkDown(bcm.bufferResult, path: path,
                           followStores: followStores)
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,
              is DebugValueInst, is ValueMetatypeInst,
@@ -614,7 +617,8 @@ struct EscapeInfo {
           val = ued.operand
           p = p.push(kind: .enumCase, index: ued.caseIndex)
         case is UpcastInst, is UncheckedRefCastInst, is InitExistentialRefInst,
-             is OpenExistentialRefInst, is BeginAccessInst, is BeginBorrowInst:
+             is OpenExistentialRefInst, is BeginAccessInst, is BeginBorrowInst,
+             is BeginCOWMutationInst, is EndCOWMutationInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:
           let inst = mvr.instruction

@@ -91,6 +91,7 @@ public func registerSILClasses() {
   register(BeginAccessInst.self)
   register(BeginBorrowInst.self)
   register(CopyValueInst.self)
+  register(EndCOWMutationInst.self)
   register(ClassifyBridgeObjectInst.self)
   register(ApplyInst.self)
   register(PartialApplyInst.self)

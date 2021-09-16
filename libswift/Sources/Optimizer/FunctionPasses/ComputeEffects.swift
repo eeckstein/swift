@@ -17,33 +17,37 @@ let computeEffects = FunctionPass(name: "compute-effects", {
 
   var escapeInfo = EscapeInfo(calleeAnalysis: context.calleeAnalysis)
 
-  context.modifyEffects(in: function) { (effects: inout FunctionEffects) in
-    effects.removeComputedEffects()
-    
-    for (argIdx, arg) in function.arguments.enumerated() {
-      guard !arg.type.isTrivial(in: function) else {
-        continue
-      }
-      let transEsc = escapeInfo.escapes(argument: arg, pattern: .transitive)
-      let esc = escapeInfo.escapes(argument: arg, pattern: .firstLevel)
-      switch (transEsc, esc) {
-        case (.toGlobal, .toGlobal):
-          break
-        case (.toGlobal, _):
-          effects.append(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                           pattern: .firstLevel), esc), isComputed: true))
-        case (.noEscape, _):
-          effects.append(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                           pattern: .transitive), transEsc), isComputed: true))
-        case (_, .noEscape):
-          effects.append(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                           pattern: .transitive), transEsc), isComputed: true))
-          effects.append(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                           pattern: .firstLevel), esc), isComputed: true))
-        default:
-          effects.append(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                           pattern: .transitive), transEsc), isComputed: true))
-      }
+  var newEffects = StackList<Effect>(context)
+
+  for (argIdx, arg) in function.arguments.enumerated() {
+    guard !arg.type.isTrivial(in: function) else {
+      continue
+    }
+    let transEsc = escapeInfo.escapes(argument: arg, pattern: .transitive)
+    let esc = escapeInfo.escapes(argument: arg, pattern: .firstLevel)
+    switch (transEsc, esc) {
+      case (.toGlobal, .toGlobal):
+        break
+      case (.toGlobal, _):
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .firstLevel), esc), isComputed: true))
+      case (.noEscape, _):
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .transitive), transEsc), isComputed: true))
+      case (_, .noEscape):
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .transitive), transEsc), isComputed: true))
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .firstLevel), esc), isComputed: true))
+      default:
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .transitive), transEsc), isComputed: true))
     }
   }
+
+  context.modifyEffects(in: function) { (effects: inout FunctionEffects) in
+    effects.removeComputedEffects()
+    effects.append(from: newEffects)
+  }
+  newEffects.removeAll()
 })
