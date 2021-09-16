@@ -1195,6 +1195,9 @@ public:
   EffectsAttr(EffectsKind kind)
   : EffectsAttr(SourceLoc(), SourceRange(), kind) {}
 
+  EffectsAttr(StringRef customString)
+  : EffectsAttr(SourceLoc(), SourceRange(), customString) {}
+
   StringRef getCustomString() const {
     assert(getKind() == EffectsKind::Custom);
     return customString;
