@@ -63,6 +63,10 @@ public struct StackList<Element> : Sequence, CustomReflectable {
   
   public init(context: BridgedPassContext) { self.context = context }
 
+  public init(useContextFrom: StackList) {
+    self.context = useContextFrom.context
+  }
+
   public func makeIterator() -> Iterator {
     return Iterator(slab: firstSlab, index: 0, lastSlab: lastSlab, endIndex: endIndex)
   }

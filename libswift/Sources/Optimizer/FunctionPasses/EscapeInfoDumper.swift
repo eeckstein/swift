@@ -22,8 +22,33 @@ let escapeInfoDumper = FunctionPass(name: "dump-escape-info", {
   for block in function.blocks {
     for inst in block.instructions {
       if let allocRef = inst as? AllocRefInst {
-        let escapes = escapeInfo.escapes(allocRef)
-        print("\(escapes): \(allocRef)")
+        var results = Set<String>() 
+      
+        let escapes = escapeInfo.escapes(allocRef,
+          visitUse: { (op, path) in
+            if op.instruction is ReturnInst {
+              results.insert("return(\(path))")
+              return false
+            }
+            return true
+          },
+          visitRoot: { val, path in
+            if let arg = val as? FunctionArgument {
+              results.insert("arg\(arg.index)(\(path))")
+              return false
+            }
+            return true
+          })
+        
+        let res: String
+        if escapes {
+          res = "global"
+        } else if results.isEmpty {
+          res = " -    "
+        } else {
+          res = Array(results).sorted().joined(separator: ",")
+        }
+        print("\(res): \(allocRef)")
       }
     }
   }

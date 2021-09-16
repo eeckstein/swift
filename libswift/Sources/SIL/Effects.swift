@@ -12,7 +12,6 @@
 
 public enum Escapes {
   case noEscape
-  case toGlobal
   case toReturn
   case toArgument(Int)
 }
@@ -60,8 +59,8 @@ public struct Effect : CustomStringConvertible {
     public let argIndex: Int
     public let pattern: Pattern
     
-    public init(index: Int, pattern: Pattern) {
-      self.argIndex = index
+    public init(_ arg: Argument, pattern: Pattern) {
+      self.argIndex = arg.index
       self.pattern = pattern
     }
     
@@ -173,8 +172,6 @@ public struct Effect : CustomStringConvertible {
           case .toReturn: d = "escapes_to_return\(argInfo)"
           case .toArgument(let argIdx):
             d = "escapes_to_argument\(argIdx)\(argInfo)"
-          case .toGlobal:
-            fatalError("cannot define a global-escaping effect")
         }
     }
     return (isComputed ? "+" : "") + d
