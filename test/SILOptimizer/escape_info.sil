@@ -108,7 +108,7 @@ bb0:
 }
 
 // CHECK-LABEL: Escape information for test_follow_stores:
-// CHECK: toArgument(0): %1 = alloc_ref $X
+// CHECK: toGlobal:      %1 = alloc_ref $X
 // CHECK: noEscape:      %2 = alloc_ref $Z
 // CHECK: End function test_follow_stores
 sil @test_follow_stores : $@convention(thin) (Y) -> () {
@@ -184,7 +184,7 @@ bb3(%9 : $LinkedNode):
 
 // CHECK-LABEL: Escape information for test_cycle:
 // CHECK: noEscape:   %0 = alloc_ref $LinkedNode
-// CHECK: toReturn:   %1 = alloc_ref $X
+// CHECK: toGlobal:   %1 = alloc_ref $X
 // CHECK: End function test_cycle
 sil @test_cycle : $@convention(thin) () -> @owned X {
 bb0:
@@ -242,7 +242,7 @@ bb6:
 }
 
 // CHECK-LABEL: Escape information for test_switch_enum_walk_up:
-// CHECK: toArgument(0): %1 = alloc_ref $Y
+// CHECK: toGlobal:      %1 = alloc_ref $Y
 // CHECK: noEscape:      %2 = alloc_ref $Y
 // CHECK: noEscape:      %6 = alloc_ref $Z
 // CHECK: End function test_switch_enum_walk_up
@@ -306,7 +306,7 @@ bb3(%7 : $E):
 
 // CHECK-LABEL: Escape information for test_enum_data_walk_up:
 // CHECK: noEscape:      %1 = alloc_ref $Y
-// CHECK: toArgument(0): %2 = alloc_ref $Y
+// CHECK: toGlobal:      %2 = alloc_ref $Y
 // CHECK: noEscape:      %4 = alloc_ref $Z
 // CHECK: End function test_enum_data_walk_up
 sil @test_enum_data_walk_up : $@convention(thin) (@guaranteed Z) -> () {
@@ -359,7 +359,7 @@ bb0:
 
 // CHECK-LABEL: Escape information for test_cast_walk_up:
 // CHECK: noEscape:      %1 = alloc_ref $Y
-// CHECK: toArgument(0): %2 = alloc_ref $Y
+// CHECK: toGlobal:      %2 = alloc_ref $Y
 // CHECK: noEscape:      %3 = alloc_ref $DerivedZ
 // CHECK: End function test_cast_walk_up
 sil @test_cast_walk_up : $@convention(thin) (@guaranteed DerivedZ) -> () {

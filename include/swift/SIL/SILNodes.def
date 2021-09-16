@@ -531,8 +531,8 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
                       ConversionInst, None, DoesNotRelease)
     SINGLE_VALUE_INST(RefToBridgeObjectInst, ref_to_bridge_object,
                       ConversionInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(BridgeObjectToRefInst, bridge_object_to_ref,
-                      ConversionInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(BridgeObjectToRefInst, bridge_object_to_ref,
+                              ConversionInst, None, DoesNotRelease)
     SINGLE_VALUE_INST(BridgeObjectToWordInst, bridge_object_to_word,
                       ConversionInst, None, DoesNotRelease)
     BRIDGED_SINGLE_VALUE_INST(ThinToThickFunctionInst, thin_to_thick_function,

@@ -415,7 +415,7 @@ extension Array {
   }
 
   @_semantics("array.get_element")
-  @_effects(noescape(self, *), escapes_to_return(self, **))
+  @_effects(noescape(self, *))
   @inlinable // FIXME(inline-always)
   @inline(__always)
   public // @testable
@@ -1284,7 +1284,7 @@ extension Array: RangeReplaceableCollection {
 
   @inlinable
   @_semantics("array.mutate_unknown")
-  @_effects(noescape(self, *), escapes_to_return(self, **))
+  @_effects(noescape(self, *))
   public mutating func _customRemoveLast() -> Element? {
     _makeMutableAndUnique()
     let newCount = _buffer.mutableCount - 1
@@ -1314,7 +1314,7 @@ extension Array: RangeReplaceableCollection {
   @inlinable
   @discardableResult
   @_semantics("array.mutate_unknown")
-  @_effects(noescape(self, *), escapes_to_return(self, **))
+  @_effects(noescape(self, *))
   public mutating func remove(at index: Int) -> Element {
     _makeMutableAndUnique()
     let currentCount = _buffer.mutableCount
@@ -1713,7 +1713,7 @@ extension Array {
   ///   equivalent to `append(contentsOf:)`.
   @inlinable
   @_semantics("array.mutate_unknown")
-  @_effects(noescape(self))
+  @_effects(noescape(self, *))
   public mutating func replaceSubrange<C>(
     _ subrange: Range<Int>,
     with newElements: __owned C

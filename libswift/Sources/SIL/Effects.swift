@@ -19,18 +19,30 @@ public enum Escapes {
 
 public struct Effect : CustomStringConvertible {
 
-  // TODO: extend this to support something like "x.y.*.z.**"
   public enum Pattern : CustomStringConvertible {
-    case firstLevel
-    case transitive
-    // TODO:
+    // Matches any value-type projections, but no reference-indirections, e.g
+    // struct.field.enumCase.tupleElement
+    case noIndirection
+    
+    // Matches anything which involves at least one reference-indirection, e.g.
+    // class.field
+    // struct.field.class.field
+    // struct.field.class.field.class.field
+    case oneOrMoreIndirections
+    
+    // Matches anything
+    case anything
+
+    // TODO: support something like "x.y.*.z.**"
     // case accessPath
 
     init?(parser: inout StringParser, for function: Function, argIdx: Int) {
-      if parser.consume("**") {
-        self = .transitive
+      if parser.consume("*.**") {
+        self = .oneOrMoreIndirections
+      } else if parser.consume("**") {
+        self = .anything
       } else if parser.consume("*") {
-        self = .firstLevel
+        self = .noIndirection
       } else {
         return nil
       }
@@ -38,8 +50,9 @@ public struct Effect : CustomStringConvertible {
     
     public var description: String {
       switch self {
-        case .firstLevel: return "*"
-        case .transitive: return "**"
+        case .noIndirection:         return "*"
+        case .oneOrMoreIndirections: return "*.**"
+        case .anything:        return "**"
       }
     }
   }
@@ -67,7 +80,7 @@ public struct Effect : CustomStringConvertible {
         }
         pattern = p
       } else {
-        pattern = .transitive
+        pattern = .anything
       }
       if !parser.consume(")") { return nil }
       self.argIndex = argIdx

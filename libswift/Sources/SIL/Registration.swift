@@ -88,6 +88,7 @@ public func registerSILClasses() {
   register(ObjCExistentialMetatypeToObjectInst.self)
   register(ObjCMetatypeToObjectInst.self)
   register(ValueToBridgeObjectInst.self)
+  register(BridgeObjectToRefInst.self)
   register(BeginAccessInst.self)
   register(BeginBorrowInst.self)
   register(CopyValueInst.self)

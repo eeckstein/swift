@@ -59,8 +59,12 @@ struct EscapeInfo {
     init(pattern: Effect.Pattern) {
       self.init()
       switch pattern {
-        case .firstLevel: self = push(kind: .anyValueField)
-        case .transitive: self = push(kind: .anything)
+        case .noIndirection:
+          self = push(kind: .anyValueField)
+        case .oneOrMoreIndirections:
+          self = push(kind: .anything).push(kind: .anyValueField)
+        case .anything:
+          self = push(kind: .anything)
       }
     }
 
@@ -82,10 +86,10 @@ struct EscapeInfo {
           case .root:          fatalError()
           case .anything:      s = "**"
           case .anyValueField: s = "*"
-          case .structField:   s = "s#\(idx)"
-          case .tupleField:    s = "t#\(idx)"
-          case .enumCase:      s = "e#\(idx)"
-          case .classField:    s = "c#\(idx)"
+          case .structField:   s = "s\(idx)"
+          case .tupleField:    s = "t\(idx)"
+          case .enumCase:      s = "e\(idx)"
+          case .classField:    s = "c\(idx)"
           case .tailElements:  s = "tail"
         }
         descr = s + (descr.isEmpty ? "" : ".\(descr)")
@@ -194,13 +198,15 @@ struct EscapeInfo {
     
     func matches(pattern: Effect.Pattern) -> Bool {
       switch pattern {
-        case .firstLevel:
+        case .noIndirection:
           return popAllValueFields().isEmpty
-        case .transitive:
+        case .oneOrMoreIndirections:
+          return !popAllValueFields().isEmpty
+        case .anything:
           return true
       }
     }
-    
+
     func merge(with rhs: Path) -> Path {
       if self == rhs { return self }
       
@@ -397,7 +403,7 @@ struct EscapeInfo {
               }
             }
           } else {
-            return Escapes.toGlobal
+            return .toGlobal
           }
         case let store as StoreInst:
           if use == store.sourceOperand {
@@ -422,13 +428,17 @@ struct EscapeInfo {
           // contents (in the destructor).
           let p = path.popAllValueFields()
           if let _ = p.popIfMatches(anyOfKind: .classField) {
-            return Escapes.toGlobal
+            return .toGlobal
           }
         case let br as BranchInst:
           esc |= walkDownAndCache(br.getArgument(for: use), path: path,
                                   followStores: followStores)
         case is ReturnInst:
-          esc |= Escapes.toReturn
+          if path.popAllValueFields().isEmpty {
+            esc |= .toReturn
+          } else {
+            esc |= .toGlobal
+          }
         case let ap as ApplyInst:
           esc |= handleArgumentEffects(argOp: use, apply: ap, path: path,
                                        followStores: followStores)
@@ -438,7 +448,7 @@ struct EscapeInfo {
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
              is UpcastInst, is UncheckedRefCastInst, is EndCOWMutationInst,
-             is PointerToAddressInst, is IndexAddrInst:
+             is PointerToAddressInst, is IndexAddrInst, is BridgeObjectToRefInst:
           esc |= walkDown(user as! SingleValueInstruction, path: path,
                           followStores: followStores)
         case let bcm as BeginCOWMutationInst:
@@ -453,7 +463,7 @@ struct EscapeInfo {
              is StrongRetainInst, is RetainValueInst:
           break
         default:
-          return Escapes.toGlobal
+          return .toGlobal
       }
       if case .toGlobal = esc {
         return .toGlobal
@@ -474,7 +484,7 @@ struct EscapeInfo {
       }
       return esc
     }
-    return Escapes.toGlobal
+    return .toGlobal
   }
 
   private mutating func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
@@ -487,12 +497,12 @@ struct EscapeInfo {
     
     if followStores {
       // We don't know if something is stored to an argument.
-      return Escapes.toGlobal
+      return .toGlobal
     }
   
     let callees = calleeAnalysis.getCallees(callee: apply.callee)
     if !callees.allCalleesKnown {
-      return Escapes.toGlobal
+      return .toGlobal
     }
 
     var esc = Escapes.noEscape
@@ -522,14 +532,14 @@ struct EscapeInfo {
               return walkDown(result, path: Path().push(kind: .anyValueField),
                               followStores: false)
             }
-            return Escapes.toGlobal
+            return .toGlobal
           case .toArgument(let destArgIdx):
             return walkUp(apply.arguments[destArgIdx],
                           path: Path().push(kind: .anyValueField),
                           followStores: false)
         }
       } else if case .toArgument(let destArgIdx) = escapes {
-        if destArgIdx == argIdx {
+        if destArgIdx == argIdx && argPath.popAllValueFields().isEmpty {
           return .noEscape
         }
       }
@@ -548,9 +558,11 @@ struct EscapeInfo {
         case is AllocRefInst, is AllocStackInst:
           return walkDownAndCache(val, path: p, followStores: fSt)
         case let arg as FunctionArgument:
+          if !p.popAllValueFields().isEmpty {
+            return .toGlobal
+          }
           let esc = walkDownAndCache(arg, path: p, followStores: fSt)
-          let argIdx = arg.index
-          return esc | Escapes.toArgument(argIdx)
+          return esc | Escapes.toArgument(arg.index)
         case let arg as BlockArgument:
           if arg.isPhiArgument {
             var esc = Escapes.noEscape
@@ -563,17 +575,17 @@ struct EscapeInfo {
           switch block.singlePredecessor!.terminator {
             case let se as SwitchEnumInst:
               guard let caseIdx = se.getUniqueCase(forSuccessor: block) else {
-                return Escapes.toGlobal
+                return .toGlobal
               }
               val = se.enumOp
               p = p.push(kind: .enumCase, index: caseIdx)
             default:
-              return Escapes.toGlobal
+              return .toGlobal
           }
         case let str as StructInst:
           guard let (structField, poppedPath) = p.pop(kind: .structField) else {
             // TODO: handle anyValueField by iterating over all operands
-            return Escapes.toGlobal
+            return .toGlobal
           }
           val = str.operands[structField].value
           p = poppedPath
@@ -583,7 +595,7 @@ struct EscapeInfo {
         case let t as TupleInst:
           guard let (tupleField, poppedPath) = p.pop(kind: .tupleField) else {
             // TODO: handle anyValueField by iterating over all operands
-            return Escapes.toGlobal
+            return .toGlobal
           }
           val = t.operands[tupleField].value
           p = poppedPath
@@ -618,22 +630,24 @@ struct EscapeInfo {
           p = p.push(kind: .enumCase, index: ued.caseIndex)
         case is UpcastInst, is UncheckedRefCastInst, is InitExistentialRefInst,
              is OpenExistentialRefInst, is BeginAccessInst, is BeginBorrowInst,
-             is BeginCOWMutationInst, is EndCOWMutationInst:
+             is EndCOWMutationInst, is BridgeObjectToRefInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:
           let inst = mvr.instruction
           switch inst {
             case is DestructureStructInst, is DestructureTupleInst:
               val = inst.operands[0].value
-              // TODO: push the specific result index.
+              // TODO: only push the specific result index.
               // But currently there is no O(0) method to get the result index
               // from a result value.
               p = p.popAllValueFields().push(kind: .anyValueField)
+            case let bcm as BeginCOWMutationInst:
+              val = bcm.operand
             default:
-              return Escapes.toGlobal
+              return .toGlobal
           }
         default:
-          return Escapes.toGlobal
+          return .toGlobal
       }
     }
   }

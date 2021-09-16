@@ -125,10 +125,12 @@ bool StackPromotion::tryPromoteAlloc(AllocRefInst *ARI, EscapeAnalysis *EA,
   }
   if (!doesEscape && newDoesEscape) {
     llvm::errs() << "--- escape in " << ARI->getFunction()->getName() << " of " << *ARI;
-    if (!RelaxEscapeCheck)
-      llvm_unreachable("nix");
+    if (!RelaxEscapeCheck) {
+      AliasAnalysis::isEscaping(ARI, EA->getCalleeAnalysis());
+      llvm_unreachable("escape regression");
+    }
   }
-    
+
   if (doesEscape)
     return false;
     

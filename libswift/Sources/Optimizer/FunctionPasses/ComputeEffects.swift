@@ -23,25 +23,21 @@ let computeEffects = FunctionPass(name: "compute-effects", {
     guard !arg.type.isTrivial(in: function) else {
       continue
     }
-    let transEsc = escapeInfo.escapes(argument: arg, pattern: .transitive)
-    let esc = escapeInfo.escapes(argument: arg, pattern: .firstLevel)
-    switch (transEsc, esc) {
+    let esc0 = escapeInfo.escapes(argument: arg, pattern: .noIndirection)
+    let esc1 = escapeInfo.escapes(argument: arg, pattern: .oneOrMoreIndirections)
+    switch (esc0, esc1) {
       case (.toGlobal, .toGlobal):
         break
-      case (.toGlobal, _):
+      case (.noEscape, .noEscape):
         newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .firstLevel), esc), isComputed: true))
-      case (.noEscape, _):
+                        pattern: .anything), esc0), isComputed: true))
+      case (_, .toGlobal):
         newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .transitive), transEsc), isComputed: true))
-      case (_, .noEscape):
-        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .transitive), transEsc), isComputed: true))
-        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .firstLevel), esc), isComputed: true))
+                        pattern: .noIndirection), esc0), isComputed: true))
+      case (_, .toReturn), (_, .toArgument):
+        fatalError("anything effects cannot escape to return or argument")
       default:
-        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .transitive), transEsc), isComputed: true))
+        fatalError("noIndirection effects don't include oneOrMoreIndirections effects")
     }
   }
 

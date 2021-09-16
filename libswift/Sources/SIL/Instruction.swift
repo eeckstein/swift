@@ -364,6 +364,9 @@ class ObjCMetatypeToObjectInst : SingleValueInstruction, UnaryInstruction {}
 final public
 class ValueToBridgeObjectInst : SingleValueInstruction, UnaryInstruction {}
 
+final public class BridgeObjectToRefInst : SingleValueInstruction,
+                                           UnaryInstruction {}
+
 final public class BeginAccessInst : SingleValueInstruction, UnaryInstruction {}
 
 final public class BeginBorrowInst : SingleValueInstruction, UnaryInstruction {}
@@ -413,7 +416,8 @@ final public class AllocExistentialBoxInst : SingleValueInstruction, Allocation 
 //                            multi-value instructions
 //===----------------------------------------------------------------------===//
 
-final public class BeginCOWMutationInst : MultipleValueInstruction {
+final public class BeginCOWMutationInst : MultipleValueInstruction,
+                                          UnaryInstruction {
   public var uniquenessResult: Value { return getResult(index: 0) }
   public var bufferResult: Value { return getResult(index: 1) }
 }
