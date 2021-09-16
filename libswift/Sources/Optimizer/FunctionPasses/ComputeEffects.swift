@@ -24,19 +24,33 @@ let computeEffects = FunctionPass(name: "compute-effects", {
       continue
     }
     let esc0 = escapeInfo.escapes(argument: arg, pattern: .noIndirection)
-    let esc1 = escapeInfo.escapes(argument: arg, pattern: .oneOrMoreIndirections)
-    switch (esc0, esc1) {
-      case (.toGlobal, .toGlobal):
+    let esc1 = escapeInfo.escapes(argument: arg, pattern: .oneIndirection)
+    let escAny = escapeInfo.escapes(argument: arg, pattern: .anything)
+    switch (esc0, esc1, escAny) {
+      case (.toGlobal, .toGlobal, .toGlobal):
         break
-      case (.noEscape, .noEscape):
+      case (.noEscape, .noEscape, .noEscape):
         newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
-                        pattern: .anything), esc0), isComputed: true))
-      case (_, .toGlobal):
+                        pattern: .anything), .noEscape), isComputed: true))
+      case (_, .toGlobal, .toGlobal):
         newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
                         pattern: .noIndirection), esc0), isComputed: true))
-      case (_, .toReturn), (_, .toArgument):
+      case (.noEscape, _, .toGlobal),
+           (.toReturn, .toReturn, .toGlobal),
+           (.toArgument, .toArgument, .toGlobal):
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .noIndirection), esc0), isComputed: true))
+        newEffects.push(Effect(kind: .escaping(Effect.ArgInfo(index: argIdx,
+                        pattern: .oneIndirection), esc1), isComputed: true))
+      case (_, _, .toReturn), (_, _, .toArgument):
+        _ = escapeInfo.escapes(argument: arg, pattern: .noIndirection)
+        _ = escapeInfo.escapes(argument: arg, pattern: .oneIndirection)
+        _ = escapeInfo.escapes(argument: arg, pattern: .anything)
         fatalError("anything effects cannot escape to return or argument")
       default:
+        _ = escapeInfo.escapes(argument: arg, pattern: .noIndirection)
+        _ = escapeInfo.escapes(argument: arg, pattern: .oneIndirection)
+        _ = escapeInfo.escapes(argument: arg, pattern: .anything)
         fatalError("noIndirection effects don't include oneOrMoreIndirections effects")
     }
   }

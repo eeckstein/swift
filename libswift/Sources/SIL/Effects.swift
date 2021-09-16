@@ -24,11 +24,10 @@ public struct Effect : CustomStringConvertible {
     // struct.field.enumCase.tupleElement
     case noIndirection
     
-    // Matches anything which involves at least one reference-indirection, e.g.
+    // Matches anything which involves exactly one reference-indirection, e.g.
     // class.field
     // struct.field.class.field
-    // struct.field.class.field.class.field
-    case oneOrMoreIndirections
+    case oneIndirection
     
     // Matches anything
     case anything
@@ -37,8 +36,8 @@ public struct Effect : CustomStringConvertible {
     // case accessPath
 
     init?(parser: inout StringParser, for function: Function, argIdx: Int) {
-      if parser.consume("*.**") {
-        self = .oneOrMoreIndirections
+      if parser.consume("*.*") {
+        self = .oneIndirection
       } else if parser.consume("**") {
         self = .anything
       } else if parser.consume("*") {
@@ -51,8 +50,8 @@ public struct Effect : CustomStringConvertible {
     public var description: String {
       switch self {
         case .noIndirection:         return "*"
-        case .oneOrMoreIndirections: return "*.**"
-        case .anything:        return "**"
+        case .oneIndirection:        return "*.*"
+        case .anything:              return "**"
       }
     }
   }
