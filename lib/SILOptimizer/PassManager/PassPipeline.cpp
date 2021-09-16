@@ -578,6 +578,7 @@ static void addHighLevelModulePipeline(SILPassPipelinePlan &P) {
   // Do the first stack promotion on high-level SIL before serialization.
   //
   // FIXME: why does StackPromotion need to run in the module pipeline?
+  P.addComputeEffects();
   P.addStackPromotion();
 
   P.addGlobalOpt();
@@ -645,6 +646,7 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   P.addClosureSpecializer();
 
   // Do the second stack promotion on low-level SIL.
+  P.addComputeEffects();
   P.addStackPromotion();
 
   // Speculate virtual call targets.
@@ -704,6 +706,7 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
 
   // Sometimes stack promotion can catch cases only at this late stage of the
   // pipeline, after FunctionSignatureOpts.
+  P.addComputeEffects();
   P.addStackPromotion();
 
   // Optimize overflow checks.
