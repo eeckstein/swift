@@ -47,7 +47,7 @@ enum E {
 sil [ossa] @unknown_function : $@convention(thin) (@owned X) -> ()
 sil [ossa] @unknown_function_y : $@convention(thin) (@owned Y) -> ()
 
-// CHECK-LABEL: sil [+escapes_to_argument3(1, *), +noescape(2, *), +escapes_to_return(2, *.*), +noescape(3, **)] [ossa] @test_simple
+// CHECK-LABEL: sil [+escapes_to_arg(1, *, 3), +noescape(2, *), +escapes_to_return(2, *.*), +noescape(3, **)] [ossa] @test_simple
 sil [ossa] @test_simple : $@convention(thin) (@owned X, @guaranteed Str, @guaranteed Z, @inout X) -> @owned Y {
 bb0(%0 : @owned $X, %1 : @guaranteed $Str, %2 : @guaranteed $Z, %3 : $*X):
   // %0 escapes to global
@@ -78,9 +78,9 @@ bb0(%0 : @guaranteed $Z):
 }
 
 
-sil [escapes_to_argument0(0, *)] [ossa] @self_arg_callee : $@convention(thin) (@inout X) -> ()
+sil [escapes_to_arg(0, *, 0)] [ossa] @self_arg_callee : $@convention(thin) (@inout X) -> ()
 
-// CHECK-LABEL: sil [+escapes_to_argument0(0, *)] [ossa] @test_self_arg_escape
+// CHECK-LABEL: sil [+escapes_to_arg(0, *, 0)] [ossa] @test_self_arg_escape
 sil [ossa] @test_self_arg_escape : $@convention(thin) (@inout X) -> () {
 bb0(%0 : $*X):
   %1 = function_ref @self_arg_callee : $@convention(thin) (@inout X) -> ()
@@ -89,7 +89,7 @@ bb0(%0 : $*X):
   return %3 : $()
 }
 
-// CHECK-LABEL: sil [+noescape(0, **), +noescape(1, *), +escapes_to_argument0(1, *.*)] [ossa] @test_content_to_arg_addr
+// CHECK-LABEL: sil [+noescape(0, **), +noescape(1, *), +escapes_to_arg(1, *.*, 0)] [ossa] @test_content_to_arg_addr
 sil [ossa] @test_content_to_arg_addr : $@convention(thin) (@guaranteed Y) -> @out Str {
 bb0(%0 : $*Str, %1 : @guaranteed $Y):
   %2 = ref_element_addr %1 : $Y, #Y.s

@@ -14,6 +14,7 @@ import SIL
 
 fileprivate typealias ArgInfo = Effect.ArgInfo
 fileprivate typealias Pattern = Effect.Pattern
+fileprivate typealias Escapes = Effect.Escapes
 
 let computeEffects = FunctionPass(name: "compute-effects", {
   (function: Function, context: PassContext) in
@@ -61,12 +62,10 @@ func addArgEffects(_ arg: FunctionArgument, pattern: Pattern,
         }
         return true
       },
-      visitRoot: { val, path in
-        if let destArg = val as? FunctionArgument {
-          if path.matches(pattern: .noIndirection) {
-            tempEffects.push((argInfo, .toArgument(destArg.index)))
-            return false
-          }
+      visitArg: { destArg, path in
+        if path.matches(pattern: .noIndirection) {
+          tempEffects.push((argInfo, .toArgument(destArg.index)))
+          return false
         }
         return true
       }) {

@@ -10,12 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-public enum Escapes {
-  case noEscape
-  case toReturn
-  case toArgument(Int)
-}
-
 public struct Effect : CustomStringConvertible {
 
   public enum Pattern : CustomStringConvertible {
@@ -65,7 +59,7 @@ public struct Effect : CustomStringConvertible {
     }
     
     public init?(parser: inout StringParser, for function: Function,
-                 fromSIL: Bool) {
+                 fromSIL: Bool, terminateWith: String = ")") {
       if !parser.consume("(") { return nil }
       guard let argIdx = parser.consumeArgumentIndex(for: function,
                                                      fromSIL: fromSIL) else {
@@ -80,12 +74,18 @@ public struct Effect : CustomStringConvertible {
       } else {
         pattern = .anything
       }
-      if !parser.consume(")") { return nil }
+      if !parser.consume(terminateWith) { return nil }
       self.argIndex = argIdx
       self.pattern = pattern
     }
     
     public var description: String { "(\(argIndex), \(pattern))" }
+  }
+
+  public enum Escapes {
+    case noEscape
+    case toReturn
+    case toArgument(Int)
   }
 
   public enum Kind {
@@ -144,15 +144,16 @@ public struct Effect : CustomStringConvertible {
       } else {
         kind = .escaping(argInfo, .toReturn)
       }
-    } else if parser.consume("escapes_to_argument") {
+    } else if parser.consume("escapes_to_arg") {
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL, terminateWith: ",") else {
+        return nil
+      }
       guard let destArgIdx = parser.consumeArgumentIndex(for: function,
                                                          fromSIL: fromSIL) else {
         return nil
       }
-      guard let argInfo = ArgInfo(parser: &parser, for: function,
-                                  fromSIL: fromSIL) else {
-        return nil
-      }
+      if (!parser.consume(")")) { return nil }
       kind = .escaping(argInfo, .toArgument(destArgIdx))
     } else {
       return nil
@@ -170,8 +171,8 @@ public struct Effect : CustomStringConvertible {
         switch escapes {
           case .noEscape: d = "noescape\(argInfo)"
           case .toReturn: d = "escapes_to_return\(argInfo)"
-          case .toArgument(let argIdx):
-            d = "escapes_to_argument\(argIdx)\(argInfo)"
+          case .toArgument(let destArgIdx):
+            d = "escapes_to_arg(\(argInfo.argIndex), \(argInfo.pattern), \(destArgIdx))"
         }
     }
     return (isComputed ? "+" : "") + d

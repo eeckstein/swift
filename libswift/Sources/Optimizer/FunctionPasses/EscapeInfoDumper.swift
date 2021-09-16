@@ -27,17 +27,14 @@ let escapeInfoDumper = FunctionPass(name: "dump-escape-info", {
         let escapes = escapeInfo.escapes(allocRef,
           visitUse: { (op, path) in
             if op.instruction is ReturnInst {
-              results.insert("return(\(path))")
+              results.insert("return\(path)")
               return false
             }
             return true
           },
-          visitRoot: { val, path in
-            if let arg = val as? FunctionArgument {
-              results.insert("arg\(arg.index)(\(path))")
-              return false
-            }
-            return true
+          visitArg: { arg, path in
+            results.insert("arg\(arg.index)\(path)")
+            return false
           })
         
         let res: String

@@ -85,7 +85,7 @@ struct EscapeInfo {
           case .anyClassField: s = "c*"
           case .anything:      s = "**"
         }
-        descr = s + (descr.isEmpty ? "" : ".\(descr)")
+        descr = (descr.isEmpty ? s : "\(descr).\(s)")
         p = p.pop(numBits: max(numBits, 8))
       }
       return "[\(descr)]"
@@ -298,11 +298,11 @@ struct EscapeInfo {
   mutating
   func escapes(_ allocRef: AllocRefInst,
                visitUse: (Operand, Path) -> Bool = { _, _ in true },
-               visitRoot: (Value, Path) -> Bool = { _, _ in true }) -> Bool {
+               visitArg: (FunctionArgument, Path) -> Bool = { _, _ in true }) -> Bool {
     start()
     let result = walkDownAndCache(allocRef,
                               path: Path(), followStores: false,
-                              visitUse: visitUse, visitRoot: visitRoot)
+                              visitUse: visitUse, visitArg: visitArg)
     cleanup()
     return result
   }
@@ -311,11 +311,11 @@ struct EscapeInfo {
    func escapes(argument: FunctionArgument,
                 pattern: Effect.Pattern,
                 visitUse: (Operand, Path) -> Bool = { _, _ in true },
-                visitRoot: (Value, Path) -> Bool = { _, _ in true }) -> Bool {
+                visitArg: (FunctionArgument, Path) -> Bool = { _, _ in true }) -> Bool {
     start()
     let result = walkDownAndCache(argument,
                               path: Path(pattern: pattern), followStores: false,
-                              visitUse: visitUse, visitRoot: visitRoot)
+                              visitUse: visitUse, visitArg: visitArg)
     cleanup()
     return result
   }
@@ -333,10 +333,10 @@ struct EscapeInfo {
   func walkDownAndCache(_ value: Value,
                         path: Path, followStores: Bool,
                         visitUse: (Operand, Path) -> Bool,
-                        visitRoot: (Value, Path) -> Bool) -> Bool {
+                        visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     if let entry = walkedDownCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkDown(value, path: entry.path, followStores: entry.followStores,
-                      visitUse: visitUse, visitRoot: visitRoot)
+                      visitUse: visitUse, visitArg: visitArg)
     }
     return false
   }
@@ -345,10 +345,10 @@ struct EscapeInfo {
   func walkUpAndCache(_ value: Value,
                       path: Path, followStores: Bool,
                       visitUse: (Operand, Path) -> Bool,
-                      visitRoot: (Value, Path) -> Bool) -> Bool {
+                      visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     if let entry = walkedUpCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkUp(value, path: entry.path, followStores: entry.followStores,
-                    visitUse: visitUse, visitRoot: visitRoot)
+                    visitUse: visitUse, visitArg: visitArg)
     }
     return false
   }
@@ -356,7 +356,7 @@ struct EscapeInfo {
   private mutating func walkDown(_ value: Value,
                                  path: Path, followStores: Bool,
                                  visitUse: (Operand, Path) -> Bool,
-                                 visitRoot: (Value, Path) -> Bool) -> Bool {
+                                 visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     for use in value.uses {
       if !visitUse(use, path) { continue }
       let user = use.instruction
@@ -364,79 +364,79 @@ struct EscapeInfo {
         case let rta as RefTailAddrInst:
           if let newPath = path.popIfMatches(.tailElements) {
             if walkDown(rta, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let rea as RefElementAddrInst:
           if let newPath = path.popIfMatches(.classField, index: rea.fieldIndex) {
             if walkDown(rea, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let str as StructInst:
           if walkDown(str, path: path.push(.structField, index: use.index),
                       followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let se as StructExtractInst:
           if let newPath = path.popIfMatches(.structField, index: se.fieldIndex) {
             if walkDown(se, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let ds as DestructureStructInst:
           if walkDownInstructionResults(results: ds.results,
                 fieldKind: .structField, path: path, followStores: followStores,
-                visitUse: visitUse, visitRoot: visitRoot) {
+                visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let dt as DestructureTupleInst:
           if walkDownInstructionResults(results: dt.results,
                 fieldKind: .tupleField, path: path, followStores: followStores,
-                visitUse: visitUse, visitRoot: visitRoot) {
+                visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let sea as StructElementAddrInst:
           if let newPath = path.popIfMatches(.structField, index: sea.fieldIndex) {
             if walkDown(sea, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let t as TupleInst:
           if walkDown(t, path: path.push(.tupleField, index: use.index),
                       followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let te as TupleExtractInst:
           if let newPath = path.popIfMatches(.tupleField, index: te.fieldIndex) {
             if walkDown(te, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let tea as TupleElementAddrInst:
           if let newPath = path.popIfMatches(.tupleField, index: tea.fieldIndex) {
             if walkDown(tea, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let e as EnumInst:
           if walkDown(e, path: path.push(.enumCase, index: e.caseIndex),
                       followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let ued as UncheckedEnumDataInst:
           if let newPath = path.popIfMatches(.enumCase, index: ued.caseIndex) {
             if walkDown(ued, path: newPath, followStores: followStores,
-                        visitUse: visitUse, visitRoot: visitRoot) {
+                        visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
@@ -445,7 +445,7 @@ struct EscapeInfo {
             if let succBlock = se.getUniqueSuccessor(forCaseIndex: caseIdx) {
               if let payload = succBlock.arguments.first {
                 if walkDown(payload, path: newPath, followStores: followStores,
-                            visitUse: visitUse, visitRoot: visitRoot) {
+                            visitUse: visitUse, visitArg: visitArg) {
                   return true
                 }
               }
@@ -454,7 +454,7 @@ struct EscapeInfo {
             for succBlock in se.block.successors {
               if let payload = succBlock.arguments.first {
                 if walkDown(payload, path: path, followStores: followStores,
-                            visitUse: visitUse, visitRoot: visitRoot) {
+                            visitUse: visitUse, visitArg: visitArg) {
                   return true
                 }
               }
@@ -466,26 +466,26 @@ struct EscapeInfo {
           if use == store.sourceOperand {
             if walkUp(store.destination, path: path,
                           followStores: followStores,
-                          visitUse: visitUse, visitRoot: visitRoot) {
+                          visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           } else if followStores {
             assert(use == store.destinationOperand)
             if walkUp(store.source, path: path, followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
         case let copyAddr as CopyAddrInst:
           if use == copyAddr.sourceOperand {
             if walkUp(copyAddr.destination, path: path, followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           } else if followStores {
             assert(use == copyAddr.destinationOperand)
             if walkUp(copyAddr.source, path: path, followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
               return true
             }
           }
@@ -500,7 +500,7 @@ struct EscapeInfo {
         case let br as BranchInst:
           if walkDownAndCache(br.getArgument(for: use), path: path,
                               followStores: followStores,
-                              visitUse: visitUse, visitRoot: visitRoot) {
+                              visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case is ReturnInst:
@@ -508,13 +508,13 @@ struct EscapeInfo {
         case let ap as ApplyInst:
           if handleArgumentEffects(argOp: use, apply: ap, path: path,
                                    followStores: followStores,
-                                   visitUse: visitUse, visitRoot: visitRoot) {
+                                   visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let tap as TryApplyInst:
           if handleArgumentEffects(argOp: use, apply: tap, path: path,
                                    followStores: followStores,
-                                   visitUse: visitUse, visitRoot: visitRoot) {
+                                   visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
@@ -523,12 +523,12 @@ struct EscapeInfo {
              is PointerToAddressInst, is IndexAddrInst, is BridgeObjectToRefInst:
           if walkDown(user as! SingleValueInstruction, path: path,
                       followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot) {
+                      visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case let bcm as BeginCOWMutationInst:
           if walkDown(bcm.bufferResult, path: path, followStores: followStores,
-                          visitUse: visitUse, visitRoot: visitRoot) {
+                          visitUse: visitUse, visitArg: visitArg) {
             return true
           }
         case is DeallocStackInst, is StrongRetainInst, is RetainValueInst,
@@ -551,15 +551,15 @@ struct EscapeInfo {
                                   fieldKind: Path.FieldKind,
                                   path: Path, followStores: Bool,
                                   visitUse: (Operand, Path) -> Bool,
-                                  visitRoot: (Value, Path) -> Bool) -> Bool {
+                                  visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     if let (index, newPath) = path.pop(kind: fieldKind) {
       return walkDown(results[index], path: newPath, followStores: followStores,
-                      visitUse: visitUse, visitRoot: visitRoot)
+                      visitUse: visitUse, visitArg: visitArg)
     }
     if path.matchesAnyValueField {
       for elem in results {
         if walkDown(elem, path: path, followStores: followStores,
-                    visitUse: visitUse, visitRoot: visitRoot) {
+                    visitUse: visitUse, visitArg: visitArg) {
           return true
         }
       }
@@ -572,7 +572,7 @@ struct EscapeInfo {
   func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
                              path: Path, followStores: Bool,
                              visitUse: (Operand, Path) -> Bool,
-                             visitRoot: (Value, Path) -> Bool) -> Bool {
+                             visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     guard let argIdx = apply.argumentIndex(of: argOp) else {
       // The callee or a type dependend operand does not let escape anything.
       return false
@@ -590,7 +590,7 @@ struct EscapeInfo {
 
     for callee in callees {
       if handleArgument(argIdx: argIdx, argPath: path, apply: apply,
-                        callee: callee, visitUse: visitUse, visitRoot: visitRoot) {
+                        callee: callee, visitUse: visitUse, visitArg: visitArg) {
         return true
       }
     }
@@ -601,7 +601,7 @@ struct EscapeInfo {
   func handleArgument(argIdx: Int, argPath: Path,
                       apply: FullApplySite, callee: Function,
                       visitUse: (Operand, Path) -> Bool,
-                      visitRoot: (Value, Path) -> Bool) -> Bool {
+                      visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     for effect in callee.effects {
       guard case .escaping(let argInfo, let escapes) = effect.kind else {
         continue
@@ -614,14 +614,14 @@ struct EscapeInfo {
             if let result = apply.singleDirectResult {
               return walkDown(result, path: Path().push(.anyValueField),
                               followStores: false,
-                              visitUse: visitUse, visitRoot: visitRoot)
+                              visitUse: visitUse, visitArg: visitArg)
             }
             return isEscaping
           case .toArgument(let destArgIdx):
             return walkUp(apply.arguments[destArgIdx],
                           path: Path().push(.anyValueField),
                           followStores: false,
-                          visitUse: visitUse, visitRoot: visitRoot)
+                          visitUse: visitUse, visitArg: visitArg)
         }
       } else if case .toArgument(let destArgIdx) = escapes {
         if destArgIdx == argIdx && argPath.popAllValueFields().isEmpty {
@@ -635,7 +635,7 @@ struct EscapeInfo {
   private mutating func walkUp(_ value: Value,
                                path: Path, followStores: Bool,
                                visitUse: (Operand, Path) -> Bool,
-                               visitRoot: (Value, Path) -> Bool) -> Bool {
+                               visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     var val = value
     var p = path
     var fSt = followStores
@@ -643,18 +643,18 @@ struct EscapeInfo {
       switch val {
         case is AllocRefInst, is AllocStackInst:
           return walkDownAndCache(val, path: p, followStores: fSt,
-                                  visitUse: visitUse, visitRoot: visitRoot)
+                                  visitUse: visitUse, visitArg: visitArg)
         case let arg as FunctionArgument:
-          if visitRoot(arg, p) {
+          if visitArg(arg, p) {
             return isEscaping
           }
           return walkDownAndCache(arg, path: p, followStores: fSt,
-                                  visitUse: visitUse, visitRoot: visitRoot)
+                                  visitUse: visitUse, visitArg: visitArg)
         case let arg as BlockArgument:
           if arg.isPhiArgument {
             for incoming in arg.incomingPhiValues {
               if walkUpAndCache(incoming, path: p, followStores: fSt,
-                                 visitUse: visitUse, visitRoot: visitRoot) {
+                                 visitUse: visitUse, visitArg: visitArg) {
                 return true
               }
             }
