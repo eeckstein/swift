@@ -519,12 +519,12 @@ static bool ParseLangArgs(LangOptions &Opts, ArgList &Args,
   Opts.UseClangFunctionTypes |= Args.hasArg(OPT_use_clang_function_types);
 
   Opts.NamedLazyMemberLoading &= !Args.hasArg(OPT_disable_named_lazy_member_loading);
-
+/*
   if (Args.hasArg(OPT_verify_syntax_tree)) {
     Opts.BuildSyntaxTree = true;
     Opts.VerifySyntaxTree = true;
   }
-
+*/
   if (Args.hasArg(OPT_emit_fine_grained_dependency_sourcefile_dot_files))
     Opts.EmitFineGrainedDependencySourcefileDotFiles = true;
 
