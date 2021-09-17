@@ -53,14 +53,17 @@ public struct Effect : CustomStringConvertible {
     public let argIndex: Int
     public let pattern: Pattern
     
-    public init(_ arg: Argument, pattern: Pattern) {
-      self.argIndex = arg.index
+    public init(_ argIdx: Int, pattern: Pattern) {
+      self.argIndex = argIdx
       self.pattern = pattern
+    }
+
+    public init(_ arg: Argument, pattern: Pattern) {
+      self.init(arg.index, pattern: pattern)
     }
     
     public init?(parser: inout StringParser, for function: Function,
-                 fromSIL: Bool, terminateWith: String = ")") {
-      if !parser.consume("(") { return nil }
+                 fromSIL: Bool) {
       guard let argIdx = parser.consumeArgumentIndex(for: function,
                                                      fromSIL: fromSIL) else {
         return nil
@@ -74,18 +77,15 @@ public struct Effect : CustomStringConvertible {
       } else {
         pattern = .anything
       }
-      if !parser.consume(terminateWith) { return nil }
       self.argIndex = argIdx
       self.pattern = pattern
     }
     
-    public var description: String { "(\(argIndex), \(pattern))" }
-  }
-
-  public enum Escapes {
-    case noEscape
-    case toReturn
-    case toArgument(Int)
+    public var description: String { "\(argIndex), \(pattern)" }
+    
+    public func matches(_ rhsIdx: Int, _ rhsPath: ProjectionPath) -> Bool {
+      return argIndex == rhsIdx && rhsPath.matches(pattern: pattern)
+    }
   }
 
   public enum Kind {
@@ -93,13 +93,15 @@ public struct Effect : CustomStringConvertible {
     case noWriteGlobal
     case noRead(ArgInfo)
     case noWrite(ArgInfo)
-    case escaping(ArgInfo, Escapes)
+    case notEscaping(ArgInfo)
+    case escapesToReturn(ArgInfo, ProjectionPath)
+    case escapesToArgument(ArgInfo, Int, ProjectionPath)
   }
   
   public let kind: Kind
   public let isComputed: Bool
 
-  public init(kind: Kind, isComputed: Bool) {
+  public init(_ kind: Kind, isComputed: Bool = true) {
     self.kind = kind
     self.isComputed = isComputed
   }
@@ -112,71 +114,86 @@ public struct Effect : CustomStringConvertible {
       kind = .noReadGlobal
     } else if parser.consume("nowrite_global") {
       kind = .noWriteGlobal
+
     } else if parser.consume("noread") {
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
         return nil
       }
       kind = .noRead(argInfo)
+
     } else if parser.consume("nowrite") {
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
         return nil
       }
       kind = .noWrite(argInfo)
+
     } else if parser.consume("noescape") {
+      if !parser.consume("(") { return nil }
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
         return nil
       }
-      kind = .escaping(argInfo, .noEscape)
-    } else if parser.consume("escapes_to_return") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function,
-                                  fromSIL: fromSIL) else {
-        return nil
-      }
-      if !fromSIL && function.numIndirectResultArguments > 0 {
-        if function.numIndirectResultArguments != 1 {
-          // Currently not supported
-          return nil
-        }
-        kind = .escaping(argInfo, .toArgument(0))
-      } else {
-        kind = .escaping(argInfo, .toReturn)
-      }
-    } else if parser.consume("escapes_to_arg") {
-      guard let argInfo = ArgInfo(parser: &parser, for: function,
-                                  fromSIL: fromSIL, terminateWith: ",") else {
-        return nil
-      }
-      guard let destArgIdx = parser.consumeArgumentIndex(for: function,
-                                                         fromSIL: fromSIL) else {
-        return nil
-      }
+      kind = .notEscaping(argInfo)
       if (!parser.consume(")")) { return nil }
-      kind = .escaping(argInfo, .toArgument(destArgIdx))
+
+    } else if parser.consume("escapes_to_return") {
+      if !parser.consume("(") { return nil }
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else { return nil }
+      let path: ProjectionPath
+      if parser.consume(",") {
+        guard let p = ProjectionPath(parser: &parser) else { return nil }
+        path = p
+      } else {
+        path = ProjectionPath(.anyValueField)
+      }
+      kind = .escapesToReturn(argInfo, path)
+      if !parser.consume(")") { return nil }
+
+    } else if parser.consume("escapes_to_arg") {
+      if !parser.consume("(") { return nil }
+      guard let argInfo = ArgInfo(parser: &parser, for: function,
+                                  fromSIL: fromSIL) else { return nil }
+      if !parser.consume(",") { return nil }
+      guard let destArgIdx = parser.consumeArgumentIndex(for: function,
+                                  fromSIL: fromSIL) else { return nil }
+      let path: ProjectionPath
+      if parser.consume(",") {
+        guard let p = ProjectionPath(parser: &parser) else { return nil }
+        path = p
+      } else {
+        path = ProjectionPath(.anyValueField)
+      }
+      kind = .escapesToArgument(argInfo, destArgIdx, path)
+      if (!parser.consume(")")) { return nil }
     } else {
       return nil
     }
   }
  
   public var description: String {
+
+    func pathArg(_ path: ProjectionPath) -> String {
+      path == ProjectionPath(.anyValueField) ? "" : ", \(path)"
+    }
+
     let d: String
     switch kind {
       case .noReadGlobal:                 d = "noread_global"
       case .noWriteGlobal:                d = "nowrite_global"
-      case .noRead(let argInfo):          d = "noread\(argInfo)"
-      case .noWrite(let argInfo):         d = "nowrite\(argInfo)"
-      case .escaping(let argInfo, let escapes):
-        switch escapes {
-          case .noEscape: d = "noescape\(argInfo)"
-          case .toReturn: d = "escapes_to_return\(argInfo)"
-          case .toArgument(let destArgIdx):
-            d = "escapes_to_arg(\(argInfo.argIndex), \(argInfo.pattern), \(destArgIdx))"
-        }
+      case .noRead(let argInfo):          d = "noread(\(argInfo))"
+      case .noWrite(let argInfo):         d = "nowrite(\(argInfo))"
+      case .notEscaping(let argInfo):     d = "noescape(\(argInfo))"
+      case .escapesToReturn(let argInfo, let path):
+        d = "escapes_to_return(\(argInfo)\(pathArg(path)))"
+      case .escapesToArgument(let argInfo, let destArgIdx, let path):
+        d = "escapes_to_arg(\(argInfo), \(destArgIdx)\(pathArg(path)))"
     }
     return (isComputed ? "+" : "") + d
   }
+  
 }
 
 public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection {
@@ -199,10 +216,29 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
                                 fromSIL: fromSIL) else {
         return false
       }
-      effects.append(effect)
+      appendEffect(effect, for: function, fromSIL: fromSIL)
+
       if parser.isEmpty() { return true }
       if !parser.consume(",") { return false }
     }
+  }
+
+  mutating private func appendEffect(_ effect: Effect, for function: Function,
+                                     fromSIL: Bool) {
+    if case .escapesToReturn(let argInfo, let path) = effect.kind {
+      if !fromSIL && function.numIndirectResultArguments > 0 {
+        if function.numIndirectResultArguments != 1 {
+          // Currently not supported
+          return
+        }
+        effects.append(Effect(.escapesToArgument(argInfo, 0, path),
+                              isComputed: effect.isComputed))
+        effects.append(Effect(.notEscaping(Effect.ArgInfo(0, pattern: .anything)),
+                              isComputed: effect.isComputed))
+        return
+      }
+    }
+    effects.append(effect)
   }
 
   public mutating func removeComputedEffects() {
@@ -211,7 +247,8 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
 
   public mutating func append(_ effect: Effect) { effects.append(effect) }
 
-  public mutating func append<S: Sequence>(from source: S) where S.Element == Effect {
+  public mutating
+  func append<S: Sequence>(contentsOf source: S) where S.Element == Effect {
     for elem in source {
       append(elem)
     }

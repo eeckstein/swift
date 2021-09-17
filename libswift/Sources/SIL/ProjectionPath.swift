@@ -66,11 +66,8 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
 
   public init?(parser: inout StringParser) {
     self.init()
-    if !parser.consume("[") { return nil }
     var entries: [(FieldKind, Int)] = []
-    while !parser.consume("]") {
-      if !entries.isEmpty && !parser.consume(".") { return nil }
-  
+    repeat {
       if parser.consume("**") {
         entries.append((.anything, 0))
       } else if parser.consume("c*") {
@@ -94,7 +91,8 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       } else {
         return nil
       }
-    }
+    } while parser.consume(".")
+ 
     for (kind, idx) in entries.reversed() {
       self = self.push(kind, index: idx)
     }
@@ -124,7 +122,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       descr = (descr.isEmpty ? s : "\(descr).\(s)")
       p = p.pop(numBits: max(numBits, 8))
     }
-    return "[\(descr)]"
+    return descr
   }
   
   private var top: (kind: FieldKind, index: Int, numBits: Int) {
@@ -302,43 +300,43 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     func testMerge(_ lhs: ProjectionPath, _ rhs: ProjectionPath,
                    expect: ProjectionPath) {
       let result = lhs.merge(with: rhs)
-      assert(result == expect)
+      assert(result == expect, "path merging failed")
        let result2 = rhs.merge(with: lhs)
-      assert(result2 == expect)
+      assert(result2 == expect, "path merging failed")
     }
    
     func merging() {
-      testMerge("[ct.s0.e0.v*.c0]",
-                "[ct.s0.e0.v*.c0]",
-        expect: "[ct.s0.e0.v*.c0]")
+      testMerge("ct.s0.e0.v*.c0",
+                "ct.s0.e0.v*.c0",
+        expect: "ct.s0.e0.v*.c0")
   
-      testMerge("[ct.s0.s0.c0]",
-                "[ct.s0.e0.s0.c0]",
-        expect: "[ct.s0.v*.c0]")
+      testMerge("ct.s0.s0.c0",
+                "ct.s0.e0.s0.c0",
+        expect: "ct.s0.v*.c0")
   
-      testMerge("[c1.c0]",
-                "[c0]",
-        expect: "[c*.**]")
+      testMerge("c1.c0",
+                "c0",
+        expect: "c*.**")
 
-      testMerge("[c2.c1]",
-                "[c2]",
-        expect: "[c2.**]")
+      testMerge("c2.c1",
+                "c2",
+        expect: "c2.**")
 
-      testMerge("[s3.c0]",
-                "[v*.c0]",
-        expect: "[v*.c0]")
+      testMerge("s3.c0",
+                "v*.c0",
+        expect: "v*.c0")
 
-      testMerge("[c0]",
-                "[s2.c1]",
-        expect: "[v*.c*]")
+      testMerge("c0",
+                "s2.c1",
+        expect: "v*.c*")
 
-      testMerge("[s1.s1.c2]",
-                "[s1.c2]",
-        expect: "[s1.v*.c2]")
+      testMerge("s1.s1.c2",
+                "s1.c2",
+        expect: "s1.v*.c2")
 
-      testMerge("[s1.s0]",
-                "[s2.s0]",
-        expect: "[v*]")
+      testMerge("s1.s0",
+                "s2.s0",
+        expect: "v*")
     }
     
     basicPushPop()

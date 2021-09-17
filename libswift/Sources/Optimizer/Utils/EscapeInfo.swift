@@ -363,30 +363,28 @@ struct EscapeInfo {
                       visitUse: (Operand, Path) -> Bool,
                       visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     for effect in callee.effects {
-      guard case .escaping(let argInfo, let escapes) = effect.kind else {
-        continue
-      }
-      if argInfo.argIndex == argIdx && argPath.matches(pattern: argInfo.pattern) {
-        switch escapes {
-          case .noEscape:
+      switch effect.kind {
+        case .notEscaping(let argInfo):
+          if argInfo.matches(argIdx, argPath) {
             return false
-          case .toReturn:
+          }
+        case .escapesToReturn(let argInfo, let returnPath):
+          if argInfo.matches(argIdx, argPath) {
             if let result = apply.singleDirectResult {
-              return walkDown(result, path: Path().push(.anyValueField),
-                              followStores: false,
+              return walkDown(result,
+                              path: returnPath, followStores: false,
                               visitUse: visitUse, visitArg: visitArg)
             }
             return isEscaping
-          case .toArgument(let destArgIdx):
+          }
+        case .escapesToArgument(let argInfo, let destArgIdx, let destArgPath):
+          if argInfo.matches(argIdx, argPath) {
             return walkUp(apply.arguments[destArgIdx],
-                          path: Path().push(.anyValueField),
-                          followStores: false,
+                          path: destArgPath, followStores: false,
                           visitUse: visitUse, visitArg: visitArg)
-        }
-      } else if case .toArgument(let destArgIdx) = escapes {
-        if destArgIdx == argIdx && argPath.popAllValueFields().isEmpty {
-          return false
-        }
+          }
+        default:
+          break
       }
     }
     return isEscaping

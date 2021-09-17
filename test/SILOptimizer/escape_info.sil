@@ -469,7 +469,7 @@ bb0:
   return %6 : $X
 }
 
-sil [escapes_to_arg(1, *, 0)] [ossa] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
+sil [escapes_to_arg(1, *, 0), noescape(0)] [ossa] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
 
 // CHECK-LABEL: Escape information for call_arg_to_arg:
 // CHECK:  -    :     %0 = alloc_ref $X
@@ -523,3 +523,22 @@ bb0:
   %19 = apply %16(%6) : $@convention(thin) (@owned Z) -> @owned Y
   return %19 : $Y
 }
+
+sil [escapes_to_return(0, *, t0.s0.**)] @array_adopt_storage : $@convention(thin) (@owned _ContiguousArrayStorage<Int>) -> (@owned Array<Int>, UnsafeMutablePointer<Int>)
+sil @take_ptr : $@convention(thin) (UnsafeMutablePointer<Int>) -> ()
+
+// CHECK-LABEL: Escape information for call_array_adopt_storage:
+// CHECK: return[s0.**]: %0 = alloc_ref $_ContiguousArrayStorage<Int>
+// CHECK: End function call_array_adopt_storage
+sil @call_array_adopt_storage : $@convention(thin) () -> @owned Array<Int> {
+bb0:
+  %0 = alloc_ref $_ContiguousArrayStorage<Int>
+  %1 = function_ref @array_adopt_storage : $@convention(thin) (@owned _ContiguousArrayStorage<Int>) -> (@owned Array<Int>, UnsafeMutablePointer<Int>)
+  %2 = apply %1(%0) : $@convention(thin) (@owned _ContiguousArrayStorage<Int>) -> (@owned Array<Int>, UnsafeMutablePointer<Int>)
+  %3 = tuple_extract %2 : $(Array<Int>, UnsafeMutablePointer<Int>), 0
+  %4 = tuple_extract %2 : $(Array<Int>, UnsafeMutablePointer<Int>), 1
+  %5 = function_ref @take_ptr : $@convention(thin) (UnsafeMutablePointer<Int>) -> ()
+  %6 = apply %5(%4) : $@convention(thin) (UnsafeMutablePointer<Int>) -> ()
+  return %3 : $Array<Int>
+}
+
