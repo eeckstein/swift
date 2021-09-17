@@ -17,6 +17,7 @@ add_libswift_module(SIL
   Instruction.swift
   Location.swift
   Operand.swift
+  ProjectionPath.swift
   Registration.swift
   Type.swift
   Utils.swift
