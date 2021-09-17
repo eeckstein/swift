@@ -51,7 +51,11 @@ struct EscapeInfo {
     }
 
     init() { self.bytes = 0 }
-    
+
+    init(_ kind: FieldKind, index: Int = 0) {
+      self = Path().push(kind, index: index)
+    }
+
     init(pattern: Effect.Pattern) {
       self.init()
       switch pattern {
@@ -134,11 +138,11 @@ struct EscapeInfo {
     func push(_ kind: FieldKind, index: Int = 0) -> Path {
       var idx = index
       var b = bytes
-      if (b >> 56) != 0 { return Path().push(.anything) }
+      if (b >> 56) != 0 { return Path(.anything) }
       b = (b << 8) | UInt64(((idx & 0xf) << 4) | (kind.rawValue << 1))
       idx >>= 4
       while idx != 0 {
-        if (b >> 56) != 0 { return Path().push(.anything) }
+        if (b >> 56) != 0 { return Path(.anything) }
         b = (b << 8) | UInt64(((idx & 0x7f) << 1) | 1)
         idx >>= 7
       }
@@ -219,17 +223,24 @@ struct EscapeInfo {
         }
         return subPath.push(lhsKind, index: lhsIdx)
       }
-      if lhsKind.isValueField && rhsKind.isValueField {
+      if lhsKind.isValueField || rhsKind.isValueField {
         let subPath = popAllValueFields().merge(with: rhs.popAllValueFields())
         assert(!subPath.top.kind.isValueField)
+        if subPath.top.kind == .anything {
+          return subPath
+        }
         return subPath.push(.anyValueField)
       }
-      return Path().push(.anything)
+      if lhsKind.isClassField && rhsKind.isClassField {
+        let subPath = pop(numBits: lhsBits).merge(with: rhs.pop(numBits: rhsBits))
+        return subPath.push(.anyClassField)
+      }
+      return Path(.anything)
     }
 
     static func unitTest() {
       func basicPushPop() {
-        let p1 = Path().push(.structField, index: 3).push(.classField, index: 12345678)
+        let p1 = Path(.structField, index: 3).push(.classField, index: 12345678)
         let t = p1.top
         assert(t.kind == .classField && t.index == 12345678)
         let (k2, i2, p2) = p1.pop()
@@ -241,16 +252,38 @@ struct EscapeInfo {
         assert(k4 == .enumCase && i4 == 876)
       }
       
+      func testMerge(_ lhs: Path, _ rhs: Path, expect: Path) {
+        let result = lhs.merge(with: rhs)
+        assert(result == expect)
+         let result2 = rhs.merge(with: lhs)
+        assert(result2 == expect)
+      }
+     
       func merging() {
-        let p1 = Path().push(.classField).push(.structField).push(.structField).push(.tailElements)
-        let p2 = Path().push(.classField).push(.structField).push(.enumCase).push(.structField).push(.tailElements)
-        let p3 = p1.merge(with: p2)
-        assert(p3 == Path().push(.classField).push(.anyValueField).push(.tailElements))
-        
-        let p4 = Path().push(.classField, index: 0).push(.classField, index: 1)
-        let p5 = Path().push(.classField, index: 0)
-        let p6 = p5.merge(with: p4)
-        assert(p6 == Path().push(.anything))
+        testMerge(
+          Path(.classField).push(.structField).push(.structField).push(.tailElements),
+          Path(.classField).push(.structField).push(.enumCase).push(.structField).push(.tailElements),
+          expect: Path(.classField).push(.anyValueField).push(.tailElements))
+        testMerge(
+          Path(.classField, index: 0).push(.classField, index: 1),
+          Path(.classField, index: 0),
+          expect: Path(.anything).push(.anyClassField))
+        testMerge(
+          Path(.classField, index: 1).push(.classField, index: 0),
+          Path(.classField, index: 0),
+          expect: Path(.anything).push(.classField, index: 0))
+        testMerge(
+          Path(.classField),
+          Path(.classField).push(.structField),
+          expect: Path(.classField).push(.anyValueField))
+        testMerge(
+          Path(.classField, index: 0),
+          Path(.classField, index: 1).push(.structField),
+          expect: Path(.anyClassField).push(.anyValueField))
+        testMerge(
+          Path(.classField).push(.structField).push(.structField),
+          Path(.classField).push(.structField),
+          expect: Path(.classField).push(.anyValueField))
       }
       
       basicPushPop()
