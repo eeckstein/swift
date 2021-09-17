@@ -64,6 +64,42 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     }
   }
 
+  public init?(parser: inout StringParser) {
+    self.init()
+    if !parser.consume("[") { return nil }
+    var entries: [(FieldKind, Int)] = []
+    while !parser.consume("]") {
+      if !entries.isEmpty && !parser.consume(".") { return nil }
+  
+      if parser.consume("**") {
+        entries.append((.anything, 0))
+      } else if parser.consume("c*") {
+        entries.append((.anyClassField, 0))
+      } else if parser.consume("v*") {
+        entries.append((.anyValueField, 0))
+      } else if parser.consume("ct") {
+        entries.append((.tailElements, 0))
+      } else if parser.consume("c") {
+        guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
+        entries.append((.classField, idx))
+      } else if parser.consume("e") {
+        guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
+        entries.append((.enumCase, idx))
+      } else if parser.consume("t") {
+        guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
+        entries.append((.tupleField, idx))
+      } else if parser.consume("s") {
+        guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
+        entries.append((.structField, idx))
+      } else {
+        return nil
+      }
+    }
+    for (kind, idx) in entries.reversed() {
+      self = self.push(kind, index: idx)
+    }
+  }
+
   private init(bytes: UInt64) { self.bytes = bytes }
 
   public var isEmpty: Bool { bytes == 0 }
@@ -248,6 +284,21 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       assert(k4 == .enumCase && i4 == 876)
     }
     
+    func testMerge(_ lhsStr: String, _ rhsStr: String,
+                   expect expectStr: String) {
+      var lhsParser = StringParser(lhsStr)
+      let lhs = ProjectionPath(parser: &lhsParser)!
+      var rhsParser = StringParser(rhsStr)
+      let rhs = ProjectionPath(parser: &rhsParser)!
+      var expectParser = StringParser(expectStr)
+      let expect = ProjectionPath(parser: &expectParser)!
+
+      let result = lhs.merge(with: rhs)
+      assert(result == expect)
+       let result2 = rhs.merge(with: lhs)
+      assert(result2 == expect)
+    }
+   
     func testMerge(_ lhs: ProjectionPath, _ rhs: ProjectionPath,
                    expect: ProjectionPath) {
       let result = lhs.merge(with: rhs)
@@ -257,36 +308,37 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     }
    
     func merging() {
-      typealias P = ProjectionPath
-    
-      testMerge(
-        P(.classField).push(.structField).push(.structField).push(.tailElements),
-        P(.classField).push(.structField).push(.enumCase).push(.structField).push(.tailElements),
-        expect: P(.classField).push(.anyValueField).push(.structField).push(.tailElements))
-      testMerge(
-        P(.classField, index: 0).push(.classField, index: 1),
-        P(.classField, index: 0),
-        expect: P(.anything).push(.anyClassField))
-      testMerge(
-        P(.classField, index: 1).push(.classField, index: 0),
-        P(.classField, index: 0),
-        expect: P(.anything).push(.classField, index: 0))
-      testMerge(
-        P(.classField),
-        P(.classField).push(.structField),
-        expect: P(.classField).push(.anyValueField))
-      testMerge(
-        P(.classField, index: 0),
-        P(.classField, index: 1).push(.structField),
-        expect: P(.anyClassField).push(.anyValueField))
-      testMerge(
-        P(.classField).push(.structField).push(.structField),
-        P(.classField).push(.structField),
-        expect: P(.classField).push(.anyValueField).push(.structField))
-      testMerge(
-        P(.structField).push(.structField, index: 1),
-        P(.structField).push(.structField, index: 2),
-        expect: P(.anyValueField))
+      testMerge("[ct.s0.e0.v*.c0]",
+                "[ct.s0.e0.v*.c0]",
+        expect: "[ct.s0.e0.v*.c0]")
+  
+      testMerge("[ct.s0.s0.c0]",
+                "[ct.s0.e0.s0.c0]",
+        expect: "[ct.s0.v*.c0]")
+  
+      testMerge("[c1.c0]",
+                "[c0]",
+        expect: "[c*.**]")
+
+      testMerge("[c2.c1]",
+                "[c2]",
+        expect: "[c2.**]")
+
+      testMerge("[s3.c0]",
+                "[v*.c0]",
+        expect: "[v*.c0]")
+
+      testMerge("[c0]",
+                "[s2.c1]",
+        expect: "[v*.c*]")
+
+      testMerge("[s1.s1.c2]",
+                "[s1.c2]",
+        expect: "[s1.v*.c2]")
+
+      testMerge("[s1.s0]",
+                "[s2.s0]",
+        expect: "[v*]")
     }
     
     basicPushPop()
