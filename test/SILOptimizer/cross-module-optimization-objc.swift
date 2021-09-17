@@ -26,7 +26,7 @@ import Test
 
 func testClass() {
   // CHECK-OUTPUT: 127
-  // CHECK-SIL-DAG: sil shared [noinline] @$s4Test21returnObjcClassMemberySiAA0cD0C_xtlFSi_Tg5
+  // CHECK-SIL-DAG: sil shared [noinline] {{.*}}@$s4Test21returnObjcClassMemberySiAA0cD0C_xtlFSi_Tg5
   print(callObjcClassMember(0))
 }
 

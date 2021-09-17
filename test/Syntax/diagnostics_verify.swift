@@ -1,6 +1,8 @@
 // RUN: %target-typecheck-verify-swift -verify-syntax-tree
 // FIXME: Too many "unknown syntax" errors.
 
+// REQUIRES: fix_libsyntax_for_escape_effects
+
 if true {
   try
   // expected-error@-1 {{unknown expression syntax exists in the source}}

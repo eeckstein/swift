@@ -822,7 +822,11 @@ bool DeclAttribute::printImpl(ASTPrinter &Printer, const PrintOptions &Options,
   case DAK_ReferenceOwnership:
   case DAK_Effects:
   case DAK_Optimize:
-    if (DeclAttribute::isDeclModifier(getKind())) {
+    if (getKind() == DAK_Effects &&
+        cast<EffectsAttr>(this)->getKind() == EffectsKind::Custom) {
+      Printer.printAttrName("@_effects");
+      Printer << "(" << cast<EffectsAttr>(this)->getCustomString() << ")";
+    } else if (DeclAttribute::isDeclModifier(getKind())) {
       Printer.printKeyword(getAttrName(), Options);
     } else if (Options.IsForSwiftInterface && getKind() == DAK_ResultBuilder) {
       // Use @_functionBuilder in Swift interfaces to maintain backward
