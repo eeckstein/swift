@@ -218,7 +218,7 @@ struct EscapeInfo {
       if lhsKind == rhsKind && lhsIdx == rhsIdx {
         assert(lhsBits == rhsBits)
         let subPath = pop(numBits: lhsBits).merge(with: rhs.pop(numBits: rhsBits))
-        if subPath.top.kind == .anyValueField && lhsKind.isValueField {
+        if lhsKind == .anyValueField && subPath.top.kind == .anyValueField {
           return subPath
         }
         return subPath.push(lhsKind, index: lhsIdx)
@@ -263,7 +263,7 @@ struct EscapeInfo {
         testMerge(
           Path(.classField).push(.structField).push(.structField).push(.tailElements),
           Path(.classField).push(.structField).push(.enumCase).push(.structField).push(.tailElements),
-          expect: Path(.classField).push(.anyValueField).push(.tailElements))
+          expect: Path(.classField).push(.anyValueField).push(.structField).push(.tailElements))
         testMerge(
           Path(.classField, index: 0).push(.classField, index: 1),
           Path(.classField, index: 0),
@@ -283,7 +283,11 @@ struct EscapeInfo {
         testMerge(
           Path(.classField).push(.structField).push(.structField),
           Path(.classField).push(.structField),
-          expect: Path(.classField).push(.anyValueField))
+          expect: Path(.classField).push(.anyValueField).push(.structField))
+        testMerge(
+          Path(.structField).push(.structField, index: 1),
+          Path(.structField).push(.structField, index: 2),
+          expect: Path(.anyValueField))
       }
       
       basicPushPop()
@@ -550,7 +554,9 @@ struct EscapeInfo {
                                    visitUse: visitUse, visitArg: visitArg) {
             return true
           }
-        case is LoadInst, is InitExistentialRefInst, is OpenExistentialRefInst,
+        case is LoadInst,
+             is InitExistentialRefInst, is OpenExistentialRefInst,
+             is InitExistentialAddrInst, is OpenExistentialAddrInst,
              is BeginAccessInst, is BeginBorrowInst, is CopyValueInst,
              is UpcastInst, is UncheckedRefCastInst, is EndCOWMutationInst,
              is PointerToAddressInst, is IndexAddrInst, is BridgeObjectToRefInst:
@@ -750,8 +756,10 @@ struct EscapeInfo {
         case let ued as UncheckedEnumDataInst:
           val = ued.operand
           p = p.push(.enumCase, index: ued.caseIndex)
-        case is UpcastInst, is UncheckedRefCastInst, is InitExistentialRefInst,
-             is OpenExistentialRefInst, is BeginAccessInst, is BeginBorrowInst,
+        case is UpcastInst, is UncheckedRefCastInst,
+             is InitExistentialRefInst, is OpenExistentialRefInst,
+             is InitExistentialAddrInst, is OpenExistentialAddrInst,
+             is BeginAccessInst, is BeginBorrowInst,
              is EndCOWMutationInst, is BridgeObjectToRefInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:

@@ -119,7 +119,7 @@ bool StackPromotion::tryPromoteAlloc(AllocRefInst *ARI, EscapeAnalysis *EA,
   bool doesEscape = !contentNode || contentNode->escapes();
 
   bool newDoesEscape = AliasAnalysis::isEscaping(ARI, EA->getCalleeAnalysis());
-
+#if 1
   if (doesEscape && !newDoesEscape) {
     llvm::errs() << "+++ no escape in " << ARI->getFunction()->getName() << " of " << *ARI;
   }
@@ -130,7 +130,7 @@ bool StackPromotion::tryPromoteAlloc(AllocRefInst *ARI, EscapeAnalysis *EA,
       llvm_unreachable("escape regression");
     }
   }
-
+#endif
   if (doesEscape)
     return false;
     

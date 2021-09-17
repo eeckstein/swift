@@ -687,26 +687,26 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
                     SingleValueInstruction, None, DoesNotRelease)
 
   // Protocol and Protocol Composition Types
-  SINGLE_VALUE_INST(InitExistentialAddrInst, init_existential_addr,
-                    SingleValueInstruction, MayWrite, DoesNotRelease)
-  SINGLE_VALUE_INST(InitExistentialValueInst, init_existential_value,
-                    SingleValueInstruction, MayWrite, DoesNotRelease)
-  SINGLE_VALUE_INST(OpenExistentialAddrInst, open_existential_addr,
-                    SingleValueInstruction, MayRead, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(InitExistentialAddrInst, init_existential_addr,
+                            SingleValueInstruction, MayWrite, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(InitExistentialValueInst, init_existential_value,
+                            SingleValueInstruction, MayWrite, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(OpenExistentialAddrInst, open_existential_addr,
+                            SingleValueInstruction, MayRead, DoesNotRelease)
   BRIDGED_SINGLE_VALUE_INST(InitExistentialRefInst, init_existential_ref,
-                    SingleValueInstruction, None, DoesNotRelease)
+                            SingleValueInstruction, None, DoesNotRelease)
   BRIDGED_SINGLE_VALUE_INST(OpenExistentialRefInst, open_existential_ref,
-                    SingleValueInstruction, None, DoesNotRelease)
+                            SingleValueInstruction, None, DoesNotRelease)
   BRIDGED_SINGLE_VALUE_INST(InitExistentialMetatypeInst, init_existential_metatype,
-                    SingleValueInstruction, None, DoesNotRelease)
+                            SingleValueInstruction, None, DoesNotRelease)
   BRIDGED_SINGLE_VALUE_INST(OpenExistentialMetatypeInst, open_existential_metatype,
-                    SingleValueInstruction, None, DoesNotRelease)
-  SINGLE_VALUE_INST(OpenExistentialBoxInst, open_existential_box,
-                    SingleValueInstruction, MayRead, DoesNotRelease)
-  SINGLE_VALUE_INST(OpenExistentialValueInst, open_existential_value,
-                    SingleValueInstruction, MayRead, DoesNotRelease)
-  SINGLE_VALUE_INST(OpenExistentialBoxValueInst, open_existential_box_value,
-                    SingleValueInstruction, MayRead, DoesNotRelease)
+                            SingleValueInstruction, None, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(OpenExistentialBoxInst, open_existential_box,
+                            SingleValueInstruction, MayRead, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(OpenExistentialValueInst, open_existential_value,
+                            SingleValueInstruction, MayRead, DoesNotRelease)
+  BRIDGED_SINGLE_VALUE_INST(OpenExistentialBoxValueInst, open_existential_box_value,
+                            SingleValueInstruction, MayRead, DoesNotRelease)
 
   // Blocks
   SINGLE_VALUE_INST(ProjectBlockStorageInst, project_block_storage,

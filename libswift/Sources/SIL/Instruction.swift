@@ -277,6 +277,24 @@ final public
 class OpenExistentialRefInst : SingleValueInstruction, UnaryInstruction {}
 
 final public
+class InitExistentialValueInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class OpenExistentialValueInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class InitExistentialAddrInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class OpenExistentialAddrInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class OpenExistentialBoxInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
+class OpenExistentialBoxValueInst : SingleValueInstruction, UnaryInstruction {}
+
+final public
 class InitExistentialMetatypeInst : SingleValueInstruction, UnaryInstruction {}
 
 final public
