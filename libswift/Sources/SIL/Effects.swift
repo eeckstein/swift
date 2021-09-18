@@ -12,90 +12,78 @@
 
 public struct Effect : CustomStringConvertible {
 
-  public enum Pattern : CustomStringConvertible {
-    // Matches any value-type projections, but no reference-indirections, e.g
-    // struct.field.enumCase.tupleElement
-    case noIndirection
+  public struct ArgInfo : CustomStringConvertible{
+    public let argIndex: Int? // nil: refers to the function return value
+    public let projection: ProjectionPath
     
-    // Matches anything which involves exactly one reference-indirection, e.g.
-    // class.field
-    // struct.field.class.field
-    case oneIndirection
-    
-    // Matches anything
-    case anything
+    public init(_ argIdx: Int, projection: ProjectionPath) {
+      self.argIndex = argIdx
+      self.projection = projection
+    }
 
-    // TODO: support something like "x.y.*.z.**"
-    // case accessPath
+    public init(returnProjection: ProjectionPath) {
+      self.argIndex = nil
+      self.projection = returnProjection
+    }
 
-    init?(parser: inout StringParser, for function: Function, argIdx: Int) {
-      if parser.consume("*.*") {
-        self = .oneIndirection
-      } else if parser.consume("**") {
-        self = .anything
-      } else if parser.consume("*") {
-        self = .noIndirection
+    public init(_ arg: Argument, projection: ProjectionPath) {
+      self.init(arg.index, projection: projection)
+    }
+
+    public init?(parser: inout StringParser, for function: Function,
+                 fromSIL: Bool, acceptReturn: Bool = false) {
+      if parser.consume("self") && function.hasSelfArgument {
+        self.argIndex = function.selfArgumentIndex
+      } else if parser.consume("argument") || parser.consume("arg") {
+        guard let argIdx = parser.consumeInt() else { return nil }
+        self.argIndex = fromSIL ? argIdx
+                                : argIdx + function.numIndirectResultArguments
+      } else if acceptReturn && parser.consume("return") {
+        if !fromSIL && function.numIndirectResultArguments > 0 {
+          if function.numIndirectResultArguments != 1 {
+            // Currently not supported
+            return nil
+          }
+          self.argIndex = 0
+        } else {
+          self.argIndex = nil
+        }
       } else {
         return nil
+      }
+
+      if parser.consume(".") {
+        guard let p = ProjectionPath(parser: &parser) else { return nil }
+        self.projection = p
+      } else {
+        self.projection = ProjectionPath(.anyValueFields)
       }
     }
     
     public var description: String {
-      switch self {
-        case .noIndirection:         return "*"
-        case .oneIndirection:        return "*.*"
-        case .anything:              return "**"
-      }
-    }
-  }
-
-  public struct ArgInfo : CustomStringConvertible{
-    public let argIndex: Int
-    public let pattern: Pattern
-    
-    public init(_ argIdx: Int, pattern: Pattern) {
-      self.argIndex = argIdx
-      self.pattern = pattern
-    }
-
-    public init(_ arg: Argument, pattern: Pattern) {
-      self.init(arg.index, pattern: pattern)
-    }
-    
-    public init?(parser: inout StringParser, for function: Function,
-                 fromSIL: Bool) {
-      guard let argIdx = parser.consumeArgumentIndex(for: function,
-                                                     fromSIL: fromSIL) else {
-        return nil
-      }
-      let pattern: Pattern
-      if parser.consume(",") {
-        guard let p = Pattern(parser: &parser, for: function, argIdx: argIdx) else {
-          return nil
-        }
-        pattern = p
+      let argStr: String
+      if let idx = argIndex {
+        argStr = "arg\(idx)"
       } else {
-        pattern = .anything
+        argStr = "return"
       }
-      self.argIndex = argIdx
-      self.pattern = pattern
+      let pathStr = (projection == ProjectionPath(.anyValueFields) ?
+                      "" : ".\(projection)")
+      return "\(argStr)\(pathStr)"
     }
-    
-    public var description: String { "\(argIndex), \(pattern)" }
     
     public func matches(_ rhsIdx: Int, _ rhsPath: ProjectionPath) -> Bool {
-      return argIndex == rhsIdx && rhsPath.matches(pattern: pattern)
+      return argIndex == rhsIdx && rhsPath.matches(pattern: projection)
     }
   }
 
   public enum Kind {
-    case noReadGlobal
-    case noWriteGlobal
-    case noRead(ArgInfo)
-    case noWrite(ArgInfo)
+    case noReads
+    case noWrites
+    case notReading(ArgInfo)
+    case notWriting(ArgInfo)
     case notEscaping(ArgInfo)
-    case escapesToReturn(ArgInfo, ProjectionPath)
-    case escapesToArgument(ArgInfo, Int, ProjectionPath)
+    case escaping(ArgInfo, ArgInfo)  // from, to
   }
   
   public let kind: Kind
@@ -110,26 +98,26 @@ public struct Effect : CustomStringConvertible {
 
     isComputed = parser.consume("+")
 
-    if parser.consume("noread_global") {
-      kind = .noReadGlobal
-    } else if parser.consume("nowrite_global") {
-      kind = .noWriteGlobal
+    if parser.consume("noReads") {
+      kind = .noReads
+    } else if parser.consume("noWrites") {
+      kind = .noWrites
 
-    } else if parser.consume("noread") {
+    } else if parser.consume("notReading") {
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
         return nil
       }
-      kind = .noRead(argInfo)
+      kind = .notReading(argInfo)
 
-    } else if parser.consume("nowrite") {
+    } else if parser.consume("notWriting") {
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
         return nil
       }
-      kind = .noWrite(argInfo)
+      kind = .notWriting(argInfo)
 
-    } else if parser.consume("noescape") {
+    } else if parser.consume("notEscaping") {
       if !parser.consume("(") { return nil }
       guard let argInfo = ArgInfo(parser: &parser, for: function,
                                   fromSIL: fromSIL) else {
@@ -138,36 +126,20 @@ public struct Effect : CustomStringConvertible {
       kind = .notEscaping(argInfo)
       if (!parser.consume(")")) { return nil }
 
-    } else if parser.consume("escapes_to_return") {
+    } else if parser.consume("escaping") {
       if !parser.consume("(") { return nil }
-      guard let argInfo = ArgInfo(parser: &parser, for: function,
-                                  fromSIL: fromSIL) else { return nil }
-      let path: ProjectionPath
-      if parser.consume(",") {
-        guard let p = ProjectionPath(parser: &parser) else { return nil }
-        path = p
-      } else {
-        path = ProjectionPath(.anyValueField)
-      }
-      kind = .escapesToReturn(argInfo, path)
+
+      guard let from = ArgInfo(parser: &parser, for: function,
+                               fromSIL: fromSIL) else { return nil }
+
+      if !parser.consume(",") || !parser.consume("to:") { return nil }
+
+      guard let to = ArgInfo(parser: &parser, for: function,
+                       fromSIL: fromSIL, acceptReturn: true) else { return nil }
+
+      kind = .escaping(from, to)
       if !parser.consume(")") { return nil }
 
-    } else if parser.consume("escapes_to_arg") {
-      if !parser.consume("(") { return nil }
-      guard let argInfo = ArgInfo(parser: &parser, for: function,
-                                  fromSIL: fromSIL) else { return nil }
-      if !parser.consume(",") { return nil }
-      guard let destArgIdx = parser.consumeArgumentIndex(for: function,
-                                  fromSIL: fromSIL) else { return nil }
-      let path: ProjectionPath
-      if parser.consume(",") {
-        guard let p = ProjectionPath(parser: &parser) else { return nil }
-        path = p
-      } else {
-        path = ProjectionPath(.anyValueField)
-      }
-      kind = .escapesToArgument(argInfo, destArgIdx, path)
-      if (!parser.consume(")")) { return nil }
     } else {
       return nil
     }
@@ -176,20 +148,18 @@ public struct Effect : CustomStringConvertible {
   public var description: String {
 
     func pathArg(_ path: ProjectionPath) -> String {
-      path == ProjectionPath(.anyValueField) ? "" : ", \(path)"
+      path == ProjectionPath(.anyValueFields) ? "" : ", \(path)"
     }
 
     let d: String
     switch kind {
-      case .noReadGlobal:                 d = "noread_global"
-      case .noWriteGlobal:                d = "nowrite_global"
-      case .noRead(let argInfo):          d = "noread(\(argInfo))"
-      case .noWrite(let argInfo):         d = "nowrite(\(argInfo))"
-      case .notEscaping(let argInfo):     d = "noescape(\(argInfo))"
-      case .escapesToReturn(let argInfo, let path):
-        d = "escapes_to_return(\(argInfo)\(pathArg(path)))"
-      case .escapesToArgument(let argInfo, let destArgIdx, let path):
-        d = "escapes_to_arg(\(argInfo), \(destArgIdx)\(pathArg(path)))"
+      case .noReads:                  d = "noReads"
+      case .noWrites:                 d = "noWrites"
+      case .notReading(let argInfo):  d = "notReading(\(argInfo))"
+      case .notWriting(let argInfo):  d = "noWriting(\(argInfo))"
+      case .notEscaping(let argInfo): d = "notEscaping(\(argInfo))"
+      case .escaping(let from, let to):
+        d = "escaping(\(from), to: \(to))"
     }
     return (isComputed ? "+" : "") + d
   }
@@ -216,29 +186,17 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
                                 fromSIL: fromSIL) else {
         return false
       }
-      appendEffect(effect, for: function, fromSIL: fromSIL)
+      effects.append(effect)
+      if case .escaping(_, let to) = effect.kind,
+         to.argIndex == 0 && !fromSIL && function.numIndirectResultArguments > 0 {
+        effects.append(Effect(.notEscaping(Effect.ArgInfo(0,
+                                projection: ProjectionPath(.anything))),
+                                isComputed: effect.isComputed))
+      }
 
       if parser.isEmpty() { return true }
       if !parser.consume(",") { return false }
     }
-  }
-
-  mutating private func appendEffect(_ effect: Effect, for function: Function,
-                                     fromSIL: Bool) {
-    if case .escapesToReturn(let argInfo, let path) = effect.kind {
-      if !fromSIL && function.numIndirectResultArguments > 0 {
-        if function.numIndirectResultArguments != 1 {
-          // Currently not supported
-          return
-        }
-        effects.append(Effect(.escapesToArgument(argInfo, 0, path),
-                              isComputed: effect.isComputed))
-        effects.append(Effect(.notEscaping(Effect.ArgInfo(0, pattern: .anything)),
-                              isComputed: effect.isComputed))
-        return
-      }
-    }
-    effects.append(effect)
   }
 
   public mutating func removeComputedEffects() {
@@ -259,18 +217,5 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
       return ""
     }
     return "[" + effects.map { $0.description }.joined(separator: ", ") + "]"
-  }
-}
-
-extension StringParser {
-  mutating func consumeArgumentIndex(for function: Function,
-                                     fromSIL: Bool) -> Int? {
-    if consume("self") && function.hasSelfArgument {
-      return function.selfArgumentIndex
-    }
-    guard let argIdx = consumeInt() else {
-      return nil
-    }
-    return fromSIL ? argIdx : argIdx + function.numIndirectResultArguments
   }
 }

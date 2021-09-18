@@ -434,7 +434,7 @@ bb0:
   return %9 : $()
 }
 
-sil [ossa] [noescape(1, **)] @unknown_function : $@convention(thin) (@owned X, @owned Y) -> ()
+sil [ossa] [notEscaping(arg1.**)] @unknown_function : $@convention(thin) (@owned X, @owned Y) -> ()
 
 // CHECK-LABEL: Escape information for call_unknown:
 // CHECK: global: %0 = alloc_ref $X
@@ -450,7 +450,7 @@ bb0:
   return %4 : $()
 }
 
-sil [ossa] [escapes_to_return(0, *)] @arg_to_return : $@convention(thin) (@owned X) -> @owned Str
+sil [ossa] [escaping(arg0, to: return)] @arg_to_return : $@convention(thin) (@owned X) -> @owned Str
 
 // CHECK-LABEL: Escape information for call_arg_to_return:
 // CHECK:  -    :     %0 = alloc_ref $X
@@ -469,7 +469,7 @@ bb0:
   return %6 : $X
 }
 
-sil [escapes_to_arg(1, *, 0), noescape(0)] [ossa] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
+sil [escaping(arg1, to: arg0), notEscaping(arg0)] [ossa] @arg_to_arg : $@convention(thin) (@owned X) -> @out Str
 
 // CHECK-LABEL: Escape information for call_arg_to_arg:
 // CHECK:  -    :     %0 = alloc_ref $X
@@ -493,7 +493,7 @@ bb0:
   return %10 : $X
 }
 
-sil [noescape(0, *), escapes_to_return(0, *.*)] [ossa] @content_of_arg_to_return : $@convention(thin) (@owned Z) -> @owned Y
+sil [notEscaping(arg0), escaping(arg0.*, to: return)] [ossa] @content_of_arg_to_return : $@convention(thin) (@owned Z) -> @owned Y
 
 // CHECK-LABEL: Escape information for call_content_of_arg_to_arg:
 // CHECK:  -    :     %0 = alloc_ref $Z
@@ -524,7 +524,7 @@ bb0:
   return %19 : $Y
 }
 
-sil [escapes_to_return(0, *, t0.s0.**)] @array_adopt_storage : $@convention(thin) (@owned _ContiguousArrayStorage<Int>) -> (@owned Array<Int>, UnsafeMutablePointer<Int>)
+sil [escaping(arg0, to: return.0.s0.**)] @array_adopt_storage : $@convention(thin) (@owned _ContiguousArrayStorage<Int>) -> (@owned Array<Int>, UnsafeMutablePointer<Int>)
 sil @take_ptr : $@convention(thin) (UnsafeMutablePointer<Int>) -> ()
 
 // CHECK-LABEL: Escape information for call_array_adopt_storage:

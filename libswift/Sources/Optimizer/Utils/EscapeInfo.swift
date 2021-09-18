@@ -67,12 +67,12 @@ struct EscapeInfo {
 
    mutating
    func escapes(argument: FunctionArgument,
-                pattern: Effect.Pattern,
+                projection: Path,
                 visitUse: (Operand, Path) -> Bool = { _, _ in true },
                 visitArg: (FunctionArgument, Path) -> Bool = { _, _ in true }) -> Bool {
     start()
     let result = walkDownAndCache(argument,
-                              path: Path(pattern: pattern), followStores: false,
+                              path: projection, followStores: false,
                               visitUse: visitUse, visitArg: visitArg)
     cleanup()
     return result
@@ -373,20 +373,20 @@ struct EscapeInfo {
           if argInfo.matches(argIdx, argPath) {
             return false
           }
-        case .escapesToReturn(let argInfo, let returnPath):
-          if argInfo.matches(argIdx, argPath) {
-            if let result = apply.singleDirectResult {
+        case .escaping(let from, let to):
+          if from.matches(argIdx, argPath) {
+            if let toArgIdx = to.argIndex {
+              return walkUp(apply.arguments[toArgIdx],
+                            path: to.projection, followStores: false,
+                            visitUse: visitUse, visitArg: visitArg)
+            
+            } else {
+              guard let result = apply.singleDirectResult else { return isEscaping }
+              
               return walkDown(result,
-                              path: returnPath, followStores: false,
+                              path: to.projection, followStores: false,
                               visitUse: visitUse, visitArg: visitArg)
             }
-            return isEscaping
-          }
-        case .escapesToArgument(let argInfo, let destArgIdx, let destArgPath):
-          if argInfo.matches(argIdx, argPath) {
-            return walkUp(apply.arguments[destArgIdx],
-                          path: destArgPath, followStores: false,
-                          visitUse: visitUse, visitArg: visitArg)
           }
         default:
           break
@@ -495,7 +495,7 @@ struct EscapeInfo {
               // TODO: only push the specific result index.
               // But currently there is no O(0) method to get the result index
               // from a result value.
-              p = p.popAllValueFields().push(.anyValueField)
+              p = p.popAllValueFields().push(.anyValueFields)
             case let bcm as BeginCOWMutationInst:
               val = bcm.operand
             default:

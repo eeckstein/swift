@@ -14,14 +14,14 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
   private let bytes: UInt64
 
   public enum FieldKind : Int {
-    case root          = 0x0
-    case structField   = 0x1
-    case tupleField    = 0x2
-    case enumCase      = 0x3
-    case classField    = 0x4
-    case tailElements  = 0x5
-    case anyValueField = 0x6
-    case anyClassField = 0x7
+    case root           = 0x0
+    case structField    = 0x1
+    case tupleField     = 0x2
+    case enumCase       = 0x3
+    case classField     = 0x4
+    case tailElements   = 0x5
+    case anyValueFields = 0x6
+    case anyClassField  = 0x7
     
     // Starting from here the low 3 bits must be 1.
     // The path entries cannot have an index.
@@ -29,7 +29,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
 
     public var isValueField: Bool {
       switch self {
-        case .anyValueField, .structField, .tupleField, .enumCase:
+        case .anyValueFields, .structField, .tupleField, .enumCase:
           return true
         case .root, .anything, .anyClassField, .classField, .tailElements:
           return false
@@ -40,7 +40,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       switch self {
         case .anyClassField, .classField, .tailElements:
           return true
-        case .root, .anything, .anyValueField, .structField, .tupleField, .enumCase:
+        case .root, .anything, .anyValueFields, .structField, .tupleField, .enumCase:
           return false
       }
     }
@@ -52,28 +52,20 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     self = ProjectionPath().push(kind, index: index)
   }
 
-  public init(pattern: Effect.Pattern) {
-    self.init()
-    switch pattern {
-      case .noIndirection:
-        self = push(.anyValueField)
-      case .oneIndirection:
-        self = push(.anyValueField).push(.anyClassField).push(.anyValueField)
-      case .anything:
-        self = push(.anything)
-    }
-  }
-
   public init?(parser: inout StringParser) {
     self.init()
     var entries: [(FieldKind, Int)] = []
     repeat {
       if parser.consume("**") {
         entries.append((.anything, 0))
+      } else if parser.consume("*") {
+        if entries.isEmpty { entries.append((.anyValueFields, 0)) }
+        entries.append((.anyClassField, 0))
+        entries.append((.anyValueFields, 0))
       } else if parser.consume("c*") {
         entries.append((.anyClassField, 0))
       } else if parser.consume("v*") {
-        entries.append((.anyValueField, 0))
+        entries.append((.anyValueFields, 0))
       } else if parser.consume("ct") {
         entries.append((.tailElements, 0))
       } else if parser.consume("c") {
@@ -82,12 +74,11 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       } else if parser.consume("e") {
         guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
         entries.append((.enumCase, idx))
-      } else if parser.consume("t") {
-        guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
-        entries.append((.tupleField, idx))
       } else if parser.consume("s") {
         guard let idx = parser.consumeInt(withWhiteSpace: false) else { return nil }
         entries.append((.structField, idx))
+      } else if let tupleElemIdx = parser.consumeInt() {
+        entries.append((.tupleField, tupleElemIdx))
       } else {
         return nil
       }
@@ -103,26 +94,36 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
   public var isEmpty: Bool { bytes == 0 }
 
   public var description: String {
-    var descr = ""
-    var p = self
-    while !p.isEmpty {
-      let (kind, idx, numBits) = p.top
-      let s: String
-      switch kind {
-        case .root:          fatalError()
-        case .structField:   s = "s\(idx)"
-        case .tupleField:    s = "t\(idx)"
-        case .enumCase:      s = "e\(idx)"
-        case .classField:    s = "c\(idx)"
-        case .tailElements:  s = "ct"
-        case .anyValueField: s = "v*"
-        case .anyClassField: s = "c*"
-        case .anything:      s = "**"
-      }
-      descr = (descr.isEmpty ? s : "\(descr).\(s)")
-      p = p.pop(numBits: max(numBits, 8))
+    let (kind, idx, sp) = pop()
+    var subPath = sp
+    let s: String
+    switch kind {
+      case .root:           return ""
+      case .structField:    s = "s\(idx)"
+      case .tupleField:     s = "\(idx)"
+      case .enumCase:       s = "e\(idx)"
+      case .classField:     s = "c\(idx)"
+      case .tailElements:   s = "ct"
+      case .anything:       s = "**"
+      case .anyValueFields:
+        if subPath.top.kind == .anyClassField &&
+           subPath.pop().path.top.kind == .anyValueFields &&
+           subPath.pop().path.pop().path.isEmpty {
+          return "*"
+        }
+        s = "v*"
+      case .anyClassField:
+        if subPath.top.kind == .anyValueFields {
+          subPath = subPath.pop().path
+          s = "*"
+        } else {
+          s = "c*"
+        }
     }
-    return descr
+    if subPath.isEmpty {
+      return s
+    }
+    return "\(s).\(subPath)"
   }
   
   private var top: (kind: FieldKind, index: Int, numBits: Int) {
@@ -138,12 +139,14 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     if kindVal == 0x7 {
       kindVal = (b >> 1) & 0x7f
       assert(idx == 0)
+      assert(numBits == 0)
     } else {
       idx = (idx << 4) | Int((b >> 4) &  0xf)
     }
     let k = FieldKind(rawValue: Int(kindVal))!
     if k == .anything {
       assert((b >> 8) == 0, "'anything' must be the top level path component")
+      numBits = 8
     } else {
       numBits = numBits &+ 8
     }
@@ -184,7 +187,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     switch k {
       case .anything:
         return self
-      case .anyValueField:
+      case .anyValueFields:
         if kind.isValueField { return self }
         return pop(numBits: numBits).popIfMatches(kind, index: index)
       case .anyClassField:
@@ -204,7 +207,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
 
   public var matchesAnyValueField: Bool {
     switch top.kind {
-      case .anyValueField, .anything: return true
+      case .anyValueFields, .anything: return true
       default: return false
     }
   }
@@ -218,25 +221,21 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     }
   }
   
-  public func popAllClassFields() -> ProjectionPath {
-    var p = self
-    while true {
-      let (k, _, numBits) = p.top
-      if !k.isClassField { return p }
-      p = p.pop(numBits: numBits)
-    }
-  }
-  
-  public func matches(pattern: Effect.Pattern) -> Bool {
-    switch pattern {
-      case .noIndirection:
-        return popAllValueFields().isEmpty
-      case .oneIndirection:
-        let p = popAllValueFields()
-        if p.isEmpty { return false }
-        return p.popAllClassFields().popAllValueFields().isEmpty
-      case .anything:
-        return true
+  public func matches(pattern: ProjectionPath) -> Bool {
+    let (patternKind, patternIdx, subPattern) = pattern.pop()
+    switch patternKind {
+      case .root:          return isEmpty
+      case .anything:      return true
+      case .anyValueFields:
+        return popAllValueFields().matches(pattern: subPattern)
+      case .anyClassField:
+        let (kind, _, subPath) = pop()
+        if !kind.isClassField { return false }
+        return subPath.matches(pattern: subPattern)
+      case .structField, .tupleField, .enumCase, .classField, .tailElements:
+        let (kind, index, subPath) = pop()
+        if kind != patternKind || index != patternIdx { return false }
+        return subPath.matches(pattern: subPattern)
     }
   }
 
@@ -248,7 +247,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
     if lhsKind == rhsKind && lhsIdx == rhsIdx {
       assert(lhsBits == rhsBits)
       let subPath = pop(numBits: lhsBits).merge(with: rhs.pop(numBits: rhsBits))
-      if lhsKind == .anyValueField && subPath.top.kind == .anyValueField {
+      if lhsKind == .anyValueFields && subPath.top.kind == .anyValueFields {
         return subPath
       }
       return subPath.push(lhsKind, index: lhsIdx)
@@ -259,7 +258,7 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       if subPath.top.kind == .anything {
         return subPath
       }
-      return subPath.push(.anyValueField)
+      return subPath.push(.anyValueFields)
     }
     if lhsKind.isClassField && rhsKind.isClassField {
       let subPath = pop(numBits: lhsBits).merge(with: rhs.pop(numBits: rhsBits))
@@ -280,8 +279,33 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       assert(p3.isEmpty)
       let (k4, i4, _) = p2.push(.enumCase, index: 876).pop()
       assert(k4 == .enumCase && i4 == 876)
+      let p5 = ProjectionPath(.anything)
+      assert(p5.pop().path.isEmpty)
     }
     
+     func testParse(_ pathStr: String, expect: ProjectionPath) {
+      var parser = StringParser(pathStr)
+      let path = ProjectionPath(parser: &parser)!
+      assert(path == expect)
+      let str = path.description
+      assert(str == pathStr)
+    }
+   
+   func parsing() {
+      testParse("*", expect: ProjectionPath(.anyValueFields)
+                                      .push(.anyClassField)
+                                      .push(.anyValueFields))
+      testParse("s3.*.s1", expect: ProjectionPath(.structField, index: 1)
+                                         .push(.anyValueFields)
+                                         .push(.anyClassField)
+                                         .push(.structField, index: 3))
+      testParse("2.c*.e6.ct.**", expect: ProjectionPath(.anything)
+                                         .push(.tailElements)
+                                         .push(.enumCase, index: 6)
+                                         .push(.anyClassField)
+                                         .push(.tupleField, index: 2))
+    }
+
     func testMerge(_ lhsStr: String, _ rhsStr: String,
                    expect expectStr: String) {
       var lhsParser = StringParser(lhsStr)
@@ -295,14 +319,6 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       assert(result == expect)
        let result2 = rhs.merge(with: lhs)
       assert(result2 == expect)
-    }
-   
-    func testMerge(_ lhs: ProjectionPath, _ rhs: ProjectionPath,
-                   expect: ProjectionPath) {
-      let result = lhs.merge(with: rhs)
-      assert(result == expect, "path merging failed")
-       let result2 = rhs.merge(with: lhs)
-      assert(result2 == expect, "path merging failed")
     }
    
     func merging() {
@@ -338,8 +354,9 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
                 "s2.s0",
         expect: "v*")
     }
-    
+
     basicPushPop()
+    parsing()
     merging()
   }
 }
