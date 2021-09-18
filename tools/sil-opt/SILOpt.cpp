@@ -130,6 +130,11 @@ static llvm::cl::opt<bool> DisableCopyPropagation(
     "disable-copy-propagation",
     llvm::cl::desc("Disable the copy propagation pass."));
 
+static llvm::cl::opt<bool> TestLibswift(
+    "test-libswift",
+    llvm::cl::desc("Run the libswift unit tests"));
+
+
 namespace {
 enum class EnforceExclusivityMode {
   Unchecked, // static only
@@ -375,6 +380,9 @@ int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv, "Swift SIL optimizer\n");
 
   initializeLibSwift();
+  if (TestLibswift) {
+    unitTestLibSwift();
+  }
 
   if (PrintStats)
     llvm::EnableStatistics();

@@ -20,6 +20,7 @@ add_libswift_module(SIL
   ProjectionPath.swift
   Registration.swift
   Type.swift
+  UnitTests.swift
   Utils.swift
   StackList.swift
   Value.swift)

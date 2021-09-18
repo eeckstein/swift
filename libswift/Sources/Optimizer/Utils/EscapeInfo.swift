@@ -48,9 +48,6 @@ struct EscapeInfo {
   
   init(calleeAnalysis: CalleeAnalysis) {
     self.calleeAnalysis = calleeAnalysis
-    
-    // TODO: move this to a separate test file
-    Path.unitTest()
   }
 
   mutating

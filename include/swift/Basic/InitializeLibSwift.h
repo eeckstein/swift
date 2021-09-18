@@ -18,6 +18,7 @@ extern "C" {
 #endif
 
 void initializeLibSwift();
+void unitTestLibSwift();
 
 #ifdef __cplusplus
 }
