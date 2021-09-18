@@ -481,16 +481,16 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
 
   // Dynamic Dispatch
   ABSTRACT_SINGLE_VALUE_INST(MethodInst, SingleValueInstruction)
-    SINGLE_VALUE_INST(ClassMethodInst, class_method,
-                      MethodInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(SuperMethodInst, super_method,
-                      MethodInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(ObjCMethodInst, objc_method,
-                      MethodInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(ObjCSuperMethodInst, objc_super_method,
-                      MethodInst, None, DoesNotRelease)
-    SINGLE_VALUE_INST(WitnessMethodInst, witness_method,
-                      MethodInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(ClassMethodInst, class_method,
+                              MethodInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(SuperMethodInst, super_method,
+                              MethodInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(ObjCMethodInst, objc_method,
+                              MethodInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(ObjCSuperMethodInst, objc_super_method,
+                              MethodInst, None, DoesNotRelease)
+    BRIDGED_SINGLE_VALUE_INST(WitnessMethodInst, witness_method,
+                              MethodInst, None, DoesNotRelease)
     SINGLE_VALUE_INST_RANGE(MethodInst, ClassMethodInst, WitnessMethodInst)
 
   // Conversions

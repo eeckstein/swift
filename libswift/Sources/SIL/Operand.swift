@@ -46,6 +46,10 @@ public struct Operand : CustomStringConvertible, CustomReflectable {
   
   public var index: Int { instruction.operands.getIndex(of: self) }
   
+  /// True if the operand is used to describe a type dependency, but it's not
+  /// used as value.
+  public var isTypeDependent: Bool { Operand_isTypeDependent(bridged) != 0 }
+  
   public var description: String { "operand #\(index) of \(instruction)" }
   
   public var customMirror: Mirror { Mirror(self, children: []) }

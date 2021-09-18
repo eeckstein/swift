@@ -308,6 +308,10 @@ BridgedInstruction Operand_getUser(BridgedOperand operand) {
   return {castToOperand(operand)->getUser()->asSILNode()};
 }
 
+SwiftInt Operand_isTypeDependent(BridgedOperand operand) {
+  return castToOperand(operand)->isTypeDependent() ? 1 : 0;
+}
+
 OptionalBridgedOperand SILValue_firstUse(BridgedValue value) {
   return {*castToSILValue(value)->use_begin()};
 }

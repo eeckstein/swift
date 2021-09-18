@@ -415,7 +415,7 @@ extension Array {
   }
 
   @_semantics("array.get_element")
-  @_effects(noescape(self, *))
+  @_effects(noescape(self, *), escapes_to_return(self, *.*, v*))
   @inlinable // FIXME(inline-always)
   @inline(__always)
   public // @testable
@@ -955,7 +955,7 @@ extension Array: RangeReplaceableCollection {
   /// - Precondition: `storage is _ContiguousArrayStorage`.
   @inlinable
   @_semantics("array.uninitialized")
-  @_effects(escapes_to_return(0, *))
+  @_effects(escapes_to_return(0, *, t0.v*))
   internal static func _adoptStorage(
     _ storage: __owned _ContiguousArrayStorage<Element>, count: Int
   ) -> (Array, UnsafeMutablePointer<Element>) {

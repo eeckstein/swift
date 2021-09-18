@@ -406,6 +406,17 @@ final public class ApplyInst : SingleValueInstruction, FullApplySite {
   public var singleDirectResult: Value? { self }
 }
 
+final public class ClassMethodInst : SingleValueInstruction, UnaryInstruction {}
+
+final public class SuperMethodInst : SingleValueInstruction, UnaryInstruction {}
+
+final public class ObjCMethodInst : SingleValueInstruction, UnaryInstruction {}
+
+final public class ObjCSuperMethodInst : SingleValueInstruction, UnaryInstruction {}
+
+final public class WitnessMethodInst : SingleValueInstruction {}
+
+
 //===----------------------------------------------------------------------===//
 //                      single-value allocation instructions
 //===----------------------------------------------------------------------===//

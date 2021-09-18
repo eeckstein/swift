@@ -197,6 +197,7 @@ BridgedInstruction SILSuccessor_getContainingInst(BridgedSuccessor succ);
 BridgedValue Operand_getValue(BridgedOperand);
 OptionalBridgedOperand Operand_nextUse(BridgedOperand);
 BridgedInstruction Operand_getUser(BridgedOperand);
+SwiftInt Operand_isTypeDependent(BridgedOperand);
 
 BridgedStringRef SILNode_debugDescription(BridgedNode node);
 OptionalBridgedOperand SILValue_firstUse(BridgedValue value);

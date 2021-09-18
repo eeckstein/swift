@@ -116,7 +116,10 @@ struct EscapeInfo {
                                  visitUse: (Operand, Path) -> Bool,
                                  visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
     for use in value.uses {
+      if use.isTypeDependent { continue}
+    
       if !visitUse(use, path) { continue }
+
       let user = use.instruction
       switch user {
         case let rta as RefTailAddrInst:
@@ -297,7 +300,9 @@ struct EscapeInfo {
              is ExistentialMetatypeInst, is DeallocRefInst, is SetDeallocatingInst,
              is FixLifetimeInst, is ClassifyBridgeObjectInst,
              is EndBorrowInst, is EndAccessInst,
-             is StrongRetainInst, is RetainValueInst:
+             is StrongRetainInst, is RetainValueInst,
+             is ClassMethodInst, is SuperMethodInst, is ObjCMethodInst,
+             is ObjCSuperMethodInst, is WitnessMethodInst:
           break
         default:
           return isEscaping
@@ -479,7 +484,8 @@ struct EscapeInfo {
              is InitExistentialRefInst, is OpenExistentialRefInst,
              is InitExistentialAddrInst, is OpenExistentialAddrInst,
              is BeginAccessInst, is BeginBorrowInst,
-             is EndCOWMutationInst, is BridgeObjectToRefInst:
+             is EndCOWMutationInst, is BridgeObjectToRefInst,
+             is IndexAddrInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:
           let inst = mvr.instruction
