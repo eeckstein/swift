@@ -201,6 +201,12 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
         }
         return pop(numBits: numBits)
       default:
+        if kind == .anyValueFields && k.isValueField {
+          return pop(numBits: numBits)
+        }
+        if kind == .anyClassField && k.isClassField {
+          return pop(numBits: numBits)        
+        }
         return nil
     }
   }
@@ -265,5 +271,12 @@ public struct ProjectionPath : CustomStringConvertible, Hashable {
       return subPath.push(.anyClassField)
     }
     return Self(.anything)
+  }
+
+  public func mergeOrAssign(with rhs: ProjectionPath?) -> ProjectionPath {
+    if let rhsPath = rhs {
+      return merge(with: rhsPath)
+    }
+    return self
   }
 }

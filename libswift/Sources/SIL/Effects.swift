@@ -13,30 +13,30 @@
 public struct Effect : CustomStringConvertible {
 
   public struct ArgInfo : CustomStringConvertible{
-    public let argIndex: Int? // nil: refers to the function return value
+    private let argIdxOrReturn: Int? // nil: refers to the function return value
     public let projection: ProjectionPath
     
-    public init(_ argIdx: Int, projection: ProjectionPath) {
-      self.argIndex = argIdx
+    public init(argIndex: Int, projection: ProjectionPath) {
+      self.argIdxOrReturn = argIndex
       self.projection = projection
     }
 
     public init(returnProjection: ProjectionPath) {
-      self.argIndex = nil
+      self.argIdxOrReturn = nil
       self.projection = returnProjection
     }
 
     public init(_ arg: Argument, projection: ProjectionPath) {
-      self.init(arg.index, projection: projection)
+      self.init(argIndex: arg.index, projection: projection)
     }
 
     public init?(parser: inout StringParser, for function: Function,
                  fromSIL: Bool, acceptReturn: Bool = false) {
       if parser.consume("self") && function.hasSelfArgument {
-        self.argIndex = function.selfArgumentIndex
+        self.argIdxOrReturn = function.selfArgumentIndex
       } else if parser.consume("argument") || parser.consume("arg") {
         guard let argIdx = parser.consumeInt() else { return nil }
-        self.argIndex = fromSIL ? argIdx
+        self.argIdxOrReturn = fromSIL ? argIdx
                                 : argIdx + function.numIndirectResultArguments
       } else if acceptReturn && parser.consume("return") {
         if !fromSIL && function.numIndirectResultArguments > 0 {
@@ -44,9 +44,9 @@ public struct Effect : CustomStringConvertible {
             // Currently not supported
             return nil
           }
-          self.argIndex = 0
+          self.argIdxOrReturn = 0
         } else {
-          self.argIndex = nil
+          self.argIdxOrReturn = nil
         }
       } else {
         return nil
@@ -62,18 +62,26 @@ public struct Effect : CustomStringConvertible {
     
     public var description: String {
       let argStr: String
-      if let idx = argIndex {
-        argStr = "arg\(idx)"
-      } else {
+      if isForReturn {
         argStr = "return"
+      } else {
+        argStr = "arg\(argIndex)"
       }
       let pathStr = (projection == ProjectionPath(.anyValueFields) ?
                       "" : ".\(projection)")
       return "\(argStr)\(pathStr)"
     }
     
-    public func matches(_ rhsIdx: Int, _ rhsPath: ProjectionPath) -> Bool {
-      return argIndex == rhsIdx && rhsPath.matches(pattern: projection)
+    public var isForReturn: Bool { return argIdxOrReturn == nil }
+    public var isForArg: Bool { return argIdxOrReturn != nil }
+    public var argIndex: Int { return argIdxOrReturn! }
+
+    public func matches(argIndex: Int, _ rhsPath: ProjectionPath) -> Bool {
+      return argIdxOrReturn == argIndex && rhsPath.matches(pattern: projection)
+    }
+
+    public func matchesReturn(_ rhsPath: ProjectionPath) -> Bool {
+      return isForReturn && rhsPath.matches(pattern: projection)
     }
   }
 
@@ -83,7 +91,7 @@ public struct Effect : CustomStringConvertible {
     case notReading(ArgInfo)
     case notWriting(ArgInfo)
     case notEscaping(ArgInfo)
-    case escaping(ArgInfo, ArgInfo)  // from, to
+    case escaping(ArgInfo, ArgInfo, Bool)  // fromArg, to, exclusive
   }
   
   public let kind: Kind
@@ -137,7 +145,9 @@ public struct Effect : CustomStringConvertible {
       guard let to = ArgInfo(parser: &parser, for: function,
                        fromSIL: fromSIL, acceptReturn: true) else { return nil }
 
-      kind = .escaping(from, to)
+      let notExclusive = parser.consume(",") && parser.consume("notExclusive")
+
+      kind = .escaping(from, to, !notExclusive)
       if !parser.consume(")") { return nil }
 
     } else {
@@ -158,8 +168,9 @@ public struct Effect : CustomStringConvertible {
       case .notReading(let argInfo):  d = "notReading(\(argInfo))"
       case .notWriting(let argInfo):  d = "noWriting(\(argInfo))"
       case .notEscaping(let argInfo): d = "notEscaping(\(argInfo))"
-      case .escaping(let from, let to):
-        d = "escaping(\(from), to: \(to))"
+      case .escaping(let from, let to, let exclusive):
+        let exclStr = exclusive ? "" : ", notExclusive"
+        d = "escaping(\(from), to: \(to)\(exclStr))"
     }
     return (isComputed ? "+" : "") + d
   }
@@ -187,9 +198,10 @@ public struct FunctionEffects : CustomStringConvertible, RandomAccessCollection 
         return false
       }
       effects.append(effect)
-      if case .escaping(_, let to) = effect.kind,
-         to.argIndex == 0 && !fromSIL && function.numIndirectResultArguments > 0 {
-        effects.append(Effect(.notEscaping(Effect.ArgInfo(0,
+      if case .escaping(_, let to, _) = effect.kind,
+         to.isForArg && to.argIndex == 0 &&
+         !fromSIL && function.numIndirectResultArguments > 0 {
+        effects.append(Effect(.notEscaping(Effect.ArgInfo(argIndex: 0,
                                 projection: ProjectionPath(.anything))),
                                 isComputed: effect.isComputed))
       }

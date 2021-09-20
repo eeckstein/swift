@@ -24,17 +24,17 @@ let escapeInfoDumper = FunctionPass(name: "dump-escape-info", {
       if let allocRef = inst as? AllocRefInst {
         var results = Set<String>() 
       
-        let escapes = escapeInfo.escapes(allocRef,
+        let escapes = escapeInfo.isEscaping(allocRef,
           visitUse: { (op, path) in
             if op.instruction is ReturnInst {
               results.insert("return[\(path)]")
-              return false
+              return .ignore
             }
-            return true
+            return .continueWalking
           },
-          visitArg: { arg, path in
+          visitArg: { arg, path, followStores in
             results.insert("arg\(arg.index)[\(path)]")
-            return false
+            return .continueWalking
           })
         
         let res: String

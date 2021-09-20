@@ -15,6 +15,15 @@ import SIL
 struct EscapeInfo {
 
   typealias Path = ProjectionPath
+  
+  public enum CallbackResult {
+    case ignore
+    case continueWalking
+    case markEscaping
+  }
+  
+  typealias UseCallback = (Operand, Path) -> CallbackResult
+  typealias ArgCallback = (FunctionArgument, Path, Bool) -> CallbackResult
 
   private struct CacheEntry {
     private(set) var path = Path()
@@ -50,27 +59,30 @@ struct EscapeInfo {
     self.calleeAnalysis = calleeAnalysis
   }
 
-  mutating
-  func escapes(_ allocRef: AllocRefInst,
-               visitUse: (Operand, Path) -> Bool = { _, _ in true },
-               visitArg: (FunctionArgument, Path) -> Bool = { _, _ in true }) -> Bool {
+   mutating
+   func isEscaping(_ value: Value,
+                   projection: Path = Path(),
+                   followStores: Bool = false,
+                   visitUse: UseCallback = { _, _ in .continueWalking },
+                   visitArg: ArgCallback = { _, _, _ in .markEscaping }) -> Bool {
     start()
-    let result = walkDownAndCache(allocRef,
-                              path: Path(), followStores: false,
-                              visitUse: visitUse, visitArg: visitArg)
+    let result = walkDownAndCache(value, path: projection,
+                                  followStores: followStores,
+                                  visitUse: visitUse, visitArg: visitArg)
     cleanup()
     return result
   }
 
    mutating
-   func escapes(argument: FunctionArgument,
-                projection: Path,
-                visitUse: (Operand, Path) -> Bool = { _, _ in true },
-                visitArg: (FunctionArgument, Path) -> Bool = { _, _ in true }) -> Bool {
+   func isDefEscaping(of value: Value,
+                      projection: Path,
+                      followStores: Bool = false,
+                      visitUse: UseCallback = { _, _ in .continueWalking },
+                      visitArg: ArgCallback = { _, _, _ in .markEscaping }) -> Bool {
     start()
-    let result = walkDownAndCache(argument,
-                              path: projection, followStores: false,
-                              visitUse: visitUse, visitArg: visitArg)
+    let result = walkUpAndCache(value, path: projection,
+                                followStores: followStores,
+                                visitUse: visitUse, visitArg: visitArg)
     cleanup()
     return result
   }
@@ -85,10 +97,8 @@ struct EscapeInfo {
   }
 
   private mutating
-  func walkDownAndCache(_ value: Value,
-                        path: Path, followStores: Bool,
-                        visitUse: (Operand, Path) -> Bool,
-                        visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+  func walkDownAndCache(_ value: Value, path: Path, followStores: Bool,
+                        visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     if let entry = walkedDownCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkDown(value, path: entry.path, followStores: entry.followStores,
                       visitUse: visitUse, visitArg: visitArg)
@@ -97,10 +107,8 @@ struct EscapeInfo {
   }
 
   private mutating
-  func walkUpAndCache(_ value: Value,
-                      path: Path, followStores: Bool,
-                      visitUse: (Operand, Path) -> Bool,
-                      visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+  func walkUpAndCache(_ value: Value, path: Path, followStores: Bool,
+                      visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     if let entry = walkedUpCache[value.hashable, default: CacheEntry()].needWalk(path: path, followStores: followStores) {
       return walkUp(value, path: entry.path, followStores: entry.followStores,
                     visitUse: visitUse, visitArg: visitArg)
@@ -108,14 +116,17 @@ struct EscapeInfo {
     return false
   }
 
-  private mutating func walkDown(_ value: Value,
-                                 path: Path, followStores: Bool,
-                                 visitUse: (Operand, Path) -> Bool,
-                                 visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+  private mutating
+  func walkDown(_ value: Value, path: Path, followStores: Bool,
+                visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     for use in value.uses {
       if use.isTypeDependent { continue}
     
-      if !visitUse(use, path) { continue }
+      switch visitUse(use, path) {
+        case .ignore: continue
+        case .continueWalking: break
+        case .markEscaping: return isEscaping
+      }
 
       let user = use.instruction
       switch user {
@@ -227,11 +238,18 @@ struct EscapeInfo {
                           visitUse: visitUse, visitArg: visitArg) {
               return true
             }
-          } else if followStores {
-            assert(use == store.destinationOperand)
-            if walkUp(store.source, path: path, followStores: followStores,
-                      visitUse: visitUse, visitArg: visitArg) {
-              return true
+          } else {
+            if followStores {
+              assert(use == store.destinationOperand)
+              if walkUp(store.source, path: path, followStores: followStores,
+                        visitUse: visitUse, visitArg: visitArg) {
+                return true
+              }
+            }
+            if store.destinationOwnership == .assign {
+              if let _ = path.popAllValueFields().popIfMatches(.anyClassField) {
+                return isEscaping
+              }
             }
           }
         case let copyAddr as CopyAddrInst:
@@ -251,8 +269,7 @@ struct EscapeInfo {
              is DestroyAddrInst:
           // Destroying cannot escape the value/reference itself, but its
           // contents (in the destructor).
-          let p = path.popAllValueFields()
-          if let _ = p.popIfMatches(.classField) {
+          if let _ = path.popAllValueFields().popIfMatches(.anyClassField) {
             return isEscaping
           }
         case let br as BranchInst:
@@ -312,8 +329,8 @@ struct EscapeInfo {
   func walkDownInstructionResults(results: Instruction.Results,
                                   fieldKind: Path.FieldKind,
                                   path: Path, followStores: Bool,
-                                  visitUse: (Operand, Path) -> Bool,
-                                  visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+                                  visitUse: UseCallback,
+                                  visitArg: ArgCallback) -> Bool {
     if let (index, newPath) = path.pop(kind: fieldKind) {
       return walkDown(results[index], path: newPath, followStores: followStores,
                       visitUse: visitUse, visitArg: visitArg)
@@ -333,26 +350,21 @@ struct EscapeInfo {
   private mutating
   func handleArgumentEffects(argOp: Operand, apply: FullApplySite,
                              path: Path, followStores: Bool,
-                             visitUse: (Operand, Path) -> Bool,
-                             visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+                             visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     guard let argIdx = apply.argumentIndex(of: argOp) else {
       // The callee or a type dependend operand does not let escape anything.
       return false
     }
     
-    if followStores {
-      // We don't know if something is stored to an argument.
-      return isEscaping
-    }
-  
     let callees = calleeAnalysis.getCallees(callee: apply.callee)
     if !callees.allCalleesKnown {
       return isEscaping
     }
 
     for callee in callees {
-      if handleArgument(argIdx: argIdx, argPath: path, apply: apply,
-                        callee: callee, visitUse: visitUse, visitArg: visitArg) {
+      if handleArgument(argIdx: argIdx, argPath: path, followStores: followStores,
+                        apply: apply, callee: callee,
+                        visitUse: visitUse, visitArg: visitArg) {
         return true
       }
     }
@@ -360,30 +372,39 @@ struct EscapeInfo {
   }
   
   private mutating
-  func handleArgument(argIdx: Int, argPath: Path,
+  func handleArgument(argIdx: Int, argPath: Path, followStores: Bool,
                       apply: FullApplySite, callee: Function,
-                      visitUse: (Operand, Path) -> Bool,
-                      visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+                      visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     for effect in callee.effects {
       switch effect.kind {
         case .notEscaping(let argInfo):
-          if argInfo.matches(argIdx, argPath) {
+          if followStores { return isEscaping }
+          if argInfo.matches(argIndex: argIdx, argPath) {
             return false
           }
-        case .escaping(let from, let to):
-          if from.matches(argIdx, argPath) {
-            if let toArgIdx = to.argIndex {
-              return walkUp(apply.arguments[toArgIdx],
-                            path: to.projection, followStores: false,
-                            visitUse: visitUse, visitArg: visitArg)
-            
-            } else {
+        case .escaping(let from, let to, let exclusive):
+          if from.matches(argIndex: argIdx, argPath) {
+            if followStores && !exclusive {
+              // We don't know if something is stored to an argument.
+              return isEscaping
+            }
+
+            if to.isForReturn {
               guard let result = apply.singleDirectResult else { return isEscaping }
               
               return walkDown(result,
-                              path: to.projection, followStores: false,
+                              path: to.projection, followStores: followStores,
                               visitUse: visitUse, visitArg: visitArg)
+            } else {
+              return walkUp(apply.arguments[to.argIndex],
+                            path: to.projection, followStores: followStores,
+                            visitUse: visitUse, visitArg: visitArg)
+            
             }
+          } else if exclusive && to.matches(argIndex: argIdx, argPath) {
+              return walkUp(apply.arguments[from.argIndex],
+                            path: from.projection, followStores: followStores,
+                            visitUse: visitUse, visitArg: visitArg)
           }
         default:
           break
@@ -392,10 +413,9 @@ struct EscapeInfo {
     return isEscaping
   }
 
-  private mutating func walkUp(_ value: Value,
-                               path: Path, followStores: Bool,
-                               visitUse: (Operand, Path) -> Bool,
-                               visitArg: (FunctionArgument, Path) -> Bool) -> Bool {
+  private mutating
+  func walkUp(_ value: Value, path: Path, followStores: Bool,
+              visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
     var val = value
     var p = path
     var fSt = followStores
@@ -405,11 +425,13 @@ struct EscapeInfo {
           return walkDownAndCache(val, path: p, followStores: fSt,
                                   visitUse: visitUse, visitArg: visitArg)
         case let arg as FunctionArgument:
-          if visitArg(arg, p) {
-            return isEscaping
+          switch visitArg(arg, p, followStores) {
+            case .ignore:       return false
+            case .markEscaping: return isEscaping
+            case .continueWalking:
+              return walkDownAndCache(arg, path: p, followStores: fSt,
+                                      visitUse: visitUse, visitArg: visitArg)
           }
-          return walkDownAndCache(arg, path: p, followStores: fSt,
-                                  visitUse: visitUse, visitArg: visitArg)
         case let arg as BlockArgument:
           if arg.isPhiArgument {
             for incoming in arg.incomingPhiValues {
@@ -428,9 +450,18 @@ struct EscapeInfo {
               }
               val = se.enumOp
               p = p.push(.enumCase, index: caseIdx)
+            case let ta as TryApplyInst:
+              if block != ta.normalBlock { return isEscaping }
+              return walkUpApplyResult(apply: ta,
+                                       path: p, followStores: followStores,
+                                       visitUse: visitUse, visitArg: visitArg)
             default:
               return isEscaping
           }
+        case let ap as ApplyInst:
+          return walkUpApplyResult(apply: ap,
+                                   path: p, followStores: followStores,
+                                   visitUse: visitUse, visitArg: visitArg)
         case let str as StructInst:
           guard let (structField, poppedPath) = p.pop(kind: .structField) else {
             // TODO: handle anyValueField by iterating over all operands
@@ -482,7 +513,7 @@ struct EscapeInfo {
              is InitExistentialAddrInst, is OpenExistentialAddrInst,
              is BeginAccessInst, is BeginBorrowInst,
              is EndCOWMutationInst, is BridgeObjectToRefInst,
-             is IndexAddrInst:
+             is IndexAddrInst, is CopyValueInst:
           val = (val as! Instruction).operands[0].value
         case let mvr as MultipleValueInstructionResult:
           let inst = mvr.instruction
@@ -503,7 +534,39 @@ struct EscapeInfo {
       }
     }
   }
-  
+ 
+  private mutating
+  func walkUpApplyResult(apply: FullApplySite,
+                         path: Path, followStores: Bool,
+                         visitUse: UseCallback, visitArg: ArgCallback) -> Bool {
+    if followStores {
+      // We don't know if something is stored to an argument.
+      return isEscaping
+    }
+
+    let callees = calleeAnalysis.getCallees(callee: apply.callee)
+    if !callees.allCalleesKnown {
+      return isEscaping
+    }
+
+    for callee in callees {
+      for effect in callee.effects {
+        switch effect.kind {
+          case .escaping(let from, let to, let exclusive):
+            if exclusive && to.matchesReturn(path) {
+              return walkUp(apply.arguments[from.argIndex],
+                            path: from.projection, followStores: false,
+                            visitUse: visitUse, visitArg: visitArg)
+            }
+          default:
+            break
+        }
+      }
+      return isEscaping
+    }
+    return false
+  }
+
   // For convenient setting a breakpoing to whatever lets something escape.
   private var isEscaping: Bool {
     true

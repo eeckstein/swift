@@ -14,16 +14,6 @@ import SIL
 
 fileprivate typealias ArgInfo = Effect.ArgInfo
 
-fileprivate extension Optional where Wrapped == ProjectionPath {
-  mutating func merge(with rhs: ProjectionPath) {
-    if let p = self {
-      self = p.merge(with: rhs)
-    } else {
-      self = rhs
-    }
-  }
-}
-
 let computeEffects = FunctionPass(name: "compute-effects", {
   (function: Function, context: PassContext) in
 
@@ -34,19 +24,18 @@ let computeEffects = FunctionPass(name: "compute-effects", {
     guard !arg.type.isTrivial(in: function) else {
       continue
     }
-    if !escapeInfo.escapes(argument: arg, projection: ProjectionPath(.anything)) {
+    if !escapeInfo.isEscaping(arg, projection: ProjectionPath(.anything)) {
       let argInfo = ArgInfo(arg, projection: ProjectionPath(.anything))
       newEffects.push(Effect(.notEscaping(argInfo)))
       continue
     }
     if addArgEffects(arg, projection: ProjectionPath(.anyValueFields),
                      to: &newEffects, &escapeInfo) {
-      continue
+      _ = addArgEffects(arg, projection: ProjectionPath(.anyValueFields)
+                                                  .push(.anyClassField)
+                                                  .push(.anyValueFields),
+                        to: &newEffects, &escapeInfo)
     }
-    _ = addArgEffects(arg, projection: ProjectionPath(.anyValueFields)
-                                                .push(.anyClassField)
-                                                .push(.anyValueFields),
-                      to: &newEffects, &escapeInfo)
   }
 
   context.modifyEffects(in: function) { (effects: inout FunctionEffects) in
@@ -61,39 +50,75 @@ func addArgEffects(_ arg: FunctionArgument, projection: ProjectionPath,
                    to newEffects: inout StackList<Effect>,
                    _ escapeInfo: inout EscapeInfo) -> Bool {
 
-  var argEscapes = Dictionary<Int, ProjectionPath?>()
-  var returnEscape: ProjectionPath?
+  var toArgIdxOrNil: Int?
+  var foundReturn: ReturnInst?
+  var toPathOrNil: ProjectionPath?
 
-  if escapeInfo.escapes(argument: arg, projection: projection,
+  if escapeInfo.isEscaping(arg, projection: projection,
       visitUse: { (op, path) in
-        if op.instruction is ReturnInst {
-          returnEscape.merge(with: path)
-          return false
+        if let ret = op.instruction as? ReturnInst {
+          if toArgIdxOrNil != nil { return .markEscaping }
+          toPathOrNil = path.mergeOrAssign(with: toPathOrNil)
+          assert(foundReturn == nil || foundReturn == ret)
+          foundReturn = ret
+          return .ignore
         }
-        return true
+        return .continueWalking
       },
-      visitArg: { destArg, path in
-        argEscapes[destArg.index, default: nil].merge(with: path)
-        return false
+      visitArg: { destArg, path, followStores in
+        if followStores { return .markEscaping }
+        let argIdx = destArg.index
+        if let toArgIdx = toArgIdxOrNil, toArgIdx != argIdx { return .markEscaping }
+        if foundReturn != nil { return .markEscaping }
+        toArgIdxOrNil = argIdx
+        toPathOrNil = path.mergeOrAssign(with: toPathOrNil)
+        return .continueWalking
       }) {
-
-    return true
+    return false
   }
 
   let argInfo = ArgInfo(arg, projection: projection)
 
-  if argEscapes.isEmpty && returnEscape == nil {
+  guard let toPath = toPathOrNil else {
     newEffects.push(Effect(.notEscaping(argInfo)))
-  } else {
-    for toArgIdx in argEscapes.keys.sorted() {
-      let toArgInfo = ArgInfo(toArgIdx, projection: argEscapes[toArgIdx]!!)
-      newEffects.push(Effect(.escaping(argInfo, toArgInfo)))
-    }
-    if let returnPath = returnEscape {
-      let toArgInfo = ArgInfo(returnProjection: returnPath)
-      newEffects.push(Effect(.escaping(argInfo, toArgInfo)))
-    }
+    return true
   }
 
-  return false
+  func isFromArgMatching(_ a: FunctionArgument,
+                    _ p: ProjectionPath, _: Bool) -> EscapeInfo.CallbackResult {
+    return a == arg && p.matches(pattern: projection) ? .ignore : .markEscaping
+  }
+
+  if let returnInst = foundReturn {
+    let exclusive = !escapeInfo.isDefEscaping(
+      of: returnInst.operand, projection: toPath, followStores: true,
+      visitUse: { (op, path) in
+        if op.instruction is ReturnInst {
+          return path.matches(pattern: toPath) ? .ignore : .markEscaping
+        }
+        return .continueWalking
+      },
+      visitArg: { a, p, followStores in
+        if a == arg && p.matches(pattern: projection) { return .continueWalking }
+        return .markEscaping
+      })
+    
+    let toArgInfo = ArgInfo(returnProjection: toPath)
+    newEffects.push(Effect(.escaping(argInfo, toArgInfo, exclusive)))
+  } else {
+    let toArgIdx = toArgIdxOrNil!
+    let toArg = arg.block.function.arguments[toArgIdx]
+    let exclusive = !escapeInfo.isEscaping(
+      toArg, projection: toPath, followStores: true,
+      visitArg: { a, p, _ in
+        if a == arg && p.matches(pattern: projection) { return .continueWalking }
+        if a == toArg && p.matches(pattern: toPath) { return .continueWalking }
+        return .markEscaping
+      })
+
+    let toArgInfo = ArgInfo(argIndex: toArgIdx, projection: toPath)
+    newEffects.push(Effect(.escaping(argInfo, toArgInfo, exclusive)))
+  }
+
+  return true
 }

@@ -47,7 +47,7 @@ enum E {
 sil [ossa] @unknown_function : $@convention(thin) (@owned X) -> ()
 sil [ossa] @unknown_function_y : $@convention(thin) (@owned Y) -> ()
 
-// CHECK-LABEL: sil [+escaping(arg1, to: arg3), +escaping(arg1.*, to: arg3.*), +notEscaping(arg2), +escaping(arg2.*, to: return), +notEscaping(arg3.**)] [ossa] @test_simple
+// CHECK-LABEL: sil [+escaping(arg1, to: arg3), +notEscaping(arg2), +escaping(arg2.*, to: return), +notEscaping(arg3)] [ossa] @test_simple
 sil [ossa] @test_simple : $@convention(thin) (@owned X, @guaranteed Str, @guaranteed Z, @inout X) -> @owned Y {
 bb0(%0 : @owned $X, %1 : @guaranteed $Str, %2 : @guaranteed $Z, %3 : $*X):
   // %0 escapes to global
@@ -77,6 +77,39 @@ bb0(%0 : @guaranteed $Z):
   return %5 : $()
 }
 
+// CHECK-LABEL: sil [+notEscaping(arg0), +escaping(arg0.*, to: return), +notEscaping(arg1)] [ossa] @test_exclusive_escaping
+sil [ossa] @test_exclusive_escaping : $@convention(thin) (@guaranteed Z, @owned Y) -> @owned Y {
+bb0(%0 : @guaranteed $Z, %1 : @owned $Y):
+  %2 = ref_element_addr %0 : $Z, #Z.y
+  %3 = load [copy] %2 : $*Y
+  destroy_value %1 : $Y
+  return %3 : $Y
+}
+
+// CHECK-LABEL: sil [+notEscaping(arg0), +escaping(arg0.*, to: return, notExclusive), +escaping(arg1, to: return, notExclusive)] [ossa] @test_not_exclusive_escaping_through_phi
+sil [ossa] @test_not_exclusive_escaping_through_phi : $@convention(thin) (@guaranteed Z, @owned Y) -> @owned Y {
+bb0(%0 : @guaranteed $Z, %1 : @owned $Y):
+  cond_br undef, bb1, bb2
+bb1:
+  %3 = ref_element_addr %0 : $Z, #Z.y
+  %4 = load [copy] %3 : $*Y
+  destroy_value %1 : $Y
+  br bb3(%4 : $Y)
+bb2:
+  br bb3(%1 : $Y)
+
+bb3(%7: @owned $Y):
+  return %7 : $Y
+}
+
+// CHECK-LABEL: sil [+notEscaping(arg0), +escaping(arg0.*, to: return, notExclusive)] [ossa] @test_not_exclusive_through_store
+sil [ossa] @test_not_exclusive_through_store : $@convention(thin) (@guaranteed Z, @owned Y) -> @owned Y {
+bb0(%0 : @guaranteed $Z, %1 : @owned $Y):
+  %2 = ref_element_addr %0 : $Z, #Z.y
+  %3 = load [copy] %2 : $*Y
+  store %1 to [assign] %2 : $*Y
+  return %3 : $Y
+}
 
 sil [escaping(arg0, to: arg0)] [ossa] @self_arg_callee : $@convention(thin) (@inout X) -> ()
 

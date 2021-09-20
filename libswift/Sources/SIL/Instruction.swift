@@ -177,6 +177,14 @@ final public class StoreInst : Instruction {
   public var destinationOperand: Operand { return operands[1] }
   public var source: Value { return sourceOperand.value }
   public var destination: Value { return destinationOperand.value }
+  
+  // must match with enum class StoreOwnershipQualifier
+  public enum StoreOwnership: Int {
+    case unqualified = 0, initialize = 1, assign = 2, trivial = 3
+  }
+  public var destinationOwnership: StoreOwnership {
+    StoreOwnership(rawValue: StoreInst_getStoreOwnership(bridged))!
+  }
 }
 
 final public class CopyAddrInst : Instruction {

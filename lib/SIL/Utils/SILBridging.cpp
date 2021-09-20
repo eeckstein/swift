@@ -478,6 +478,11 @@ SwiftInt SwitchEnumInst_getCaseIndex(BridgedInstruction se, SwiftInt idx) {
   return getCaseIndex(castToInst<SwitchEnumInst>(se)->getCase(idx).first);
 }
 
+SwiftInt StoreInst_getStoreOwnership(BridgedInstruction store) {
+  return (SwiftInt)castToInst<StoreInst>(store)->getOwnershipQualifier();
+}
+
+
 //===----------------------------------------------------------------------===//
 //                                SILBuilder
 //===----------------------------------------------------------------------===//
