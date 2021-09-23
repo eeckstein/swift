@@ -234,7 +234,7 @@ func test_weird_property(_ v : WeirdPropertyTest, i : Int) -> Int {
   var v = v
   // CHECK: [[VBOX:%[0-9]+]] = alloc_box ${ var WeirdPropertyTest }
   // CHECK: [[PB:%.*]] = project_box [[VBOX]]
-  // CHECK: store %0 to [trivial] [[PB]]
+  // CHECK: store %0 to [[PB]]
 
   // The setter isn't mutating, so we need to load the box.
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]]
@@ -344,7 +344,7 @@ func testAddressOnlyTupleArgument(_ bounds: (start: SimpleProtocol, pastEnd: Int
 // CHECK-NEXT:    %3 = tuple_element_addr %2 : $*(start: SimpleProtocol, pastEnd: Int), 0
 // CHECK-NEXT:    copy_addr %0 to [initialization] %3 : $*SimpleProtocol
 // CHECK-NEXT:    %5 = tuple_element_addr %2 : $*(start: SimpleProtocol, pastEnd: Int), 1
-// CHECK-NEXT:    store %1 to [trivial] %5 : $*Int
+// CHECK-NEXT:    store %1 to %5 : $*Int
 // CHECK-NEXT:    destroy_addr %2 : $*(start: SimpleProtocol, pastEnd: Int)
 // CHECK-NEXT:    dealloc_stack %2 : $*(start: SimpleProtocol, pastEnd: Int)
 }
@@ -468,7 +468,7 @@ struct LetPropertyStruct {
 // CHECK: bb0(%0 : $LetPropertyStruct):
 // CHECK:  [[ABOX:%[0-9]+]] = alloc_box ${ var LetPropertyStruct }
 // CHECK:  [[A:%[0-9]+]] = project_box [[ABOX]]
-// CHECK:   store %0 to [trivial] [[A]] : $*LetPropertyStruct
+// CHECK:   store %0 to [[A]] : $*LetPropertyStruct
 // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[A]]
 // CHECK:   [[STRUCT:%[0-9]+]] = load [trivial] [[READ]] : $*LetPropertyStruct
 // CHECK:   [[PROP:%[0-9]+]] = struct_extract [[STRUCT]] : $LetPropertyStruct, #LetPropertyStruct.lp

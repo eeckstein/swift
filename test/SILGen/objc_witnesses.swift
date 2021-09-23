@@ -53,7 +53,7 @@ extension Gizmo : Bells {
 // CHECK:   [[PRECOND:%.*]] = function_ref @$ss30_diagnoseUnexpectedNilOptional{{[_0-9a-zA-Z]*}}F
 // CHECK:   apply [[PRECOND]]([[FILESTR]], [[FILESIZ]], [[FILEASC]], [[LINE]], [[IMPLICIT]])
 // CHECK: bb2([[UNWRAPPED_RESULT:%.*]] : @owned $Gizmo):
-// CHECK:   store [[UNWRAPPED_RESULT]] to [init] [[SELF]] : $*Gizmo
+// CHECK:   store [[UNWRAPPED_RESULT]] to [[SELF]] : $*Gizmo
 
 // Test extension of a native @objc class to conform to a protocol with a
 // subscript requirement. rdar://problem/20371661

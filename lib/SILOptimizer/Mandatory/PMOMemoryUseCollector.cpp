@@ -294,22 +294,9 @@ bool ElementUseCollector::collectUses(SILValue Pointer) {
         }
 
         auto kind = ([&]() -> PMOUseKind {
-          switch (si->getOwnershipQualifier()) {
-          // Coming out of SILGen, we assume that raw stores are
-          // initializations, unless they have trivial type (which we classify
-          // as InitOrAssign).
-          case StoreOwnershipQualifier::Unqualified:
-            if (PointeeType.isTrivial(*User->getFunction()))
-              return PMOUseKind::InitOrAssign;
-            return PMOUseKind::Initialization;
-
-          case StoreOwnershipQualifier::Init:
-            return PMOUseKind::Initialization;
-
-          case StoreOwnershipQualifier::Trivial:
+          if (PointeeType.isTrivial(*User->getFunction()))
             return PMOUseKind::InitOrAssign;
-          }
-          llvm_unreachable("covered switch");
+          return PMOUseKind::Initialization;
         })();
         Uses.emplace_back(si, kind);
         continue;
@@ -480,9 +467,7 @@ bool ElementUseCollector::collectUses(SILValue Pointer) {
             SI->getLoc(), SI->getSrc(),
             [&](unsigned index, SILValue v) { ElementTmps.push_back(v); });
         for (unsigned i = 0, e = ElementAddrs.size(); i != e; ++i)
-          B.createTrivialStoreOr(SI->getLoc(), ElementTmps[i], ElementAddrs[i],
-                                 SI->getOwnershipQualifier(),
-                                 true /*supports unqualified*/);
+          B.createStore(SI->getLoc(), ElementTmps[i], ElementAddrs[i]);
         SI->eraseFromParent();
         continue;
       }

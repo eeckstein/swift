@@ -53,7 +53,7 @@ func direct_to_static_method(_ obj: AnyObject) {
   // CHECK: [[OBJBOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK-NEXT: [[PBOBJ:%[0-9]+]] = project_box [[OBJBOX]]
   // CHECK: [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK: store [[ARG_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK: store [[ARG_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
   // CHECK-NEXT: [[OBJCOPY:%[0-9]+]] = load [copy] [[READ]] : $*AnyObject
   // CHECK: end_access [[READ]]
@@ -73,7 +73,7 @@ func opt_to_class(_ obj: AnyObject) {
   // CHECK:   [[EXISTBOX:%[0-9]+]] = alloc_box ${ var AnyObject } 
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[EXISTBOX]]
   // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK:   store [[ARG_COPY]] to [init] [[PBOBJ]]
+  // CHECK:   store [[ARG_COPY]] to [[PBOBJ]]
   // CHECK:   [[OPTBOX:%[0-9]+]] = alloc_box ${ var Optional<@callee_guaranteed () -> ()> }
   // CHECK:   [[PBOPT:%.*]] = project_box [[OPTBOX]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -87,7 +87,7 @@ func opt_to_class(_ obj: AnyObject) {
   // CHECK:   [[OBJ_SELF_COPY:%.*]] = copy_value [[OBJ_SELF]]
   // CHECK:   [[PARTIAL:%[0-9]+]] = partial_apply [callee_guaranteed] [[UNCURRIED]]([[OBJ_SELF_COPY]]) : $@convention(objc_method) (@opened({{.*}}) AnyObject) -> ()
   // CHECK:   [[THUNK_PAYLOAD:%.*]] = init_enum_data_addr [[OPT_TMP]]
-  // CHECK:   store [[PARTIAL]] to [init] [[THUNK_PAYLOAD]]
+  // CHECK:   store [[PARTIAL]] to [[THUNK_PAYLOAD]]
   // CHECK:   inject_enum_addr [[OPT_TMP]] : $*Optional<@callee_guaranteed () -> ()>, #Optional.some!enumelt
   // CHECK:   br [[CONTBB:[a-zA-Z0-9]+]]
 
@@ -99,7 +99,7 @@ func opt_to_class(_ obj: AnyObject) {
   // Continuation block
   // CHECK: [[CONTBB]]:
   // CHECK:   [[OPT:%.*]] = load [take] [[OPT_TMP]]
-  // CHECK:   store [[OPT]] to [init] [[PBOPT]] : $*Optional<@callee_guaranteed () -> ()>
+  // CHECK:   store [[OPT]] to [[PBOPT]] : $*Optional<@callee_guaranteed () -> ()>
   // CHECK:   dealloc_stack [[OPT_TMP]]
   var of: (() -> ())! = obj.f
 
@@ -124,7 +124,7 @@ func opt_to_static_method(_ obj: AnyObject) {
   // CHECK:   [[OBJBOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[OBJBOX]]
   // CHECK:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // CHECK:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK:   [[OPTBOX:%[0-9]+]] = alloc_box ${ var Optional<@callee_guaranteed () -> ()> }
   // CHECK:   [[PBO:%.*]] = project_box [[OPTBOX]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -144,7 +144,7 @@ func opt_to_property(_ obj: AnyObject) {
   // CHECK:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // CHECK:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // CHECK:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK:   [[INT_BOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   project_box [[INT_BOX]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -160,7 +160,7 @@ func opt_to_property(_ obj: AnyObject) {
   // CHECK:   [[VALUE:%[0-9]+]] = apply [[B]]() : $@callee_guaranteed () -> Int
   // CHECK:   end_borrow [[B]]
   // CHECK:   [[VALUETEMP:%.*]] = init_enum_data_addr [[OPTTEMP]]
-  // CHECK:   store [[VALUE]] to [trivial] [[VALUETEMP]]
+  // CHECK:   store [[VALUE]] to [[VALUETEMP]]
   // CHECK:   inject_enum_addr [[OPTTEMP]]{{.*}}some
   // CHECK:   destroy_value [[BOUND_METHOD]]
   // CHECK:   br bb3
@@ -173,7 +173,7 @@ func opt_to_property(_ obj: AnyObject) {
   // GUARANTEED:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // GUARANTEED:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // GUARANTEED:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // GUARANTEED:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // GUARANTEED:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // GUARANTEED:   [[INT_BOX:%[0-9]+]] = alloc_box ${ var Int }
   // GUARANTEED:   project_box [[INT_BOX]]
   // GUARANTEED:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -189,7 +189,7 @@ func opt_to_property(_ obj: AnyObject) {
   // GUARANTEED:   [[VALUE:%[0-9]+]] = apply [[BEGIN_BORROW]]
   // GUARANTEED:   end_borrow [[BEGIN_BORROW]]
   // GUARANTEED:   [[VALUETEMP:%.*]] = init_enum_data_addr [[OPTTEMP]]
-  // GUARANTEED:   store [[VALUE]] to [trivial] [[VALUETEMP]]
+  // GUARANTEED:   store [[VALUE]] to [[VALUETEMP]]
   // GUARANTEED:   inject_enum_addr [[OPTTEMP]]{{.*}}some
   // GUARANTEED:   destroy_value [[BOUND_METHOD]]
   // GUARANTEED:   br bb3
@@ -202,10 +202,10 @@ func direct_to_subscript(_ obj: AnyObject, i: Int) {
   // CHECK:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // CHECK:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // CHECK:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK:   [[I_BOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[PBI:%.*]] = project_box [[I_BOX]]
-  // CHECK:   store [[I]] to [trivial] [[PBI]] : $*Int
+  // CHECK:   store [[I]] to [[PBI]] : $*Int
   // CHECK:   alloc_box ${ var Int }
   // CHECK:   project_box
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -223,7 +223,7 @@ func direct_to_subscript(_ obj: AnyObject, i: Int) {
   // CHECK:   [[RESULT:%[0-9]+]] = apply [[B]]([[I]]) : $@callee_guaranteed (Int) -> Int
   // CHECK:   end_borrow [[B]]
   // CHECK:   [[RESULTTEMP:%.*]] = init_enum_data_addr [[OPTTEMP]]
-  // CHECK:   store [[RESULT]] to [trivial] [[RESULTTEMP]]
+  // CHECK:   store [[RESULT]] to [[RESULTTEMP]]
   // CHECK:   inject_enum_addr [[OPTTEMP]]{{.*}}some
   // CHECK:   destroy_value [[GETTER_WITH_SELF]]
   // CHECK:   br bb3
@@ -236,10 +236,10 @@ func direct_to_subscript(_ obj: AnyObject, i: Int) {
   // GUARANTEED:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // GUARANTEED:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // GUARANTEED:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // GUARANTEED:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // GUARANTEED:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // GUARANTEED:   [[I_BOX:%[0-9]+]] = alloc_box ${ var Int }
   // GUARANTEED:   [[PBI:%.*]] = project_box [[I_BOX]]
-  // GUARANTEED:   store [[I]] to [trivial] [[PBI]] : $*Int
+  // GUARANTEED:   store [[I]] to [[PBI]] : $*Int
   // GUARANTEED:   alloc_box ${ var Int }
   // GUARANTEED:   project_box
   // GUARANTEED:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
@@ -257,7 +257,7 @@ func direct_to_subscript(_ obj: AnyObject, i: Int) {
   // GUARANTEED:   [[RESULT:%[0-9]+]] = apply [[BORROW]]([[I]])
   // GUARANTEED:   end_borrow [[BORROW]]
   // GUARANTEED:   [[RESULTTEMP:%.*]] = init_enum_data_addr [[OPTTEMP]]
-  // GUARANTEED:   store [[RESULT]] to [trivial] [[RESULTTEMP]]
+  // GUARANTEED:   store [[RESULT]] to [[RESULTTEMP]]
   // GUARANTEED:   inject_enum_addr [[OPTTEMP]]{{.*}}some
   // GUARANTEED:   destroy_value [[GETTER_WITH_SELF]]
   // GUARANTEED:   br bb3
@@ -270,10 +270,10 @@ func opt_to_subscript(_ obj: AnyObject, i: Int) {
   // CHECK:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // CHECK:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // CHECK:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK:   [[I_BOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[PBI:%.*]] = project_box [[I_BOX]]
-  // CHECK:   store [[I]] to [trivial] [[PBI]] : $*Int
+  // CHECK:   store [[I]] to [[PBI]] : $*Int
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
   // CHECK:   [[OBJ:%[0-9]+]] = load [copy] [[READ]] : $*AnyObject
   // CHECK:   [[OBJ_REF:%[0-9]+]] = open_existential_ref [[OBJ]] : $AnyObject to $@opened({{.*}}) AnyObject
@@ -289,7 +289,7 @@ func opt_to_subscript(_ obj: AnyObject, i: Int) {
   // CHECK:   [[RESULT:%[0-9]+]] = apply [[B]]([[I]]) : $@callee_guaranteed (Int) -> Int
   // CHECK:   end_borrow [[B]]
   // CHECK:   [[RESULTTEMP:%.*]] = init_enum_data_addr [[OPTTEMP]]
-  // CHECK:   store [[RESULT]] to [trivial] [[RESULTTEMP]]
+  // CHECK:   store [[RESULT]] to [[RESULTTEMP]]
   // CHECK:   inject_enum_addr [[OPTTEMP]]
   // CHECK:   destroy_value [[GETTER_WITH_SELF]]
   // CHECK:   br bb3
@@ -303,7 +303,7 @@ func downcast(_ obj: AnyObject) -> X {
   // CHECK:   [[OBJ_BOX:%[0-9]+]] = alloc_box ${ var AnyObject }
   // CHECK:   [[PBOBJ:%[0-9]+]] = project_box [[OBJ_BOX]]
   // CHECK:   [[OBJ_COPY:%.*]] = copy_value [[OBJ]]
-  // CHECK:   store [[OBJ_COPY]] to [init] [[PBOBJ]] : $*AnyObject
+  // CHECK:   store [[OBJ_COPY]] to [[PBOBJ]] : $*AnyObject
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PBOBJ]]
   // CHECK:   [[OBJ:%[0-9]+]] = load [copy] [[READ]] : $*AnyObject
   // CHECK:   [[X:%[0-9]+]] = unconditional_checked_cast [[OBJ]] : $AnyObject to X
@@ -330,7 +330,7 @@ func downcast(_ obj: AnyObject) -> X {
 // CHECK:   [[RESULT:%.*]] = apply [[B]]() : $@callee_guaranteed () -> @owned Juice
 // CHECK:   end_borrow [[B]]
 // CHECK:   [[PAYLOAD:%.*]] = init_enum_data_addr [[BOX]] : $*Optional<Juice>, #Optional.some!enumelt
-// CHECK:   store [[RESULT]] to [init] [[PAYLOAD]]
+// CHECK:   store [[RESULT]] to [[PAYLOAD]]
 // CHECK:   inject_enum_addr [[BOX]] : $*Optional<Juice>, #Optional.some!enumelt
 // CHECK:   destroy_value [[METHOD]]
 // CHECK:   br bb3

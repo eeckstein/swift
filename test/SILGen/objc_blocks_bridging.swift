@@ -117,7 +117,7 @@ func callBlocks(_ x: Foo,
   // CHECK: [[COPY:%.*]] = copy_value [[NOESCAPE_SENTINEL]]
   // CHECK: [[F_BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage
   // CHECK: [[F_BLOCK_CAPTURE:%.*]] = project_block_storage [[F_BLOCK_STORAGE]]
-  // CHECK: store [[COPY]] to [init] [[F_BLOCK_CAPTURE]]
+  // CHECK: store [[COPY]] to [[F_BLOCK_CAPTURE]]
   // CHECK: [[F_BLOCK_INVOKE:%.*]] = function_ref @$sS2iIegyd_S2iIyByd_TR
   // CHECK: [[F_STACK_BLOCK:%.*]] = init_block_storage_header [[F_BLOCK_STORAGE]] : {{.*}}, invoke [[F_BLOCK_INVOKE]]
   // CHECK: [[F_BLOCK:%.*]] = copy_block_without_escaping [[F_STACK_BLOCK]]
@@ -184,7 +184,7 @@ func bridgeNoescapeBlock(fn: () -> (), optFn: (() -> ())?) {
   // CHECK: [[WAE:%.*]] = copy_value [[WAE_MD]] : $@callee_guaranteed () -> ()
   // CHECK: [[BLOCK_ALLOC:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> ()
   // CHECK: [[BLOCK_ADDR:%.*]] = project_block_storage [[BLOCK_ALLOC]]
-  // CHECK: store [[WAE]] to [init] [[BLOCK_ADDR]]
+  // CHECK: store [[WAE]] to [[BLOCK_ADDR]]
   // CHECK: [[THUNK:%.*]] = function_ref @$sIeg_IyB_TR : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
   // CHECK: [[BLOCK_STACK:%.*]] = init_block_storage_header [[BLOCK_ALLOC]] : {{.*}}, invoke [[THUNK]] : {{.*}}
 
@@ -204,7 +204,7 @@ func bridgeNoescapeBlock(fn: () -> (), optFn: (() -> ())?) {
   // CHECK: [[WAE:%.*]] = copy_value [[WAE_MD]]
   // CHECK: [[BLOCK_ALLOC:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> ()
   // CHECK: [[BLOCK_ADDR:%.*]] = project_block_storage [[BLOCK_ALLOC]]
-  // CHECK: store [[WAE]] to [init] [[BLOCK_ADDR]]
+  // CHECK: store [[WAE]] to [[BLOCK_ADDR]]
   // CHECK: [[THUNK:%.*]] = function_ref @$sIeg_IyB_TR : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
   // CHECK: [[BLOCK_STACK:%.*]] = init_block_storage_header [[BLOCK_ALLOC]] : {{.*}}, invoke [[THUNK]] : {{.*}}
 
@@ -232,7 +232,7 @@ func bridgeNoescapeBlock(fn: () -> (), optFn: (() -> ())?) {
   // CHECK: [[WAE:%.*]] = copy_value [[WAE_MD]]
   // CHECK: [[BLOCK_ALLOC:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> ()
   // CHECK: [[BLOCK_ADDR:%.*]] = project_block_storage [[BLOCK_ALLOC]]
-  // CHECK: store [[WAE]] to [init] [[BLOCK_ADDR]]
+  // CHECK: store [[WAE]] to [[BLOCK_ADDR]]
   // CHECK: [[THUNK:%.*]] = function_ref @$sIeg_IyB_TR : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
   // CHECK: [[BLOCK_STACK:%.*]] = init_block_storage_header [[BLOCK_ALLOC]] : {{.*}}, invoke [[THUNK]] : {{.*}}
 
@@ -250,7 +250,7 @@ func bridgeNoescapeBlock(fn: () -> (), optFn: (() -> ())?) {
   // CHECK: [[WAE:%.*]] = copy_value [[WAE_MD]]
   // CHECK: [[BLOCK_ALLOC:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> ()
   // CHECK: [[BLOCK_ADDR:%.*]] = project_block_storage [[BLOCK_ALLOC]]
-  // CHECK: store [[WAE]] to [init] [[BLOCK_ADDR]]
+  // CHECK: store [[WAE]] to [[BLOCK_ADDR]]
   // CHECK: [[THUNK:%.*]] = function_ref @$sIeg_IyB_TR : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
   // CHECK: [[BLOCK_STACK:%.*]] = init_block_storage_header [[BLOCK_ALLOC]] : {{.*}}, invoke [[THUNK]] : {{.*}}
 

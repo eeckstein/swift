@@ -578,7 +578,7 @@ func updateFridgeTemp(_ home: APPHouse, delta: Double) {
   // CHECK: [[BRIDGE_FROM_FN:%[0-9]+]] = function_ref @$s10Appliances12RefrigeratorV36_unconditionallyBridgeFromObjectiveCyACSo15APPRefrigeratorCSgFZ
   // CHECK-NEXT: [[REFRIGERATOR_META:%[0-9]+]] = metatype $@thin Refrigerator.Type
   // CHECK-NEXT: [[FRIDGE:%[0-9]+]] = apply [[BRIDGE_FROM_FN]]([[OBJC_FRIDGE]], [[REFRIGERATOR_META]])
-  // CHECK-NEXT: store [[FRIDGE]] to [trivial] [[TEMP_FRIDGE]]
+  // CHECK-NEXT: store [[FRIDGE]] to [[TEMP_FRIDGE]]
 
   // Addition
   // CHECK-NEXT: [[TEMP:%[0-9]+]] = struct_element_addr [[TEMP_FRIDGE]] : $*Refrigerator, #Refrigerator.temperature
@@ -619,7 +619,7 @@ func defineNonStandardBlock(x: Any) {
 // CHECK:   [[T1:%.*]] = open_existential_ref [[T0]] : $AnyObject
 // CHECK:   [[ARG:%.*]] = alloc_stack $Any
 // CHECK:   [[T2:%.*]] = init_existential_addr [[ARG]]
-// CHECK:   store [[T1]] to [init] [[T2]]
+// CHECK:   store [[T1]] to [[T2]]
 // CHECK:   [[RESULT:%.*]] = alloc_stack $Any
 // CHECK:   apply {{.*}}([[RESULT]], [[ARG]])
 
@@ -627,7 +627,7 @@ func defineNonStandardBlock(x: Any) {
 func castToCFunction(ptr: UnsafeRawPointer) {
   // CHECK: [[OUT:%.*]] = alloc_stack $@convention(c) (Optional<AnyObject>) -> ()
   // CHECK: [[IN:%.]] = alloc_stack $UnsafeRawPointer
-  // CHECK: store %0 to [trivial] [[IN]] : $*UnsafeRawPointer
+  // CHECK: store %0 to [[IN]] : $*UnsafeRawPointer
   // CHECK: [[META:%.*]] = metatype $@thick (@convention(c) (Optional<AnyObject>) -> ()).Type
   // CHECK: [[CASTFN:%.*]] = function_ref @$ss13unsafeBitCast_2toq_x_q_mtr0_lF
   // CHECK: apply [[CASTFN]]<UnsafeRawPointer, @convention(c) (AnyObject?) -> ()>([[OUT]], [[IN]], [[META]]) : $@convention(thin) <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0, @thick τ_0_1.Type) -> @out τ_0_1

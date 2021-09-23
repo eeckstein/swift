@@ -17,7 +17,7 @@ struct S {}
 sil [ossa] @dont_fold_unconditional_checked_cast_to_existentials : $@convention(thin) (@owned NSCloud) -> @owned AnyObject {
 entry(%arg : @owned $NSCloud):
   %0 = alloc_stack $NSCloud
-  store %arg to [init] %0 : $*NSCloud
+  store %arg to %0 : $*NSCloud
   %1 = load [take] %0 : $*NSCloud
   %2 = unconditional_checked_cast %1 : $NSCloud to AnyObject
   dealloc_stack %0 : $*NSCloud
@@ -99,7 +99,7 @@ entry:
 // CHECK-LABEL: sil [ossa] @function_ref_cast_promote
 // CHECK: [[LD:%.*]] = load [take] %1 : $*AnyObject
 // CHECK-NEXT: unchecked_ref_cast [[LD]] : $AnyObject to $AClass
-// CHECK-NEXT: store %{{.*}} to [init] %0 : $*AClass
+// CHECK-NEXT: store %{{.*}} to %0 : $*AClass
 sil [ossa] @function_ref_cast_promote : $@convention(thin) (@in AnyObject) -> @out AClass {
 bb0(%0 : $*AClass, %1 : $*AnyObject):
   unchecked_ref_cast_addr AnyObject in %1 : $*AnyObject to AClass in %0 : $*AClass
@@ -114,7 +114,7 @@ sil [ossa] @function_ref_cast_struct : $@convention(thin) () -> @owned AnyObject
 bb0:
   %0 = struct $S ()
   %1 = alloc_stack $S
-  store %0 to [trivial] %1 : $*S
+  store %0 to %1 : $*S
   %4 = alloc_stack $AnyObject
   unchecked_ref_cast_addr S in %1 : $*S to AnyObject in %4 : $*AnyObject
   %6 = load [take] %4 : $*AnyObject
@@ -165,7 +165,7 @@ bb0(%0 : $*AnyObject):
 // CHECK-LABEL: sil [ossa] @testIOU :
 // CHECK: bb0(%0 : $*Optional<AnyObject>, %1 : $*Optional<AnyObject>):
 // CHECK:  [[TMP:%.*]] = load [take] %1 : $*Optional<AnyObject>
-// CHECK:  store [[TMP]] to [init] %0 : $*Optional<AnyObject>
+// CHECK:  store [[TMP]] to %0 : $*Optional<AnyObject>
 // CHECK: } // end sil function 'testIOU'
 sil [ossa] @testIOU : $@convention(thin) (@in Optional<AnyObject>) -> (@out Optional<AnyObject>) {
 bb0(%0 : $*Optional<AnyObject>, %1: $*Optional<AnyObject>):

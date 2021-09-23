@@ -405,7 +405,7 @@ static SILValue findClosureStoredIntoBlock(SILValue V) {
   //     %noescaped_wrapped = mark_dependence %sentinel on %noescape_closure
   //     %storage = alloc_stack
   //     %storage_address = project_block_storage %storage
-  //     store %noescaped_wrapped to [init] %storage_address
+  //     store %noescaped_wrapped to %storage_address
   //     %block = init_block_storage_header %storage invoke %thunk
   //     %arg = copy_block %block
 

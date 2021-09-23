@@ -872,7 +872,7 @@ bb1:
 bb2:
   %3 = unchecked_enum_data %1 : $FakeOptional<Builtin.NativeObject>, #FakeOptional.some!enumelt
   %4 = copy_value %3 : $Builtin.NativeObject
-  store %3 to [init] %allocStack : $*Builtin.NativeObject
+  store %3 to %allocStack : $*Builtin.NativeObject
   %4c = copy_value %4 : $Builtin.NativeObject
   destroy_value %4 : $Builtin.NativeObject
   %5 = enum $FakeOptional<Builtin.NativeObject>, #FakeOptional.some!enumelt, %4c : $Builtin.NativeObject

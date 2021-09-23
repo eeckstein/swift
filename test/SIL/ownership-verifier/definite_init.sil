@@ -35,7 +35,7 @@ bb0(%0 : $Builtin.Int32):
   %2 = alloc_box $<τ_0_0> { var τ_0_0 } <Builtin.Int32>
   %3 = mark_uninitialized [var] %2 : $<τ_0_0> { var τ_0_0 } <Builtin.Int32>
   %4 = project_box %3 : $<τ_0_0> { var τ_0_0 } <Builtin.Int32>, 0
-  store %0 to [trivial] %4 : $*Builtin.Int32
+  store %0 to %4 : $*Builtin.Int32
   %5 = load [trivial] %4 : $*Builtin.Int32
   %6 = function_ref @takes_Int_inout : $@convention(thin) (@inout Builtin.Int32) -> ()
   %7 = apply %6(%4) : $@convention(thin) (@inout Builtin.Int32) -> ()
@@ -234,7 +234,7 @@ bb0:
   %2 = function_ref @getSomeClass : $@convention(thin) () -> @owned SomeClass
   %3 = apply %2() : $@convention(thin) () -> @owned SomeClass
   %4 = tuple_element_addr %1 : $*(SomeClass, SomeClass), 0
-  store %3 to [init] %4 : $*SomeClass
+  store %3 to %4 : $*SomeClass
   destroy_addr %1 : $*(SomeClass, SomeClass)
   dealloc_stack %b : $*(SomeClass, SomeClass)
   %8 = tuple ()
@@ -342,7 +342,7 @@ bb0(%0 : @owned $DerivedClassWithIVars):
   %1 = alloc_box $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>
   %1a = mark_uninitialized [derivedself] %1 : $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>
   %3 = project_box %1a : $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>, 0
-  store %0 to [init] %3 : $*DerivedClassWithIVars
+  store %0 to %3 : $*DerivedClassWithIVars
 
   // Get an int
   %5 = function_ref @makesInt : $@convention(thin) () -> Builtin.Int32
@@ -441,7 +441,7 @@ sil [ossa] @test_derived_release : $@convention(method) (@owned DerivedClassWith
 bb0(%0 : @owned $DerivedClassWithNontrivialStoredProperties):
   %1 = alloc_stack $DerivedClassWithNontrivialStoredProperties
   %4 = mark_uninitialized [derivedself] %1 : $*DerivedClassWithNontrivialStoredProperties
-  store %0 to [init] %4 : $*DerivedClassWithNontrivialStoredProperties
+  store %0 to %4 : $*DerivedClassWithNontrivialStoredProperties
   destroy_addr %4 : $*DerivedClassWithNontrivialStoredProperties
   dealloc_stack %1 : $*DerivedClassWithNontrivialStoredProperties
   %13 = tuple ()
@@ -452,7 +452,7 @@ sil [ossa] @test_derived_partial_release : $@convention(method) (@owned DerivedC
 bb0(%0 : @owned $DerivedClassWithNontrivialStoredProperties):
   %1 = alloc_stack $DerivedClassWithNontrivialStoredProperties
   %4 = mark_uninitialized [derivedself] %1 : $*DerivedClassWithNontrivialStoredProperties
-  store %0 to [init] %4 : $*DerivedClassWithNontrivialStoredProperties
+  store %0 to %4 : $*DerivedClassWithNontrivialStoredProperties
 
   %8 = alloc_ref $SomeClass
 
@@ -472,7 +472,7 @@ bb0(%0 : @owned $RootClassWithNontrivialStoredProperties):
   %2 = alloc_box $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
   %2a = mark_uninitialized [delegatingself] %2 : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
   %4 = project_box %2a : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>, 0
-  store %0 to [init] %4 : $*RootClassWithNontrivialStoredProperties
+  store %0 to %4 : $*RootClassWithNontrivialStoredProperties
   destroy_value %2a : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
   %13 = tuple ()
   return %13 : $()
@@ -483,7 +483,7 @@ bb0(%0 : @owned $RootClassWithNontrivialStoredProperties):
   %2 = alloc_box $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
   %2a = mark_uninitialized [delegatingself] %2 : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
   %4 = project_box %2a : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>, 0
-  store %0 to [init] %4 : $*RootClassWithNontrivialStoredProperties
+  store %0 to %4 : $*RootClassWithNontrivialStoredProperties
   %6 = load [take] %4 : $*RootClassWithNontrivialStoredProperties
   destroy_value %6 : $RootClassWithNontrivialStoredProperties
   destroy_value %2a : $<τ_0_0> { var τ_0_0 } <RootClassWithNontrivialStoredProperties>
@@ -495,7 +495,7 @@ sil [ossa] @test_delegating_derived_release : $@convention(method) (@owned Deriv
 bb0(%0 : @owned $DerivedClassWithNontrivialStoredProperties):
   %2 = alloc_stack $DerivedClassWithNontrivialStoredProperties
   %4 = mark_uninitialized [delegatingself] %2 : $*DerivedClassWithNontrivialStoredProperties
-  store %0 to [init] %4 : $*DerivedClassWithNontrivialStoredProperties
+  store %0 to %4 : $*DerivedClassWithNontrivialStoredProperties
   destroy_addr %4 : $*DerivedClassWithNontrivialStoredProperties
   dealloc_stack %2 : $*DerivedClassWithNontrivialStoredProperties
   %13 = tuple ()
@@ -507,7 +507,7 @@ bb0(%0 : @owned $DerivedClassWithIVars, %i : $Builtin.Int32):
   %1 = alloc_box $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>
   %1a = mark_uninitialized [derivedself] %1 : $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>
   %3 = project_box %1a : $<τ_0_0> { var τ_0_0 } <DerivedClassWithIVars>, 0
-  store %0 to [init] %3 : $*DerivedClassWithIVars
+  store %0 to %3 : $*DerivedClassWithIVars
 
   %8 = load_borrow %3 : $*DerivedClassWithIVars
   %9 = ref_element_addr %8 : $DerivedClassWithIVars, #DerivedClassWithIVars.a
@@ -572,7 +572,7 @@ bb1:
   %4 = load [take] %3 : $*MyClass3
   %5 = function_ref @selfinit_myclass3 : $@convention(thin) (@owned MyClass3) -> @owned MyClass3
   %6 = apply %5(%4) : $@convention(thin) (@owned MyClass3) -> @owned MyClass3
-  store %6 to [init] %3 : $*MyClass3
+  store %6 to %3 : $*MyClass3
   br bb3
 
 bb2:

@@ -696,12 +696,9 @@ ManagedValue SILGenBuilder::createOpenExistentialMetatype(SILLocation loc,
 }
 
 ManagedValue SILGenBuilder::createStore(SILLocation loc, ManagedValue value,
-                                        SILValue address,
-                                        StoreOwnershipQualifier qualifier) {
+                                        SILValue address) {
   CleanupCloner cloner(*this, value);
-  if (value.getOwnershipKind() == OwnershipKind::None)
-    qualifier = StoreOwnershipQualifier::Trivial;
-  createStore(loc, value.forward(SGF), address, qualifier);
+  createStore(loc, value.forward(SGF), address);
   return cloner.clone(address);
 }
 
@@ -738,7 +735,7 @@ void SILGenBuilder::createStoreBorrowOrTrivial(SILLocation loc,
                                                ManagedValue value,
                                                SILValue address) {
   if (value.getOwnershipKind() == OwnershipKind::None) {
-    createStore(loc, value, address, StoreOwnershipQualifier::Trivial);
+    createStore(loc, value, address);
     return;
   }
 

@@ -1090,18 +1090,10 @@ void SILCloner<ImplClass>::visitBeginBorrowInst(BeginBorrowInst *Inst) {
 template <typename ImplClass>
 void SILCloner<ImplClass>::visitStoreInst(StoreInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
-  if (!getBuilder().hasOwnership()) {
-    return recordClonedInstruction(
-        Inst, getBuilder().createStore(getOpLocation(Inst->getLoc()),
-                                       getOpValue(Inst->getSrc()),
-                                       getOpValue(Inst->getDest()),
-                                       StoreOwnershipQualifier::Unqualified));
-  }
-
   recordClonedInstruction(
       Inst, getBuilder().createStore(
                 getOpLocation(Inst->getLoc()), getOpValue(Inst->getSrc()),
-                getOpValue(Inst->getDest()), Inst->getOwnershipQualifier()));
+                getOpValue(Inst->getDest())));
 }
 
 template <typename ImplClass>
@@ -1113,7 +1105,7 @@ void SILCloner<ImplClass>::visitStoreBorrowInst(StoreBorrowInst *Inst) {
     // better from an invariant perspective.
     getBuilder().createStore(
         getOpLocation(Inst->getLoc()), getOpValue(Inst->getSrc()),
-        getOpValue(Inst->getDest()), StoreOwnershipQualifier::Unqualified);
+        getOpValue(Inst->getDest()));
     return;
   }
 

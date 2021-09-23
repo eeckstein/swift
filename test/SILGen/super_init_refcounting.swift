@@ -12,7 +12,7 @@ class Bar: Foo {
   // CHECK:         [[SELF_BOX:%.*]] = alloc_box ${ var Bar }
   // CHECK:         [[MARKED_SELF_BOX:%.*]] =  mark_uninitialized [derivedself] [[SELF_BOX]]
   // CHECK:         [[PB_SELF_BOX:%.*]] = project_box [[MARKED_SELF_BOX]]
-  // CHECK:         store [[INPUT_SELF]] to [init] [[PB_SELF_BOX]]
+  // CHECK:         store [[INPUT_SELF]] to [[PB_SELF_BOX]]
   // CHECK:         [[ORIG_SELF:%.*]] = load [take] [[PB_SELF_BOX]]
   // CHECK-NOT:     copy_value [[ORIG_SELF]]
   // CHECK:         [[ORIG_SELF_UP:%.*]] = upcast [[ORIG_SELF]]
@@ -20,7 +20,7 @@ class Bar: Foo {
   // CHECK:         [[SUPER_INIT:%[0-9]+]] = function_ref @$s22super_init_refcounting3FooCACycfc : $@convention(method) (@owned Foo) -> @owned Foo
   // CHECK:         [[NEW_SELF:%.*]] = apply [[SUPER_INIT]]([[ORIG_SELF_UP]])
   // CHECK:         [[NEW_SELF_DOWN:%.*]] = unchecked_ref_cast [[NEW_SELF]]
-  // CHECK:         store [[NEW_SELF_DOWN]] to [init] [[PB_SELF_BOX]]
+  // CHECK:         store [[NEW_SELF_DOWN]] to [[PB_SELF_BOX]]
   override init() {
     super.init()
   }
@@ -75,7 +75,7 @@ class Good: Foo {
   // CHECK:         [[SELF_BOX:%.*]] = alloc_box ${ var Good }
   // CHECK:         [[MARKED_SELF_BOX:%.*]] = mark_uninitialized [derivedself] [[SELF_BOX]]
   // CHECK:         [[PB_SELF_BOX:%.*]] = project_box [[MARKED_SELF_BOX]]
-  // CHECK:         store %0 to [init] [[PB_SELF_BOX]]
+  // CHECK:         store %0 to [[PB_SELF_BOX]]
   // CHECK:         [[SELF_OBJ:%.*]] = load_borrow [[PB_SELF_BOX]]
   // CHECK:         [[X_ADDR:%.*]] = ref_element_addr [[SELF_OBJ]] : $Good, #Good.x
   // CHECK:         assign {{.*}} to [[X_ADDR]] : $*Int

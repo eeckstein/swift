@@ -71,7 +71,7 @@ bb0(%0 : @owned $ZZZ):
   %3 = apply %2(%1) : $@convention(thin) (Builtin.Word) -> @owned (Array<ZZZ>, Builtin.RawPointer)
   (%4, %5) = destructure_tuple %3 : $(Array<ZZZ>, Builtin.RawPointer)
   %6 = pointer_to_address %5 : $Builtin.RawPointer to [strict] $*ZZZ
-  store %0 to [init] %6 : $*ZZZ
+  store %0 to %6 : $*ZZZ
   destroy_value %4 : $Builtin.BridgeObject
   %12 = tuple ()
   return %12 : $()
@@ -116,7 +116,7 @@ bb0(%0 : $*_HeapBuffer<C, Int>):
   %8 = struct_extract %7a : $_HeapBuffer<C, Int>, #_HeapBuffer._storage // user: %13
   %8a = copy_value %8 : $Optional<Builtin.NativeObject>
   end_borrow %7 : $_HeapBuffer<C, Int>
-  store %7 to [init] %6 : $*_HeapBuffer<C, Int>          // id: %9
+  store %7 to %6 : $*_HeapBuffer<C, Int>          // id: %9
   %10 = function_ref @dead_array_run_closure : $@convention(thin) (@owned @callee_owned () -> Bool) -> () // user: %14
   %11 = function_ref @dead_array_closure : $@convention(thin) (@inout _HeapBuffer<C, Int>) -> Bool // user: %12
   %12 = partial_apply %11(%0) : $@convention(thin) (@inout _HeapBuffer<C, Int>) -> Bool // user: %14
@@ -137,7 +137,7 @@ sil [ossa] @cast_of_class_to_int : $@convention(thin) (@owned C) -> Int {
 bb0(%0 : @owned $C):
   %1 = alloc_stack $Int
   %2 = alloc_stack $C
-  store %0 to [init] %2 : $*C
+  store %0 to %2 : $*C
   unconditional_checked_cast_addr C in %2 : $*C to Int in %1 : $*Int
   %4 = load [trivial] %1 : $*Int
   dealloc_stack %2 : $*C

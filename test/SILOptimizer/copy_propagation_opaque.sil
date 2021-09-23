@@ -134,9 +134,9 @@ bb3(%11 : @owned $T):
 // CHECK-DEBUG-NEXT:   [[STOREVAL:%.*]] = copy_value %0 : $T
 //
 // CHECK-NEXT:   debug_value %0 : $T
-// CHECK-DEBUG-NEXT: store [[STOREVAL]] to [init] %1 : $*T
+// CHECK-DEBUG-NEXT: store [[STOREVAL]] to %1 : $*T
 // CHECK-NEXT:   destroy_addr %1 : $*T
-// CHECK-NEXT:   store %0 to [init] %1 : $*T
+// CHECK-NEXT:   store %0 to %1 : $*T
 //
 // The non-consuming use now uses the original value.
 // CHECK-DEBUG-NEXT:   debug_value %0 : $T
@@ -152,7 +152,7 @@ bb0(%arg : @owned $T, %addr : $*T):
   %copy = copy_value %arg : $T
   debug_value %copy : $T
   destroy_addr %addr : $*T
-  store %copy to [init] %addr : $*T
+  store %copy to %addr : $*T
   debug_value %arg : $T
   debug_value %addr : $*T, expr op_deref
   destroy_value %arg : $T

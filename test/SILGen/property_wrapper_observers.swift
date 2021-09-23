@@ -48,7 +48,7 @@ class Bar {
 // CHECK-NEXT:  // function_ref Bar.someArray.getter
 // CHECK-NEXT: [[GETTER:%.*]] = function_ref @$s26property_wrapper_observers3BarC9someArraySaySiGvg : $@convention(method) (@guaranteed Bar) -> @owned Array<Int>
 // CHECK-NEXT:  [[RESULT:%.*]] = apply [[GETTER]]([[BAR]]) : $@convention(method) (@guaranteed Bar) -> @owned Array<Int>
-// CHECK-NEXT:  store [[RESULT]] to [init] [[ALLOC_STACK]] : $*Array<Int>
+// CHECK-NEXT:  store [[RESULT]] to [[ALLOC_STACK]] : $*Array<Int>
 // CHECK-NEXT:  yield [[ALLOC_STACK]] : $*Array<Int>, resume bb1, unwind bb2
 
 // CHECK: bb1:

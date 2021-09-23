@@ -205,7 +205,8 @@ bool MemoryLifetimeVerifier::storesTrivialEnum(int locIdx,
       const Location *loc = locations.getLocation(SI->getDest());
       if (loc && loc->isSubLocation(locIdx) &&
           isOrHasEnum(SI->getSrc()->getType())) {
-        return SI->getOwnershipQualifier() == StoreOwnershipQualifier::Trivial;
+        // TODO: check the store source if it's really a trivial enum case.
+        return true;
       }
     }
   }
@@ -553,17 +554,10 @@ void MemoryLifetimeVerifier::checkBlock(SILBasicBlock *block, Bits &bits) {
       }
       case SILInstructionKind::StoreInst: {
         auto *SI = cast<StoreInst>(&I);
-        switch (SI->getOwnershipQualifier()) {
-          case StoreOwnershipQualifier::Init:
-            requireBitsClear(bits & nonTrivialLocations, SI->getDest(), &I);
-            locations.setBits(bits, SI->getDest());
-            break;
-          case StoreOwnershipQualifier::Trivial:
-            locations.setBits(bits, SI->getDest());
-            break;
-          case StoreOwnershipQualifier::Unqualified:
-            llvm_unreachable("unqualified store shouldn't be in ownership SIL");
+        if (!SI->getSrc()->getType().isTrivial(*function)) {
+          requireBitsClear(bits & nonTrivialLocations, SI->getDest(), &I);
         }
+        locations.setBits(bits, SI->getDest());
         requireNoStoreBorrowLocation(SI->getDest(), &I);
         break;
       }

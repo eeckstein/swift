@@ -23,12 +23,12 @@ bb0(%0 : @owned $Point):
   
   %3 = begin_borrow %0 : $Point
   %6 = ref_element_addr %3 : $Point, #Point.x
-  store %2 to [trivial] %6 : $*Int64
+  store %2 to %6 : $*Int64
   end_borrow %3 : $Point
 
   %9 = begin_borrow %0 : $Point
   %12 = ref_element_addr %9 : $Point, #Point.y
-  store %2 to [trivial] %12 : $*Int64
+  store %2 to %12 : $*Int64
   end_borrow %9 : $Point
 
   %15 = copy_value %0 : $Point
@@ -48,7 +48,7 @@ bb0(%0 : @owned $HasCenter):
   %5 = begin_borrow %0 : $HasCenter               // users: %8, %6
   %6 = ref_element_addr %5 : $HasCenter, #HasCenter.centerPoint // user: %7
   
-  store %3 to [init] %6 : $*Point                       // id: %7
+  store %3 to %6 : $*Point                       // id: %7
   end_borrow %5 : $HasCenter                      // id: %8
   
   %9 = copy_value %0 : $HasCenter                 // user: %11

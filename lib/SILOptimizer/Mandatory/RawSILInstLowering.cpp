@@ -58,7 +58,7 @@ static void lowerAssignInstruction(SILBuilderWithScope &b, AssignInst *inst) {
     // If this is an initialization, or the storage type is trivial, we
     // can just replace the assignment with a store.
     assert(qualifier != AssignOwnershipQualifier::Reinit);
-    b.createTrivialStoreOr(loc, src, dest, StoreOwnershipQualifier::Init);
+    b.createStore(loc, src, dest);
     inst->eraseFromParent();
     return;
   }
@@ -70,7 +70,7 @@ static void lowerAssignInstruction(SILBuilderWithScope &b, AssignInst *inst) {
     // instance, which has not been initialized and never will be, must be
     // freed using dealloc_partial_ref.
     SILValue pointer = b.createLoad(loc, dest, LoadOwnershipQualifier::Take);
-    b.createStore(loc, src, dest, StoreOwnershipQualifier::Init);
+    b.createStore(loc, src, dest);
 
     auto metatypeTy = CanMetatypeType::get(
         dest->getType().getASTType(), MetatypeRepresentation::Thick);
@@ -204,8 +204,7 @@ static void lowerAssignByWrapperInstruction(SILBuilderWithScope &b,
                                             args);
         if (inst->getMode() == AssignByWrapperInst::Initialization ||
             inst->getDest()->getType().isTrivial(*inst->getFunction())) {
-          b.createTrivialStoreOr(loc, wrappedSrc, dest,
-                                 StoreOwnershipQualifier::Init);
+          b.createStore(loc, wrappedSrc, dest);
         } else {
           auto &lowering = b.getTypeLowering(wrappedSrc->getType());
           lowering.emitStoreOfCopy(b, loc, wrappedSrc, dest, IsNotInitialization);

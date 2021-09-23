@@ -10,7 +10,7 @@ sil [ossa] @_Ts5printFT3valSi_T_ : $@convention(thin) (Int64) -> ()
 sil [ossa] @liveness0 : $@convention(thin) (Int64) -> () {
 bb0(%0 : $Int64):
   %1 = alloc_stack $Int64, var, name "x"
-  store %0 to [trivial] %1 : $*Int64
+  store %0 to %1 : $*Int64
   %3 = integer_literal $Builtin.Int64, 10
   %5 = struct_extract %0 : $Int64, #Int64._value
   %6 = builtin "cmp_eq_Int64"(%5 : $Builtin.Int64, %3 : $Builtin.Int64) : $Builtin.Int1
@@ -20,7 +20,7 @@ bb1:
   %8 = alloc_stack $Int64, var, name "y"
   %9 = integer_literal $Builtin.Int64, 20
   %10 = struct $Int64 (%9 : $Builtin.Int64)
-  store %10 to [trivial] %8 : $*Int64
+  store %10 to %8 : $*Int64
   %12 = integer_literal $Builtin.Int64, 3
   %14 = struct_extract %0 : $Int64, #Int64._value
   %15 = builtin "cmp_sgt_Int64"(%14 : $Builtin.Int64, %12 : $Builtin.Int64) : $Builtin.Int1
@@ -29,13 +29,13 @@ bb1:
 bb2:
   %17 = integer_literal $Builtin.Int64, 0
   %18 = struct $Int64 (%17 : $Builtin.Int64)
-  store %18 to [trivial] %8 : $*Int64
+  store %18 to %8 : $*Int64
   br bb4
 
 bb3:
   %21 = integer_literal $Builtin.Int64, 2
   %22 = struct $Int64 (%21 : $Builtin.Int64)
-  store %22 to [trivial] %8 : $*Int64
+  store %22 to %8 : $*Int64
   br bb4
 
 bb4:

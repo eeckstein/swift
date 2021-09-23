@@ -913,7 +913,7 @@ emitBuiltinBeginCOWMutation(SILGenFunction &SGF,
   SILValue refAddr = args[0].getValue();
   auto *ref = SGF.B.createLoad(loc, refAddr, LoadOwnershipQualifier::Take);
   BeginCOWMutationInst *beginCOW = SGF.B.createBeginCOWMutation(loc, ref, /*isNative*/ false);
-  SGF.B.createStore(loc, beginCOW->getBufferResult(), refAddr, StoreOwnershipQualifier::Init);
+  SGF.B.createStore(loc, beginCOW->getBufferResult(), refAddr);
   return ManagedValue::forUnmanaged(beginCOW->getUniquenessResult());
 }
 
@@ -931,7 +931,7 @@ emitBuiltinBeginCOWMutation_native(SILGenFunction &SGF,
   SILValue refAddr = args[0].getValue();
   auto *ref = SGF.B.createLoad(loc, refAddr, LoadOwnershipQualifier::Take);
   BeginCOWMutationInst *beginCOW = SGF.B.createBeginCOWMutation(loc, ref, /*isNative*/ true);
-  SGF.B.createStore(loc, beginCOW->getBufferResult(), refAddr, StoreOwnershipQualifier::Init);
+  SGF.B.createStore(loc, beginCOW->getBufferResult(), refAddr);
   return ManagedValue::forUnmanaged(beginCOW->getUniquenessResult());
 }
 
@@ -949,7 +949,7 @@ emitBuiltinEndCOWMutation(SILGenFunction &SGF,
   SILValue refAddr = args[0].getValue();
   auto ref = SGF.B.createLoad(loc, refAddr, LoadOwnershipQualifier::Take);
   auto endRef = SGF.B.createEndCOWMutation(loc, ref);
-  SGF.B.createStore(loc, endRef, refAddr, StoreOwnershipQualifier::Init);
+  SGF.B.createStore(loc, endRef, refAddr);
   return ManagedValue::forUnmanaged(SGF.emitEmptyTuple(loc));
 }
 
@@ -1130,8 +1130,7 @@ static ManagedValue emitBuiltinAutoDiffApplyDerivativeFunction(
     derivativeFn = SILValue();
 
     SGF.B.createStore(loc, differential,
-                      SGF.B.createTupleElementAddr(loc, indResBuffer, 1),
-                      StoreOwnershipQualifier::Init);
+                      SGF.B.createTupleElementAddr(loc, indResBuffer, 1));
     return SGF.manageBufferForExprResult(
         indResBuffer, SGF.getTypeLowering(indResBuffer->getType()), C);
   }

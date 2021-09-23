@@ -98,7 +98,7 @@ func errorHandler(_ e: Error) throws -> Error {
 // CHECK:  [[FUNC:%.*]] = function_ref @$ss5ErrorP19existential_erasureE17returnOrThrowSelf{{[_0-9a-zA-Z]*}}F
 // CHECK:  [[RESULT:%.*]] = alloc_existential_box $Error, $[[OPEN_TYPE]]
 // CHECK:  [[ADDR:%.*]] = project_existential_box $[[OPEN_TYPE]] in [[RESULT]] : $Error
-// CHECK:  store [[RESULT]] to [init] [[RESULT_BUF:%.*]] :
+// CHECK:  store [[RESULT]] to [[RESULT_BUF:%.*]] :
 // CHECK:  try_apply [[FUNC]]<[[OPEN_TYPE]]>([[ADDR]], [[OPEN]])
 //
 // CHECK: bb1

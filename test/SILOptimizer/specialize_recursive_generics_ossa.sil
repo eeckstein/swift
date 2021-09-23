@@ -63,7 +63,7 @@ bb0:
   %1 = integer_literal $Builtin.Int32, 3          // user: %2
   %2 = struct $Int32 (%1 : $Builtin.Int32)        // user: %4
   %3 = alloc_stack $Int32                         // users: %4, %5, %6
-  store %2 to [trivial] %3 : $*Int32                      // id: %4
+  store %2 to %3 : $*Int32                      // id: %4
   %5 = apply %0<Int32>(%3) : $@convention(thin) <τ_0_0> (@in τ_0_0) -> ()
   dealloc_stack %3 : $*Int32     // id: %6
   %7 = tuple ()                                   // user: %8
@@ -78,11 +78,11 @@ bb0:
   %2 = builtin "fptrunc_FPIEEE80_FPIEEE64"(%1 : $Builtin.FPIEEE80) : $Builtin.FPIEEE64 // user: %3
   %3 = struct $Double (%2 : $Builtin.FPIEEE64)    // user: %5
   %4 = alloc_stack $Double                        // users: %5, %10, %12
-  store %3 to [trivial] %4 : $*Double                     // id: %5
+  store %3 to %4 : $*Double                     // id: %5
   %6 = integer_literal $Builtin.Int32, 1          // user: %7
   %7 = struct $Int32 (%6 : $Builtin.Int32)        // user: %9
   %8 = alloc_stack $Int32                         // users: %9, %10, %11
-  store %7 to [trivial] %8 : $*Int32                      // id: %9
+  store %7 to %8 : $*Int32                      // id: %9
   %10 = apply %0<Double, Int32>(%4, %8) : $@convention(thin) <τ_0_0, τ_0_1> (@in τ_0_0, @in τ_0_1) -> ()
   dealloc_stack %8 : $*Int32     // id: %11
   dealloc_stack %4 : $*Double    // id: %12
@@ -127,7 +127,7 @@ bb0(%0 : @owned $C, %1 : $*Self):
   %5 = integer_literal $Builtin.Int32, 1
   %6 = struct $Int32 (%5 : $Builtin.Int32)
   %7 = alloc_stack $Int32
-  store %6 to [trivial] %7 : $*Int32
+  store %6 to %7 : $*Int32
   %9 = alloc_stack $P
   %10 = init_existential_addr %9 : $*P, $Self
   copy_addr %1 to [initialization] %10 : $*Self
@@ -141,7 +141,7 @@ bb0(%0 : @owned $C, %1 : $*Self):
   %16 = function_ref @lookup : $@convention(method) <τ_0_0 where τ_0_0 : P> (@owned C, @in_guaranteed τ_0_0) -> @owned Optional<C>
   %17 = alloc_stack $C
   %0c = copy_value %0 : $C
-  store %0c to [init] %17 : $*C
+  store %0c to %17 : $*C
   // CHECK: apply [[LOOKUP]]
   %20 = apply %16<C>(%0, %17) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@owned C, @in_guaranteed τ_0_0) -> @owned Optional<C>
   destroy_addr %17 : $*C

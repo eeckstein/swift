@@ -10,7 +10,7 @@ sil_stage raw
 // CHECK: bb0(%0 : $Builtin.Int64):
 // CHECK: bb1:
 // CHECK: [[WRITE:%.*]] = begin_access [modify] [static] undef : $*Builtin.Int64
-// CHECK: store %{{.*}} to [trivial] [[WRITE]] : $*Builtin.Int64
+// CHECK: store %{{.*}} to [[WRITE]] : $*Builtin.Int64
 // CHECK: end_access [[WRITE]] : $*Builtin.Int64
 // CHECK: br
 // CHECK: bb2:
@@ -25,7 +25,7 @@ bb0(%0 : $Builtin.Int64):
 bb1:
   %23 = integer_literal $Builtin.Int64, 42
   %25 = begin_access [modify] [unknown] undef : $*Builtin.Int64
-  store %23 to [trivial] %25 : $*Builtin.Int64
+  store %23 to %25 : $*Builtin.Int64
   end_access %25 : $*Builtin.Int64
   br bb2
 
@@ -240,7 +240,7 @@ sil [ossa] @borrowClosure : $@convention(thin) () -> () {
 
 sil [ossa] @dontAssert : $@convention(thin) (Builtin.Int64) -> (@out Builtin.Int64) {
 bb0(%0 : $*Builtin.Int64, %1 : $Builtin.Int64):
-  store %1 to [trivial] %0 : $*Builtin.Int64
+  store %1 to %0 : $*Builtin.Int64
   %f = function_ref @closureCapturingByStorageAddress : $@convention(thin) (@inout_aliasable Builtin.Int64) -> ()
   %closure = partial_apply %f(%0) : $@convention(thin) (@inout_aliasable Builtin.Int64) -> ()
   unreachable
@@ -300,7 +300,7 @@ bb0(%0 : $Builtin.Int64):
   %box = alloc_box ${ var Builtin.Int64 }, var, name "localVal"
   %boxproj = project_box %box : ${ var Builtin.Int64 }, 0
 
-  store %0 to [trivial] %boxproj : $*Builtin.Int64
+  store %0 to %boxproj : $*Builtin.Int64
 
   %closureF = function_ref @directApplyNoescapeDynamicClosure : $@convention(thin) (@guaranteed { var Builtin.Int64 }) -> ()
   %boxCopy = copy_value %box : ${ var Builtin.Int64 }

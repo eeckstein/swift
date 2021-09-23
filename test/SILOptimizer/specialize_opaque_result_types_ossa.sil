@@ -16,7 +16,7 @@ sil @project : $@convention(thin) (@in Test) -> @out IndexingIterator<Test>
 sil shared [ossa] @test : $@convention(thin) (@owned Test) -> () {
 bb0(%0 : @owned $Test):
   %3 = alloc_stack $Test
-  store %0 to [init] %3 : $*Test
+  store %0 to %3 : $*Test
   %5 = alloc_stack $IndexingIterator<Test>
   %6 = function_ref @project : $@convention(thin) (@in Test) -> @out IndexingIterator<Test>
   %7 = apply %6(%5, %3) : $@convention(thin) (@in Test) -> @out IndexingIterator<Test>

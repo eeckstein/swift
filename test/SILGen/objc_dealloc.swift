@@ -70,7 +70,7 @@ class SwiftGizmo : Gizmo {
   // CHECK-NEXT:   [[X:%[0-9]+]] = ref_element_addr [[BORROWED_SELF]] : $SwiftGizmo, #SwiftGizmo.x
   // CHECK:        [[XINIT:%[0-9]+]] = function_ref @$s12objc_dealloc10SwiftGizmoC1xAA1XCvpfi
   // CHECK-NEXT:   [[XOBJ:%[0-9]+]] = apply [[XINIT]]() : $@convention(thin) () -> @owned X
-  // CHECK-NEXT:   store [[XOBJ]] to [init] [[X]] : $*X
+  // CHECK-NEXT:   store [[XOBJ]] to [[X]] : $*X
   // CHECK-NEXT:   end_borrow [[BORROWED_SELF]]
   // CHECK-NEXT:   return [[SELF]] : $SwiftGizmo
 

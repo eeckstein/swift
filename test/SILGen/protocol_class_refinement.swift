@@ -34,7 +34,7 @@ func getObjectUID<T: ObjectUID>(x: T) -> (Int, Int, Int, Int) {
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK: [[X:%.*]] = load [copy] [[READ]]
   // CHECK: [[X_TMP:%.*]] = alloc_stack
-  // CHECK: store [[X]] to [init] [[X_TMP]]
+  // CHECK: store [[X]] to [[X_TMP]]
   // CHECK: [[GET_UID:%.*]] = witness_method $T, #UID.uid :
   // CHECK: [[UID:%.*]] = apply [[GET_UID]]<T>([[X_TMP]])
   // CHECK: destroy_addr [[X_TMP]]
@@ -48,7 +48,7 @@ func getObjectUID<T: ObjectUID>(x: T) -> (Int, Int, Int, Int) {
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK: [[X:%.*]] = load [copy] [[READ]]
   // CHECK: [[X_TMP:%.*]] = alloc_stack
-  // CHECK: store [[X]] to [init] [[X_TMP]]
+  // CHECK: store [[X]] to [[X_TMP]]
   // CHECK: [[GET_UID:%.*]] = witness_method $T, #UID.uid :
   // CHECK: [[UID:%.*]] = apply [[GET_UID]]<T>([[X_TMP]])
   // CHECK: destroy_addr [[X_TMP]]
@@ -64,7 +64,7 @@ func getObjectUID<T: ObjectUID>(x: T) -> (Int, Int, Int, Int) {
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK: [[X:%.*]] = load [copy] [[READ]]
   // CHECK: [[X_TMP:%.*]] = alloc_stack
-  // CHECK: store [[X]] to [init] [[X_TMP]]
+  // CHECK: store [[X]] to [[X_TMP]]
 
   // CHECK: [[GET_UID:%.*]] = witness_method $T, #UID.uid :
   // CHECK: [[UID:%.*]] = apply [[GET_UID]]<T>([[X_TMP]])
@@ -88,7 +88,7 @@ func getBaseObjectUID<T: UID>(x: T) -> (Int, Int, Int) where T: Base {
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK: [[X:%.*]] = load [copy] [[READ]]
   // CHECK: [[X_TMP:%.*]] = alloc_stack
-  // CHECK: store [[X]] to [init] [[X_TMP]]
+  // CHECK: store [[X]] to [[X_TMP]]
   // CHECK: [[GET_UID:%.*]] = witness_method $T, #UID.uid :
   // CHECK: [[UID:%.*]] = apply [[GET_UID]]<T>([[X_TMP]])
   // CHECK: destroy_addr [[X_TMP]]
@@ -102,7 +102,7 @@ func getBaseObjectUID<T: UID>(x: T) -> (Int, Int, Int) where T: Base {
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK: [[X:%.*]] = load [copy] [[READ]]
   // CHECK: [[X_TMP:%.*]] = alloc_stack
-  // CHECK: store [[X]] to [init] [[X_TMP]]
+  // CHECK: store [[X]] to [[X_TMP]]
   // CHECK: [[GET_UID:%.*]] = witness_method $T, #UID.uid :
   // CHECK: [[UID:%.*]] = apply [[GET_UID]]<T>([[X_TMP]])
   // CHECK: destroy_addr [[X_TMP]]

@@ -1665,8 +1665,7 @@ bool swift::canReplaceLoadSequence(SILInstruction *inst) {
 void swift::replaceLoadSequence(SILInstruction *inst, SILValue value) {
   if (auto *cai = dyn_cast<CopyAddrInst>(inst)) {
     SILBuilder builder(cai);
-    builder.createStore(cai->getLoc(), value, cai->getDest(),
-                        StoreOwnershipQualifier::Unqualified);
+    builder.createStore(cai->getLoc(), value, cai->getDest());
     return;
   }
 

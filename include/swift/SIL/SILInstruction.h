@@ -3962,13 +3962,6 @@ public:
   }
 };
 
-// *NOTE* When serializing, we can only represent up to 4 values here. If more
-// qualifiers are added, SIL serialization must be updated.
-enum class StoreOwnershipQualifier {
-  Unqualified, Init, Trivial
-};
-static_assert(2 == SILNode::NumStoreOwnershipQualifierBits, "Size mismatch");
-
 /// StoreInst - Represents a store from a memory location.
 class StoreInst
     : public InstructionBase<SILInstructionKind::StoreInst,
@@ -3979,8 +3972,7 @@ class StoreInst
 private:
   FixedOperandList<2> Operands;
 
-  StoreInst(SILDebugLocation DebugLoc, SILValue Src, SILValue Dest,
-            StoreOwnershipQualifier Qualifier);
+  StoreInst(SILDebugLocation DebugLoc, SILValue Src, SILValue Dest);
 
 public:
   SILValue getSrc() const { return Operands[Src].get(); }
@@ -3988,14 +3980,6 @@ public:
 
   ArrayRef<Operand> getAllOperands() const { return Operands.asArray(); }
   MutableArrayRef<Operand> getAllOperands() { return Operands.asArray(); }
-
-  StoreOwnershipQualifier getOwnershipQualifier() const {
-    return StoreOwnershipQualifier(
-      SILNode::Bits.StoreInst.OwnershipQualifier);
-  }
-  void setOwnershipQualifier(StoreOwnershipQualifier qualifier) {
-    SILNode::Bits.StoreInst.OwnershipQualifier = unsigned(qualifier);
-  }
 };
 
 class EndBorrowInst;

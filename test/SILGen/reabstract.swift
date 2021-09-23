@@ -51,7 +51,7 @@ func test0() {
 // CHECK:    sil shared [transparent] [serializable] [reabstraction_thunk] [ossa] [[THUNK]] : $@convention(thin) (@in_guaranteed Int, @noescape @callee_guaranteed (Int) -> Optional<Int>) -> @out Optional<Int> {
 // CHECK:      [[T0:%.*]] = load [trivial] %1 : $*Int
 // CHECK-NEXT: [[T1:%.*]] = apply %2([[T0]])
-// CHECK-NEXT: store [[T1]] to [trivial] %0
+// CHECK-NEXT: store [[T1]] to %0
 // CHECK-NEXT: tuple ()
 // CHECK-NEXT: return
 
@@ -99,7 +99,7 @@ closureTakingOptional({ (_: Any) -> () in })
 // CHECK-LABEL: sil shared [transparent] [serializable] [reabstraction_thunk] [ossa] @$sypIgn_SiSgIegy_TR : $@convention(thin) (Optional<Int>, @noescape @callee_guaranteed (@in_guaranteed Any) -> ()) -> ()
 // CHECK:   [[ANYADDR:%.*]] = alloc_stack $Any
 // CHECK:   [[OPTADDR:%.*]] = init_existential_addr [[ANYADDR]] : $*Any, $Optional<Int>
-// CHECK:   store %0 to [trivial] [[OPTADDR]] : $*Optional<Int>
+// CHECK:   store %0 to [[OPTADDR]] : $*Optional<Int>
 // CHECK:   apply %1([[ANYADDR]]) : $@noescape @callee_guaranteed (@in_guaranteed Any) -> ()
 
 // Same behavior as above with other ownership qualifiers.

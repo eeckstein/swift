@@ -56,9 +56,9 @@ func tuple_patterns() {
   // CHECK: [[PBH:%.*]] = project_box [[HADDR]]
   // CHECK: [[EFGH:%[0-9]+]] = apply
   // CHECK: ([[E:%[0-9]+]], [[F:%[0-9]+]], [[H:%[0-9]+]]) = destructure_tuple
-  // CHECK: store [[E]] to [trivial] [[PBE]]
-  // CHECK: store [[F]] to [trivial] [[PBF]]
-  // CHECK: store [[H]] to [trivial] [[PBH]]
+  // CHECK: store [[E]] to [[PBE]]
+  // CHECK: store [[F]] to [[PBF]]
+  // CHECK: store [[H]] to [[PBH]]
   var (e,f,g,h) : (Int, Float, (), Double) = MRV()
 
   // CHECK: [[IADDR:%[0-9]+]] = alloc_box ${ var Int }
@@ -78,7 +78,7 @@ func tuple_patterns() {
   // CHECK-NOT: alloc_box ${ var Double }
   // CHECK: [[J_K_:%[0-9]+]] = apply
   // CHECK: ([[J:%[0-9]+]], [[K:%[0-9]+]], {{%[0-9]+}}) = destructure_tuple
-  // CHECK: store [[J]] to [trivial] [[PBJ]]
+  // CHECK: store [[J]] to [[PBJ]]
   var (j,_,k,_) : (Int, Float, (), Double) = MRV()
 }
 
@@ -86,10 +86,10 @@ func tuple_patterns() {
 // CHECK: bb0(%0 : $Int, %1 : $Int):
 // CHECK: [[X:%[0-9]+]] = alloc_box ${ var Int }
 // CHECK-NEXT: [[PBX:%.*]] = project_box [[X]]
-// CHECK-NEXT: store %0 to [trivial] [[PBX]]
+// CHECK-NEXT: store %0 to [[PBX]]
 // CHECK-NEXT: [[Y:%[0-9]+]] = alloc_box ${ var Int }
 // CHECK-NEXT: [[PBY:%[0-9]+]] = project_box [[Y]]
-// CHECK-NEXT: store %1 to [trivial] [[PBY]]
+// CHECK-NEXT: store %1 to [[PBY]]
 func simple_arguments(x: Int, y: Int) -> Int {
   var x = x
   var y = y

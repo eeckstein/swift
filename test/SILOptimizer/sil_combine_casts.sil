@@ -119,7 +119,7 @@ bb0(%0 : @guaranteed $Klass):
   %3 = ref_to_raw_pointer %2 : $@opened("3CAE06CE-5F10-11E4-AF13-C82A1428F987") AnyObject to $Builtin.RawPointer
   %4 = pointer_to_address %3 : $Builtin.RawPointer to [strict] $*Builtin.Word
   %5 = integer_literal $Builtin.Word, 5
-  store %5 to [trivial] %4: $*Builtin.Word
+  store %5 to %4: $*Builtin.Word
   %6 = tuple ()
   return %6 : $()
 }
@@ -144,7 +144,7 @@ bb0(%0 : @owned $Klass):
   %3 = ref_to_raw_pointer %2 : $@opened("4CAE06CE-5F10-11E4-AF13-C82A1428F987") AnyObject to $Builtin.RawPointer
   %4 = pointer_to_address %3 : $Builtin.RawPointer to [strict] $*Builtin.Word
   %5 = integer_literal $Builtin.Word, 5
-  store %5 to [trivial] %4: $*Builtin.Word
+  store %5 to %4: $*Builtin.Word
   destroy_value %2 : $@opened("4CAE06CE-5F10-11E4-AF13-C82A1428F987") AnyObject
   %6 = tuple ()
   return %6 : $()

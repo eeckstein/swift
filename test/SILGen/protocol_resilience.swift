@@ -221,7 +221,7 @@ extension ReabstractSelfBase {
 // CHECK-LABEL: sil private [transparent] [thunk] [ossa] @$s19protocol_resilience21ReabstractSelfRefinedP8callbackyxxcvg :
 // CHECK: [[SELF_BOX:%.*]] = alloc_stack $τ_0_0
 // CHECK-NEXT: [[SELF_COPY:%.*]] = copy_value %0 : $τ_0_0
-// CHECK-NEXT: store [[SELF_COPY]] to [init] [[SELF_BOX]] : $*τ_0_0
+// CHECK-NEXT: store [[SELF_COPY]] to [[SELF_BOX]] : $*τ_0_0
 // CHECK: [[WITNESS:%.*]] = function_ref @$s19protocol_resilience18ReabstractSelfBasePAAE8callbackyxxcvg
 // CHECK-NEXT: [[RESULT:%.*]] = apply [[WITNESS]]<τ_0_0>([[SELF_BOX]])
 // CHECK-NEXT: [[RESULT_CONV:%.*]] = convert_function [[RESULT]]

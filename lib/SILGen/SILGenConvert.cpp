@@ -581,8 +581,7 @@ public:
       concreteBuffer = SGF.B.createProjectExistentialBox(loc,
                                            concreteLoweredType.getAddressType(),
                                            box);
-      SGF.B.createStore(loc, box, existential,
-                        StoreOwnershipQualifier::Init);
+      SGF.B.createStore(loc, box, existential);
       break;
     }
     case ExistentialRepresentation::Class:

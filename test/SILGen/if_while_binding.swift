@@ -182,7 +182,7 @@ func if_multi() {
 
   // CHECK: [[IF_BODY]]([[BVAL:%[0-9]+]] : @owned $String):
   if let a = foo(), var b = bar() {
-    // CHECK:   store [[BVAL]] to [init] [[PB]] : $*String
+    // CHECK:   store [[BVAL]] to [[PB]] : $*String
     // CHECK:   debug_value {{.*}} : $String, let, name "c"
     // CHECK:   destroy_value [[B]]
     // CHECK:   destroy_value [[A]]
@@ -213,7 +213,7 @@ func if_multi_else() {
 
   // CHECK: [[IF_BODY]]([[BVAL:%[0-9]+]] : @owned $String):
   if let a = foo(), var b = bar() {
-    // CHECK:   store [[BVAL]] to [init] [[PB]] : $*String
+    // CHECK:   store [[BVAL]] to [[PB]] : $*String
     // CHECK:   debug_value {{.*}} : $String, let, name "c"
     // CHECK:   destroy_value [[B]]
     // CHECK:   destroy_value [[A]]

@@ -33,7 +33,7 @@ bb0:
   %3 = alloc_ref $Foo                             // users: %6, %7, %4
   %3a = begin_borrow %3 : $Foo
   %4 = ref_element_addr %3a : $Foo, #Foo.m_val     // user: %5
-  store %2 to [trivial] %4 : $*Int32                        // id: %5
+  store %2 to %4 : $*Int32                        // id: %5
   end_borrow %3a : $Foo
   %6 = class_method %3 : $Foo, #Foo.get : (Foo) -> () -> Int32, $@convention(method) (@guaranteed Foo) -> Int32 // user: %7
   %7 = apply %6(%3) : $@convention(method) (@guaranteed Foo) -> Int32 // user: %8

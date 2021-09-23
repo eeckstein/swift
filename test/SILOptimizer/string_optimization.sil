@@ -42,10 +42,10 @@ bb0(%0 : $String):
 // CHECK:       [[S:%[0-9]+]] = alloc_stack $String
 // CHECK:       [[F:%[0-9]+]] = function_ref @empty_string
 // CHECK:       [[A:%[0-9]+]] = apply [[F]]
-// CHECK-NEXT:  store [[A]] to [init] [[S]]
+// CHECK-NEXT:  store [[A]] to [[S]]
 // CHECK-NEXT:  [[COPY:%[0-9]+]] = copy_value %0
 // CHECK-NEXT:  destroy_addr [[S]]
-// CHECK-NEXT:  store [[COPY]] to [init] [[S]]
+// CHECK-NEXT:  store [[COPY]] to [[S]]
 // CHECK-NEXT:  [[L:%[0-9]+]] = load [take] [[S]]
 // CHECK:       return [[L]]
 // CHECK:     } // end sil function 'ossa_append_to_empty_string'
@@ -55,7 +55,7 @@ bb0(%0 : @guaranteed $String):
   %5 = metatype $@thin String.Type
   %6 = function_ref @empty_string : $@convention(method) (@thin String.Type) -> @owned String
   %7 = apply %6(%5) : $@convention(method) (@thin String.Type) -> @owned String
-  store %7 to [init] %2 : $*String
+  store %7 to %2 : $*String
   %14 = function_ref @string_append : $@convention(method) (@guaranteed String, @inout String) -> ()
   %15 = apply %14(%0, %2) : $@convention(method) (@guaranteed String, @inout String) -> ()
   %28 = load [take] %2 : $*String

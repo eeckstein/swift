@@ -492,8 +492,7 @@ namespace {
 
     bool visitStoreInst(const StoreInst *RHS) {
       auto *X = cast<StoreInst>(LHS);
-      return X->getSrc() == RHS->getSrc() && X->getDest() == RHS->getDest() &&
-        X->getOwnershipQualifier() == RHS->getOwnershipQualifier();
+      return X->getSrc() == RHS->getSrc() && X->getDest() == RHS->getDest();
     }
 
     bool visitBindMemoryInst(const BindMemoryInst *RHS) {
@@ -1066,16 +1065,6 @@ SILInstruction::MemoryBehavior SILInstruction::getMemoryBehavior() const {
       return MemoryBehavior::MayReadWrite;
     case LoadOwnershipQualifier::Copy:
       return MemoryBehavior::MayHaveSideEffects;
-    }
-    llvm_unreachable("Covered switch isn't covered?!");
-  }
-
-  if (auto *si = dyn_cast<StoreInst>(this)) {
-    switch (si->getOwnershipQualifier()) {
-    case StoreOwnershipQualifier::Unqualified:
-    case StoreOwnershipQualifier::Trivial:
-    case StoreOwnershipQualifier::Init:
-      return MemoryBehavior::MayWrite;
     }
     llvm_unreachable("Covered switch isn't covered?!");
   }

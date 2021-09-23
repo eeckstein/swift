@@ -19,7 +19,7 @@ bb0(%0 : $*Int, %1 : $*_Stdout, %1a : $*CustomStringConvertible):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $Int
   %6 = load [trivial] %0 : $*Int
-  store %6 to [trivial] %5 : $*Int
+  store %6 to %5 : $*Int
   unconditional_checked_cast_addr Int in %5 : $*Int to CustomStringConvertible in %4 : $*CustomStringConvertible
   inject_enum_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   dealloc_stack %5 : $*Int
@@ -61,7 +61,7 @@ bb0(%0 : $*Int, %1 : $*_Stdout, %1a : $*CustomStringConvertible):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $Int
   %6 = load [trivial] %0 : $*Int
-  store %6 to [trivial] %5 : $*Int
+  store %6 to %5 : $*Int
   unconditional_checked_cast_addr Int in %5 : $*Int to CustomStringConvertible in %4 : $*CustomStringConvertible
   inject_enum_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   dealloc_stack %5 : $*Int
@@ -107,7 +107,7 @@ bb0(%0 : $*Int, %1 : $*_Stdout):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $Int
   %6 = load [trivial] %0 : $*Int
-  store %6 to [trivial] %5 : $*Int
+  store %6 to %5 : $*Int
   checked_cast_addr_br take_always Int in %5 : $*Int to CustomStringConvertible in %4 : $*CustomStringConvertible, bb1, bb22
 
 bb1:
@@ -164,7 +164,7 @@ bb0(%0 : $*A, %1 : $*_Stdout):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $A
   %6 = load [take] %0 : $*A
-  store %6 to [init] %5 : $*A
+  store %6 to %5 : $*A
   checked_cast_addr_br take_always A in %5 : $*A to CustomStringConvertible in %4 : $*CustomStringConvertible, bb1, bb22
 
 bb1:
@@ -210,7 +210,7 @@ bb0(%0 : $*B, %1 : $*_Stdout):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $B
   %6 = load [take] %0 : $*B
-  store %6 to [init]  %5 : $*B
+  store %6 to  %5 : $*B
   checked_cast_addr_br take_always B in %5 : $*B to CustomStringConvertible in %4 : $*CustomStringConvertible, bb1, bb22
 
 bb1:
@@ -251,7 +251,7 @@ bb0(%0 : $*D, %1 : $*_Stdout):
   %4 = init_enum_data_addr %3 : $*Optional<CustomStringConvertible>, #Optional.some!enumelt
   %5 = alloc_stack $D
   %6 = load [take] %0 : $*D
-  store %6 to [init] %5 : $*D
+  store %6 to %5 : $*D
   checked_cast_addr_br take_always D in %5 : $*D to CustomStringConvertible in %4 : $*CustomStringConvertible, bb1, bb22
 
 bb1:

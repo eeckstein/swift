@@ -146,7 +146,7 @@ sil [ossa] @store_before_load_take : $@convention(thin) (@inout Builtin.NativeOb
 bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %stk = alloc_stack $Builtin.NativeObject
   copy_addr [take] %0 to [initialization] %stk : $*Builtin.NativeObject
-  store %1 to [init] %0 : $*Builtin.NativeObject
+  store %1 to %0 : $*Builtin.NativeObject
   %obj = load [take] %stk : $*Builtin.NativeObject
   dealloc_stack %stk : $*Builtin.NativeObject
   return %obj : $Builtin.NativeObject
@@ -178,7 +178,7 @@ bb0(%0 : $*Builtin.NativeObject, %1 : $*Builtin.NativeObject):
 // CHECK: bb2({{.*}}):
 // CHECK:   destroy_addr %0
 // CHECK: bb3:
-// CHECK:   store %1 to [init] %0
+// CHECK:   store %1 to %0
 // CHECK: } // end sil function 'copy_take_and_try_apply'
 sil [ossa] @copy_take_and_try_apply : $@convention(thin) (@inout Klass, @owned Klass) -> () {
 bb0(%0 : $*Klass, %1 : @owned $Klass):
@@ -191,7 +191,7 @@ bb1(%r : $()):
 bb2(%e : $Error):
   br bb3
 bb3:
-  store %1 to [init] %0 : $*Klass
+  store %1 to %0 : $*Klass
   destroy_addr %2 : $*Klass
   dealloc_stack %2 : $*Klass
   %9 = tuple ()
@@ -285,7 +285,7 @@ bb1:
 // CHECK-NEXT:   [[A1:%.*]] = struct_element_addr %1
 // CHECK-NEXT:   [[A2:%.*]] = struct_element_addr %1
 // CHECK-NEXT:   load [trivial] [[A2]]
-// CHECK-NEXT:   store %2 to [trivial] [[A1]]
+// CHECK-NEXT:   store %2 to [[A1]]
 // CHECK-NEXT:   builtin
 // CHECK-NEXT:   tuple
 // CHECK-NEXT:   return
@@ -296,7 +296,7 @@ bb0(%0 : $*GS<B>, %1 : $*GS<B>, %2 : $Builtin.Int64):
   copy_addr %1 to [initialization] %4 : $*GS<B>
   %6 = struct_element_addr %4 : $*GS<B>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
-  store %2 to [trivial] %3 : $*Builtin.Int64
+  store %2 to %3 : $*Builtin.Int64
   %8 = builtin "cmp_slt_Int64"(%7 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
   destroy_addr %4 : $*GS<B>
   dealloc_stack %4 : $*GS<B>
@@ -310,7 +310,7 @@ bb0(%0 : $*GS<B>, %1 : $*GS<B>, %2 : $Builtin.Int64):
 // CHECK-NEXT:   [[A2:%.*]] = struct_element_addr %1
 // CHECK-NEXT:   load [trivial] [[A2]]
 // CHECK-NEXT:   load [trivial] [[A2]]
-// CHECK-NEXT:   store %2 to [trivial] [[A1]]
+// CHECK-NEXT:   store %2 to [[A1]]
 // CHECK-NEXT:   builtin
 // CHECK-NEXT:   tuple
 // CHECK-NEXT:   return
@@ -322,7 +322,7 @@ bb0(%0 : $*GS<B>, %1 : $*GS<B>, %2 : $Builtin.Int64):
   %6 = struct_element_addr %4 : $*GS<B>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
   %8 = load [trivial] %6 : $*Builtin.Int64
-  store %2 to [trivial] %3 : $*Builtin.Int64
+  store %2 to %3 : $*Builtin.Int64
   %9 = builtin "cmp_slt_Int64"(%7 : $Builtin.Int64, %8 : $Builtin.Int64) : $Builtin.Int1
   destroy_addr %4 : $*GS<B>
   dealloc_stack %4 : $*GS<B>
@@ -349,7 +349,7 @@ bb0(%0 : $*GS<B>, %1 : $*GS<B>, %2 : $Builtin.Int64):
   %4 = alloc_stack $GS<B>
   copy_addr %1 to [initialization] %4 : $*GS<B>
   %6 = struct_element_addr %4 : $*GS<B>, #GS._value
-  store %2 to [trivial] %3 : $*Builtin.Int64
+  store %2 to %3 : $*Builtin.Int64
   %7 = load [trivial] %6 : $*Builtin.Int64
   %8 = builtin "cmp_slt_Int64"(%7 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
   destroy_addr %4 : $*GS<B>
@@ -379,7 +379,7 @@ bb0(%0 : $*GS<B>, %1 : $*GS<B>, %2 : $Builtin.Int64):
   copy_addr %1 to [initialization] %4 : $*GS<B>
   %6 = struct_element_addr %4 : $*GS<B>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
-  store %2 to [trivial] %3 : $*Builtin.Int64
+  store %2 to %3 : $*Builtin.Int64
   %8 = load [trivial] %6 : $*Builtin.Int64
   %9 = builtin "cmp_slt_Int64"(%7 : $Builtin.Int64, %8 : $Builtin.Int64) : $Builtin.Int1
   destroy_addr %4 : $*GS<B>
@@ -449,7 +449,7 @@ bb2:
   dealloc_stack %6 : $*UnfoldSequence<Element, State>
   %19 = integer_literal $Builtin.Int1, -1
   %20 = struct $Bool (%19 : $Builtin.Int1)
-  store %20 to [trivial] %2 : $*Bool
+  store %20 to %2 : $*Bool
   %22 = alloc_stack $Optional<Element>
   inject_enum_addr %22 : $*Optional<Element>, #Optional.none!enumelt
   copy_addr [take] %22 to [initialization] %0 : $*Optional<Element>
@@ -794,7 +794,7 @@ sil [ossa] @hoist_load_copy_to_src_copy_addr_site : $@convention(thin) (@owned G
 bb0(%0 : @owned $GS<Builtin.NativeObject>):
   %f = function_ref @use_gsbase_builtinnativeobject : $@convention(thin) (@guaranteed GS<Builtin.NativeObject>) -> ()
   %stk = alloc_stack $GS<Builtin.NativeObject>
-  store %0 to [init] %stk : $*GS<Builtin.NativeObject>
+  store %0 to %stk : $*GS<Builtin.NativeObject>
   %obj = load [take] %stk : $*GS<Builtin.NativeObject>
   dealloc_stack %stk : $*GS<Builtin.NativeObject>
   apply %f(%obj) : $@convention(thin) (@guaranteed GS<Builtin.NativeObject>) -> ()
@@ -959,7 +959,7 @@ bb0(%0 : $*Klass, %1 : @owned $Klass):
   %f = function_ref @inguaranteed_user_without_result : $@convention(thin) (@in_guaranteed Klass) -> ()
   %access = begin_access [read] [static] %stack : $*Klass
   destroy_addr %0 : $*Klass // This store prevents the optimization
-  store %1 to [init] %0 : $*Klass // This store prevents the optimization
+  store %1 to %0 : $*Klass // This store prevents the optimization
   %call = apply %f(%access) : $@convention(thin) (@in_guaranteed Klass) -> ()
   end_access %access : $*Klass
   destroy_addr %stack : $*Klass
@@ -982,7 +982,7 @@ bb0(%0 : $*GS<Klass>, %1 : @owned $GS<Klass>):
   %2 = struct_element_addr %0 : $*GS<Klass>, #GS._value
   %3 = load [trivial] %2 : $*Builtin.Int64
   %4 = alloc_stack $GS<Klass>
-  store %1 to [init] %4 : $*GS<Klass>
+  store %1 to %4 : $*GS<Klass>
   %6 = struct_element_addr %4 : $*GS<Klass>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
   %8 = builtin "cmp_slt_Int64"(%3 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
@@ -996,13 +996,13 @@ bb0(%0 : $*GS<Klass>, %1 : @owned $GS<Klass>):
 // CHECK:       bb0([[RESULT:%.*]] : $*GS<Klass>, [[ARG0:%.*]] : @owned $GS<Klass>,
 // CHECK:          builtin
 // CHECK:          [[ARG0_COPY:%.*]] = copy_value [[ARG0]]
-// CHECK:          store [[ARG0_COPY]] to [init] [[RESULT]]
+// CHECK:          store [[ARG0_COPY]] to [[RESULT]]
 // CHECK:          destroy_value [[ARG0]]
 // CHECK: } // end sil function 'store_copy_from_temp'
 sil [ossa] @store_copy_from_temp : $@convention(thin) (@owned GS<Klass>, Builtin.Int64) -> @out GS<Klass> {
 bb0(%0 : $*GS<Klass>, %1 : @owned $GS<Klass>, %2 : $Builtin.Int64):
   %4 = alloc_stack $GS<Klass>
-  store %1 to [init] %4 : $*GS<Klass>
+  store %1 to %4 : $*GS<Klass>
   %8 = builtin "cmp_slt_Int64"(%2 : $Builtin.Int64, %2 : $Builtin.Int64) : $Builtin.Int1
   copy_addr %4 to [initialization] %0 : $*GS<Klass>
   destroy_addr %4 : $*GS<Klass>
@@ -1019,7 +1019,7 @@ bb0(%0 : $*GS<Klass>, %1 : @owned $GS<Klass>, %2 : $Builtin.Int64):
 sil [ossa] @store_take_from_temp : $@convention(thin) (@inout Klass, @owned GS<Klass>) -> () {
 bb0(%0 : $*Klass, %1 : @owned $GS<Klass>):
   %4 = alloc_stack $GS<Klass>
-  store %1 to [init] %4 : $*GS<Klass>
+  store %1 to %4 : $*GS<Klass>
   %7 = struct_element_addr %4 : $*GS<Klass>, #GS._base
   copy_addr [take] %7 to %0 : $*Klass
   dealloc_stack %4 : $*GS<Klass>
@@ -1034,7 +1034,7 @@ sil [ossa] @store_load_in_wrong_block : $@convention(thin) (@guaranteed GS<Klass
 bb0(%0 : @guaranteed $GS<Klass>):
   %4 = alloc_stack $GS<Klass>
   %1 = copy_value %0 : $GS<Klass>
-  store %1 to [init] %4 : $*GS<Klass>
+  store %1 to %4 : $*GS<Klass>
   %6 = struct_element_addr %4 : $*GS<Klass>, #GS._value
   br bb1
 
@@ -1055,7 +1055,7 @@ sil [ossa] @store_projection_in_wrong_block : $@convention(thin) (@guaranteed GS
 bb0(%0 : @guaranteed $GS<Klass>):
   %4 = alloc_stack $GS<Klass>
   %0a = copy_value %0 : $GS<Klass>
-  store %0a to [init] %4 : $*GS<Klass>
+  store %0a to %4 : $*GS<Klass>
   br bb1
 
 bb1:
@@ -1076,7 +1076,7 @@ bb0(%1 : @guaranteed $GS<Klass>, %2 : $Builtin.Int64):
   %3 = struct_extract %1 : $GS<Klass>, #GS._value
   %4 = alloc_stack $GS<Klass>
   %1a = copy_value %1 : $GS<Klass>
-  store %1a to [init] %4 : $*GS<Klass>
+  store %1a to %4 : $*GS<Klass>
   %6 = struct_element_addr %4 : $*GS<Klass>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
   %8 = builtin "cmp_slt_Int64"(%7 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
@@ -1100,7 +1100,7 @@ sil [ossa] @store_inguaranteed_no_result : $@convention(thin) (@guaranteed Klass
 bb0(%0 : @guaranteed $Klass):
   %1 = alloc_stack $Klass
   %0a = copy_value %0 : $Klass
-  store %0a to [init] %1 : $*Klass
+  store %0a to %1 : $*Klass
   %5 = function_ref @inguaranteed_user_without_result : $@convention(thin) (@in_guaranteed Klass) -> ()
   %6 = apply %5(%1) : $@convention(thin) (@in_guaranteed Klass) -> ()
   destroy_addr %1 : $*Klass
@@ -1119,7 +1119,7 @@ sil [ossa] @store_try_apply_argument : $@convention(thin) (@guaranteed Klass) ->
 bb0(%0 : @guaranteed $Klass):
   %1 = alloc_stack $Klass
   %0copy = copy_value %0 : $Klass
-  store %0copy to [init] %1 : $*Klass
+  store %0copy to %1 : $*Klass
   %5 = function_ref @throwing_function : $@convention(thin) (@in_guaranteed Klass) -> ((), @error Error)
   try_apply %5(%1) : $@convention(thin) (@in_guaranteed Klass) -> ((), @error Error), normal bb1, error bb2
 
@@ -1150,7 +1150,7 @@ sil [ossa] @store_inguaranteed_with_result : $@convention(thin) (@owned Klass) -
 bb0(%0 : @owned $Klass):
   %1 = alloc_stack $Klass
   %1a = alloc_stack $Klass
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   %5 = function_ref @inguaranteed_user_with_result : $@convention(thin) (@in_guaranteed Klass) -> @out Klass
   %6 = apply %5(%1a, %1) : $@convention(thin) (@in_guaranteed Klass) -> @out Klass
   destroy_addr %1a : $*Klass
@@ -1175,7 +1175,7 @@ bb0(%0 : @owned $Klass):
   %1 = alloc_stack $Klass
   %2 = alloc_stack $Klass
   %0a = copy_value %0 : $Klass
-  store %0a to [init] %2 : $*Klass
+  store %0a to %2 : $*Klass
   copy_addr [take] %2 to [initialization] %1 : $*Klass
   dealloc_stack %2 : $*Klass
   copy_addr %1 to [initialization] %1a : $*Klass
@@ -1201,7 +1201,7 @@ sil [ossa] @store_$appendKlass : $@convention(method) (@guaranteed Klass, @inout
 // CHECK: [[S1:%.*]] = alloc_stack $Klass
 // CHECK: [[S2:%.*]] = alloc_stack $Klass
 // CHECK: [[S1_LOADED:%.*]] = load [copy] [[S1]]
-// CHECK: store [[S1_LOADED]] to [init] [[S2]]
+// CHECK: store [[S1_LOADED]] to [[S2]]
 // CHECK: apply {{%.*}}([[S2]], [[S1]])
 // CHECK: } // end sil function 'store_overlapping_lifetime_in_function_all'
 sil [ossa] @store_overlapping_lifetime_in_function_all : $@convention(thin) () -> @out Klass {
@@ -1211,7 +1211,7 @@ bb0(%0 : $*Klass):
   %3 = apply %2(%1) : $@convention(thin) () -> @out Klass
   %4 = alloc_stack $Klass
   %2a = load [copy] %1 : $*Klass
-  store %2a to [init] %4 : $*Klass
+  store %2a to %4 : $*Klass
   %6 = function_ref @$appendKlass : $@convention(method) (@in_guaranteed Klass, @inout Klass) -> ()
   %7 = apply %6(%4, %1) : $@convention(method) (@in_guaranteed Klass, @inout Klass) -> ()
   destroy_addr %4 : $*Klass
@@ -1236,7 +1236,7 @@ sil [ossa] @store_copyWithLoadRelease : $@convention(thin) (@guaranteed Builtin.
 bb0(%0 : @guaranteed $Builtin.NativeObject):
   %stk = alloc_stack $Builtin.NativeObject
   %0copy = copy_value %0 : $Builtin.NativeObject
-  store %0copy to [init] %stk : $*Builtin.NativeObject
+  store %0copy to %stk : $*Builtin.NativeObject
   %obj = load [take] %stk : $*Builtin.NativeObject
   %f = function_ref @takeGuaranteedObj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %call = apply %f(%obj) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -1255,7 +1255,7 @@ bb0(%0 : @guaranteed $Builtin.NativeObject):
 sil [ossa] @store_takeWithLoadRelease : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %stk = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %stk : $*Builtin.NativeObject
+  store %0 to %stk : $*Builtin.NativeObject
   %obj = load [take] %stk : $*Builtin.NativeObject
   %f = function_ref @takeGuaranteedObj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %call = apply %f(%obj) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -1274,7 +1274,7 @@ bb0(%0 : @owned $Builtin.NativeObject):
 sil [ossa] @store_takeWithLoadReleaseOfProjection : $@convention(thin) (@owned GS<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $GS<Builtin.NativeObject>):
   %stk = alloc_stack $GS<Builtin.NativeObject>
-  store %0 to [init] %stk : $*GS<Builtin.NativeObject>
+  store %0 to %stk : $*GS<Builtin.NativeObject>
   %proj = struct_element_addr %stk : $*GS<Builtin.NativeObject>, #GS._base
   %obj = load [take] %proj : $*Builtin.NativeObject
   %f = function_ref @takeGuaranteedObj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -1323,7 +1323,7 @@ bb0(%0 : $*Optional<GS<Klass>>, %1 : @owned $Optional<GS<Klass>>):
   %2 = struct_element_addr %0a : $*GS<Klass>, #GS._value
   %3 = load [trivial] %2 : $*Builtin.Int64
   %4 = alloc_stack $Optional<GS<Klass>>
-  store %1 to [init] %4 : $*Optional<GS<Klass>>
+  store %1 to %4 : $*Optional<GS<Klass>>
   %4a = unchecked_take_enum_data_addr %4 : $*Optional<GS<Klass>>, #Optional.some!enumelt
   %6 = struct_element_addr %4a : $*GS<Klass>, #GS._value
   %7 = load [trivial] %6 : $*Builtin.Int64
@@ -1361,7 +1361,7 @@ sil [ossa] @eliminate_fix_lifetime_on_dest_store : $@convention(thin) (@inout Kl
 bb0(%0 : $*Klass):
   %2 = load [copy] %0 : $*Klass
   %3 = alloc_stack $Klass
-  store %2 to [init] %3 : $*Klass
+  store %2 to %3 : $*Klass
   fix_lifetime %3 : $*Klass
   destroy_addr %3 : $*Klass
   dealloc_stack %3 : $*Klass
@@ -1379,7 +1379,7 @@ bb0(%0 : $*Klass):
 sil [ossa] @unhandled_user : $@convention(thin) (@owned Klass) -> @owned Klass {
 bb0(%0 : @owned $Klass):
   %5 = alloc_stack $Klass
-  store %0 to [init] %5 : $*Klass
+  store %0 to %5 : $*Klass
   %104 = begin_access [read] [static] %5 : $*Klass
   %105 = load [take] %104 : $*Klass
   end_access %104 : $*Klass

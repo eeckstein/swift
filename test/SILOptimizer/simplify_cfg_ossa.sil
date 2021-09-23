@@ -1547,7 +1547,7 @@ bb10(%53 : @guaranteed $Base):
 bb5(%e : @owned $MyError):
   %89 = enum $Optional<MyError>, #Optional.some!enumelt, %e : $MyError
   %e5 = enum $MyError2, #MyError2.o!enumelt, %89 : $Optional<MyError>
-  store %e5 to [init] %23 : $*MyError2
+  store %e5 to %23 : $*MyError2
   end_borrow %22a : $Error
   throw %22 : $Error
 

@@ -211,7 +211,7 @@ sil [ossa] @test_begin_apply : $@convention(thin) (@in S, Int) -> () {
 bb0(%0 : $*S, %1 : $Int):
   %f = function_ref @coro : $@yield_once @convention(thin) (@in S) -> @yields @inout Int
   (%i, %t) = begin_apply %f(%0) : $@yield_once @convention(thin) (@in S) -> @yields @inout Int
-  store %1 to [trivial] %i : $*Int
+  store %1 to %i : $*Int
   end_apply %t
   br bb1
 bb1:
@@ -285,10 +285,10 @@ bb0(%0 : $*S2, %1 : @owned $X, %2 : @owned $S, %3 : $*E):
 bb1:
   %60 = struct_element_addr %0 : $*S2, #S2.s
   destroy_addr %60 : $*S
-  store %2 to [init] %60 : $*S
+  store %2 to %60 : $*S
   %71 = struct_element_addr %60 : $*S, #S.x
   destroy_addr %71 : $*X
-  store %1 to [init] %71 : $*X
+  store %1 to %71 : $*X
 
   %75 = tuple ()
   return %75 : $()

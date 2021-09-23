@@ -10,7 +10,7 @@
 // CHECK:   %3 = metatype $@thin Int.Type, loc {{.*}}:32:11, scope 2
 // CHECK:   %4 = function_ref @$sSi22_builtinIntegerLiteralSiBI_tcfC : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int, loc {{.*}}:32:11, scope 2
 // CHECK:   %5 = apply %4(%2, %3) : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int, loc {{.*}}:32:11, scope 2
-// CHECK:   store %5 to [trivial] %1 : $*Int, loc {{.*}}:32:11, scope 2
+// CHECK:   store %5 to %1 : $*Int, loc {{.*}}:32:11, scope 2
 // CHECK:   %7 = copy_value %0 : ${ var Int }, loc {{.*}}:33:11, scope 2
 // CHECK:   %8 = project_box %7 : ${ var Int }, 0, loc {{.*}}:33:11, scope 2
 // CHECK:   mark_function_escape %1 : $*Int, loc {{.*}}:33:11, scope 2

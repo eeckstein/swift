@@ -24,7 +24,7 @@ bb0(%0 : $Builtin.RawPointer, %1 : @owned $Builtin.NativeObject, %2 : $Builtin.I
   %14 = builtin "once"(%11 : $Builtin.RawPointer, %12 : $@convention(thin) () -> ()) : $()
   %15 = alloc_stack $Int32                        // users: %38, %40, %41
   %16 = struct_element_addr %15 : $*Int32, #Int32._value // users: %28, %17
-  store %2 to [trivial] %16 : $*Builtin.Int32
+  store %2 to %16 : $*Builtin.Int32
   %17 = load [trivial] %16 : $*Builtin.Int32                // user: %20
   %18 = integer_literal $Builtin.Int32, -1         // user: %20
   %20 = builtin "xor_Int32"(%17 : $Builtin.Int32, %18 : $Builtin.Int32) : $Builtin.Int32 // user: %22
@@ -759,7 +759,7 @@ bb0:
 bb1(%3 : $Builtin.Int64, %4 : $MyEnum):
   %5 = alloc_stack $Payload
   %6 = unchecked_enum_data %4 : $MyEnum, #MyEnum.payload!enumelt
-  store %6 to [trivial] %5 : $*Payload
+  store %6 to %5 : $*Payload
   %8 = builtin "cmp_eq_Int64"(%3 : $Builtin.Int64, undef : $Builtin.Int64) : $Builtin.Int1
   switch_enum undef : $ThreeWay, case #ThreeWay.one!enumelt: bb4, case #ThreeWay.two!enumelt: bb2, case #ThreeWay.three!enumelt: bb3
 

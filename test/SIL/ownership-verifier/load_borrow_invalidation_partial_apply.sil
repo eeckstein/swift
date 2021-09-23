@@ -42,7 +42,7 @@ bb0(%0 :  $*WrapperStruct):
 sil [ossa] @caller1 : $@convention(thin) (@owned WrapperStruct) -> () {
 bb0(%0 :  @owned $WrapperStruct):
   %stk = alloc_stack $WrapperStruct
-  store %0 to [init] %stk : $*WrapperStruct
+  store %0 to %stk : $*WrapperStruct
   %func = function_ref @test1 : $@convention(thin) (@in_guaranteed WrapperStruct) -> ()
   %a = apply %func(%stk) : $@convention(thin) (@in_guaranteed WrapperStruct) -> ()
   destroy_addr %stk : $*WrapperStruct
@@ -60,7 +60,7 @@ bb0(%0 :  @owned $WrapperStruct):
 sil [ossa] @caller2 : $@convention(thin) (@owned WrapperStruct) -> () {
 bb0(%0 :  @owned $WrapperStruct):
   %stk = alloc_stack $WrapperStruct
-  store %0 to [init] %stk : $*WrapperStruct
+  store %0 to %stk : $*WrapperStruct
   %func = function_ref @test2 : $@convention(thin) (@in_guaranteed WrapperStruct) -> ()
   %a = apply %func(%stk) : $@convention(thin) (@in_guaranteed WrapperStruct) -> ()
   destroy_addr %stk : $*WrapperStruct

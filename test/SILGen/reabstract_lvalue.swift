@@ -17,14 +17,14 @@ func reabstractFunctionInOut() {
   // CHECK: [[PB:%.*]] = project_box [[BOX]]
   // CHECK: [[ARG:%.*]] = function_ref @$s17reabstract_lvalue9transformySdSiF
   // CHECK: [[THICK_ARG:%.*]] = thin_to_thick_function [[ARG]]
-  // CHECK: store [[THICK_ARG:%.*]] to [init] [[PB]]
+  // CHECK: store [[THICK_ARG:%.*]] to [[PB]]
   // CHECK:  [[WRITE:%.*]] = begin_access [modify] [unknown] [[PB]] : $*@callee_guaranteed (Int) -> Double
   // CHECK: [[ABSTRACTED_BOX:%.*]] = alloc_stack $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Int, Double>
   // CHECK: [[THICK_ARG:%.*]] = load [copy] [[WRITE]]
   // CHECK: [[THUNK1:%.*]] = function_ref @$sSiSdIegyd_SiSdIegnr_TR
   // CHECK: [[ABSTRACTED_ARG:%.*]] = partial_apply [callee_guaranteed] [[THUNK1]]([[THICK_ARG]])
   // CHECK: [[CONVERTED_ARG:%.*]] = convert_function [[ABSTRACTED_ARG]]
-  // CHECK: store [[CONVERTED_ARG]] to [init] [[ABSTRACTED_BOX]]
+  // CHECK: store [[CONVERTED_ARG]] to [[ABSTRACTED_BOX]]
   // CHECK: [[FUNC:%.*]] = function_ref @$s17reabstract_lvalue19consumeGenericInOut{{[_0-9a-zA-Z]*}}F
   // CHECK: apply [[FUNC]]<(Int) -> Double>([[ABSTRACTED_BOX]])
   // CHECK: [[NEW_ABSTRACTED_ARG:%.*]] = load [take] [[ABSTRACTED_BOX]]
@@ -43,7 +43,7 @@ func reabstractMetatypeInOut() {
   var thinMetatype = MyMetatypeIsThin.self
   // CHECK: [[BOX:%.*]] = alloc_stack $@thick MyMetatypeIsThin.Type
   // CHECK: [[THICK:%.*]] = metatype $@thick MyMetatypeIsThin.Type
-  // CHECK: store [[THICK]] to [trivial] [[BOX]]
+  // CHECK: store [[THICK]] to [[BOX]]
   // CHECK: [[FUNC:%.*]] = function_ref @$s17reabstract_lvalue19consumeGenericInOut{{[_0-9a-zA-Z]*}}F
   // CHECK: apply [[FUNC]]<MyMetatypeIsThin.Type>([[BOX]])
   consumeGenericInOut(&thinMetatype)

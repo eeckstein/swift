@@ -17,7 +17,7 @@ import Foundation
 // CHECK:   alloc_global @$s25access_marker_verify_objc12testCFStringC8cfStringSo0F3RefavpZ
 // CHECK:   [[GA:%.*]] = global_addr @$s25access_marker_verify_objc12testCFStringC8cfStringSo0F3RefavpZ : $*CFString
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [init] [[GA]] : $*CFString
+// CHECK:   store %{{.*}} to [[GA]] : $*CFString
 // CHECK:   return %{{.*}} : $()                               
 // CHECK-LABEL: } // end sil function '{{.*}}WZ'
 class testCFString {

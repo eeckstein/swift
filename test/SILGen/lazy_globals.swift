@@ -3,7 +3,7 @@
 // CHECK: sil private [global_init_once_fn] [ossa] @[[T:.*]]WZ : $@convention(c) () -> () {
 // CHECK:   alloc_global @$s12lazy_globals1xSiv
 // CHECK:   [[XADDR:%.*]] = global_addr @$s12lazy_globals1xSivp : $*Int
-// CHECK:   store {{%.*}} to [trivial] [[XADDR]] : $*Int
+// CHECK:   store {{%.*}} to [[XADDR]] : $*Int
 
 // CHECK: sil hidden [global_init] [ossa] @$s12lazy_globals1xSivau : $@convention(thin) () -> Builtin.RawPointer {
 // CHECK:   [[TOKEN_ADDR:%.*]] = global_addr @[[T]]Wz : $*Builtin.Word
@@ -19,7 +19,7 @@ var x: Int = 0
 // CHECK: sil private [global_init_once_fn] [ossa] @[[T:.*]]WZ : $@convention(c) () -> () {
 // CHECK:   alloc_global @$s12lazy_globals3FooV3fooSivpZ
 // CHECK:   [[XADDR:%.*]] = global_addr @$s12lazy_globals3FooV3fooSivpZ : $*Int
-// CHECK:   store {{.*}} to [trivial] [[XADDR]] : $*Int
+// CHECK:   store {{.*}} to [[XADDR]] : $*Int
 // CHECK:   return
 
 struct Foo {
@@ -43,7 +43,7 @@ struct Foo {
 // CHECK: sil private [global_init_once_fn] [ossa] @[[T:.*3bar.*]]WZ : $@convention(c) () -> () {
 // CHECK:   alloc_global @$s12lazy_globals3BarO3barSivpZ
 // CHECK:   [[XADDR:%.*]] = global_addr @$s12lazy_globals3BarO3barSivpZ : $*Int
-// CHECK:   store {{.*}} to [trivial] [[XADDR]] : $*Int
+// CHECK:   store {{.*}} to [[XADDR]] : $*Int
 // CHECK:   return
 
 enum Bar {

@@ -78,14 +78,14 @@ sil_global [serialized] @_TZvOs7Process11_unsafeArgvGVs20UnsafeMutablePointerGS0
 sil [ossa] @main : $@convention(c) (Int32, UnsafeMutablePointer<UnsafeMutablePointer<Int8>>) -> Int32 {
 bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<UnsafeMutablePointer<Int8>>):
   %2 = global_addr @_TZvOs7Process5_argcVs5Int32 : $*Int32
-  store %0 to [trivial] %2 : $*Int32
+  store %0 to %2 : $*Int32
   %4 = global_addr @globalinit_33_1BDF70FFC18749BAB495A73B459ED2F0_token5 : $*Builtin.Word
   %5 = address_to_pointer %4 : $*Builtin.Word to $Builtin.RawPointer
 
   %6 = function_ref @globalinit_33_1BDF70FFC18749BAB495A73B459ED2F0_func5 : $@convention(thin) () -> ()
   %7 = builtin "once"(%5 : $Builtin.RawPointer, %6 : $@convention(thin) () -> ()) : $()
   %8 = global_addr @_TZvOs7Process11_unsafeArgvGVs20UnsafeMutablePointerGS0_Vs4Int8__ : $*UnsafeMutablePointer<UnsafeMutablePointer<Int8>>
-  store %1 to [trivial] %8 : $*UnsafeMutablePointer<UnsafeMutablePointer<Int8>>
+  store %1 to %8 : $*UnsafeMutablePointer<UnsafeMutablePointer<Int8>>
   %10 = tuple ()
   %11 = integer_literal $Builtin.Int32, 0
   %12 = struct $Int32 (%11 : $Builtin.Int32)
@@ -204,7 +204,7 @@ sil hidden [ossa] @_TFC16devirt_try_apply8Derived1cfMS0_FT_S0_ : $@convention(me
 bb0(%0 : @owned $Derived1):
   %1 = alloc_stack $Derived1
   %2 = copy_value %0 : $Derived1
-  store %0 to [init] %1 : $*Derived1
+  store %0 to %1 : $*Derived1
   %3 = upcast %2 : $Derived1 to $Base
 
   %4 = function_ref @_TFC16devirt_try_apply4BasecfMS0_FT_S0_ : $@convention(method) (@owned Base) -> @owned Base
@@ -212,7 +212,7 @@ bb0(%0 : @owned $Derived1):
   %8 = unchecked_ref_cast %7 : $Base to $Derived1
   %9 = copy_value %8 : $Derived1
   destroy_addr %1 : $*Derived1
-  store %8 to [init] %1 : $*Derived1
+  store %8 to %1 : $*Derived1
   destroy_addr %1 : $*Derived1
   dealloc_stack %1 : $*Derived1
   return %9 : $Derived1
@@ -289,14 +289,14 @@ sil hidden [ossa] @_TFC16devirt_try_apply8Derived2cfMS0_FT_S0_ : $@convention(me
 bb0(%0 : @owned $Derived2):
   %1 = alloc_stack $Derived2
   %2 = copy_value %0 : $Derived2
-  store %0 to [init] %1 : $*Derived2
+  store %0 to %1 : $*Derived2
   %3 = upcast %2 : $Derived2 to $Base
   %4 = function_ref @_TFC16devirt_try_apply4BasecfMS0_FT_S0_ : $@convention(method) (@owned Base) -> @owned Base
   %7 = apply %4(%3) : $@convention(method) (@owned Base) -> @owned Base
   %8 = unchecked_ref_cast %7 : $Base to $Derived2
   %9 = copy_value %8 : $Derived2
   destroy_addr %1 : $*Derived2
-  store %8 to [init] %1 : $*Derived2
+  store %8 to %1 : $*Derived2
   destroy_addr %1 : $*Derived2
   dealloc_stack %1 : $*Derived2
   return %9 : $Derived2
@@ -396,7 +396,7 @@ sil hidden [ossa] @_TFC16devirt_try_apply3CP2cfMS0_FT_S0_ : $@convention(method)
 bb0(%0 : @owned $CP2):
   %1 = alloc_stack $CP2
   %2 = copy_value %0 : $CP2
-  store %0 to [init] %1 : $*CP2
+  store %0 to %1 : $*CP2
   %3 = upcast %2 : $CP2 to $CP1
 
   %4 = function_ref @_TFC16devirt_try_apply3CP1cfMS0_FT_S0_ : $@convention(method) (@owned CP1) -> @owned CP1
@@ -404,7 +404,7 @@ bb0(%0 : @owned $CP2):
   %8 = unchecked_ref_cast %7 : $CP1 to $CP2
   %9 = copy_value %8 : $CP2
   destroy_addr %1 : $*CP2
-  store %8 to [init] %1 : $*CP2
+  store %8 to %1 : $*CP2
   destroy_addr %1 : $*CP2
   dealloc_stack %1 : $*CP2
   return %9 : $CP2
@@ -432,13 +432,13 @@ bb0(%0 : @owned $Base):
   %3 = alloc_stack $Optional<Int32>
   inject_enum_addr %3 : $*Optional<Int32>, #Optional.none!enumelt
   %6 = load [trivial] %3 : $*Optional<Int32>
-  store %6 to [trivial] %1 : $*Optional<Int32>
+  store %6 to %1 : $*Optional<Int32>
   dealloc_stack %3 : $*Optional<Int32>
   %9 = class_method %0 : $Base, #Base.foo : (Base) -> () throws -> Int32?, $@convention(method) (@guaranteed Base) -> (Optional<Int32>, @error Error)
   try_apply %9(%0) : $@convention(method) (@guaranteed Base) -> (Optional<Int32>, @error Error), normal bb1, error bb4
 
 bb1(%11 : $Optional<Int32>):
-  store %11 to [trivial] %1 : $*Optional<Int32>
+  store %11 to %1 : $*Optional<Int32>
   br bb2
 
 bb2:
@@ -470,7 +470,7 @@ bb0(%0 : @owned $Base):
   %3 = alloc_stack $Optional<Base>
   inject_enum_addr %3 : $*Optional<Base>, #Optional.none!enumelt
   %6 = load [take] %3 : $*Optional<Base>
-  store %6 to [init] %1 : $*Optional<Base>
+  store %6 to %1 : $*Optional<Base>
   dealloc_stack %3 : $*Optional<Base>
   %9 = class_method %0 : $Base, #Base.boo1 : (Base) -> () throws -> Base, $@convention(method) (@guaranteed Base) -> (@owned Base, @error Error)
   try_apply %9(%0) : $@convention(method) (@guaranteed Base) -> (@owned Base, @error Error), normal bb1, error bb4
@@ -478,7 +478,7 @@ bb0(%0 : @owned $Base):
 bb1(%11 : @owned $Base):
   %12 = enum $Optional<Base>, #Optional.some!enumelt, %11 : $Base
   destroy_addr %1 : $*Optional<Base>
-  store %12 to [init] %1 : $*Optional<Base>
+  store %12 to %1 : $*Optional<Base>
   br bb2
 
 bb2:
@@ -508,14 +508,14 @@ bb0(%0 : @owned $Base):
   %3 = alloc_stack $Optional<Base>
   inject_enum_addr %3 : $*Optional<Base>, #Optional.none!enumelt
   %6 = load [take] %3 : $*Optional<Base>
-  store %6 to [init] %1 : $*Optional<Base>
+  store %6 to %1 : $*Optional<Base>
   dealloc_stack %3 : $*Optional<Base>
   %9 = class_method %0 : $Base, #Base.boo2 : (Base) -> () throws -> Base?, $@convention(method) (@guaranteed Base) -> (@owned Optional<Base>, @error Error)
   try_apply %9(%0) : $@convention(method) (@guaranteed Base) -> (@owned Optional<Base>, @error Error), normal bb1, error bb4
 
 bb1(%11 : @owned $Optional<Base>):
   destroy_addr %1 : $*Optional<Base>
-  store %11 to [init] %1 : $*Optional<Base>
+  store %11 to %1 : $*Optional<Base>
   br bb2
 
 bb2:
@@ -591,12 +591,12 @@ bb0:
   debug_value %3 : $CP2
   %5 = integer_literal $Builtin.Int32, 0
   %6 = struct $Int32 (%5 : $Builtin.Int32)
-  store %6 to [trivial] %0 : $*Int32
+  store %6 to %0 : $*Int32
   %8 = class_method %3 : $CP2, #CP2.foo : (CP2) -> () throws -> Int32, $@convention(method) (@guaranteed CP2) -> (Int32, @error Error)
   try_apply %8(%3) : $@convention(method) (@guaranteed CP2) -> (Int32, @error Error), normal bb1, error bb4
 
 bb1(%10 : $Int32):
-  store %10 to [trivial] %0 : $*Int32
+  store %10 to %0 : $*Int32
   br bb2
 
 bb2:
@@ -628,16 +628,16 @@ bb0:
   %3 = function_ref @_TFC16devirt_try_apply3CP1CfMS0_FT_S0_ : $@convention(thin) (@thick CP1.Type) -> @owned CP1
   %4 = metatype $@thick CP1.Type
   %5 = apply %3(%4) : $@convention(thin) (@thick CP1.Type) -> @owned CP1
-  store %5 to [init] %2 : $*CP1
+  store %5 to %2 : $*CP1
   %7 = integer_literal $Builtin.Int32, 0
   %8 = struct $Int32 (%7 : $Builtin.Int32)
-  store %8 to [trivial] %0 : $*Int32
+  store %8 to %0 : $*Int32
   %10 = open_existential_addr immutable_access %1 : $*P to $*@opened("3F4928FC-364E-11E5-9488-B8E856428C60") P
   %11 = witness_method $@opened("3F4928FC-364E-11E5-9488-B8E856428C60") P, #P.foo, %10 : $*@opened("3F4928FC-364E-11E5-9488-B8E856428C60") P : $@convention(witness_method: P) <τ_0_0 where τ_0_0 : P> (@in_guaranteed τ_0_0) -> (Int32, @error Error)
   try_apply %11<@opened("3F4928FC-364E-11E5-9488-B8E856428C60") P>(%10) : $@convention(witness_method: P) <τ_0_0 where τ_0_0 : P> (@in_guaranteed τ_0_0) -> (Int32, @error Error), normal bb1, error bb4
 
 bb1(%13 : $Int32):
-  store %13 to [trivial] %0 : $*Int32
+  store %13 to %0 : $*Int32
   br bb2
 
 bb2:
@@ -675,12 +675,12 @@ bb0:
   %5 = integer_literal $Builtin.Int32, 0
   %6 = struct $Int32 (%5 : $Builtin.Int32)
   %7 = enum $Optional<Int32>, #Optional.some!enumelt, %6 : $Int32
-  store %7 to [trivial] %0 : $*Optional<Int32>
+  store %7 to %0 : $*Optional<Int32>
   %9 = class_method %3 : $Derived1, #Derived1.foo : (Derived1) -> () throws -> Int32?, $@convention(method) (@guaranteed Derived1) -> (Optional<Int32>, @error Error)
   try_apply %9(%3) : $@convention(method) (@guaranteed Derived1) -> (Optional<Int32>, @error Error), normal bb1, error bb4
 
 bb1(%11 : $Optional<Int32>):
-  store %11 to [trivial] %0 : $*Optional<Int32>
+  store %11 to %0 : $*Optional<Int32>
   br bb2
 
 bb2:
@@ -718,12 +718,12 @@ bb0:
   %1 = alloc_ref $CP2
   %5 = integer_literal $Builtin.Int32, 0
   %6 = struct $Int32 (%5 : $Builtin.Int32)
-  store %6 to [trivial] %0 : $*Int32
+  store %6 to %0 : $*Int32
   %8 = class_method %1 : $CP2, #CP2.foo : (CP2) -> () throws -> Int32, $@convention(method) (@guaranteed CP2) -> (Int32, @error Error)
   try_apply %8(%1) : $@convention(method) (@guaranteed CP2) -> (Int32, @error Error), normal bb1, error bb4
 
 bb1(%10 : $Int32):
-  store %10 to [trivial] %0 : $*Int32
+  store %10 to %0 : $*Int32
   br bb2
 
 bb2:

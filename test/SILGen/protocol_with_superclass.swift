@@ -58,7 +58,7 @@ extension ProtoRefinesClass {
     // CHECK:      [[BOX:%.*]] = alloc_stack $BaseProto
     // CHECK-NEXT: [[SELF:%.*]] = copy_value %3 : $Self
     // CHECK-NEXT: [[ADDR:%.*]] = init_existential_addr [[BOX]] : $*BaseProto, $Self
-    // CHECK-NEXT: store [[SELF]] to [init] [[ADDR]] : $*Self
+    // CHECK-NEXT: store [[SELF]] to [[ADDR]] : $*Self
     // CHECK-NEXT: destroy_addr [[BOX]] : $*BaseProto
     // CHECK-NEXT: dealloc_stack [[BOX]] : $*BaseProto
     let _: BaseProto = self
@@ -261,7 +261,7 @@ func passesRefinedProtocol(_ r: RefinedProto) {
 // CHECK-NEXT:  [[BASE:%.*]] = alloc_stack $BaseProto
 // CHECK-NEXT:  [[BASE_PAYLOAD:%.*]] = init_existential_addr [[BASE]] : $*BaseProto, $@opened("{{.*}}") RefinedProto
 // CHECK-NEXT:  [[OPENED_COPY:%.*]] = copy_value [[OPENED]] : $@opened("{{.*}}") RefinedProto
-// CHECK-NEXT:  store [[OPENED_COPY]] to [init] [[BASE_PAYLOAD]] : $*@opened("{{.*}}") RefinedProto
+// CHECK-NEXT:  store [[OPENED_COPY]] to [[BASE_PAYLOAD]] : $*@opened("{{.*}}") RefinedProto
 // CHECK:       [[FUNC:%.*]] = function_ref @$s24protocol_with_superclass17takesBaseProtocolyyAA0E5Proto_pF : $@convention(thin) (@in_guaranteed BaseProto) -> ()
 // CHECK-NEXT:  apply [[FUNC]]([[BASE]]) : $@convention(thin) (@in_guaranteed BaseProto) -> ()
 // CHECK-NEXT:  destroy_addr [[BASE]] : $*BaseProto

@@ -521,8 +521,7 @@ public:
         SILBlockStorageType::get(continuationTy));
     auto blockStorage = SGF.emitTemporaryAllocation(loc, blockStorageTy);
     auto continuationAddr = SGF.B.createProjectBlockStorage(loc, blockStorage);
-    SGF.B.createStore(loc, wrappedContinuation, continuationAddr,
-                      StoreOwnershipQualifier::Trivial);
+    SGF.B.createStore(loc, wrappedContinuation, continuationAddr);
 
     // Get the block invocation function for the given completion block type.
     auto completionHandlerIndex = calleeTypeInfo.foreign.async

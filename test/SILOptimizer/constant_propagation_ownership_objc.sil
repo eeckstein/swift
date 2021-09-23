@@ -22,12 +22,12 @@ bb0(%0 : $*Optional<AnyHashable>, %1 : @guaranteed $NSArray):
   %4 = metatype $@thin AnyHashable.Type
   %5 = alloc_stack $NSArray
   %6 = copy_value %1 : $NSArray
-  store %6 to [init] %5 : $*NSArray
+  store %6 to %5 : $*NSArray
   %8 = alloc_stack $Array<AnyHashable>
   unconditional_checked_cast_addr NSArray in %5 : $*NSArray to Array<AnyHashable> in %8 : $*Array<AnyHashable>
   %10 = load [take] %8 : $*Array<AnyHashable>
   %11 = alloc_stack $Array<AnyHashable>
-  store %10 to [init] %11 : $*Array<AnyHashable>
+  store %10 to %11 : $*Array<AnyHashable>
   %13 = function_ref @$ss11AnyHashableVyABxcSHRzlufC : $@convention(method) <τ_0_0 where τ_0_0 : Hashable> (@in τ_0_0, @thin AnyHashable.Type) -> @out AnyHashable
   %14 = apply %13<[AnyHashable]>(%3, %11, %4) : $@convention(method) <τ_0_0 where τ_0_0 : Hashable> (@in τ_0_0, @thin AnyHashable.Type) -> @out AnyHashable
   dealloc_stack %11 : $*Array<AnyHashable>
@@ -45,7 +45,7 @@ sil [ossa] @array_downcast_copyonsuccess : $@convention(thin) (@guaranteed NSArr
 bb0(%0 : @guaranteed $NSArray):
   %4 = alloc_stack $NSArray
   %5 = copy_value %0 : $NSArray
-  store %5 to [init] %4 : $*NSArray
+  store %5 to %4 : $*NSArray
   %7 = alloc_stack $Array<String>
   checked_cast_addr_br copy_on_success NSArray in %4 : $*NSArray to Array<String> in %7 : $*Array<String>, bb2, bb3
 
@@ -77,7 +77,7 @@ sil [ossa] @array_downcast_takeonsuccess : $@convention(thin) (@guaranteed NSArr
 bb0(%0 : @guaranteed $NSArray):
   %4 = alloc_stack $NSArray
   %5 = copy_value %0 : $NSArray
-  store %5 to [init] %4 : $*NSArray
+  store %5 to %4 : $*NSArray
   %7 = alloc_stack $Array<String>
   checked_cast_addr_br take_on_success NSArray in %4 : $*NSArray to Array<String> in %7 : $*Array<String>, bb2, bb3
 
@@ -108,7 +108,7 @@ sil [ossa] @array_downcast_takealways : $@convention(thin) (@guaranteed NSArray)
 bb0(%0 : @guaranteed $NSArray):
   %4 = alloc_stack $NSArray
   %5 = copy_value %0 : $NSArray
-  store %5 to [init] %4 : $*NSArray
+  store %5 to %4 : $*NSArray
   %7 = alloc_stack $Array<String>
   checked_cast_addr_br take_always NSArray in %4 : $*NSArray to Array<String> in %7 : $*Array<String>, bb2, bb3
 
@@ -137,7 +137,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_always_string : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $String
 // CHECK:   br bb1
 //
@@ -180,7 +180,7 @@ bb4:
 sil [ossa] @nsobject_test_take_always_string : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $String
   br bb1
 
@@ -204,7 +204,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_on_success_string : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $String
 // CHECK:   br bb1
 //
@@ -213,7 +213,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSString, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -235,7 +235,7 @@ bb4:
 // CHECK: [[COND_CAST_FAIL]]:
 // CHECK-NEXT: dealloc_stack
 // CHECK-NEXT: [[UNCAST_INPUT:%.*]] = unchecked_ref_cast [[CASTED_INPUT]]
-// CHECK-NEXT: store [[UNCAST_INPUT:%.*]] to [init] [[INPUT]]
+// CHECK-NEXT: store [[UNCAST_INPUT:%.*]] to [[INPUT]]
 // CHECK-NEXT: br [[FAIL_EXIT_TRAMPOLINE]]
 //
 // CHECK: [[FAIL_EXIT_TRAMPOLINE]]:
@@ -251,7 +251,7 @@ bb4:
 sil [ossa] @nsobject_test_take_on_success_string : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $String
   br bb1
 
@@ -276,7 +276,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_copy_on_success_string : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $String
 // CHECK:   br bb1
 //
@@ -285,7 +285,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSString, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -321,7 +321,7 @@ bb4:
 sil [ossa] @nsobject_test_copy_on_success_string : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $String
   br bb1
 
@@ -347,7 +347,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_always_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Array<Any>
 // CHECK:   br bb1
 //
@@ -390,7 +390,7 @@ bb4:
 sil [ossa] @nsobject_test_take_always_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Array<Any>
   br bb1
 
@@ -414,7 +414,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_on_success_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Array<Any>
 // CHECK:   br bb1
 //
@@ -423,7 +423,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSArray, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -445,7 +445,7 @@ bb4:
 // CHECK: [[COND_CAST_FAIL]]:
 // CHECK-NEXT: dealloc_stack
 // CHECK-NEXT: [[UNCASTED_INPUT:%.*]] = unchecked_ref_cast [[CASTED_INPUT]]
-// CHECK-NEXT: store [[UNCASTED_INPUT]] to [init] [[INPUT]]
+// CHECK-NEXT: store [[UNCASTED_INPUT]] to [[INPUT]]
 // CHECK-NEXT: br [[FAIL_EXIT_TRAMPOLINE]]
 //
 // CHECK: [[FAIL_EXIT_TRAMPOLINE]]:
@@ -461,7 +461,7 @@ bb4:
 sil [ossa] @nsobject_test_take_on_success_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Array<Any>
   br bb1
 
@@ -486,7 +486,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_copy_on_success_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Array<Any>
 // CHECK:   br bb1
 //
@@ -495,7 +495,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSArray, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -531,7 +531,7 @@ bb4:
 sil [ossa] @nsobject_test_copy_on_success_array_of_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Array<Any>
   br bb1
 
@@ -557,7 +557,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_always_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Dictionary<AnyHashable, Any>
 // CHECK:   br bb1
 //
@@ -600,7 +600,7 @@ bb4:
 sil [ossa] @nsobject_test_take_always_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Dictionary<AnyHashable, Any>
   br bb1
 
@@ -624,7 +624,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_on_success_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Dictionary<AnyHashable, Any>
 // CHECK:   br bb1
 //
@@ -633,7 +633,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSDictionary, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -655,7 +655,7 @@ bb4:
 // CHECK: [[COND_CAST_FAIL]]:
 // CHECK-NEXT: dealloc_stack
 // CHECK-NEXT: [[UNCASTED_INPUT:%.*]] = unchecked_ref_cast [[CASTED_INPUT]]
-// CHECK-NEXT: store [[UNCASTED_INPUT]] to [init] [[INPUT]]
+// CHECK-NEXT: store [[UNCASTED_INPUT]] to [[INPUT]]
 // CHECK-NEXT: br [[FAIL_EXIT_TRAMPOLINE]]
 //
 // CHECK: [[FAIL_EXIT_TRAMPOLINE]]:
@@ -671,7 +671,7 @@ bb4:
 sil [ossa] @nsobject_test_take_on_success_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Dictionary<AnyHashable, Any>
   br bb1
 
@@ -696,7 +696,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_copy_on_success_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Dictionary<AnyHashable, Any>
 // CHECK:   br bb1
 //
@@ -705,7 +705,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSDictionary, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -741,7 +741,7 @@ bb4:
 sil [ossa] @nsobject_test_copy_on_success_dictionary_anyhashable_to_any : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Dictionary<AnyHashable, Any>
   br bb1
 
@@ -767,7 +767,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_always_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Set<AnyHashable>
 // CHECK:   br bb1
 //
@@ -810,7 +810,7 @@ bb4:
 sil [ossa] @nsobject_test_take_always_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Set<AnyHashable>
   br bb1
 
@@ -834,7 +834,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_take_on_success_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Set<AnyHashable>
 // CHECK:   br bb1
 //
@@ -843,7 +843,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSSet, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -865,7 +865,7 @@ bb4:
 // CHECK: [[COND_CAST_FAIL]]:
 // CHECK-NEXT: dealloc_stack
 // CHECK-NEXT: [[UNCASTED_INPUT:%.*]] = unchecked_ref_cast [[CASTED_INPUT]]
-// CHECK-NEXT: store [[UNCASTED_INPUT]] to [init] [[INPUT]]
+// CHECK-NEXT: store [[UNCASTED_INPUT]] to [[INPUT]]
 // CHECK-NEXT: br [[FAIL_EXIT_TRAMPOLINE]]
 //
 // CHECK: [[FAIL_EXIT_TRAMPOLINE]]:
@@ -881,7 +881,7 @@ bb4:
 sil [ossa] @nsobject_test_take_on_success_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Set<AnyHashable>
   br bb1
 
@@ -906,7 +906,7 @@ bb4:
 // CHECK-LABEL: sil [ossa] @nsobject_test_copy_on_success_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[INPUT:%.*]] = alloc_stack $NSObject
-// CHECK:   store [[ARG]] to [init] [[INPUT]] :
+// CHECK:   store [[ARG]] to [[INPUT]] :
 // CHECK:   [[OUTPUT:%.*]] = alloc_stack $Set<AnyHashable>
 // CHECK:   br bb1
 //
@@ -915,7 +915,7 @@ bb4:
 // CHECK:   checked_cast_br [[LOADED_INPUT]] : $NSObject to NSSet, [[YES_BB:bb[0-9]+]], [[NO_BB:bb[0-9]+]]
 //
 // CHECK: [[NO_BB]]([[DEFAULT_ARG:%.*]] :
-// CHECK-NEXT:   store [[DEFAULT_ARG]] to [init] [[INPUT]]
+// CHECK-NEXT:   store [[DEFAULT_ARG]] to [[INPUT]]
 // CHECK-NEXT:   br [[FAIL_EXIT_TRAMPOLINE:bb[0-9]+]]
 //
 // CHECK: [[YES_BB]]([[CASTED_INPUT:%.*]] :
@@ -951,7 +951,7 @@ bb4:
 sil [ossa] @nsobject_test_copy_on_success_set_anyhashable : $@convention(thin) (@owned NSObject) -> () {
 bb0(%0 : @owned $NSObject):
   %nsSource = alloc_stack $NSObject
-  store %0 to [init] %nsSource : $*NSObject
+  store %0 to %nsSource : $*NSObject
   %stringDest = alloc_stack $Set<AnyHashable>
   br bb1
 
@@ -984,7 +984,7 @@ sil [ossa] @array_to_nsarray_conditional_copy_on_success : $@convention(thin) (@
 bb0(%0 : @owned $Array<NSObject>):
   %1 = alloc_stack $Array<NSObject>
   %2 = alloc_stack $NSArray
-  store %0 to [init] %1 : $*Array<NSObject>
+  store %0 to %1 : $*Array<NSObject>
   checked_cast_addr_br copy_on_success Array<NSObject> in %1 : $*Array<NSObject> to NSArray in %2 : $*NSArray, bb1, bb2
 
 bb1:
@@ -1009,7 +1009,7 @@ sil [ossa] @array_to_nsarray_conditional_take_on_success : $@convention(thin) (@
 bb0(%0 : @owned $Array<NSObject>):
   %1 = alloc_stack $Array<NSObject>
   %2 = alloc_stack $NSArray
-  store %0 to [init] %1 : $*Array<NSObject>
+  store %0 to %1 : $*Array<NSObject>
   checked_cast_addr_br take_on_success Array<NSObject> in %1 : $*Array<NSObject> to NSArray in %2 : $*NSArray, bb1, bb2
 
 bb1:
@@ -1034,7 +1034,7 @@ sil [ossa] @array_to_nsarray_conditional_take_always : $@convention(thin) (@owne
 bb0(%0 : @owned $Array<NSObject>):
   %1 = alloc_stack $Array<NSObject>
   %2 = alloc_stack $NSArray
-  store %0 to [init] %1 : $*Array<NSObject>
+  store %0 to %1 : $*Array<NSObject>
   checked_cast_addr_br take_always Array<NSObject> in %1 : $*Array<NSObject> to NSArray in %2 : $*NSArray, bb1, bb2
 
 bb1:
@@ -1060,7 +1060,7 @@ sil [ossa] @array_to_nsarray_unconditional_loadable_address : $@convention(thin)
 bb0(%0 : @owned $Array<NSObject>):
   %1 = alloc_stack $Array<NSObject>
   %2 = alloc_stack $NSArray
-  store %0 to [init] %1 : $*Array<NSObject>
+  store %0 to %1 : $*Array<NSObject>
   unconditional_checked_cast_addr Array<NSObject> in %1 : $*Array<NSObject> to NSArray in %2 : $*NSArray
   %3 = function_ref @nsarray_user : $@convention(thin) (@in_guaranteed NSArray) -> ()
   apply %3(%2) : $@convention(thin) (@in_guaranteed NSArray) -> ()

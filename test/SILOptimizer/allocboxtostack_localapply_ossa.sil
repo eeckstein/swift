@@ -23,7 +23,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @$testapplybas : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = apply %5(%0) : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   destroy_value %0 : ${ var Int64 }
@@ -38,7 +38,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %4 = load [trivial] %3 : $*Int64
   end_access %3 : $*Int64
   %6 = alloc_stack $Int64
-  store %4 to [trivial] %6 : $*Int64
+  store %4 to %6 : $*Int64
   %8 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %9 = apply %8<Int64>(%6) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %6 : $*Int64
@@ -65,7 +65,7 @@ bb0:
   %2 = project_box %1 : ${ var Int64 }, 0
   %3 = integer_literal $Builtin.Int64, 0
   %4 = struct $Int64 (%3 : $Builtin.Int64)
-  store %4 to [trivial] %2 : $*Int64
+  store %4 to %2 : $*Int64
   %6 = function_ref @$testtryapplybas : $@convention(thin) (@guaranteed { var Int64 }) -> @error Error
   try_apply %6(%1) : $@convention(thin) (@guaranteed { var Int64 }) -> @error Error, normal bb1, error bb2
 bb1(%8 : $()):
@@ -84,7 +84,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %5 = load [trivial] %4 : $*Int64
   end_access %4 : $*Int64
   %7 = alloc_stack $Int64
-  store %5 to [trivial] %7 : $*Int64
+  store %5 to %7 : $*Int64
   %9 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %10 = apply %9<Int64>(%7) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %7 : $*Int64
@@ -115,7 +115,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @$testpartialapplyclosure : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = apply %5(%0) : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   destroy_value %0 : ${ var Int64 }
@@ -130,7 +130,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %4 = load [trivial] %3 : $*Int64
   end_access %3 : $*Int64
   %6 = alloc_stack $Int64
-  store %4 to [trivial] %6 : $*Int64
+  store %4 to %6 : $*Int64
   %8 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %9 = apply %8<Int64>(%6) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %6 : $*Int64
@@ -167,12 +167,12 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = alloc_box ${ var Int64 }, var, name "y"
   %6 = project_box %5 : ${ var Int64 }, 0
   %7 = integer_literal $Builtin.Int64, 0
   %8 = struct $Int64 (%7 : $Builtin.Int64)
-  store %8 to [trivial] %6 : $*Int64
+  store %8 to %6 : $*Int64
   %10 = function_ref @$testtwoboxesbas : $@convention(thin) (@guaranteed { var Int64 }, @guaranteed { var Int64 }) -> ()
   %11 = apply %10(%0, %5) : $@convention(thin) (@guaranteed { var Int64 }, @guaranteed { var Int64 }) -> ()
   destroy_value %5 : ${ var Int64 }
@@ -189,7 +189,7 @@ bb0(%0 : @guaranteed ${ var Int64 }, %1 : @guaranteed ${ var Int64 }):
   %7 = load [trivial] %6 : $*Int64
   end_access %6 : $*Int64
   %9 = alloc_stack $Int64
-  store %7 to [trivial] %9 : $*Int64
+  store %7 to %9 : $*Int64
   %11 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %12 = apply %11<Int64>(%9) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %9 : $*Int64
@@ -197,7 +197,7 @@ bb0(%0 : @guaranteed ${ var Int64 }, %1 : @guaranteed ${ var Int64 }):
   %15 = load [trivial] %14 : $*Int64
   end_access %14 : $*Int64
   %17 = alloc_stack $Int64
-  store %15 to [trivial] %17 : $*Int64
+  store %15 to %17 : $*Int64
   %19 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %20 = apply %19<Int64>(%17) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %17 : $*Int64
@@ -224,7 +224,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @$testboxescapesbas : $@convention(thin) (@guaranteed { var Int64 }) -> @owned @callee_guaranteed () -> ()
   %6 = apply %5(%0) : $@convention(thin) (@guaranteed { var Int64 }) -> @owned @callee_guaranteed () -> ()
   destroy_value %0 : ${ var Int64 }
@@ -265,7 +265,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @$testrecurbas : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = apply %5(%0) : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %7 = function_ref @$testrecurbar : $@convention(thin) (@guaranteed { var Int64 }) -> ()
@@ -282,7 +282,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %4 = load [trivial] %3 : $*Int64
   end_access %3 : $*Int64
   %6 = alloc_stack $Int64
-  store %4 to [trivial] %6 : $*Int64
+  store %4 to %6 : $*Int64
   %8 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %9 = apply %8<Int64>(%6) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %6 : $*Int64
@@ -311,7 +311,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @$testbeginapplybas : $@yield_once @convention(thin) (@guaranteed { var Int64 }) -> @yields ()
   (%addr, %token) = begin_apply %5(%0) : $@yield_once @convention(thin) (@guaranteed { var Int64 }) -> @yields ()
   end_apply %token
@@ -327,7 +327,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %4 = load [trivial] %3 : $*Int64
   end_access %3 : $*Int64
   %6 = alloc_stack $Int64
-  store %4 to [trivial] %6 : $*Int64
+  store %4 to %6 : $*Int64
   %8 = function_ref @$blackhole : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   %9 = apply %8<Int64>(%6) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> ()
   dealloc_stack %6 : $*Int64
@@ -367,12 +367,12 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = alloc_box ${ var Int64 }, var, name "y"
   %6 = project_box %5 : ${ var Int64 }, 0
   %7 = integer_literal $Builtin.Int64, 0
   %8 = struct $Int64 (%7 : $Builtin.Int64)
-  store %8 to [trivial] %6 : $*Int64
+  store %8 to %6 : $*Int64
   %10 = function_ref @$testdfs1common : $@convention(thin) (@guaranteed { var Int64 }, @guaranteed { var Int64 }) -> Int64
   %11 = apply %10(%0, %5) : $@convention(thin) (@guaranteed { var Int64 }, @guaranteed { var Int64 }) -> Int64
   destroy_value %5 : ${ var Int64 }
@@ -424,12 +424,12 @@ bb0:
   %1 = project_box %0 : ${ var Int }, 0
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int
+  store %3 to %1 : $*Int
   %5 = alloc_box ${ var Int }, var, name "y"
   %6 = project_box %5 : ${ var Int }, 0
   %7 = integer_literal $Builtin.Int64, 0
   %8 = struct $Int (%7 : $Builtin.Int64)
-  store %8 to [trivial] %6 : $*Int
+  store %8 to %6 : $*Int
   %10 = function_ref @$testdfs2local1 : $@convention(thin) (@guaranteed { var Int }, @guaranteed { var Int }) -> Int
   %11 = apply %10(%0, %5) : $@convention(thin) (@guaranteed { var Int }, @guaranteed { var Int }) -> Int
   %12 = function_ref @$testdfs2local2 : $@convention(thin) (@guaranteed { var Int }, @guaranteed { var Int }) -> Int

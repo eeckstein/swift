@@ -20,11 +20,11 @@ import Swift
 sil [ossa] @place_phi : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_stack $Int64, var, name "v"
-  store %0 to [trivial] %1 : $*Int64
+  store %0 to %1 : $*Int64
   %3 = alloc_stack $Int64, var, name "x"
   %4 = integer_literal $Builtin.Int64, 0
   %5 = struct $Int64 (%4 : $Builtin.Int64)
-  store %5 to [trivial] %3 : $*Int64
+  store %5 to %3 : $*Int64
   %7 = integer_literal $Builtin.Int64, 3
   %9 = struct_extract %0 : $Int64, #Int64._value
   %10 = builtin "cmp_eq_Int64"(%9 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
@@ -32,7 +32,7 @@ bb0(%0 : $Int64):
 
 bb1:
   %12 = struct $Int64 (%7 : $Builtin.Int64)
-  store %12 to [trivial] %3 : $*Int64
+  store %12 to %3 : $*Int64
   br bb6
 
 bb2:
@@ -42,7 +42,7 @@ bb2:
 
 bb3:
   %18 = struct $Int64 (%15 : $Builtin.Int64)
-  store %18 to [trivial] %3 : $*Int64
+  store %18 to %3 : $*Int64
   br bb5
 
 bb4:
@@ -55,7 +55,7 @@ bb5:
 // CHECK-NOT: alloc_stack
 bb6:
   %22 = alloc_stack $Int64, var, name "i"
-  store %5 to [trivial] %22 : $*Int64
+  store %5 to %22 : $*Int64
   br bb7
 
 // CHECK: bb7([[PHI2:%[0-9]+]] : $Int64):
@@ -77,7 +77,7 @@ bb8:
   %37 = tuple_extract %35 : $(Builtin.Int64, Builtin.Int1), 1
   %38 = struct $Int64 (%36 : $Builtin.Int64)
   cond_fail %37 : $Builtin.Int1
-  store %38 to [trivial] %22 : $*Int64
+  store %38 to %22 : $*Int64
   br bb7
 
 bb9:
@@ -100,11 +100,11 @@ bb9:
 sil [ossa] @func_loop: $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_stack $Int64, var, name "c"
-  store %0 to [trivial] %1 : $*Int64
+  store %0 to %1 : $*Int64
   %3 = alloc_stack $Int64, var, name "x"
   %4 = integer_literal $Builtin.Int64, 0
   %5 = struct $Int64 (%4 : $Builtin.Int64)
-  store %5 to [trivial] %3 : $*Int64
+  store %5 to %3 : $*Int64
   br bb1
 
 // CHECK: bb1([[VAR:%[0-9]+]] : $Int64):
@@ -125,7 +125,7 @@ bb2:
   %21 = tuple_extract %19 : $(Builtin.Int64, Builtin.Int1), 1
   %22 = struct $Int64 (%20 : $Builtin.Int64)
   cond_fail %21 : $Builtin.Int1
-  store %22 to [trivial] %3 : $*Int64
+  store %22 to %3 : $*Int64
   br bb1
 
 bb3:
@@ -154,11 +154,11 @@ bb3:
 sil [ossa] @high_nest : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_stack $Int64, var, name "c"
-  store %0 to [trivial] %1 : $*Int64
+  store %0 to %1 : $*Int64
   %3 = alloc_stack $Int64, var, name "x"
   %4 = integer_literal $Builtin.Int64, 0
   %5 = struct $Int64 (%4 : $Builtin.Int64)
-  store %5 to [trivial] %3 : $*Int64
+  store %5 to %3 : $*Int64
   %7 = integer_literal $Builtin.Int64, 1
   %9 = struct_extract %0 : $Int64, #Int64._value
   %10 = builtin "cmp_sgt_Int64"(%9 : $Builtin.Int64, %7 : $Builtin.Int64) : $Builtin.Int1
@@ -264,7 +264,7 @@ bb16:
 bb17:
   %92 = integer_literal $Builtin.Int64, 7
   %93 = struct $Int64 (%92 : $Builtin.Int64)
-  store %93 to [trivial] %3 : $*Int64
+  store %93 to %3 : $*Int64
   br bb35
 
 bb18:
@@ -362,12 +362,12 @@ bb51:
 sil [ossa] @simple_if : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_stack $Int64, var, name "c"
-  store %0 to [trivial] %1 : $*Int64
+  store %0 to %1 : $*Int64
   %3 = alloc_stack $Int64, var, name "x"
   %4 = integer_literal $Builtin.Int64, 0
 // CHECK: [[INIT:%[0-9]+]] = struct $Int64
   %5 = struct $Int64 (%4 : $Builtin.Int64)
-  store %5 to [trivial] %3 : $*Int64
+  store %5 to %3 : $*Int64
   %8 = struct_extract %0 : $Int64, #Int64._value
   %9 = builtin "cmp_sgt_Int64"(%4 : $Builtin.Int64, %8 : $Builtin.Int64) : $Builtin.Int1
   cond_br %9, bb1, bb2
@@ -376,7 +376,7 @@ bb1:
   %11 = integer_literal $Builtin.Int64, 2
 // CHECK: [[INIT2:%[0-9]+]] = struct $Int64
   %12 = struct $Int64 (%11 : $Builtin.Int64)
-  store %12 to [trivial] %3 : $*Int64
+  store %12 to %3 : $*Int64
 // CHECK: br bb3([[INIT2]] : $Int64)
   br bb3
 
@@ -405,10 +405,10 @@ sil [ossa] @test_switch: $@convention(thin) (Int64, X) -> Int64 {
 bb0(%0 : $Int64, %1 : $X):
   %2 = alloc_stack $Int64, var, name "xi"
   %3 = alloc_stack $X, var, name "c"
-  store %0 to [trivial] %2 : $*Int64
-  store %1 to [trivial] %3 : $*X
+  store %0 to %2 : $*Int64
+  store %1 to %3 : $*X
   %6 = alloc_stack $Int64, var, name "x"
-  store %0 to [trivial] %6 : $*Int64
+  store %0 to %6 : $*Int64
   %8 = tuple ()
   switch_enum %1 : $X, case #X.One!enumelt: bb1, case #X.Two!enumelt: bb3, case #X.Three!enumelt: bb5
 
@@ -418,7 +418,7 @@ bb1:
 bb2:
   %11 = integer_literal $Builtin.Int64, 3
   %12 = struct $Int64 (%11 : $Builtin.Int64)
-  store %12 to [trivial] %6 : $*Int64
+  store %12 to %6 : $*Int64
   br bb7
 
 bb3:
@@ -427,7 +427,7 @@ bb3:
 bb4:
   %16 = integer_literal $Builtin.Int64, 2
   %17 = struct $Int64 (%16 : $Builtin.Int64)
-  store %17 to [trivial] %6 : $*Int64
+  store %17 to %6 : $*Int64
   br bb7
 
 bb5:
@@ -436,7 +436,7 @@ bb5:
 bb6:
   %21 = integer_literal $Builtin.Int64, 1
   %22 = struct $Int64 (%21 : $Builtin.Int64)
-  store %22 to [trivial] %6 : $*Int64
+  store %22 to %6 : $*Int64
   br bb7
 
 bb7:

@@ -37,7 +37,7 @@ bb3(%6 : $Builtin.RawPointer) :
   %7 = pointer_to_address %6 : $Builtin.RawPointer to $*Int64
   %8 = integer_literal $Builtin.Int64, 2
   %9 = struct $Int64 (%8 : $Builtin.Int64)
-  store %9 to [trivial] %7 : $*Int64
+  store %9 to %7 : $*Int64
   %22 = tuple ()
   return %22 : $()
 }
@@ -67,7 +67,7 @@ bb3(%6 : $Builtin.RawPointer) :
   %7 = pointer_to_address %6 : $Builtin.RawPointer to $*Int64
   %8 = integer_literal $Builtin.Int64, 2
   %9 = struct $Int64 (%8 : $Builtin.Int64)
-  store %9 to [trivial] %7 : $*Int64
+  store %9 to %7 : $*Int64
   %22 = tuple ()
   return %22 : $()
 }
@@ -111,7 +111,7 @@ bb6(%9 : $Builtin.RawPointer) :
   %10 = pointer_to_address %9 : $Builtin.RawPointer to $*Int64
   %11 = integer_literal $Builtin.Int64, 2
   %12 = struct $Int64 (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*Int64
+  store %12 to %10 : $*Int64
   %22 = tuple ()
   return %22 : $()
 }
@@ -263,14 +263,14 @@ class B : A {
 }
 
 // CHECK-LABEL: @testNonUniquePropertyIndex
-// CHECK:   store %0 to [trivial] %{{.*}} : $*Int64
+// CHECK:   store %0 to %{{.*}} : $*Int64
 // CHECK: Class   %{{.*}} = alloc_ref $B
 // CHECK:   Field: var prop1: Int64 Index: 1
 // CHECK: Base:   %{{.*}} = ref_element_addr %{{.*}} : $B, #B.prop1
 // CHECK: Storage: Class   %{{.*}} = alloc_ref $B
 // CHECK:   Field: var prop1: Int64 Index: 1
 // CHECK: Path: ()
-// CHECK:   store %0 to [trivial] %{{.*}} : $*Int64
+// CHECK:   store %0 to %{{.*}} : $*Int64
 // CHECK: Class   %{{.*}} = alloc_ref $B
 // CHECK:   Field: var prop0: Int64 Index: 0
 // CHECK: Base:   %{{.*}} = ref_element_addr %{{.*}} : $A, #A.prop0
@@ -282,12 +282,12 @@ bb0(%0 : $Int64):
   %1 = alloc_ref $B
   %borrow = begin_borrow %1 : $B
   %3 = ref_element_addr %borrow : $B, #B.prop1
-  store %0 to [trivial] %3 : $*Int64
+  store %0 to %3 : $*Int64
   end_borrow %borrow : $B
   %6 = upcast %1 : $B to $A
   %borrow2 = begin_borrow %6 : $A
   %8 = ref_element_addr %borrow2 : $A, #A.prop0
-  store %0 to [trivial] %8 : $*Int64
+  store %0 to %8 : $*Int64
   end_borrow %borrow2 : $A
   destroy_value %6 : $A
   %99 = tuple ()
@@ -383,7 +383,7 @@ bb18(%0 : $*MyStruct):
 // CHECK: Base:   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
-// CHECK: ###For MemOp:   store %7 to [init] %6 : $*AnyObject
+// CHECK: ###For MemOp:   store %7 to %6 : $*AnyObject
 // CHECK: Base:   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
@@ -398,7 +398,7 @@ bb1(%5 : $Builtin.RawPointer):
   %6 = pointer_to_address %5 : $Builtin.RawPointer to [strict] $*AnyObject
   %7 = load [copy] %6 : $*AnyObject
   destroy_addr %6 : $*AnyObject
-  store %7 to [init] %6 : $*AnyObject
+  store %7 to %6 : $*AnyObject
   %9 = integer_literal $Builtin.Word, 1
   %10 = index_addr %6 : $*AnyObject, %9 : $Builtin.Word
   %11 = address_to_pointer %10 : $*AnyObject to $Builtin.RawPointer

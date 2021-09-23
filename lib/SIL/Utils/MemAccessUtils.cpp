@@ -1573,11 +1573,8 @@ bool swift::memInstMustInitialize(Operand *memOper) {
   case SILInstructionKind::InitExistentialAddrInst:
   case SILInstructionKind::InitEnumDataAddrInst:
   case SILInstructionKind::InjectEnumAddrInst:
-    return true;
-
   case SILInstructionKind::StoreInst:
-    return cast<StoreInst>(memInst)->getOwnershipQualifier()
-           == StoreOwnershipQualifier::Init;
+    return true;
 
 #define NEVER_OR_SOMETIMES_LOADABLE_CHECKED_REF_STORAGE(Name, ...) \
   case SILInstructionKind::Store##Name##Inst: \

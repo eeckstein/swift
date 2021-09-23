@@ -17,7 +17,7 @@ bb0:
   %1 = global_addr @$s4test10testGlobalSivp : $*Int64
   %2 = integer_literal $Builtin.Int64, 27
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = tuple ()
   return %5 : $()
 }
@@ -45,7 +45,7 @@ bb0(%0 : $Int64):
   %5 = integer_literal $Builtin.Int64, 42
   %6 = struct $Int64 (%5 : $Builtin.Int64)
   %7 = begin_access [modify] [dynamic] [no_nested_conflict] %4 : $*Int64
-  store %6 to [trivial] %7 : $*Int64
+  store %6 to %7 : $*Int64
   end_access %7 : $*Int64
   %33 = begin_access [read] [dynamic] [no_nested_conflict] %4 : $*Int64
   %35 = load [trivial] %33 : $*Int64

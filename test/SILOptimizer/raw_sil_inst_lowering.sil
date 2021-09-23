@@ -13,7 +13,7 @@ bb0(%0 : $*Bool, %1 : $Bool):
   // This is parsed with having an unknown init kind which is lowered as
   // assign [assign], but since this is trivial it's treated as assign [init].
   //
-  // CHECK: store %1 to [trivial] %0 : $*Bool
+  // CHECK: store %1 to %0 : $*Bool
   assign %1 to %0 : $*Bool
 
   %9 = tuple ()
@@ -27,9 +27,8 @@ bb0(%0 : $*SomeClass, %1 : @owned $SomeClass):
   // This is parsed with having an unknown init kind which is lowered as
   // assign [assign].
   //
-  // CHECK:      [[L:%[0-9]+]] = load [take] %0 : $*SomeClass
-  // CHECK-NEXT: store %1 to [init] %0 : $*SomeClass
-  // CHECK-NEXT: destroy_value [[L]]
+  // CHECK:      destroy_addr %0 : $*SomeClass
+  // CHECK-NEXT: store %1 to %0 : $*SomeClass
   assign %1 to %0 : $*SomeClass
 
   %9 = tuple ()
@@ -42,7 +41,7 @@ sil [ossa] @non_box_assign_init : $@convention(thin) (@owned SomeClass) -> @out 
 bb0(%0 : $*SomeClass, %1 : @owned $SomeClass):
   // Explicitly check that assign [init] is treated as store [init]
   //
-  // CHECK: store %1 to [init] %0 : $*SomeClass
+  // CHECK: store %1 to %0 : $*SomeClass
   assign %1 to [init] %0 : $*SomeClass
 
   %9 = tuple ()
@@ -55,9 +54,8 @@ sil [ossa] @non_box_assign_reassign : $@convention(thin) (@inout SomeClass, @own
 bb0(%0 : $*SomeClass, %1 : @owned $SomeClass):
   // Explicitly check that assign [reassign] is treated as store [assign]
   //
-  // CHECK:      [[L:%[0-9]+]] = load [take] %0 : $*SomeClass
-  // CHECK-NEXT: store %1 to [init] %0 : $*SomeClass
-  // CHECK-NEXT: destroy_value [[L]]
+  // CHECK:      destroy_addr %0 : $*SomeClass
+  // CHECK-NEXT: store %1 to %0 : $*SomeClass
   assign %1 to [reassign] %0 : $*SomeClass
 
   %9 = tuple ()
@@ -72,7 +70,7 @@ bb0(%0 : $*SomeClass, %1 : @owned $SomeClass):
   // and dealloc_partial_ref
   //
   // CHECK: [[LOAD:%[0-9]+]] = load [take] %0 : $*SomeClass
-  // CHECK-NEXT: store %1 to [init] %0 : $*SomeClass
+  // CHECK-NEXT: store %1 to %0 : $*SomeClass
   // CHECK-NEXT: [[METATYPE:%[0-9]+]] = value_metatype $@thick SomeClass.Type, [[LOAD]] : $SomeClass
   // CHECK-NEXT: dealloc_partial_ref [[LOAD]] : $SomeClass, [[METATYPE]] : $@thick SomeClass.Type
   assign %1 to [reinit] %0 : $*SomeClass
@@ -102,7 +100,7 @@ sil @set_closure : $@convention(method) (@owned SomeClass, @inout RefStruct) -> 
 // CHECK:   [[P:%[0-9]+]] = partial_apply [callee_guaranteed] [[C]]()
 // CHECK-NOT: partial_apply
 // CHECK:   [[R:%[0-9]+]] = apply [[P]](%0)
-// CHECK:   store [[R]] to [init] [[E]]
+// CHECK:   store [[R]] to [[E]]
 // CHECK: } // end sil function 'assign_by_wrapper_initialization_direct'
 sil [ossa] @assign_by_wrapper_initialization_direct : $@convention(method) (@owned SomeClass) -> @owned RefStruct {
 bb0(%0 : @owned $SomeClass):
@@ -150,13 +148,13 @@ bb0(%0 : @owned $SomeClass):
 // CHECK:   [[P:%[0-9]+]] = partial_apply [callee_guaranteed] [[C]]()
 // CHECK-NOT: partial_apply
 // CHECK:   [[R:%[0-9]+]] = apply [[P]](%0)
-// CHECK:   store [[R]] to [init] [[E]]
+// CHECK:   store [[R]] to [[E]]
 // CHECK: } // end sil function 'assign_by_wrapper_assign_direct'
 sil [ossa] @assign_by_wrapper_assign_direct : $@convention(method) (@owned SomeClass, @owned Wrapper<SomeClass>) -> @owned RefStruct {
 bb0(%0 : @owned $SomeClass, %1 : @owned $Wrapper<SomeClass>):
   %2 = alloc_stack $RefStruct
   %7 = struct_element_addr %2 : $*RefStruct, #RefStruct._wrapped
-  store %1 to [init] %7 : $*Wrapper<SomeClass>
+  store %1 to %7 : $*Wrapper<SomeClass>
   %8 = function_ref @init_closure : $@convention(thin) (@owned SomeClass) -> @owned Wrapper<SomeClass>
   %9 = partial_apply [callee_guaranteed] %8() : $@convention(thin) (@owned SomeClass) -> @owned Wrapper<SomeClass>
   %10 = function_ref @set_closure : $@convention(method) (@owned SomeClass, @inout RefStruct) -> ()
@@ -181,7 +179,7 @@ sil [ossa] @assign_by_wrapper_assign_indirect : $@convention(method) (@owned Som
 bb0(%0 : @owned $SomeClass, %1 : @owned $Wrapper<SomeClass>):
   %2 = alloc_stack $RefStruct
   %7 = struct_element_addr %2 : $*RefStruct, #RefStruct._wrapped
-  store %1 to [init] %7 : $*Wrapper<SomeClass>
+  store %1 to %7 : $*Wrapper<SomeClass>
   %8 = function_ref @init_closure_indirect : $@convention(thin) (@owned SomeClass) -> @out Wrapper<SomeClass>
   %9 = partial_apply [callee_guaranteed] %8() : $@convention(thin) (@owned SomeClass) -> @out Wrapper<SomeClass>
   %10 = function_ref @set_closure : $@convention(method) (@owned SomeClass, @inout RefStruct) -> ()
@@ -205,7 +203,7 @@ bb0(%0 : @owned $SomeClass, %1 : @owned $Wrapper<SomeClass>):
 sil [ossa] @assign_by_wrapper_assign_wrapped_value : $@convention(method) (@owned SomeClass, @owned RefStruct) -> @owned RefStruct {
 bb0(%0 : @owned $SomeClass, %1 : @owned $RefStruct):
   %2 = alloc_stack $RefStruct
-  store %1 to [init] %2 : $*RefStruct
+  store %1 to %2 : $*RefStruct
   %7 = struct_element_addr %2 : $*RefStruct, #RefStruct._wrapped
   %8 = function_ref @init_closure : $@convention(thin) (@owned SomeClass) -> @owned Wrapper<SomeClass>
   %9 = partial_apply [callee_guaranteed] %8() : $@convention(thin) (@owned SomeClass) -> @owned Wrapper<SomeClass>

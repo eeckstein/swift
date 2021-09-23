@@ -24,7 +24,7 @@ sil [ossa] @witness_method_impl : $@convention(witness_method: Decodable) (@owne
 bb0(%0 : $*Item, %1 : @owned $Dictionary<String, Any>, %2 : $@thick Item.Type):
   %3 = class_method %2 : $@thick Item.Type, #Item.init!allocator : (Item.Type) -> ([String : Any]) -> Item, $@convention(method) (@owned Dictionary<String, Any>, @thick Item.Type) -> @owned Item
   %4 = apply %3(%1, %2) : $@convention(method) (@owned Dictionary<String, Any>, @thick Item.Type) -> @owned Item
-  store %4 to [init] %0 : $*Item
+  store %4 to %0 : $*Item
   %6 = tuple ()
   return %6 : $()
 }

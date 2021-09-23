@@ -246,7 +246,7 @@ func testInitializableExistential(_ im: Initializable.Type, i: Int) -> Initializ
   // CHECK:   [[INIT_WITNESS:%[0-9]+]] = objc_method [[I2_ALLOC]] : $@opened([[N]]) Initializable, #Initializable.init!initializer.foreign : {{.*}}
   // CHECK:   [[I2:%[0-9]+]] = apply [[INIT_WITNESS]]<@opened([[N]]) Initializable>([[I]], [[I2_ALLOC]]) : $@convention(objc_method) <τ_0_0 where τ_0_0 : Initializable> (Int, @owned τ_0_0) -> @owned τ_0_0
   // CHECK:   [[I2_EXIST_CONTAINER:%[0-9]+]] = init_existential_ref [[I2]] : $@opened([[N]]) Initializable : $@opened([[N]]) Initializable, $Initializable
-  // CHECK:   store [[I2_EXIST_CONTAINER]] to [init] [[PB]] : $*Initializable
+  // CHECK:   store [[I2_EXIST_CONTAINER]] to [[PB]] : $*Initializable
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*Initializable
   // CHECK:   [[I2:%[0-9]+]] = load [copy] [[READ]] : $*Initializable
   // CHECK:   destroy_value [[I2_BOX]] : ${ var Initializable }
@@ -300,7 +300,7 @@ public protocol DangerousEscaper {
 // CHECK:  [[WITHOUT_ESCAPING_COPY:%.*]] = copy_value [[WITHOUT_ESCAPING]] : $@callee_guaranteed () -> ()
 // CHECK:  [[BLOCK:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> ()
 // CHECK:  [[BLOCK_ADDR:%.*]] = project_block_storage [[BLOCK]] : $*@block_storage @callee_guaranteed () -> ()
-// CHECK:  store [[WITHOUT_ESCAPING_COPY]] to [init] [[BLOCK_ADDR]] : $*@callee_guaranteed () -> ()
+// CHECK:  store [[WITHOUT_ESCAPING_COPY]] to [[BLOCK_ADDR]] : $*@callee_guaranteed () -> ()
 // CHECK:  [[BLOCK_INVOKE:%.*]] = function_ref @$sIeg_IyB_TR : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
 // CHECK:  [[BLOCK_CLOSURE:%.*]] = init_block_storage_header [[BLOCK]] : $*@block_storage @callee_guaranteed () -> (), invoke [[BLOCK_INVOKE]] : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> (), type $@convention(block) @noescape () -> ()
 // CHECK:  [[BLOCK_CLOSURE_COPY:%.*]] = copy_block_without_escaping [[BLOCK_CLOSURE]] : $@convention(block) @noescape () -> () withoutEscaping [[WITHOUT_ESCAPING]] : $@callee_guaranteed () -> ()

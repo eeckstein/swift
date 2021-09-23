@@ -34,7 +34,7 @@ func testAddrOnlyCallResult<T>(_ f: (() -> T)?) {
 // CHECK: [[F:%.*]] = alloc_box $<τ_0_0> { var Optional<@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <τ_0_0>> } <T>, var, name "f"
 // CHECK-NEXT: [[PBF:%.*]] = project_box [[F]]
 // CHECK: [[T0_COPY:%.*]] = copy_value [[T0]]
-// CHECK: store [[T0_COPY]] to [init] [[PBF]]
+// CHECK: store [[T0_COPY]] to [[PBF]]
 // CHECK-NEXT: [[X:%.*]] = alloc_box $<τ_0_0> { var Optional<τ_0_0> } <T>, var, name "x"
 // CHECK-NEXT: [[PBX:%.*]] = project_box [[X]]
 // CHECK-NEXT: [[TEMP:%.*]] = init_enum_data_addr [[PBX]]

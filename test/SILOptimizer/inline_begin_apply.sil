@@ -245,7 +245,7 @@ sil [transparent] [ossa] [ossa] @yield_inout : $@yield_once() -> (@yields @inout
 entry:
   %addr = alloc_stack $Builtin.Int8
   %8 = integer_literal $Builtin.Int8, 8
-  store %8 to [trivial] %addr : $*Builtin.Int8
+  store %8 to %addr : $*Builtin.Int8
   yield %addr : $*Builtin.Int8, resume resume, unwind unwind
 
 resume:
@@ -268,12 +268,12 @@ unwind:
 // CHECK:      bb0(%0 : $Builtin.Int1):
 // CHECK-NEXT:   %1 = alloc_stack $Builtin.Int8
 // CHECK-NEXT:   %2 = integer_literal $Builtin.Int8, 8
-// CHECK-NEXT:   store %2 to [trivial] %1 : $*Builtin.Int8
+// CHECK-NEXT:   store %2 to %1 : $*Builtin.Int8
 // CHECK-NEXT:   cond_br %0, bb1, bb2
 
 // CHECK:      bb1:
 // CHECK-NEXT:   [[T0:%.*]] = integer_literal $Builtin.Int8, 8
-// CHECK-NEXT:   store [[T0]] to [trivial] %1 : $*Builtin.Int8
+// CHECK-NEXT:   store [[T0]] to %1 : $*Builtin.Int8
 // CHECK-NEXT:   // function_ref
 // CHECK-NEXT:   [[USE:%.*]] = function_ref @use : $@convention(thin) (@in Builtin.Int8) -> ()
 // CHECK-NEXT:   apply [[USE]](%1) : $@convention(thin) (@in Builtin.Int8) -> ()
@@ -302,7 +302,7 @@ entry(%flag : $Builtin.Int1):
 
 yes:
   %8 = integer_literal $Builtin.Int8, 8
-  store %8 to [trivial] %addr : $*Builtin.Int8
+  store %8 to %addr : $*Builtin.Int8
   end_apply %token
   br cont
 
@@ -401,7 +401,7 @@ entry:
   %marker = function_ref @marker : $@convention(thin) (Builtin.Int32) -> ()
   %temp = alloc_stack $Builtin.Int32
   %1000 = integer_literal $Builtin.Int32, 1000
-  store %1000 to [trivial] %temp : $*Builtin.Int32
+  store %1000 to %temp : $*Builtin.Int32
   %2000 = integer_literal $Builtin.Int32, 2000
   apply %marker(%2000) : $@convention(thin) (Builtin.Int32) -> ()
   yield %temp : $*Builtin.Int32, resume resume, unwind unwind
@@ -427,7 +427,7 @@ unwind:
 // CHECK-NEXT:    [[MARKER:%.*]] = function_ref @marker
 // CHECK-NEXT:    [[A32:%.*]] = alloc_stack $Builtin.Int32
 // CHECK-NEXT:    [[I1000:%.*]] = integer_literal $Builtin.Int32, 1000
-// CHECK-NEXT:    store [[I1000]] to [trivial] [[A32]]
+// CHECK-NEXT:    store [[I1000]] to [[A32]]
 // CHECK-NEXT:    [[I2000:%.*]] = integer_literal $Builtin.Int32, 2000
 // CHECK-NEXT:    apply [[MARKER]]([[I2000]])
 // CHECK-NEXT:    [[I3000:%.*]] = integer_literal $Builtin.Int32, 3000
@@ -458,7 +458,7 @@ bb0:
 // CHECK-NEXT:    [[MARKER:%.*]] = function_ref @marker
 // CHECK-NEXT:    [[A32:%.*]] = alloc_stack $Builtin.Int32
 // CHECK-NEXT:    [[I1000:%.*]] = integer_literal $Builtin.Int32, 1000
-// CHECK-NEXT:    store [[I1000]] to [trivial] [[A32]]
+// CHECK-NEXT:    store [[I1000]] to [[A32]]
 // CHECK-NEXT:    [[I2000:%.*]] = integer_literal $Builtin.Int32, 2000
 // CHECK-NEXT:    apply [[MARKER]]([[I2000]])
 // CHECK-NEXT:    [[A16:%.*]] = alloc_stack $Builtin.Int16

@@ -21,7 +21,7 @@ func test0() throws {
   // CHECK: [[ERR_TEMP1:%.*]] = alloc_stack $@sil_unmanaged Optional<NSError>
   // CHECK: [[T0:%.*]] = load_borrow [[ERR_TEMP0]]
   // CHECK: [[T1:%.*]] = ref_to_unmanaged [[T0]]
-  // CHECK: store [[T1]] to [trivial] [[ERR_TEMP1]]
+  // CHECK: store [[T1]] to [[ERR_TEMP1]]
   // CHECK: address_to_pointer [[ERR_TEMP1]]
 
   //   Call the method.
@@ -74,7 +74,7 @@ extension NSObject {
 // CHECK:   [[T1:%.*]] = apply [[T0]]([[ERR]])
 // CHECK:   [[OBJCERR:%.*]] = enum $Optional<NSError>, #Optional.some!enumelt, [[T1]] : $NSError
 // CHECK:   [[TEMP:%.*]] = alloc_stack $Optional<NSError>
-// CHECK:   store [[OBJCERR]] to [init] [[TEMP]]
+// CHECK:   store [[OBJCERR]] to [[TEMP]]
 // CHECK:   [[SETTER:%.*]] = function_ref @$sSA7pointeexvs :
 // CHECK:   apply [[SETTER]]<Optional<NSError>>([[TEMP]], [[UNWRAPPED_OUT]])
 // CHECK:   dealloc_stack [[TEMP]]
@@ -117,7 +117,7 @@ extension NSObject {
 // CHECK:   [[T1:%.*]] = apply [[T0]]([[ERR]])
 // CHECK:   [[OBJCERR:%.*]] = enum $Optional<NSError>, #Optional.some!enumelt, [[T1]] : $NSError
 // CHECK:   [[TEMP:%.*]] = alloc_stack $Optional<NSError>
-// CHECK:   store [[OBJCERR]] to [init] [[TEMP]]
+// CHECK:   store [[OBJCERR]] to [[TEMP]]
 // CHECK:   [[SETTER:%.*]] = function_ref @$sSA7pointeexvs :
 // CHECK:   apply [[SETTER]]<Optional<NSError>>([[TEMP]], [[UNWRAPPED_OUT]])
 // CHECK:   dealloc_stack [[TEMP]]
@@ -196,7 +196,7 @@ class VeryErrorProne : ErrorProne {
 // CHECK:      [[BOX:%.*]] = alloc_box ${ var VeryErrorProne }
 // CHECK:      [[MARKED_BOX:%.*]] = mark_uninitialized [derivedself] [[BOX]]
 // CHECK:      [[PB:%.*]] = project_box [[MARKED_BOX]]
-// CHECK:      store [[ARG2]] to [init] [[PB]]
+// CHECK:      store [[ARG2]] to [[PB]]
 // CHECK:      [[T0:%.*]] = load [take] [[PB]]
 // CHECK-NEXT: [[T1:%.*]] = upcast [[T0]] : $VeryErrorProne to $ErrorProne
 // CHECK:      [[BORROWED_ARG1:%.*]] = begin_borrow [[ARG1]]

@@ -142,7 +142,7 @@ bb0:
   %3 = alloc_stack $Int32                           // users: %6, %7, %8
   %4 = integer_literal $Builtin.Int32, 5            // user: %5
   %5 = struct $Int32 (%4 : $Builtin.Int32)          // user: %6
-  store %5 to [trivial] %3 : $*Int32                        // id: %6
+  store %5 to %3 : $*Int32                        // id: %6
   %7 = apply %1<Int32>(%0, %3, %2) : $@convention(thin) <τ_0_0> (@in τ_0_0, @thin XXX<τ_0_0>.Type) -> @out XXX<τ_0_0>
   dealloc_stack %3 : $*Int32       // id: %8
   // function_ref specialize.acceptsInt (Swift.Int32) -> ()
@@ -152,7 +152,7 @@ bb0:
   %11 = alloc_stack $Int32                          // users: %14, %15, %17
   %12 = integer_literal $Builtin.Int32, 4           // user: %13
   %13 = struct $Int32 (%12 : $Builtin.Int32)        // user: %14
-  store %13 to [trivial] %11 : $*Int32                      // id: %14
+  store %13 to %11 : $*Int32                      // id: %14
   %15 = apply %10<Int32>(%11, %0) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %16
   %16 = apply %9(%15) : $@convention(thin) (Int32) -> ()
   dealloc_stack %11 : $*Int32      // id: %17
@@ -171,7 +171,7 @@ bb0:
   %3 = alloc_stack $UInt8                         // users: %6, %7, %8
   %4 = integer_literal $Builtin.Int8, 5           // user: %5
   %5 = struct $UInt8 (%4 : $Builtin.Int8)         // user: %6
-  store %5 to [trivial] %3 : $*UInt8                      // id: %6
+  store %5 to %3 : $*UInt8                      // id: %6
   %7 = apply %1<UInt8>(%0, %3, %2) : $@convention(thin) <τ_0_0> (@in τ_0_0, @thin XXX<τ_0_0>.Type) -> @out XXX<τ_0_0>
   dealloc_stack %3 : $*UInt8     // id: %8
   // function_ref specialize.acceptsInt (Swift.Int32) -> ()
@@ -181,7 +181,7 @@ bb0:
   %11 = alloc_stack $UInt8                        // users: %14, %15, %17
   %12 = integer_literal $Builtin.Int8, 4          // user: %13
   %13 = struct $UInt8 (%12 : $Builtin.Int8)       // user: %14
-  store %13 to [trivial] %11 : $*UInt8                    // id: %14
+  store %13 to %11 : $*UInt8                    // id: %14
   %15 = apply %10<UInt8>(%11, %0) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %16
   %16 = apply %9(%15) : $@convention(thin) (Int32) -> ()
   dealloc_stack %11 : $*UInt8    // id: %17
@@ -198,7 +198,7 @@ bb0(%arg : @guaranteed $Builtin.NativeObject):
   %2 = metatype $@thin XXX<Builtin.NativeObject>.Type            // user: %7
   %3 = alloc_stack $Builtin.NativeObject                         // users: %6, %7, %8
   %arg1 = copy_value %arg : $Builtin.NativeObject
-  store %arg1 to [init] %3 : $*Builtin.NativeObject                      // id: %6
+  store %arg1 to %3 : $*Builtin.NativeObject                      // id: %6
   %7 = apply %1<Builtin.NativeObject>(%0, %3, %2) : $@convention(thin) <τ_0_0> (@in τ_0_0, @thin XXX<τ_0_0>.Type) -> @out XXX<τ_0_0>
   dealloc_stack %3 : $*Builtin.NativeObject     // id: %8
 
@@ -206,7 +206,7 @@ bb0(%arg : @guaranteed $Builtin.NativeObject):
   %3g = alloc_stack $Builtin.NativeObject                         // users: %6, %7, %8
   %3g_out = alloc_stack $XXX<Builtin.NativeObject>                         // users: %6, %7, %8
   %arg1g = copy_value %arg : $Builtin.NativeObject
-  store %arg1g to [init] %3g : $*Builtin.NativeObject                      // id: %6
+  store %arg1g to %3g : $*Builtin.NativeObject                      // id: %6
   %7g = apply %1<Builtin.NativeObject>(%3g_out, %3g, %2) : $@convention(thin) <τ_0_0> (@in τ_0_0, @thin XXX<τ_0_0>.Type) -> @out XXX<τ_0_0>
   destroy_addr %3g_out : $*XXX<Builtin.NativeObject>
   dealloc_stack %3g_out : $*XXX<Builtin.NativeObject>
@@ -218,7 +218,7 @@ bb0(%arg : @guaranteed $Builtin.NativeObject):
   %10 = function_ref @XXX_foo : $@convention(method) <τ_0_0> (@in τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %15
   %11 = alloc_stack $Builtin.NativeObject                        // users: %14, %15, %17
   %arg2 = copy_value %arg : $Builtin.NativeObject
-  store %arg2 to [init] %11 : $*Builtin.NativeObject
+  store %arg2 to %11 : $*Builtin.NativeObject
   %15 = apply %10<Builtin.NativeObject>(%11, %0) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %16
   %16 = apply %9(%15) : $@convention(thin) (Int32) -> ()
   dealloc_stack %11 : $*Builtin.NativeObject    // id: %17
@@ -226,7 +226,7 @@ bb0(%arg : @guaranteed $Builtin.NativeObject):
   %10g = function_ref @XXX_foo_guaranteed : $@convention(method) <τ_0_0> (@in_guaranteed τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %15
   %11g = alloc_stack $Builtin.NativeObject                        // users: %14, %15, %17
   %arg2g = copy_value %arg : $Builtin.NativeObject
-  store %arg2g to [init] %11g : $*Builtin.NativeObject
+  store %arg2g to %11g : $*Builtin.NativeObject
   %15g = apply %10g<Builtin.NativeObject>(%11g, %0) : $@convention(method) <τ_0_0> (@in_guaranteed τ_0_0, @inout XXX<τ_0_0>) -> Int32 // user: %16
   apply %9(%15g) : $@convention(thin) (Int32) -> ()
   destroy_addr %11g : $*Builtin.NativeObject
@@ -282,13 +282,13 @@ bb0:
   %0 = alloc_stack $UInt8, var, name "i"               // users: %3, %18
   %1 = integer_literal $Builtin.Int8, 5           // user: %2
   %2 = struct $UInt8 (%1 : $Builtin.Int8)         // users: %3, %7
-  store %2 to [trivial] %0 : $*UInt8                      // id: %3
+  store %2 to %0 : $*UInt8                      // id: %3
   // function_ref specialize.useClosure <A>(fun : () -> A) -> A
   %4 = function_ref @useClosure : $@convention(thin) <τ_0_0> (@owned @callee_owned () -> @out τ_0_0) -> @out τ_0_0 // user: %14
   // function_ref specialize.getGenericClosure <A>(t : A) -> () -> A
   %5 = function_ref @getGenericClosure : $@convention(thin) <τ_0_0> (@in τ_0_0) -> @owned @callee_owned () -> @out τ_0_0 // user: %8
   %6 = alloc_stack $UInt8                         // users: %7, %8, %17
-  store %2 to [trivial] %6 : $*UInt8                      // id: %7
+  store %2 to %6 : $*UInt8                      // id: %7
   %8 = apply %5<UInt8>(%6) : $@convention(thin) <τ_0_0> (@in τ_0_0) -> @owned @callee_owned () -> @out τ_0_0 // user: %10
   // function_ref reabstraction thunk helper from @callee_owned () -> (@out Swift.UInt8) to @callee_owned () -> (@unowned Swift.UInt8)
   %9 = function_ref @$ss5UInt8VIxr_ABIxd_TR : $@convention(thin) (@owned @callee_owned () -> @out UInt8) -> UInt8 // user: %10
@@ -319,7 +319,7 @@ bb0(%0 : @owned $@callee_owned () -> @out UInt8):
 sil shared [ossa] [transparent] @$ss5UInt8VIxd_ABIxr_TR : $@convention(thin) (@owned @callee_owned () -> UInt8) -> @out UInt8 {
 bb0(%0 : $*UInt8, %1 : @owned $@callee_owned () -> UInt8):
   %2 = apply %1() : $@callee_owned () -> UInt8    // user: %3
-  store %2 to [trivial] %0 : $*UInt8                        // id: %3
+  store %2 to %0 : $*UInt8                        // id: %3
   %4 = tuple ()                                   // user: %5
   return %4 : $()                                 // id: %5
 }
@@ -453,7 +453,7 @@ bb0(%0 : $*T, %1 : $*U):
 sil shared [ossa] [transparent] [thunk] @_TTRG1_RPq_P5test41P_Pq0_PS0___XFo_dVs5Int32iSf_dS1__XFo_dS1_dSf_dS1__ : $@convention(thin) <T, U where T : P, U : P> (Int32, Float, @owned @callee_owned (Int32, @in Float) -> Int32) -> Int32 {
 bb0(%0 : $Int32, %1 : $Float, %2 : @owned $@callee_owned (Int32, @in Float) -> Int32):
   %3 = alloc_stack $Float                         // users: %4, %5, %6
-  store %1 to [trivial] %3 : $*Float                      // id: %4
+  store %1 to %3 : $*Float                      // id: %4
   %5 = apply %2(%0, %3) : $@callee_owned (Int32, @in Float) -> Int32 // user: %7
   dealloc_stack %3 : $*Float     // id: %6
   return %5 : $Int32                              // id: %7
@@ -545,11 +545,11 @@ bb0:
   // function_ref test4.foo <A : test4.P, B : test4.P>(A, B) -> (Swift.Int32, Swift.Float) -> Swift.Int32
   %5 = function_ref @foo : $@convention(thin) <τ_0_0, τ_0_1 where τ_0_0 : P, τ_0_1 : P> (@in τ_0_0, @in τ_0_1) -> @owned @callee_owned (Int32, Float) -> Int32 // user: %10
   %6 = alloc_stack $C                             // users: %7, %10, %13
-  store %3 to [trivial] %6 : $*C                          // id: %7
+  store %3 to %6 : $*C                          // id: %7
   %8 = alloc_stack $C                             // users: %9, %10, %12
-  store %3 to [trivial] %8 : $*C                          // id: %9
+  store %3 to %8 : $*C                          // id: %9
   %10 = apply %5<C, C>(%6, %8) : $@convention(thin) <τ_0_0, τ_0_1 where τ_0_0 : P, τ_0_1 : P> (@in τ_0_0, @in τ_0_1) -> @owned @callee_owned (Int32, Float) -> Int32 // users: %11, %14, %20, %21
-  store %10 to [init] %0 : $*@callee_owned (Int32, Float) -> Int32 // id: %11
+  store %10 to %0 : $*@callee_owned (Int32, Float) -> Int32 // id: %11
   dealloc_stack %8 : $*C         // id: %12
   dealloc_stack %6 : $*C         // id: %13
   %11 = load [take] %0 : $*@callee_owned (Int32, Float) -> Int32 // id: %14
@@ -590,9 +590,9 @@ bb0:
   // function_ref test4.gen1 <A : test4.P>(A) -> (Swift.Int32) -> Swift.Int32
   %5 = function_ref @gen1 : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@in τ_0_0) -> @owned @callee_owned (Int32) -> Int32 // user: %8
   %6 = alloc_stack $C                             // users: %7, %8, %10
-  store %3 to [trivial] %6 : $*C                          // id: %7
+  store %3 to %6 : $*C                          // id: %7
   %8 = apply %5<C>(%6) : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@in τ_0_0) -> @owned @callee_owned (Int32) -> Int32 // users: %9, %11, %14, %15
-  store %8 to [init] %0 : $*@callee_owned (Int32) -> Int32 // id: %9
+  store %8 to %0 : $*@callee_owned (Int32) -> Int32 // id: %9
   dealloc_stack %6 : $*C         // id: %10
   %8a = load [take] %0 : $*@callee_owned (Int32) -> Int32 // id: %11
   %12 = integer_literal $Builtin.Int32, 3         // user: %13
@@ -700,7 +700,7 @@ bb0(%0 : $*R, %1 : $*S, %2 : $Builtin.Int64):
 bb1:
   %val_storage = alloc_stack $Builtin.Int64
   %val = integer_literal $Builtin.Int64, 4
-  store %val to [trivial] %val_storage : $*Builtin.Int64
+  store %val to %val_storage : $*Builtin.Int64
   %fn = function_ref @selfReferringGenericClosure : $@convention(thin) <U, V> (@in_guaranteed U, @in_guaranteed V, Builtin.Int64) -> () 
   %s = alloc_stack $R
   copy_addr %0 to [initialization] %s : $*R
@@ -726,7 +726,7 @@ bb1:
   %val_storage = alloc_stack $Builtin.NativeObject
   %val = copy_value %2 : $Builtin.NativeObject
   %val2 = copy_value %2 : $Builtin.NativeObject
-  store %val to [init] %val_storage : $*Builtin.NativeObject
+  store %val to %val_storage : $*Builtin.NativeObject
   %fn = function_ref @selfReferringGenericClosure_nontrivial_guaranteed : $@convention(thin) <U, V> (@in_guaranteed U, @in_guaranteed V, @guaranteed Builtin.NativeObject) -> () 
   %s = alloc_stack $R
   copy_addr %0 to [initialization] %s : $*R
@@ -752,7 +752,7 @@ bb1:
   %val_storage = alloc_stack $Builtin.NativeObject
   %val = copy_value %2 : $Builtin.NativeObject
   %val2 = copy_value %2 : $Builtin.NativeObject
-  store %val to [init] %val_storage : $*Builtin.NativeObject
+  store %val to %val_storage : $*Builtin.NativeObject
   %fn = function_ref @selfReferringGenericClosure_nontrivial_guaranteed_applied : $@convention(thin) <U, V> (@in_guaranteed U, @in_guaranteed V, @guaranteed Builtin.NativeObject) -> () 
   %s = alloc_stack $R
   copy_addr %0 to [initialization] %s : $*R
@@ -784,7 +784,7 @@ bb0(%0 : $*R, %1 : $*S, %2 : @owned $Builtin.NativeObject):
 bb1:
   %val_storage = alloc_stack $Builtin.NativeObject
   %val = copy_value %2 : $Builtin.NativeObject
-  store %val to [init] %val_storage : $*Builtin.NativeObject
+  store %val to %val_storage : $*Builtin.NativeObject
   %fn = function_ref @selfReferringGenericClosure_nontrivial_owned : $@convention(thin) <U, V> (@in U, @in V, @owned Builtin.NativeObject) -> () 
   %7 = partial_apply %fn<R, Builtin.NativeObject>(%0, %val_storage, %2) : $@convention(thin) <U, V> (@in U, @in V, @owned Builtin.NativeObject) -> ()
   dealloc_stack %val_storage : $*Builtin.NativeObject
@@ -809,7 +809,7 @@ bb0(%0 : $*R, %1 : $*S, %2 : @owned $Builtin.NativeObject):
 bb1:
   %val_storage = alloc_stack $Builtin.NativeObject
   %val = copy_value %2 : $Builtin.NativeObject
-  store %val to [init] %val_storage : $*Builtin.NativeObject
+  store %val to %val_storage : $*Builtin.NativeObject
   %fn = function_ref @selfReferringGenericClosure_nontrivial_owned_applied : $@convention(thin) <U, V> (@in U, @in V, @owned Builtin.NativeObject) -> () 
   %7 = partial_apply %fn<R, Builtin.NativeObject>(%0, %val_storage, %2) : $@convention(thin) <U, V> (@in U, @in V, @owned Builtin.NativeObject) -> ()
   apply %7() :$@callee_owned () -> ()
@@ -846,7 +846,7 @@ bb0(%0 : $*T):
   %5 = tuple ()
   %6 = load [trivial] %3 : $*MyOptional<YYY<Any>>
   %7 = alloc_stack $MyOptional<YYY<Any>>
-  store %6 to [trivial] %7 : $*MyOptional<YYY<Any>>
+  store %6 to %7 : $*MyOptional<YYY<Any>>
   %9 = apply %2<MyOptional<YYY<Any>>>(%7) : $@convention(thin) <τ_0_0> (@in τ_0_0) -> ()
   dealloc_stack %7 : $*MyOptional<YYY<Any>>
   dealloc_stack %3 : $*MyOptional<YYY<Any>>
@@ -963,7 +963,7 @@ bb0(%0 : $Builtin.Int32, %1 : @guaranteed $Builtin.NativeObject):
   %f = function_ref @generic_try_apply_callee : $@convention(thin) <T> (@in_guaranteed T) -> @error Error
 
   %0a = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %0a : $*Builtin.Int32
+  store %0 to %0a : $*Builtin.Int32
   try_apply %f<Builtin.Int32>(%0a) : $@convention(thin) <T> (@in_guaranteed T) -> @error Error, normal bb1, error bb2
 
 bb1(%result : $()):
@@ -1017,7 +1017,7 @@ bb0(%0 : $Builtin.Int32, %1 : @guaranteed $Builtin.NativeObject):
   %f = function_ref @generic_try_apply_callee : $@convention(thin) <T> (@in_guaranteed T) -> @error Error
 
   %0a = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %0a : $*Builtin.Int32
+  store %0 to %0a : $*Builtin.Int32
   try_apply %f<Builtin.Int32>(%0a) : $@convention(thin) <T> (@in_guaranteed T) -> @error Error, normal bb1, error bb2
 
 bb1(%result : $()):
@@ -1111,7 +1111,7 @@ bb0(%0 : $*Klass, %1 : @guaranteed $Klass):
   %f = function_ref @generic_try_apply_callee_loadable_1 : $@convention(thin) <T : AnyObject> (@inout T, @in_guaranteed T) -> @error Error
   %1b = alloc_stack $Klass
   %1a = copy_value %1 : $Klass
-  store %1a to [init] %1b : $*Klass
+  store %1a to %1b : $*Klass
   %f2 = partial_apply [callee_guaranteed] %f<Klass>(%1b) : $@convention(thin) <T : AnyObject> (@inout T, @in_guaranteed T) -> @error Error
   %f3 = function_ref @loadable_partial_apply_user : $@convention(thin) (@guaranteed @callee_guaranteed (@inout Klass) -> @error Error) -> ()
   apply %f3(%f2) : $@convention(thin) (@guaranteed @callee_guaranteed (@inout Klass) -> @error Error) -> ()
@@ -1188,14 +1188,14 @@ bb0(%0 : $Builtin.Int32, %1 : @guaranteed $Builtin.NativeObject):
   %f = function_ref @generic_begin_apply_callee_inguaranteed : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in_guaranteed T
 
   %0a = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %0a : $*Builtin.Int32
+  store %0 to %0a : $*Builtin.Int32
   (%0r, %0token) = begin_apply %f<Builtin.Int32>(%0a) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in_guaranteed T
   end_apply %0token
   dealloc_stack %0a : $*Builtin.Int32
 
   %1b = alloc_stack $Builtin.NativeObject
   %1c = copy_value %1 : $Builtin.NativeObject
-  store %1c to [init] %1b : $*Builtin.NativeObject
+  store %1c to %1b : $*Builtin.NativeObject
   (%1result, %1token) = begin_apply %f<Builtin.NativeObject>(%1b) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in_guaranteed T
 
   end_apply %1token
@@ -1215,14 +1215,14 @@ bb0(%0 : $Builtin.Int32, %1 : @guaranteed $Builtin.NativeObject):
   %f = function_ref @generic_begin_apply_callee_in : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in T
 
   %0a = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %0a : $*Builtin.Int32
+  store %0 to %0a : $*Builtin.Int32
   (%0r, %0token) = begin_apply %f<Builtin.Int32>(%0a) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in T
   end_apply %0token
   dealloc_stack %0a : $*Builtin.Int32
 
   %1b = alloc_stack $Builtin.NativeObject
   %1c = copy_value %1 : $Builtin.NativeObject
-  store %1c to [init] %1b : $*Builtin.NativeObject
+  store %1c to %1b : $*Builtin.NativeObject
   (%1result, %1token) = begin_apply %f<Builtin.NativeObject>(%1b) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @in T
 
   end_apply %1token
@@ -1242,14 +1242,14 @@ bb0(%0 : $Builtin.Int32, %1 : @guaranteed $Builtin.NativeObject):
   %f = function_ref @generic_begin_apply_callee_inout : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @inout T
 
   %0a = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %0a : $*Builtin.Int32
+  store %0 to %0a : $*Builtin.Int32
   (%0r, %0token) = begin_apply %f<Builtin.Int32>(%0a) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @inout T
   end_apply %0token
   dealloc_stack %0a : $*Builtin.Int32
 
   %1b = alloc_stack $Builtin.NativeObject
   %1c = copy_value %1 : $Builtin.NativeObject
-  store %1c to [init] %1b : $*Builtin.NativeObject
+  store %1c to %1b : $*Builtin.NativeObject
   (%1result, %1token) = begin_apply %f<Builtin.NativeObject>(%1b) : $@yield_once @convention(thin) <T> (@in_guaranteed T) -> @yields @inout T
 
   end_apply %1token

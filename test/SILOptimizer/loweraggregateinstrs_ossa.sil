@@ -64,7 +64,7 @@ struct LargeStruct {
 // CHECK:   destroy_value [[ARG0]]
 // CHECK:   [[ALLOC_STACK:%.*]] = alloc_stack $LargeStruct
 // CHECK:   [[LOADED_ARG1:%.*]] = load [copy] [[ARG1]]
-// CHECK:   store [[LOADED_ARG1]] to [init] [[ALLOC_STACK]]
+// CHECK:   store [[LOADED_ARG1]] to [[ALLOC_STACK]]
 // CHECK:   [[LOADED_OLD_VAL:%.*]] = load [take] [[ARG1]]
 // CHECK:   destroy_value [[LOADED_OLD_VAL]]
 // CHECK:   [[LOADED_ARG1:%.*]] = load [take] [[ALLOC_STACK]]
@@ -95,7 +95,7 @@ bb0(%0 : @owned $LargeStruct, %1 : $*LargeStruct):
 // CHECK:   destroy_value [[ARG0_COPY]]
 // CHECK:   [[ALLOC_STACK:%.*]] = alloc_stack $S2
 // CHECK:   [[LOADED_ARG1:%.*]] = load [copy] [[ARG1]]
-// CHECK:   store [[LOADED_ARG1]] to [init] [[ALLOC_STACK]]
+// CHECK:   store [[LOADED_ARG1]] to [[ALLOC_STACK]]
 //
 // CHECK:   [[LOADED_OLDVALUE:%.*]] = load [take] [[ARG1]]
 // CHECK:   destroy_value [[LOADED_OLDVALUE]]

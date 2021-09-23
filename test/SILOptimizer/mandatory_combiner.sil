@@ -902,15 +902,15 @@ sil [ossa] @dont_remove_polymorphic_builtin : $@convention(thin) (@guaranteed Kl
 bb0(%0 : @guaranteed $Klass, %1 : @guaranteed $Klass, %2 : @guaranteed $Klass):
   %3 = alloc_stack $Klass
   %4 = copy_value %0 : $Klass
-  store %4 to [init] %3 : $*Klass
+  store %4 to %3 : $*Klass
 
   %6 = alloc_stack $Klass
   %7 = copy_value %0 : $Klass
-  store %7 to [init] %6 : $*Klass
+  store %7 to %6 : $*Klass
 
   %9 = alloc_stack $Klass
   %10 = copy_value %0 : $Klass
-  store %10 to [init] %9 : $*Klass
+  store %10 to %9 : $*Klass
 
   // builtin "add" is maked read none so it could be removed below. However,
   // builtin "generic_add" does modify memory so, it cannot be removed.

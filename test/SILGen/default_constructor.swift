@@ -36,8 +36,8 @@ struct D {
 // CHECK: [[INIT:%[0-9]+]] = function_ref @$s19default_constructor1DV1iSivpfi
 // CHECK: [[RESULT:%[0-9]+]] = apply [[INIT]]()
 // CHECK: ([[INTVAL:%[0-9]+]], [[FLOATVAL:%[0-9]+]]) = destructure_tuple [[RESULT]]
-// CHECK: store [[INTVAL]] to [trivial] [[IADDR]]
-// CHECK: store [[FLOATVAL]] to [trivial] [[JADDR]]
+// CHECK: store [[INTVAL]] to [[IADDR]]
+// CHECK: store [[FLOATVAL]] to [[JADDR]]
 
 class E {
   var i = Int64()
@@ -59,7 +59,7 @@ class E {
 // CHECK-NEXT: [[IREF:%[0-9]+]] = ref_element_addr [[BORROWED_SELF]] : $E, #E.i
 // CHECK: [[INIT:%[0-9]+]] = function_ref @$s19default_constructor1EC1is5Int64Vvpfi : $@convention(thin) () -> Int64
 // CHECK-NEXT: [[VALUE:%[0-9]+]] = apply [[INIT]]() : $@convention(thin) () -> Int64
-// CHECK-NEXT: store [[VALUE]] to [trivial] [[IREF]] : $*Int64
+// CHECK-NEXT: store [[VALUE]] to [[IREF]] : $*Int64
 // CHECK-NEXT: end_borrow [[BORROWED_SELF]]
 // CHECK-NEXT: [[SELF_COPY:%.*]] = copy_value [[SELF]]
 // CHECK-NEXT: destroy_value [[SELF]]
@@ -72,14 +72,14 @@ class F : E { }
 // CHECK-NEXT: [[SELF_BOX:%[0-9]+]] = alloc_box ${ var F }
 // CHECK-NEXT: [[SELF:%[0-9]+]] = mark_uninitialized [derivedself] [[SELF_BOX]]
 // CHECK-NEXT: [[PB:%.*]] = project_box [[SELF]]
-// CHECK-NEXT: store [[ORIGSELF]] to [init] [[PB]] : $*F
+// CHECK-NEXT: store [[ORIGSELF]] to [[PB]] : $*F
 // CHECK-NEXT: [[SELFP:%[0-9]+]] = load [take] [[PB]] : $*F
 // CHECK-NEXT: [[E:%[0-9]]] = upcast [[SELFP]] : $F to $E
 // CHECK: [[E_CTOR:%[0-9]+]] = function_ref @$s19default_constructor1ECACycfc : $@convention(method) (@owned E) -> @owned E
 // CHECK-NEXT: [[ESELF:%[0-9]]] = apply [[E_CTOR]]([[E]]) : $@convention(method) (@owned E) -> @owned E
 
 // CHECK-NEXT: [[ESELFW:%[0-9]+]] = unchecked_ref_cast [[ESELF]] : $E to $F
-// CHECK-NEXT: store [[ESELFW]] to [init] [[PB]] : $*F
+// CHECK-NEXT: store [[ESELFW]] to [[PB]] : $*F
 // CHECK-NEXT: [[SELFP:%[0-9]+]] = load [copy] [[PB]] : $*F
 // CHECK-NEXT: destroy_value [[SELF]] : ${ var F }
 // CHECK-NEXT: return [[SELFP]] : $F
@@ -116,7 +116,7 @@ struct I {
   // CHECK: [[X_ADDR:%[0-9]+]] = struct_element_addr {{.*}} : $*I, #I.x
   // CHECK: [[INIT_FN:%[0-9]+]] = function_ref @$s19default_constructor1IV1xSivpfi : $@convention(thin) () -> Int
   // CHECK: [[RESULT:%[0-9]+]] = apply [[INIT_FN]]() : $@convention(thin) () -> Int
-  // CHECK: store [[RESULT]] to [trivial] [[X_ADDR]] : $*Int
+  // CHECK: store [[RESULT]] to [[X_ADDR]] : $*Int
   init<T>(_: T) {}
 }
 

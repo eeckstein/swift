@@ -40,7 +40,7 @@ func inOutFunc(_ f: inout ((Int) -> Int)) { }
 // CHECK:   [[XBOX:%.*]] = alloc_box ${ var Foo<Int, Int> }, var, name "x"
 // CHECK:   [[XBOX_PB:%.*]] = project_box [[XBOX]] : ${ var Foo<Int, Int> }, 0
 // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[ARG_COPY]] to [init] [[XBOX_PB]]
+// CHECK:   store [[ARG_COPY]] to [[XBOX_PB]]
 // CHECK:   [[WRITE:%.*]] = begin_access [modify] [unknown] [[XBOX_PB]] : $*Foo<Int, Int>
 // CHECK:   [[F_ADDR:%.*]] = struct_element_addr [[WRITE]] : $*Foo<Int, Int>, #Foo.f
 // CHECK:   [[F_SUBST_MAT:%.*]] = alloc_stack
@@ -48,7 +48,7 @@ func inOutFunc(_ f: inout ((Int) -> Int)) { }
 // CHECK:   [[F_CONV:%.*]] = convert_function [[F_ORIG]]
 // CHECK:   [[REABSTRACT_FN:%.*]] = function_ref @$s{{.*}}TR :
 // CHECK:   [[F_SUBST_IN:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACT_FN]]([[F_CONV]])
-// CHECK:   store [[F_SUBST_IN]] to [init] [[F_SUBST_MAT]]
+// CHECK:   store [[F_SUBST_IN]] to [[F_SUBST_MAT]]
 // CHECK:   [[INOUTFUNC:%.*]] = function_ref @$s20property_abstraction9inOutFunc{{[_0-9a-zA-Z]*}}F
 // CHECK:   apply [[INOUTFUNC]]([[F_SUBST_MAT]])
 // CHECK:   [[F_SUBST_OUT:%.*]] = load [take] [[F_SUBST_MAT]]

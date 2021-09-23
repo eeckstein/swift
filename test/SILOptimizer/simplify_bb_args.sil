@@ -32,7 +32,7 @@ bb1:
   br bb2(%4 : $E)
 
 bb2(%6 : $E):
-  store %6 to [trivial] %x : $*E
+  store %6 to %x : $*E
   br bb3
 
 bb3a:

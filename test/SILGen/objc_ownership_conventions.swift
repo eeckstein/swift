@@ -35,7 +35,7 @@ func test5(_ g: Gizmo) {
   // CHECK:   [[GIZMO_BOX:%.*]] = alloc_box ${ var Gizmo }
   // CHECK:   [[GIZMO_BOX_PB:%.*]] = project_box [[GIZMO_BOX]]
   // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK:   store [[ARG_COPY]] to [init] [[GIZMO_BOX_PB]]
+  // CHECK:   store [[ARG_COPY]] to [[GIZMO_BOX_PB]]
   // CHECK:   [[CLASS:%.*]] = metatype $@objc_metatype Gizmo.Type
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[GIZMO_BOX_PB]] : $*Gizmo
   // CHECK:   [[V:%.*]] = load [copy] [[READ]]
@@ -57,7 +57,7 @@ func test6(_ g: Gizmo) {
   // CHECK:   [[GIZMO_BOX:%.*]] = alloc_box ${ var Gizmo }
   // CHECK:   [[GIZMO_BOX_PB:%.*]] = project_box [[GIZMO_BOX]]
   // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK:   store [[ARG_COPY]] to [init] [[GIZMO_BOX_PB]]
+  // CHECK:   store [[ARG_COPY]] to [[GIZMO_BOX_PB]]
   // CHECK:   [[CLASS:%.*]] = metatype $@objc_metatype Gizmo.Type
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[GIZMO_BOX_PB]] : $*Gizmo
   // CHECK:   [[V:%.*]] = load [copy] [[READ]]
@@ -81,7 +81,7 @@ func test7(_ g: Gizmo) {
   // CHECK:   [[GIZMO_BOX:%.*]] = alloc_box ${ var Gizmo }
   // CHECK:   [[GIZMO_BOX_PB:%.*]] = project_box [[GIZMO_BOX]]
   // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK:   store [[ARG_COPY]] to [init] [[GIZMO_BOX_PB]]
+  // CHECK:   store [[ARG_COPY]] to [[GIZMO_BOX_PB]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[GIZMO_BOX_PB]] : $*Gizmo
   // CHECK:   [[G:%.*]] = load [copy] [[READ]]
   // CHECK:   [[METHOD:%.*]] = objc_method [[G]] : {{.*}}, #Gizmo.fork!foreign

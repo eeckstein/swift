@@ -36,7 +36,7 @@ sil [transparent] [ossa] @test_add : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_box ${ var Int64 }
   %1a = project_box %1 : ${ var Int64 }, 0
-  store %0 to [trivial] %1a : $*Int64
+  store %0 to %1a : $*Int64
   %3 = function_ref @plus : $@convention(thin) (Int64, Int64) -> Int64
   %4 = load [trivial] %1a : $*Int64
   %5 = function_ref @fromLiteral : $@convention(thin) (Builtin.Int128, @thin Int64.Type) -> Int64
@@ -53,7 +53,7 @@ sil [ossa] @inline_test_add : $@convention(thin) (Int64) -> Int64 {
 // CHECK: [[BB0:.*]]([[VAL0:%.*]] : $Int64):
   // CHECK: [[VAL1:%.*]] = alloc_box ${ var Int64 }
   // CHECK: [[PB1:%.*]] = project_box [[VAL1]]
-  // CHECK: store [[VAL0]] to [trivial] [[PB1]]
+  // CHECK: store [[VAL0]] to [[PB1]]
   // CHECK: [[VAL3:%.*]] = function_ref @plus
   // CHECK: [[VAL4:%.*]] = function_ref @plus
   // CHECK: [[VAL5:%.*]] = load [trivial] [[PB1]]
@@ -64,7 +64,7 @@ sil [ossa] @inline_test_add : $@convention(thin) (Int64) -> Int64 {
   // CHECK: [[VAL10:%.*]] = apply [[VAL4]]([[VAL5]], [[VAL9]])
   // CHECK: [[VAL11:%.*]] = alloc_box ${ var Int64 }
   // CHECK: [[PB11:%.*]] = project_box [[VAL11]]
-  // CHECK: store [[VAL10]] to [trivial] [[PB11]]
+  // CHECK: store [[VAL10]] to [[PB11]]
   // CHECK: [[VAL13:%.*]] = function_ref @plus
   // CHECK: [[VAL14:%.*]] = load [trivial] [[PB11]]
   // CHECK: [[VAL15:%.*]] = function_ref @fromLiteral
@@ -84,7 +84,7 @@ sil [ossa] @inline_test_add : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_box ${ var Int64 }
   %1a = project_box %1 : ${ var Int64 }, 0
-  store %0 to [trivial] %1a : $*Int64
+  store %0 to %1a : $*Int64
   %3 = function_ref @plus : $@convention(thin) (Int64, Int64) -> Int64
   %4 = function_ref @test_add : $@convention(thin) (Int64) -> Int64
   %5 = function_ref @plus : $@convention(thin) (Int64, Int64) -> Int64
@@ -109,7 +109,7 @@ sil [ossa] @inline_twice_test_add : $@convention(thin) (Int64) -> Int64 {
 // CHECK: [[BB0:.*]]([[VAL0:%.*]] : $Int64):
   // CHECK: [[VAL1:%.*]] = alloc_box ${ var Int64 }
   // CHECK: [[PB1:%.*]] = project_box [[VAL1]]
-  // CHECK: store [[VAL0]] to [trivial] [[PB1]]
+  // CHECK: store [[VAL0]] to [[PB1]]
   // CHECK: [[VAL3:%.*]] = function_ref @plus
   // CHECK: [[VAL4:%.*]] = function_ref @plus
   // CHECK: [[VAL5:%.*]] = load [trivial] [[PB1]]
@@ -120,7 +120,7 @@ sil [ossa] @inline_twice_test_add : $@convention(thin) (Int64) -> Int64 {
   // CHECK: [[VAL10:%.*]] = apply [[VAL4]]([[VAL5]], [[VAL9]])
   // CHECK: [[VAL11:%.*]] = alloc_box ${ var Int64 }
   // CHECK: [[PB11:%.*]] = project_box [[VAL11]]
-  // CHECK: store [[VAL10]] to [trivial] [[PB11]]
+  // CHECK: store [[VAL10]] to [[PB11]]
   // CHECK: [[VAL13:%.*]] = function_ref @plus
   // CHECK: [[VAL14:%.*]] = load [trivial] [[PB11]]
   // CHECK: [[VAL15:%.*]] = function_ref @fromLiteral
@@ -131,7 +131,7 @@ sil [ossa] @inline_twice_test_add : $@convention(thin) (Int64) -> Int64 {
   // CHECK: destroy_value [[VAL11]]
   // CHECK: [[VAL21:%.*]] = alloc_box ${ var Int64 }
   // CHECK: [[PB21:%.*]] = project_box [[VAL21]]
-  // CHECK: store [[VAL19]] to [trivial] [[PB21]]
+  // CHECK: store [[VAL19]] to [[PB21]]
   // CHECK: [[VAL23:%.*]] = function_ref @plus
   // CHECK: [[VAL24:%.*]] = load [trivial] [[PB21]]
   // CHECK: [[VAL25:%.*]] = function_ref @fromLiteral
@@ -151,7 +151,7 @@ sil [ossa] @inline_twice_test_add : $@convention(thin) (Int64) -> Int64 {
 bb0(%0 : $Int64):
   %1 = alloc_box ${ var Int64 }
   %1a = project_box %1 : ${ var Int64 }, 0
-  store %0 to [trivial] %1a : $*Int64
+  store %0 to %1a : $*Int64
   %3 = function_ref @plus : $@convention(thin) (Int64, Int64) -> Int64
   %4 = function_ref @test_add : $@convention(thin) (Int64) -> Int64
   %5 = function_ref @test_add : $@convention(thin) (Int64) -> Int64
@@ -234,15 +234,15 @@ bb0(%0 : $Float, %1 : $Float):
   %2a = project_box %2 : ${ var Float }, 0
   %3 = alloc_box ${ var Float }
   %3a = project_box %3 : ${ var Float }, 0
-  store %0 to [trivial] %2a : $*Float
-  store %1 to [trivial] %3a : $*Float
+  store %0 to %2a : $*Float
+  store %1 to %3a : $*Float
   %6 = function_ref @get_logic_value : $@convention(method) (@inout Bool) -> Builtin.Int1
   %7 = function_ref @foo : $@convention(thin) (Float, Float) -> Bool
   %8 = load [trivial] %2a : $*Float
   %9 = load [trivial] %3a : $*Float
   %10 = apply %7(%8, %9) : $@convention(thin) (Float, Float) -> Bool
   %11 = alloc_stack $Bool
-  store %10 to [trivial] %11 : $*Bool
+  store %10 to %11 : $*Bool
   %13 = apply %6(%11) : $@convention(method) (@inout Bool) -> Builtin.Int1
   dealloc_stack %11 : $*Bool
   cond_br %13, bb1, bb2
@@ -260,7 +260,7 @@ bb3:
   %21 = load [trivial] %3a : $*Float
   %22 = apply %20(%21) : $@convention(thin) (Float) -> Bool
   %23 = alloc_stack $Bool
-  store %22 to [trivial] %23 : $*Bool
+  store %22 to %23 : $*Bool
   %25 = apply %19(%23) : $@convention(method) (@inout Bool) -> Builtin.Int1
   dealloc_stack %23 : $*Bool
   cond_br %25, bb4, bb5
@@ -273,7 +273,7 @@ bb4:
   %32 = float_literal $Builtin.FPIEEE64, 0x3FF0000000000000
   %33 = apply %30(%32, %31) : $@convention(thin) (Builtin.FPIEEE64, @thin Float.Type) -> Float
   %34 = apply %28(%29, %33) : $@convention(thin) (Float, Float) -> Float
-  store %34 to [trivial] %3a : $*Float
+  store %34 to %3a : $*Float
   br bb3
 
 bb5:
@@ -292,7 +292,7 @@ sil [ossa] @inline_test_control_flow : $@convention(thin) (Float) -> Float {
 // CHECK: [[BB0:.*]]([[VAL0:%.*]] : $Float):
   // CHECK: [[VAL1:%.*]] = alloc_box ${ var Float }
   // CHECK: [[PB1:%.*]] = project_box [[VAL1]]
-  // CHECK: store [[VAL0]] to [trivial] [[PB1]]
+  // CHECK: store [[VAL0]] to [[PB1]]
   // CHECK: [[VAL3:%.*]] = function_ref @sub_floats
   // CHECK: [[VAL4:%.*]] = function_ref @add_floats
   // CHECK: [[VAL5:%.*]] = load [trivial] [[PB1]]
@@ -309,15 +309,15 @@ sil [ossa] @inline_test_control_flow : $@convention(thin) (Float) -> Float {
   // CHECK: [[PB15:%.*]] = project_box [[VAL15]]
   // CHECK: [[VAL16:%.*]] = alloc_box ${ var Float }
   // CHECK: [[PB16:%.*]] = project_box [[VAL16]]
-  // CHECK: store [[VAL10]] to [trivial] [[PB15]]
-  // CHECK: store [[VAL14]] to [trivial] [[PB16]]
+  // CHECK: store [[VAL10]] to [[PB15]]
+  // CHECK: store [[VAL14]] to [[PB16]]
   // CHECK: [[VAL19:%.*]] = function_ref @get_logic_value
   // CHECK: [[VAL20:%.*]] = function_ref @foo
   // CHECK: [[VAL21:%.*]] = load [trivial] [[PB15]]
   // CHECK: [[VAL22:%.*]] = load [trivial] [[PB16]]
   // CHECK: [[VAL23:%.*]] = apply [[VAL20]]([[VAL21]], [[VAL22]])
   // CHECK: [[VAL24:%.*]] = alloc_stack $Bool
-  // CHECK: store [[VAL23]] to [trivial] [[VAL24]]
+  // CHECK: store [[VAL23]] to [[VAL24]]
   // CHECK: [[VAL26:%.*]] = apply [[VAL19]]([[VAL24]])
   // CHECK: dealloc_stack [[VAL24]]
   // CHECK: cond_br [[VAL26]], [[BB1:bb[0-9]+]], [[BB2:bb[0-9]+]]
@@ -335,7 +335,7 @@ sil [ossa] @inline_test_control_flow : $@convention(thin) (Float) -> Float {
   // CHECK: [[VAL34:%.*]] = load [trivial] [[PB16]]
   // CHECK: [[VAL35:%.*]] = apply [[VAL33]]([[VAL34]])
   // CHECK: [[VAL36:%.*]] = alloc_stack $Bool
-  // CHECK: store [[VAL35]] to [trivial] [[VAL36]]
+  // CHECK: store [[VAL35]] to [[VAL36]]
   // CHECK: [[VAL38:%.*]] = apply [[VAL32]]([[VAL36]])
   // CHECK: dealloc_stack [[VAL36]]
   // CHECK: cond_br [[VAL38]], [[BB4:bb[0-9]+]], [[BB5:bb[0-9]+]]
@@ -348,7 +348,7 @@ sil [ossa] @inline_test_control_flow : $@convention(thin) (Float) -> Float {
   // CHECK: [[VAL45:%.*]] = float_literal $Builtin.FPIEEE64, 0x3FF0000000000000
   // CHECK: [[VAL46:%.*]] = apply [[VAL43]]([[VAL45]], [[VAL44]])
   // CHECK: [[VAL47:%.*]] = apply [[VAL41]]([[VAL42]], [[VAL46]])
-  // CHECK: store [[VAL47]] to [trivial] [[PB16]]
+  // CHECK: store [[VAL47]] to [[PB16]]
   // CHECK: br [[BB3]]
 
 // CHECK: [[BB5]]:
@@ -366,7 +366,7 @@ sil [ossa] @inline_test_control_flow : $@convention(thin) (Float) -> Float {
 bb0(%0 : $Float):
   %1 = alloc_box ${ var Float }
   %1a = project_box %1 : ${ var Float }, 0
-  store %0 to [trivial] %1a : $*Float
+  store %0 to %1a : $*Float
   %3 = function_ref @sub_floats : $@convention(thin) (Float, Float) -> Float
   %4 = function_ref @test_control_flow : $@convention(thin) (Float, Float) -> Float
   %5 = function_ref @add_floats : $@convention(thin) (Float, Float) -> Float
@@ -557,8 +557,8 @@ bb0(%0 : $Bool, %1 : @owned $@callee_owned () -> Bool):
   %2a = project_box %2 : ${ var Bool }, 0
   %3 = alloc_box ${ var @callee_owned () -> Bool }
   %3a = project_box %3 : ${ var @callee_owned () -> Bool }, 0
-  store %0 to [trivial] %2a : $*Bool
-  store %1 to [init] %3a : $*@callee_owned () -> Bool
+  store %0 to %2a : $*Bool
+  store %1 to %3a : $*@callee_owned () -> Bool
   %6 = function_ref @get_logic_value : $@convention(method) (@inout Bool) -> Builtin.Int1
   %7 = apply %6(%2a) : $@convention(method) (@inout Bool) -> Builtin.Int1
   cond_br %7, bb1, bb2
@@ -623,8 +623,8 @@ bb0(%0 : $Bool, %1 : $Bool):
   %2a = project_box %2 : ${ var Bool }, 0
   %3 = alloc_box ${ var Bool }
   %3a = project_box %3 : ${ var Bool }, 0
-  store %0 to [trivial] %2a : $*Bool
-  store %1 to [trivial] %3a : $*Bool
+  store %0 to %2a : $*Bool
+  store %1 to %3a : $*Bool
   %6 = function_ref @short_circuit_or : $@convention(thin) (Bool, @owned @callee_owned () -> Bool) -> Bool
   %7 = load [trivial] %2a : $*Bool
   %8 = function_ref @closure0 : $@convention(thin) (@owned { var Bool }) -> Bool
@@ -671,8 +671,8 @@ bb0(%0 : $Bool, %1 : $Bool):
   %2a = project_box %2 : ${ var Bool }, 0
   %3 = alloc_box ${ var Bool }
   %3a = project_box %3 : ${ var Bool }, 0
-  store %0 to [trivial] %2a : $*Bool
-  store %1 to [trivial] %3a : $*Bool
+  store %0 to %2a : $*Bool
+  store %1 to %3a : $*Bool
   %6 = function_ref @short_circuit_or : $@convention(thin) (Bool, @owned @callee_owned () -> Bool) -> Bool
   %7 = load [trivial] %2a : $*Bool
   %8 = function_ref @closure0 : $@convention(thin) (@owned { var Bool }) -> Bool
@@ -703,7 +703,7 @@ bb0:
   %3 = metatype $@thin Int64.Type
   %4 = integer_literal $Builtin.IntLiteral, 1
   %5 = apply %2(%4, %3) : $@convention(thin) (Builtin.IntLiteral, @thin Int64.Type) -> Int64
-  store %5 to [trivial] %1a : $*Int64
+  store %5 to %1a : $*Int64
   destroy_value %1 : ${ var Int64 }
   %8 = tuple ()
   return %8 : $()
@@ -797,7 +797,7 @@ bb0(%0 : $*T, %1 : $Int, %2 : $*T):
   // CHECK-NOT: [[REF:%[a-zA-Z0-9]+]] = function_ref @inner
   %5 = function_ref @inner : $@convention(thin) <τ_0_0, τ_0_1> (@in τ_0_0, @in τ_0_1) -> @out τ_0_1
   %6 = alloc_stack $Int
-  store %1 to [trivial] %6 : $*Int
+  store %1 to %6 : $*Int
   %8 = alloc_stack $T
   copy_addr %2 to [initialization] %8 : $*T
   // CHECK-NOT: apply
@@ -816,7 +816,7 @@ bb0(%0 : $Int):
   // CHECK-NOT: function_ref @middle
   %2 = function_ref @middle : $@convention(thin) <τ_0_0> (Int, @in τ_0_0) -> @out τ_0_0
   %7 = alloc_stack $Int
-  store %0 to [trivial] %7 : $*Int
+  store %0 to %7 : $*Int
   %9 = alloc_stack $Int
   // CHECK-NOT: apply
   %10 = apply %2<Int>(%9, %0, %7) : $@convention(thin) <τ_0_0> (Int, @in τ_0_0) -> @out τ_0_0
@@ -924,7 +924,7 @@ bb0(%0 : $*U, %1 : $Builtin.Int32, %2 : @owned $@callee_owned (Builtin.Int32) ->
   debug_value %2 : $@callee_owned (Builtin.Int32) -> @out U
   %5 = function_ref @partial : $@convention(thin) <τ_0_0, τ_0_1> (@in τ_0_0, @owned @callee_owned (@in τ_0_0) -> @out τ_0_1) -> @out τ_0_1
   %6 = alloc_stack $Builtin.Int32
-  store %1 to [trivial] %6 : $*Builtin.Int32
+  store %1 to %6 : $*Builtin.Int32
   %2copy = copy_value %2 : $@callee_owned (Builtin.Int32) -> @out U
   %9 = function_ref @reabstractionThunk : $@convention(thin) <τ_0_0> (@in Builtin.Int32, @owned @callee_owned (Builtin.Int32) -> @out τ_0_0) -> @out τ_0_0
   %10 = partial_apply %9<U>(%2copy) : $@convention(thin) <τ_0_0> (@in Builtin.Int32, @owned @callee_owned (Builtin.Int32) -> @out τ_0_0) -> @out τ_0_0

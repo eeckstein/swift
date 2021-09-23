@@ -47,6 +47,6 @@ final class Derived : Base, Initable {}
 // CHECK:         [[METHOD:%.*]] = function_ref @$s4main4BaseC1xACSi_tcfC
 // CHECK-NEXT:    [[RESULT:%.*]] = apply [[METHOD]](%1, [[SELF]])
 // CHECK-NEXT:    [[NEW_SELF:%.*]] = unchecked_ref_cast [[RESULT]] : $Base to $Derived
-// CHECK-NEXT:    store [[NEW_SELF]] to [init] %0 : $*Derived
+// CHECK-NEXT:    store [[NEW_SELF]] to %0 : $*Derived
 // CHECK-NEXT:    [[TUPLE:%.*]] = tuple ()
 // CHECK-NEXT:    return [[TUPLE]]

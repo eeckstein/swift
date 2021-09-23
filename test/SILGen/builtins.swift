@@ -171,7 +171,7 @@ func assign_gen<T>(_ x: T, y: Builtin.RawPointer) {
 func init_pod(_ x: Builtin.Int64, y: Builtin.RawPointer) {
   // CHECK: [[ADDR:%.*]] = pointer_to_address {{%.*}} to [strict] $*Builtin.Int64
   // CHECK-NOT: load [[ADDR]]
-  // CHECK: store {{%.*}} to [trivial] [[ADDR]]
+  // CHECK: store {{%.*}} to [[ADDR]]
   // CHECK-NOT: destroy_value [[ADDR]]
   Builtin.initialize(x, y)
 }
@@ -180,7 +180,7 @@ func init_pod(_ x: Builtin.Int64, y: Builtin.RawPointer) {
 func init_obj(_ x: Builtin.NativeObject, y: Builtin.RawPointer) {
   // CHECK: [[ADDR:%.*]] = pointer_to_address {{%.*}} to [strict] $*Builtin.NativeObject
   // CHECK-NOT: load [[ADDR]]
-  // CHECK: store [[SRC:%.*]] to [init] [[ADDR]]
+  // CHECK: store [[SRC:%.*]] to [[ADDR]]
   // CHECK-NOT: destroy_value [[SRC]]
   Builtin.initialize(x, y)
 }
@@ -569,7 +569,7 @@ func reinterpretAddrOnlyToTrivial<T>(_ t: T) -> Int {
 // CHECK-LABEL: sil hidden [ossa] @$s8builtins27reinterpretAddrOnlyLoadable{{[_0-9a-zA-Z]*}}F
 func reinterpretAddrOnlyLoadable<T>(_ a: Int, _ b: T) -> (T, Int) {
   // CHECK: [[BUF:%.*]] = alloc_stack $Int
-  // CHECK: store {{%.*}} to [trivial] [[BUF]]
+  // CHECK: store {{%.*}} to [[BUF]]
   // CHECK: [[RES1:%.*]] = unchecked_addr_cast [[BUF]] : $*Int to $*T
   // CHECK: copy_addr [[RES1]] to [initialization]
   return (Builtin.reinterpretCast(a) as T,
@@ -603,7 +603,7 @@ func castBitPatternFromBridgeObject(_ bo: Builtin.BridgeObject) -> Builtin.Word 
 // CHECK-LABEL: sil hidden [ossa] @$s8builtins16beginCOWMutationySbAA1CCzF
 // CHECK:     [[L:%.*]] = load [take] [[ADDR:%[0-9]*]]
 // CHECK:     ([[U:%.*]], [[B:%.*]]) = begin_cow_mutation [[L]]
-// CHECK:     store [[B]] to [init] [[ADDR]]
+// CHECK:     store [[B]] to [[ADDR]]
 // CHECK:     apply {{%[0-9]*}}([[U]]
 func beginCOWMutation(_ c: inout C) -> Bool {
   return Bool(_builtinBooleanLiteral: Builtin.beginCOWMutation(&c))
@@ -612,7 +612,7 @@ func beginCOWMutation(_ c: inout C) -> Bool {
 // CHECK-LABEL: sil hidden [ossa] @$s8builtins23beginCOWMutation_nativeySbAA1CCzF
 // CHECK:     [[L:%.*]] = load [take] [[ADDR:%[0-9]*]]
 // CHECK:     ([[U:%.*]], [[B:%.*]]) = begin_cow_mutation [native] [[L]]
-// CHECK:     store [[B]] to [init] [[ADDR]]
+// CHECK:     store [[B]] to [[ADDR]]
 // CHECK:     apply {{%[0-9]*}}([[U]]
 func beginCOWMutation_native(_ c: inout C) -> Bool {
   return Bool(_builtinBooleanLiteral: Builtin.beginCOWMutation_native(&c))
@@ -621,7 +621,7 @@ func beginCOWMutation_native(_ c: inout C) -> Bool {
 // CHECK-LABEL: sil hidden [ossa] @$s8builtins14endCOWMutationyyAA1CCzF
 // CHECK:     [[L:%.*]] = load [take] [[ADDR:%[0-9]*]]
 // CHECK:     [[B:%.*]] = end_cow_mutation [[L]]
-// CHECK:     store [[B]] to [init] [[ADDR]]
+// CHECK:     store [[B]] to [[ADDR]]
 func endCOWMutation(_ c: inout C) {
   Builtin.endCOWMutation(&c)
 }

@@ -205,7 +205,7 @@ func test_var_4(p p: P) {
   // CHECK:   [[T0:%.*]] = load [trivial] [[TMP]] : $*X
   // CHECK:   [[XADDR:%.*]] = alloc_box ${ var Int }
   // CHECK:   [[X:%.*]] = project_box [[XADDR]]
-  // CHECK:   store [[PAIR_1]] to [trivial] [[X]]
+  // CHECK:   store [[PAIR_1]] to [[X]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[X]]
   // CHECK:   load [trivial] [[READ]]
   // CHECK:   function_ref @$s10switch_var6runced1xSbSi_tF
@@ -236,7 +236,7 @@ func test_var_4(p p: P) {
   // CHECK:   [[T0:%.*]] = load [trivial] [[TMP]] : $*Y
   // CHECK:   [[YADDR:%.*]] = alloc_box ${ var Int }
   // CHECK:   [[Y:%.*]] = project_box [[YADDR]]
-  // CHECK:   store [[PAIR_1]] to [trivial] [[Y]]
+  // CHECK:   store [[PAIR_1]] to [[Y]]
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[Y]]
   // CHECK:   load [trivial] [[READ]]
   // CHECK:   function_ref @$s10switch_var6funged1xSbSi_tF
@@ -466,7 +466,7 @@ func test_mixed_let_var() {
   // CHECK:   [[BOX:%.*]] = alloc_box ${ var String }, var, name "x"
   // CHECK:   [[PBOX:%.*]] = project_box [[BOX]]
   // CHECK:   [[VAL_COPY:%.*]] = copy_value [[BORROWED_VAL]]
-  // CHECK:   store [[VAL_COPY]] to [init] [[PBOX]]
+  // CHECK:   store [[VAL_COPY]] to [[PBOX]]
   // CHECK:   cond_br {{.*}}, [[CASE1:bb[0-9]+]], [[NOCASE1:bb[0-9]+]]
   case var x where runced():
   // CHECK: [[CASE1]]:
@@ -680,7 +680,7 @@ func test_multiple_patterns5() {
     // CHECK:     br [[CASE_BODY]]([[Z_X]] : $Int)
     
     // CHECK:   [[CASE_BODY]]([[BODY_X:%.*]] : $Int):
-    // CHECK:     store [[BODY_X]] to [trivial] [[BOX_X:%.*]] : $*Int
+    // CHECK:     store [[BODY_X]] to [[BOX_X:%.*]] : $*Int
     // CHECK:     [[WRITE:%.*]] = begin_access [modify] [unknown] [[BOX_X]]
     // CHECK:     [[FUNC_AAA:%.*]] = function_ref @$s10switch_var3aaa1xySiz_tF
     // CHECK:     apply [[FUNC_AAA]]([[WRITE]])

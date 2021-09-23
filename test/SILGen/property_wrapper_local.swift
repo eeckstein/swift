@@ -41,7 +41,7 @@ func testLocalWrapper() {
   // CHECK: [[TMP:%.*]] = alloc_stack $Int
   // CHECK: [[GET:%.*]] = function_ref @$s22property_wrapper_local16testLocalWrapperyyF5valueL_Sivg : $@convention(thin) (@guaranteed { var Wrapper<Int> }) -> Int
   // CHECK: [[VAL:%.*]] = apply [[GET]]({{%.*}}) : $@convention(thin) (@guaranteed { var Wrapper<Int> }) -> Int
-  // CHECK: store [[VAL]] to [trivial] [[TMP]] : $*Int
+  // CHECK: store [[VAL]] to [[TMP]] : $*Int
   // CHECK: [[OP:%.*]] = function_ref @$sSi2peoiyySiz_SitFZ : $@convention(method) (@inout Int, Int, @thin Int.Type) -> ()
   // CHECK: apply [[OP]]({{%.*}}) : $@convention(method) (@inout Int, Int, @thin Int.Type) -> ()
   // CHECK: [[RESULT:%.*]] = load [trivial] [[TMP]] : $*Int

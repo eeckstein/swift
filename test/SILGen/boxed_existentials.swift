@@ -22,8 +22,8 @@ func test_concrete_erasure(_ x: ClericalError) -> Error {
 // CHECK:         [[ARG_COPY:%.*]] = copy_value [[ARG]]
 // CHECK:         [[EXISTENTIAL:%.*]] = alloc_existential_box $Error, $ClericalError
 // CHECK:         [[ADDR:%.*]] = project_existential_box $ClericalError in [[EXISTENTIAL]] : $Error
-// CHECK:         store [[EXISTENTIAL]] to [init] [[EXISTENTIAL_BUF:%.*]] :
-// CHECK:         store [[ARG_COPY]] to [init] [[ADDR]] : $*ClericalError
+// CHECK:         store [[EXISTENTIAL]] to [[EXISTENTIAL_BUF:%.*]] :
+// CHECK:         store [[ARG_COPY]] to [[ADDR]] : $*ClericalError
 // CHECK-NOT:         destroy_value [[ARG]]
 // CHECK:         [[EXISTENTIAL2:%.*]] = load [take] [[EXISTENTIAL_BUF]]
 // CHECK:         return [[EXISTENTIAL2]] : $Error
@@ -37,7 +37,7 @@ func test_composition_erasure(_ x: HairType & Error) -> Error {
 // CHECK:         [[VALUE_ADDR:%.*]] = open_existential_addr immutable_access [[OLD_EXISTENTIAL:%.*]] : $*Error & HairType to $*[[VALUE_TYPE:@opened\(.*\) Error & HairType]]
 // CHECK:         [[NEW_EXISTENTIAL:%.*]] = alloc_existential_box $Error, $[[VALUE_TYPE]]
 // CHECK:         [[ADDR:%.*]] = project_existential_box $[[VALUE_TYPE]] in [[NEW_EXISTENTIAL]] : $Error
-// CHECK:         store [[NEW_EXISTENTIAL]] to [init] [[NEW_EXISTENTIALBUF:%.*]] :
+// CHECK:         store [[NEW_EXISTENTIAL]] to [[NEW_EXISTENTIALBUF:%.*]] :
 // CHECK:         copy_addr [[VALUE_ADDR]] to [initialization] [[ADDR]]
 // CHECK-NOT:         destroy_addr [[OLD_EXISTENTIAL]]
 // CHECK:         [[NEW_EXISTENTIAL2:%.*]] = load [take] [[NEW_EXISTENTIALBUF]]
@@ -52,9 +52,9 @@ func test_class_composition_erasure(_ x: HairClass & Error) -> Error {
 // CHECK:         [[VALUE:%.*]] = open_existential_ref [[OLD_EXISTENTIAL:%.*]] : $Error & HairClass to $[[VALUE_TYPE:@opened\(.*\) Error & HairClass]]
 // CHECK:         [[NEW_EXISTENTIAL:%.*]] = alloc_existential_box $Error, $[[VALUE_TYPE]]
 // CHECK:         [[ADDR:%.*]] = project_existential_box $[[VALUE_TYPE]] in [[NEW_EXISTENTIAL]] : $Error
-// CHECK:         store [[NEW_EXISTENTIAL]] to [init] [[NEW_EXISTENTIALBUF:%.*]] :
+// CHECK:         store [[NEW_EXISTENTIAL]] to [[NEW_EXISTENTIALBUF:%.*]] :
 // CHECK:         [[COPIED_VALUE:%.*]] = copy_value [[VALUE]]
-// CHECK:         store [[COPIED_VALUE]] to [init] [[ADDR]]
+// CHECK:         store [[COPIED_VALUE]] to [[ADDR]]
 // CHECK:         [[NEW_EXISTENTIAL2:%.*]] = load [take] [[NEW_EXISTENTIALBUF]]
 // CHECK:         return [[NEW_EXISTENTIAL2]]
 
@@ -84,7 +84,7 @@ func test_property_of_lvalue(_ x: Error) -> String {
 // CHECK:         [[VAR:%.*]] = alloc_box ${ var Error }
 // CHECK:         [[PVAR:%.*]] = project_box [[VAR]]
 // CHECK:         [[ARG_COPY:%.*]] = copy_value [[ARG]] : $Error
-// CHECK:         store [[ARG_COPY]] to [init] [[PVAR]]
+// CHECK:         store [[ARG_COPY]] to [[PVAR]]
 // CHECK:         [[ACCESS:%.*]] = begin_access [read] [unknown] [[PVAR]] : $*Error
 // CHECK:         [[VALUE_BOX:%.*]] = load [copy] [[ACCESS]]
 // CHECK:         [[BORROWED_VALUE_BOX:%.*]] = begin_borrow [[VALUE_BOX]]

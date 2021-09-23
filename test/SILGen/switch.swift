@@ -987,7 +987,7 @@ func testLabeledScalarPayload(_ lsp: LabeledScalarPayload) -> Any {
   // CHECK: bb1([[TUPLE:%.*]] : $(name: Int)):
   // CHECK:   [[X:%.*]] = destructure_tuple [[TUPLE]]
   // CHECK:   [[ANY_X_ADDR:%.*]] = init_existential_addr {{%.*}}, $Int
-  // CHECK:   store [[X]] to [trivial] [[ANY_X_ADDR]]
+  // CHECK:   store [[X]] to [[ANY_X_ADDR]]
   case let .Payload(x):
     return x
   }
@@ -1123,7 +1123,7 @@ func testUninhabitedSwitchScrutinee() {
 // CHECK: [[MEM:%.*]] = alloc_stack $(TrivialSingleCaseEnum, Any)
 // CHECK: [[INIT_TUP_0:%.*]] = tuple_element_addr [[MEM]] : $*(TrivialSingleCaseEnum, Any), 0
 // CHECK: [[INIT_TUP_1:%.*]] = tuple_element_addr [[MEM]] : $*(TrivialSingleCaseEnum, Any), 1
-// CHECK: store {{%.*}} to [trivial] [[INIT_TUP_0]]
+// CHECK: store {{%.*}} to [[INIT_TUP_0]]
 // CHECK: copy_addr [take] {{%.*}} to [initialization] [[INIT_TUP_1]]
 // CHECK: [[TUP_0:%.*]] = tuple_element_addr [[MEM]] : $*(TrivialSingleCaseEnum, Any), 0
 // CHECK: [[TUP_0_VAL:%.*]] = load [trivial] [[TUP_0]]
@@ -1144,7 +1144,7 @@ func address_only_with_trivial_subtype(_ a: TrivialSingleCaseEnum, _ value: Any)
 // CHECK: [[MEM:%.*]] = alloc_stack $(NonTrivialSingleCaseEnum, Any)
 // CHECK: [[INIT_TUP_0:%.*]] = tuple_element_addr [[MEM]] : $*(NonTrivialSingleCaseEnum, Any), 0
 // CHECK: [[INIT_TUP_1:%.*]] = tuple_element_addr [[MEM]] : $*(NonTrivialSingleCaseEnum, Any), 1
-// CHECK: store {{%.*}} to [init] [[INIT_TUP_0]]
+// CHECK: store {{%.*}} to [[INIT_TUP_0]]
 // CHECK: copy_addr [take] {{%.*}} to [initialization] [[INIT_TUP_1]]
 // CHECK: [[TUP_0:%.*]] = tuple_element_addr [[MEM]] : $*(NonTrivialSingleCaseEnum, Any), 0
 // CHECK: [[TUP_0_VAL:%.*]] = load_borrow [[TUP_0]]
@@ -1181,7 +1181,7 @@ func address_only_with_nontrivial_subtype(_ a: NonTrivialSingleCaseEnum, _ value
 // CHECK:   [[TUP:%.*]] = alloc_stack $(Klass, Optional<Any>)
 // CHECK:   [[TUP_0:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 0
 // CHECK:   [[TUP_1:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 1
-// CHECK:   store [[ARG0_COPY]] to [init] [[TUP_0]]
+// CHECK:   store [[ARG0_COPY]] to [[TUP_0]]
 // CHECK:   copy_addr [take] [[ARG1_COPY]] to [initialization] [[TUP_1]]
 // CHECK:   [[TUP_0:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 0
 // CHECK:   [[TUP_0_VAL:%.*]] = load_borrow [[TUP_0]]
@@ -1213,7 +1213,7 @@ func partial_address_only_tuple_dispatch(_ name: Klass, _ value: Any?) {
 // CHECK:   [[TUP:%.*]] = alloc_stack $(Klass, Optional<Any>)
 // CHECK:   [[TUP_0:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 0
 // CHECK:   [[TUP_1:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 1
-// CHECK:   store [[ARG0_COPY]] to [init] [[TUP_0]]
+// CHECK:   store [[ARG0_COPY]] to [[TUP_0]]
 // CHECK:   copy_addr [take] [[ARG1_COPY]] to [initialization] [[TUP_1]]
 // CHECK:   [[TUP_0:%.*]] = tuple_element_addr [[TUP]] : $*(Klass, Optional<Any>), 0
 // CHECK:   [[TUP_0_VAL:%.*]] = load_borrow [[TUP_0]]

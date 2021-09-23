@@ -148,7 +148,7 @@ bb0(%0 : @owned $AB):
   %2 = ref_element_addr %borrow0 : $AB, #AB.value
   %3 = load [trivial] %2 : $*Int
   %222 = ref_element_addr %borrow0 : $AB, #AB.value2
-  store %3 to [trivial] %222 : $*Int
+  store %3 to %222 : $*Int
   %4 = ref_element_addr %borrow0 : $AB, #AB.value
   %5 = load [trivial] %4 : $*Int
   end_borrow %borrow0 : $AB
@@ -166,7 +166,7 @@ sil hidden [ossa] @load_forward_across_end_cow_mutation : $@convention(thin) (@o
 bb0(%0 : @owned $AB, %1 : $Int):
   %borrow0 = begin_borrow %0 : $AB
   %2 = ref_element_addr %borrow0 : $AB, #AB.value
-  store %1 to [trivial] %2 : $*Int
+  store %1 to %2 : $*Int
   end_borrow %borrow0 : $AB
   %4 = end_cow_mutation %0 : $AB
   %borrow4 = begin_borrow %4 : $AB
@@ -204,7 +204,7 @@ bb0(%0 : @owned $AB):
 sil [ossa] @test_unchecked_addr_cast : $@convention(thin) (@inout A, A) -> A {
 bb0(%0 : $*A, %1 : $A):
   %2 = unchecked_addr_cast %0 : $*A to $*A
-  store %1 to [trivial] %2 : $*A
+  store %1 to %2 : $*A
   %l1 = load [trivial] %2 : $*A
   return %l1 : $A
 }
@@ -218,13 +218,13 @@ bb0(%0 : $*A, %1 : $A):
 sil [ossa] @test_forwarding_ignoring_unchecked_addr_cast2 : $@convention(thin) (@inout A, A, A) -> A {
 bb0(%0 : $*A, %1 : $A, %2: $A):
   %3 = unchecked_addr_cast %0 : $*A to $*A
-  store %1 to [trivial] %3 : $*A
+  store %1 to %3 : $*A
   br bb1
 
 bb1:
   %5 = load [trivial] %3 : $*A
   %6 = load [trivial] %3 : $*A
-  store %2 to [trivial] %3 : $*A
+  store %2 to %3 : $*A
   cond_br undef, bb1a, bb2
 
 bb1a:
@@ -244,7 +244,7 @@ bb2:
 // CHECK-LABEL: } // end sil function 'test_read_dependence_allows_forwarding_multi_bb_1'
 sil [ossa] @test_read_dependence_allows_forwarding_multi_bb_1 : $@convention(thin) (@inout A, A) -> A {
 bb0(%0 : $*A, %1 : $A):
-  store %1 to [trivial] %0 : $*A
+  store %1 to %0 : $*A
   %2 = unchecked_addr_cast %0 : $*A to $*A
   %3 = unchecked_addr_cast %2 : $*A to $*A
   br bb1
@@ -258,7 +258,7 @@ bb1:
   // forwarding. Once we do the full optimistic data flow this will no
   // longer be needed.
   %6 = load [trivial] %0 : $*A
-  store %1 to [trivial] %0 : $*A
+  store %1 to %0 : $*A
   cond_br undef, bb1a, bb2
 
 bb1a:
@@ -319,7 +319,7 @@ bb8:
 sil [ossa] @load_store_forwarding_from_aggregate_to_field : $@convention(thin) (Agg1) -> (Builtin.Int32) {
 bb0(%0 : $Agg1):
   %1 = alloc_stack $Agg1
-  store %0 to [trivial] %1 : $*Agg1
+  store %0 to %1 : $*Agg1
   %2 = struct_element_addr %1 : $*Agg1, #Agg1.a
   %3 = struct_element_addr %2 : $*Agg2, #Agg2.t
   %4 = tuple_element_addr %3 : $*(Builtin.Int64, Builtin.Int32), 1
@@ -338,7 +338,7 @@ sil [ossa] @store_promotion : $@convention(thin) (@owned B) -> () {
 bb0(%0 : @owned $B):
   %1 = alloc_box $<τ_0_0> { var τ_0_0 } <B>
   %1a = project_box %1 : $<τ_0_0> { var τ_0_0 } <B>, 0
-  store %0 to [init] %1a : $*B
+  store %0 to %1a : $*B
   %3 = load [copy] %1a : $*B
   %4 = load [take] %1a : $*B
   destroy_value %4 : $B
@@ -387,7 +387,7 @@ bb0(%0 : $*Builtin.Int64, %1 : $*Builtin.Int64):
   %4 = integer_literal $Builtin.Int1, 0
   %5 = builtin "sadd_with_overflow_Int64"(%2 : $Builtin.Int64, %2 : $Builtin.Int64, %4 : $Builtin.Int1) : $(Builtin.Int64, Builtin.Int1)
   %6 = tuple_extract %5 : $(Builtin.Int64, Builtin.Int1), 0
-  store %6 to [trivial] %1 : $*Builtin.Int64
+  store %6 to %1 : $*Builtin.Int64
   %8 = builtin "smul_with_overflow_Int64"(%2 : $Builtin.Int64, %2 : $Builtin.Int64, %4 : $Builtin.Int1) : $(Builtin.Int64, Builtin.Int1)
   %9 = tuple_extract %8 : $(Builtin.Int64, Builtin.Int1), 0
   %10 = load [trivial] %1 : $*Builtin.Int64
@@ -410,15 +410,15 @@ sil [ossa] @load_store_forwarding_over_dealloc_stack : $@convention(thin) (Built
 bb0(%0 : $Builtin.Int64):
   %1 = alloc_stack $Builtin.Int64
   %2 = alloc_stack $Builtin.Int64
-  store %0 to [trivial] %1 : $*Builtin.Int64
-  store %0 to [trivial] %2 : $*Builtin.Int64
+  store %0 to %1 : $*Builtin.Int64
+  store %0 to %2 : $*Builtin.Int64
   %3 = alloc_stack $Builtin.Int64
   %5 = load [trivial] %2 : $*Builtin.Int64
   %22 = function_ref @use_64 : $@convention(thin) (Builtin.Int64) -> ()
   %23 = apply %22(%5) : $@convention(thin) (Builtin.Int64) -> ()
   dealloc_stack %3 : $*Builtin.Int64
   %4 = load [trivial] %1 : $*Builtin.Int64
-  store %0 to [trivial] %1 : $*Builtin.Int64
+  store %0 to %1 : $*Builtin.Int64
   %6 = load [trivial] %2 : $*Builtin.Int64
   %222 = function_ref @use_2_64 : $@convention(thin) (Builtin.Int64, Builtin.Int64) -> ()
   %232 = apply %222(%4, %6) : $@convention(thin) (Builtin.Int64, Builtin.Int64) -> ()
@@ -453,7 +453,7 @@ sil [ossa] @promote_partial_load : $@convention(thin) (Builtin.Int32) -> Builtin
 bb0(%0 : $Builtin.Int32):
   %1 = alloc_stack $Wrapper
   %2 = struct $Wrapper (%0 : $Builtin.Int32)
-  store %2 to [trivial] %1 : $*Wrapper
+  store %2 to %1 : $*Wrapper
   %3 = struct_element_addr %1 : $*Wrapper, #Wrapper.value
   %4 = load [trivial] %3 : $*Builtin.Int32
   dealloc_stack %1 : $*Wrapper
@@ -468,8 +468,8 @@ sil [ossa]  @store_loaded_value : $@convention(thin) (@inout Agg2, @inout Agg1) 
 bb0(%0 : $*Agg2, %1 : $*Agg1):
   %2 = load [trivial] %1 : $*Agg1
   %3 = load [trivial] %0 : $*Agg2
-  store %2 to [trivial]  %1 : $*Agg1
-  store %3 to [trivial] %0 : $*Agg2
+  store %2 to  %1 : $*Agg1
+  store %3 to %0 : $*Agg2
   %6 = tuple()
   return %6 : $()
 }
@@ -564,11 +564,11 @@ bb0:
   %0 = global_addr @total : $*Int32
   %1 = integer_literal $Builtin.Int32, 0
   %2 = struct $Int32 (%1 : $Builtin.Int32)
-  store %2 to [trivial] %0 : $*Int32
+  store %2 to %0 : $*Int32
   %6 = alloc_ref $AX
   %borrow6 = begin_borrow %6 : $AX
   %8 = ref_element_addr %borrow6 : $AX, #AX.current
-  store %2 to [trivial] %8 : $*Int32
+  store %2 to %8 : $*Int32
   end_borrow %borrow6 : $AX
   cond_br undef, bb0b, bb0a
 
@@ -585,7 +585,7 @@ bb2:
   %33 = builtin "sadd_with_overflow_Int32"(%32 : $Builtin.Int32, %1 : $Builtin.Int32, %24 : $Builtin.Int1) : $(Builtin.Int32, Builtin.Int1)
   %34 = tuple_extract %33 : $(Builtin.Int32, Builtin.Int1), 0
   %37 = struct $Int32 (%34 : $Builtin.Int32)
-  store %37 to [trivial] %0 : $*Int32
+  store %37 to %0 : $*Int32
   cond_br undef, bb2b, bb2a
 
 bb2a:
@@ -657,7 +657,7 @@ bb1:
   %6 = apply %5(%4) : $@convention(thin) (Builtin.Int32) -> ()
   %7 = integer_literal $Builtin.Int32, 2
   %8 = builtin "trunc_Int32_Int1"(%4 : $Builtin.Int32) : $Builtin.Int1
-  store %7 to [trivial] %0 : $*Builtin.Int32
+  store %7 to %0 : $*Builtin.Int32
   %10 = builtin "trunc_Int32_Int1"(%4 : $Builtin.Int32) : $Builtin.Int1
   %11 = load [trivial] %0 : $*Builtin.Int32
   // function_ref use
@@ -693,7 +693,7 @@ bb3:
 // CHECK-LABEL: } // end sil function 'test_read_dependence_allows_forwarding_multi_bb_2'
 sil [ossa] @test_read_dependence_allows_forwarding_multi_bb_2 : $@convention(thin) (@inout A, A, A) -> A {
 bb0(%0 : $*A, %1 : $A, %2 : $A):
-  store %1 to [trivial] %0 : $*A
+  store %1 to %0 : $*A
   %3 = unchecked_addr_cast %0 : $*A to $*A
   %4 = unchecked_addr_cast %3 : $*A to $*A
   br bb1
@@ -707,7 +707,7 @@ bb1:
   %123 = apply %22(%6) : $@convention(thin) (A) -> ()
   %223 = apply %22(%7) : $@convention(thin) (A) -> ()
   %323 = apply %22(%8) : $@convention(thin) (A) -> ()
-  store %2 to [trivial] %0 : $*A
+  store %2 to %0 : $*A
   cond_br undef, bb1a, bb2
 
 bb1a:
@@ -727,8 +727,8 @@ sil [ossa] @load_to_load_loop : $@convention(thin) (Int32) -> () {
 bb0(%a : $Int32):
   %101 = alloc_stack $Int32
   %102 = alloc_stack $Int32
-  store %a to [trivial] %101 : $*Int32
-  store %a to [trivial] %102 : $*Int32
+  store %a to %101 : $*Int32
+  store %a to %102 : $*Int32
   %0 = struct_element_addr %101 : $*Int32, #Int32.value
   %1 = struct_element_addr %102 : $*Int32, #Int32.value
   %2 = load [trivial] %0 : $*Builtin.Int32
@@ -743,7 +743,7 @@ bb1:
   %5 = integer_literal $Builtin.Int32, 2
   %1125 = function_ref @use : $@convention(thin) (Builtin.Int32) -> ()
   %1126 = apply %1125(%4) : $@convention(thin) (Builtin.Int32) -> ()
-  store %5 to [trivial] %0 : $*Builtin.Int32
+  store %5 to %0 : $*Builtin.Int32
   builtin "trunc_Int32_Int1"(%4 : $Builtin.Int32) : $Builtin.Int1
   %6 = load [trivial] %0 : $*Builtin.Int32
   %11125 = function_ref @use : $@convention(thin) (Builtin.Int32) -> ()
@@ -778,7 +778,7 @@ bb1:
 
 bb2:
   %5 = integer_literal $Builtin.Int32, 2
-  store %5 to [trivial] %0 : $*Builtin.Int32
+  store %5 to %0 : $*Builtin.Int32
   br bb3
 
 bb3:
@@ -804,18 +804,18 @@ bb1:
   %9 = integer_literal $Builtin.Int64, 10
   %10 = struct $Int (%9 : $Builtin.Int64)
   %11 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %10 to [trivial] %11 : $*Int
+  store %10 to %11 : $*Int
   %14 = integer_literal $Builtin.Int64, 20
   %15 = struct $Int (%14 : $Builtin.Int64)
   %16 = struct_element_addr %1 : $*TwoField, #TwoField.b
-  store %15 to [trivial] %16 : $*Int
+  store %15 to %16 : $*Int
   br bb3
 
 bb2:
   %3 = function_ref @init_twofield : $@convention(thin) (@thin TwoField.Type) -> TwoField
   %4 = metatype $@thin TwoField.Type
   %5 = apply %3(%4) : $@convention(thin) (@thin TwoField.Type) -> TwoField
-  store %5 to [trivial] %1 : $*TwoField
+  store %5 to %1 : $*TwoField
   br bb3
 
 bb3:
@@ -841,9 +841,9 @@ bb1:
   %9 = integer_literal $Builtin.Int64, 10
   %10 = struct $Int (%9 : $Builtin.Int64)
   %11 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %10 to [trivial] %11 : $*Int
+  store %10 to %11 : $*Int
   %16 = struct_element_addr %1 : $*TwoField, #TwoField.b
-  store %10 to [trivial] %16 : $*Int
+  store %10 to %16 : $*Int
   br bb2
 
 bb2:
@@ -870,16 +870,16 @@ bb1:
   %3 = integer_literal $Builtin.Int64, 10
   %4 = struct $Int (%3 : $Builtin.Int64)
   %5 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %4 to [trivial] %5 : $*Int
+  store %4 to %5 : $*Int
   %7 = struct_element_addr %1 : $*TwoField, #TwoField.b
-  store %4 to [trivial] %7 : $*Int
+  store %4 to %7 : $*Int
   br bb3
 
 bb2:
   %10 = integer_literal $Builtin.Int64, 10
   %11 = struct $Int (%10 : $Builtin.Int64)
   %12 = struct $TwoField (%11 : $Int, %11 : $Int)
-  store %12 to [trivial] %1 : $*TwoField
+  store %12 to %1 : $*TwoField
   br bb3
 
 bb3:
@@ -911,22 +911,22 @@ bb2:
 
 bb3:
   %7 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %7 : $*Int
+  store %3 to %7 : $*Int
   br bb7
 
 bb4:
   %10 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %10 : $*Int
+  store %3 to %10 : $*Int
   br bb7
 
 bb5:
   %13 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %13 : $*Int
+  store %3 to %13 : $*Int
   br bb8
 
 bb6:
   %16 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %16 : $*Int
+  store %3 to %16 : $*Int
   br bb8
 
 bb7:
@@ -967,22 +967,22 @@ bb2:
 
 bb3:
   %7 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %7 : $*Int
+  store %3 to %7 : $*Int
   br bb7
 
 bb4:
   %10 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %10 : $*Int
+  store %3 to %10 : $*Int
   br bb7
 
 bb5:
   %13 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %13 : $*Int
+  store %3 to %13 : $*Int
   br bb8
 
 bb6:
   %16 = struct_element_addr %1 : $*TwoField, #TwoField.a
-  store %3 to [trivial] %16 : $*Int
+  store %3 to %16 : $*Int
   br bb8
 
 bb7:
@@ -1091,16 +1091,16 @@ bb0:
   %0 = global_addr @total : $*Int32
   %1 = integer_literal $Builtin.Int32, 0
   %2 = struct $Int32 (%1 : $Builtin.Int32)
-  store %2 to [trivial] %0 : $*Int32
+  store %2 to %0 : $*Int32
   %4 = integer_literal $Builtin.Int32, 10
   %5 = struct $Int32 (%4 : $Builtin.Int32)
   %6 = alloc_ref $NewHalfOpenRangeGenerator
   %borrow6 = begin_borrow %6 :  $NewHalfOpenRangeGenerator
   %7 = upcast %borrow6 : $NewHalfOpenRangeGenerator to $NewRangeGenerator1
   %8 = ref_element_addr %7 : $NewRangeGenerator1, #NewRangeGenerator1.current
-  store %2 to [trivial] %8 : $*Int32
+  store %2 to %8 : $*Int32
   %10 = ref_element_addr %7 : $NewRangeGenerator1, #NewRangeGenerator1.end
-  store %5 to [trivial] %10 : $*Int32
+  store %5 to %10 : $*Int32
   %12 = struct_element_addr %8 : $*Int32, #Int32.value
   %13 = struct_element_addr %10 : $*Int32, #Int32.value
   %15 = load [trivial] %12 : $*Builtin.Int32
@@ -1120,7 +1120,7 @@ bb2(%20 : $Builtin.Int32):
   %27 = tuple_extract %25 : $(Builtin.Int32, Builtin.Int1), 1
   cond_fail %27 : $Builtin.Int1
   %29 = struct $Int32 (%26 : $Builtin.Int32)
-  store %29 to [trivial] %8 : $*Int32
+  store %29 to %8 : $*Int32
   %31 = struct_element_addr %0 : $*Int32, #Int32.value
   %32 = load [trivial] %31 : $*Builtin.Int32
   %33 = builtin "sadd_with_overflow_Int32"(%32 : $Builtin.Int32, %21 : $Builtin.Int32, %24 : $Builtin.Int1) : $(Builtin.Int32, Builtin.Int1)
@@ -1128,7 +1128,7 @@ bb2(%20 : $Builtin.Int32):
   %35 = tuple_extract %33 : $(Builtin.Int32, Builtin.Int1), 1
   cond_fail %35 : $Builtin.Int1
   %37 = struct $Int32 (%34 : $Builtin.Int32)
-  store %37 to [trivial] %0 : $*Int32
+  store %37 to %0 : $*Int32
   %39 = load [trivial] %12 : $*Builtin.Int32
   %40 = load [trivial] %13 : $*Builtin.Int32
   %41 = builtin "cmp_eq_Int32"(%39 : $Builtin.Int32, %40 : $Builtin.Int32) : $Builtin.Int1
@@ -1166,8 +1166,8 @@ sil [ossa] @load_to_load_loop_with_unreachable_block : $@convention(thin) (Int32
 bb0(%a : $Int32):
   %101 = alloc_stack $Int32
   %102 = alloc_stack $Int32
-  store %a to [trivial] %101 : $*Int32
-  store %a to [trivial] %102 : $*Int32
+  store %a to %101 : $*Int32
+  store %a to %102 : $*Int32
   %0 = struct_element_addr %101 : $*Int32, #Int32.value
   %1 = struct_element_addr %102 : $*Int32, #Int32.value
   %2 = load [trivial] %0 : $*Builtin.Int32
@@ -1186,7 +1186,7 @@ bb1:
   %5 = integer_literal $Builtin.Int32, 2
   %1125 = function_ref @use : $@convention(thin) (Builtin.Int32) -> ()
   %1126 = apply %1125(%4) : $@convention(thin) (Builtin.Int32) -> ()
-  store %5 to [trivial] %0 : $*Builtin.Int32
+  store %5 to %0 : $*Builtin.Int32
   builtin "trunc_Int32_Int1"(%4 : $Builtin.Int32) : $Builtin.Int1
   %6 = load [trivial] %0 : $*Builtin.Int32
   %11125 = function_ref @use : $@convention(thin) (Builtin.Int32) -> ()
@@ -1252,9 +1252,9 @@ bb0(%0 : @owned $AB):
 sil [ossa] @load_store_deterministic_forwarding : $@convention(thin) (@inout Builtin.Int64, @inout Builtin.Int64) -> (Builtin.Int64) {
 bb0(%0 : $*Builtin.Int64, %1 : $*Builtin.Int64):
   %2 = integer_literal $Builtin.Int64, 0
-  store %2 to [trivial] %0 : $*Builtin.Int64
+  store %2 to %0 : $*Builtin.Int64
   %3 = load [trivial] %0 : $*Builtin.Int64
-  store %3 to [trivial] %1: $*Builtin.Int64
+  store %3 to %1: $*Builtin.Int64
   %4 = load [trivial] %1 : $*Builtin.Int64
   return %4 : $Builtin.Int64
 }
@@ -1311,7 +1311,7 @@ bb0(%0 : $*Int):
   %value_raw = integer_literal $Builtin.Int64, 42
   // CHECK: [[VAL:%.*]] = struct $Int
   %value = struct $Int (%value_raw : $Builtin.Int64)
-  store %value to [trivial] %0 : $*Int
+  store %value to %0 : $*Int
 
   %f_callee = function_ref @test_rle_in_guaranteed_callee : $@convention(thin) (@in_guaranteed Int) -> ()
   %r1 = apply %f_callee(%0) : $@convention(thin) (@in_guaranteed Int) -> ()
@@ -1340,7 +1340,7 @@ bb0:
   %3 = struct $Int32 (%2 : $Builtin.Int32)
   %borrow1 = begin_borrow %1 : $AX
   %4 = ref_element_addr %borrow1 : $AX, #AX.current
-  store %3 to [trivial] %4 : $*Int32
+  store %3 to %4 : $*Int32
   %5 = load [trivial] %4 : $*Int32
   end_borrow %borrow1 : $AX
   set_deallocating %1 : $AX

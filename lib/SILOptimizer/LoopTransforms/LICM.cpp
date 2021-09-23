@@ -70,7 +70,8 @@ static StoreInst *isStoreToAccess(SILInstruction *I, AccessPath accessPath) {
     return nullptr;
 
   // TODO: handle StoreOwnershipQualifier::Init
-  if (SI->getOwnershipQualifier() == StoreOwnershipQualifier::Init)
+  SILFunction *f = I->getFunction();
+  if (!SI->getSrc()->getType().isTrivial(*f) && f->hasOwnership())
     return nullptr;
 
   auto storeAccessPath = AccessPath::compute(SI->getDest());
@@ -1406,8 +1407,7 @@ hoistLoadsAndStores(AccessPath accessPath, SILLoop *loop) {
              && "should have split critical edges");
       SILBuilder B(succ->begin());
       auto *SI = B.createStore(
-          loc.getValue(), ssaUpdater.getValueInMiddleOfBlock(succ), initialAddr,
-          StoreOwnershipQualifier::Unqualified);
+          loc.getValue(), ssaUpdater.getValueInMiddleOfBlock(succ), initialAddr);
       (void)SI;
       LLVM_DEBUG(llvm::dbgs() << "Creating loop-exit store " << *SI);
     }

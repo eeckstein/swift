@@ -15,7 +15,7 @@ sil [ossa] @handle_phi_address_nodes : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
   %1 = alloc_stack $MyStruct
   %2 = struct_element_addr %1 : $*MyStruct, #MyStruct.k
-  store %0 to [init] %2 : $*Klass
+  store %0 to %2 : $*Klass
   cond_br undef, bb1, bb2
 
 bb1:

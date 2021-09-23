@@ -35,7 +35,7 @@ func read_only_capture(_ x: Int) -> Int {
   // CHECK:   [[XBOX:%[0-9]+]] = alloc_box ${ var Int }
   // SEMANTIC ARC TODO: This is incorrect. We need to do the project_box on the copy.
   // CHECK:   [[PROJECT:%.*]] = project_box [[XBOX]]
-  // CHECK:   store [[X]] to [trivial] [[PROJECT]]
+  // CHECK:   store [[X]] to [[PROJECT]]
 
   func cap() -> Int {
     return x
@@ -68,7 +68,7 @@ func write_to_capture(_ x: Int) -> Int {
   // CHECK: bb0([[X:%[0-9]+]] : $Int):
   // CHECK:   [[XBOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[XBOX_PB:%.*]] = project_box [[XBOX]]
-  // CHECK:   store [[X]] to [trivial] [[XBOX_PB]]
+  // CHECK:   store [[X]] to [[XBOX_PB]]
   // CHECK:   [[X2BOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[X2BOX_PB:%.*]] = project_box [[X2BOX]]
   // CHECK:   [[ACCESS:%.*]] = begin_access [read] [unknown] [[XBOX_PB]] : $*Int
@@ -127,7 +127,7 @@ func capture_local_func(_ x: Int) -> () -> () -> Int {
   var x = x
   // CHECK:   [[XBOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[XBOX_PB:%.*]] = project_box [[XBOX]]
-  // CHECK:   store [[ARG]] to [trivial] [[XBOX_PB]]
+  // CHECK:   store [[ARG]] to [[XBOX_PB]]
 
   func aleph() -> Int { return x }
 
@@ -245,7 +245,7 @@ func uncaptured_locals(_ x: Int) -> (Int, Int) {
   // CHECK: bb0([[XARG:%[0-9]+]] : $Int):
   // CHECK:   [[XADDR:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK:   [[PB:%.*]] = project_box [[XADDR]]
-  // CHECK:   store [[XARG]] to [trivial] [[PB]]
+  // CHECK:   store [[XARG]] to [[PB]]
 
   var y = zero
   // CHECK:   [[YADDR:%[0-9]+]] = alloc_box ${ var Int }
@@ -319,14 +319,14 @@ class SelfCapturedInInit : Base {
   // CHECK:   [[SELF_BOX:%.*]] = alloc_box ${ var SelfCapturedInInit }, let, name "self"
   // CHECK:   [[UNINIT_SELF:%.*]] = mark_uninitialized [derivedself] [[SELF_BOX]]
   // CHECK:   [[PB_SELF_BOX:%.*]] = project_box [[UNINIT_SELF]]
-  // CHECK:   store [[SELF]] to [init] [[PB_SELF_BOX]]
+  // CHECK:   store [[SELF]] to [[PB_SELF_BOX]]
   //
   // Then perform the super init sequence.
   // CHECK:   [[TAKEN_SELF:%.*]] = load [take] [[PB_SELF_BOX]]
   // CHECK:   [[UPCAST_TAKEN_SELF:%.*]] = upcast [[TAKEN_SELF]]
   // CHECK:   [[NEW_SELF:%.*]] = apply {{.*}}([[UPCAST_TAKEN_SELF]]) : $@convention(method) (@owned Base) -> @owned Base
   // CHECK:   [[DOWNCAST_NEW_SELF:%.*]] = unchecked_ref_cast [[NEW_SELF]] : $Base to $SelfCapturedInInit
-  // CHECK:   store [[DOWNCAST_NEW_SELF]] to [init] [[PB_SELF_BOX]]
+  // CHECK:   store [[DOWNCAST_NEW_SELF]] to [[PB_SELF_BOX]]
   //
   // Finally put self in the closure.
   // CHECK:   [[BORROWED_SELF:%.*]] = load_borrow [[PB_SELF_BOX]]
@@ -381,7 +381,7 @@ func closeOverLetLValue() {
 // CHECK: bb0([[ARG:%.*]] : @guaranteed $ClassWithIntProperty):
 // CHECK:   [[TMP_CLASS_ADDR:%.*]] = alloc_stack $ClassWithIntProperty, let, name "a", argno 1
 // CHECK:   [[COPY_ARG:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[COPY_ARG]] to [init] [[TMP_CLASS_ADDR]] : $*ClassWithIntProperty
+// CHECK:   store [[COPY_ARG]] to [[TMP_CLASS_ADDR]] : $*ClassWithIntProperty
 // CHECK:   [[BORROWED_LOADED_CLASS:%.*]] = load_borrow [[TMP_CLASS_ADDR]] : $*ClassWithIntProperty
 // CHECK:   [[INT_IN_CLASS_ADDR:%.*]] = ref_element_addr [[BORROWED_LOADED_CLASS]] : $ClassWithIntProperty, #ClassWithIntProperty.x
 // CHECK:   [[ACCESS:%.*]] = begin_access [read] [dynamic] [[INT_IN_CLASS_ADDR]] : $*Int
@@ -396,7 +396,7 @@ func closeOverLetLValue() {
 // GUARANTEED: bb0(%0 : @guaranteed $ClassWithIntProperty):
 // GUARANTEED:   [[TMP:%.*]] = alloc_stack $ClassWithIntProperty
 // GUARANTEED:   [[COPY:%.*]] = copy_value %0 : $ClassWithIntProperty
-// GUARANTEED:   store [[COPY]] to [init] [[TMP]] : $*ClassWithIntProperty
+// GUARANTEED:   store [[COPY]] to [[TMP]] : $*ClassWithIntProperty
 // GUARANTEED:   [[BORROWED:%.*]] = load_borrow [[TMP]]
 // GUARANTEED:   end_borrow [[BORROWED]]
 // GUARANTEED:   destroy_addr [[TMP]]
@@ -667,7 +667,7 @@ class SuperSub : SuperBase {
 // -- TODO: A lot of fussy r/r traffic and owned/unowned conversions here.
 // -- strong +2, unowned +1
 // CHECK:         [[UNOWNED_SELF_COPY:%.*]] = copy_value [[UNOWNED_SELF]]
-// CHECK:         store [[UNOWNED_SELF_COPY]] to [init] [[PB]]
+// CHECK:         store [[UNOWNED_SELF_COPY]] to [[PB]]
 // SEMANTIC ARC TODO: This destroy_value should probably be /after/ the load from PB on the next line.
 // CHECK:         destroy_value [[SELF_COPY]]
 // CHECK:         [[UNOWNED_SELF:%.*]] = load_borrow [[PB]]

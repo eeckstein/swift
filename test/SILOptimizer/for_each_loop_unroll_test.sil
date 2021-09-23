@@ -20,11 +20,11 @@ bb0:
   (%3, %4) = destructure_tuple %2 : $(Array<Builtin.Int64>, Builtin.RawPointer)
   %5 = pointer_to_address %4 : $Builtin.RawPointer to [strict] $*Builtin.Int64
   %6 = integer_literal $Builtin.Int64, 15
-  store %6 to [trivial] %5 : $*Builtin.Int64
+  store %6 to %5 : $*Builtin.Int64
   %12 = integer_literal $Builtin.Word, 1
   %13 = index_addr %5 : $*Builtin.Int64, %12 : $Builtin.Word
   %14 = integer_literal $Builtin.Int64, 27
-  store %14 to [trivial] %13 : $*Builtin.Int64
+  store %14 to %13 : $*Builtin.Int64
   %21 = begin_borrow %3 : $Array<Builtin.Int64>
   %22 = alloc_stack $Array<Builtin.Int64>
   %23 = store_borrow %21 to %22 : $*Array<Builtin.Int64>
@@ -51,14 +51,14 @@ bb2(%39 : @owned $Error):
 // CHECK: [[BODYCLOSURE:%[0-9]+]] = thin_to_thick_function
 // CHECK-NOT: forEach
 // CHECK: [[STACK:%[0-9]+]] = alloc_stack $Builtin.Int64
-// CHECK: store [[LIT1]] to [trivial] [[STACK]]
+// CHECK: store [[LIT1]] to [[STACK]]
 // CHECK: try_apply [[BODYCLOSURE]]([[STACK]]) : $@noescape @callee_guaranteed (@in_guaranteed Builtin.Int64) -> @error Error, normal [[NORMAL:bb[0-9]+]], error [[ERROR:bb[0-9]+]]
 
 // CHECK: [[ERROR]]([[ERRPARAM:%[0-9]+]] : @owned $Error):
 // CHECK: br [[ERROR3:bb[0-9]+]]([[ERRPARAM]] : $Error)
 
 // CHECK: [[NORMAL]](%{{.*}} : $()):
-// CHECK: store [[LIT2]] to [trivial] [[STACK]] : $*Builtin.Int64
+// CHECK: store [[LIT2]] to [[STACK]] : $*Builtin.Int64
 // CHECK: try_apply [[BODYCLOSURE]]([[STACK]]) : $@noescape @callee_guaranteed (@in_guaranteed Builtin.Int64) -> @error Error, normal [[NORMAL2:bb[0-9]+]], error [[ERROR2:bb[0-9]+]]
 
 // CHECK: [[ERROR2]]([[ERRPARAM2:%[0-9]+]] : @owned $Error):
@@ -83,10 +83,10 @@ bb0(%0: @owned $@callee_guaranteed @substituted <A> () -> @out A for <Int>, %1: 
   %4 = apply %3<() -> Int>(%2) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer)
   (%5, %6) = destructure_tuple %4 : $(Array<()->Int>, Builtin.RawPointer)
   %7 = pointer_to_address %6 : $Builtin.RawPointer to [strict] $*@callee_guaranteed @substituted <A> () -> @out A for <Int>
-  store %0 to [init] %7 : $*@callee_guaranteed @substituted <A> () -> @out A for <Int>
+  store %0 to %7 : $*@callee_guaranteed @substituted <A> () -> @out A for <Int>
   %12 = integer_literal $Builtin.Word, 1
   %13 = index_addr %7 : $*@callee_guaranteed @substituted <A> () -> @out A for <Int>, %12 : $Builtin.Word
-  store %1 to [init] %13 : $*@callee_guaranteed @substituted <A> () -> @out A for <Int>
+  store %1 to %13 : $*@callee_guaranteed @substituted <A> () -> @out A for <Int>
   %21 = begin_borrow %5 : $Array<()->Int>
   %22 = alloc_stack $Array<()->Int>
   %23 = store_borrow %21 to %22 : $*Array<()->Int>
@@ -109,9 +109,9 @@ bb2(%39 : @owned $Error):
 }
 // CHECK-LABEL: nonTrivialForEachLoopUnrollTest
 // CHECK: [[ELEM1:%[0-9]+]] = copy_value %0
-// CHECK-NEXT: store %0 to [init] %{{.*}} : $*@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <Int>
+// CHECK-NEXT: store %0 to %{{.*}} : $*@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <Int>
 // CHECK: [[ELEM2:%[0-9]+]] = copy_value %1
-// CHECK-NEXT: store %1 to [init] %{{.*}} : $*@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <Int>
+// CHECK-NEXT: store %1 to %{{.*}} : $*@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <Int>
 // CHECK: [[BODYCLOSURE:%[0-9]+]] = thin_to_thick_function
 // CHECK-NOT: forEach
 // CHECK: [[STACK:%[0-9]+]] = alloc_stack $@callee_guaranteed @substituted <τ_0_0> () -> @out τ_0_0 for <Int>
@@ -150,11 +150,11 @@ bb0:
   (%3, %4) = destructure_tuple %2 : $(Array<Builtin.Int64>, Builtin.RawPointer)
   %5 = pointer_to_address %4 : $Builtin.RawPointer to [strict] $*Builtin.Int64
   %6 = integer_literal $Builtin.Int64, 15
-  store %6 to [trivial] %5 : $*Builtin.Int64
+  store %6 to %5 : $*Builtin.Int64
   %12 = integer_literal $Builtin.Word, 1
   %13 = index_addr %5 : $*Builtin.Int64, %12 : $Builtin.Word
   %14 = integer_literal $Builtin.Int64, 27
-  store %14 to [trivial] %13 : $*Builtin.Int64
+  store %14 to %13 : $*Builtin.Int64
   %21 = begin_borrow %3 : $Array<Builtin.Int64>
   %22 = alloc_stack $Array<Builtin.Int64>
   %23 = store_borrow %21 to %22 : $*Array<Builtin.Int64>
@@ -195,7 +195,7 @@ bb1(%arg : $Builtin.Int64):
   %12 = apply %11<Builtin.Int64>(%10) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer)
   (%13, %14) = destructure_tuple %12 : $(Array<Builtin.Int64>, Builtin.RawPointer)
   %15 = pointer_to_address %14 : $Builtin.RawPointer to [strict] $*Builtin.Int64
-  store %arg to [trivial] %15 : $*Builtin.Int64
+  store %arg to %15 : $*Builtin.Int64
   br bb2(%arg : $Builtin.Int64)
 
 bb2(%arg2 : $Builtin.Int64):

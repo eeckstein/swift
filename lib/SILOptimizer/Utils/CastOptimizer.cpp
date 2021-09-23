@@ -744,9 +744,7 @@ CastOptimizer::optimizeBridgedSwiftToObjCCast(SILDynamicCastInst dynamicCast) {
   //
   // NOTE: We assume that dest was uninitialized when passed to us.
   SILValue castedValue = computeFinalCastedValue(Builder, dynamicCast, NewAI);
-  auto qual = Builder.hasOwnership() ? StoreOwnershipQualifier::Init
-                                     : StoreOwnershipQualifier::Unqualified;
-  SILInstruction *NewI = Builder.createStore(Loc, castedValue, Dest, qual);
+  SILInstruction *NewI = Builder.createStore(Loc, castedValue, Dest);
   if (isConditional && NewI->getParent() != NewAI->getParent()) {
     Builder.createBranch(Loc, SuccessBB);
   }

@@ -218,7 +218,7 @@ func checkDefaultInitGenericOptional() {
 
   // CHECK: [[VALUE:%.*]] = enum $Optional<Int>, #Optional.none!enumelt
   // CHECK: [[NIL:%.*]] = alloc_stack $Optional<Int>
-  // CHECK: store [[VALUE]] to [trivial] [[NIL]] : $*Optional<Int>
+  // CHECK: store [[VALUE]] to [[NIL]] : $*Optional<Int>
   // CHECK: [[FN:%.*]] =  function_ref @$s27stored_property_default_arg15OptionalGenericV1t1xACyxGxSg_SitcfC : $@convention(method) <τ_0_0> (@in Optional<τ_0_0>, Int, @thin OptionalGeneric<τ_0_0>.Type) -> @out OptionalGeneric<τ_0_0>
   // CHECK: apply [[FN]]<Int>(%0, [[NIL]], {{%.*}}, %1)
 }

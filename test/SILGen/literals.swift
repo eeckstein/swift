@@ -53,10 +53,10 @@ class TakesArrayLiteral<Element> : ExpressibleByArrayLiteral {
 // CHECK: [[ARR_TMP:%.*]] = apply [[ALLOCATE_VARARGS]]<Int>([[ARRAY_LENGTH]])
 // CHECK: ([[ARR:%.*]], [[ADDRESS:%.*]]) = destructure_tuple [[ARR_TMP]]
 // CHECK: [[POINTER:%.*]] = pointer_to_address [[ADDRESS]]
-// CHECK: store [[TMP:%.*]] to [trivial] [[POINTER]]
+// CHECK: store [[TMP:%.*]] to [[POINTER]]
 // CHECK: [[IDX1:%.*]] = integer_literal $Builtin.Word, 1
 // CHECK: [[POINTER1:%.*]] = index_addr [[POINTER]] : $*Int, [[IDX1]] : $Builtin.Word
-// CHECK: store [[TMP:%.*]] to [trivial] [[POINTER1]]
+// CHECK: store [[TMP:%.*]] to [[POINTER1]]
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<Int>([[ARR]])
 // CHECK: [[METATYPE:%.*]] = metatype $@thick TakesArrayLiteral<Int>.Type
@@ -80,7 +80,7 @@ class Klass {}
 // CHECK: [[KLASS_METATYPE:%.*]] = metatype $@thick Klass.Type
 // CHECK: [[CTOR:%.*]] = function_ref @$s8literals5KlassCACycfC : $@convention(method) (@thick Klass.Type) -> @owned Klass
 // CHECK: [[TMP:%.*]] = apply [[CTOR]]([[KLASS_METATYPE]]) : $@convention(method) (@thick Klass.Type) -> @owned Klass
-// CHECK: store [[TMP]] to [init] [[POINTER]]
+// CHECK: store [[TMP]] to [[POINTER]]
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<Klass>([[ARR]])
 // CHECK: [[METATYPE:%.*]] = metatype $@thick TakesArrayLiteral<Klass>.Type
@@ -168,7 +168,7 @@ struct Foo2 {
 // CHECK: [[K:%.*]] = apply [[CTOR]]([[METATYPE_KLASS]]) : $@convention(method) (@thick Klass.Type) -> @owned Klass
 // CHECK: [[CTOR:%.*]] = function_ref @$s8literals4Foo2V1kAcA5KlassC_tcfC : $@convention(method) (@owned Klass, @thin Foo2.Type) -> @owned Foo2
 // CHECK: [[TMP:%.*]] = apply [[CTOR]]([[K]], [[METATYPE_FOO2]]) : $@convention(method) (@owned Klass, @thin Foo2.Type) -> @owned Foo2
-// store [[TMP]] to [init] [[POINTER]] : $*Foo2
+// store [[TMP]] to [[POINTER]] : $*Foo2
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<Foo2>([[ARR]])
 // CHECK: [[METATYPE:%.*]] = metatype $@thick TakesArrayLiteral<Foo2>.Type
@@ -191,7 +191,7 @@ func returnsNonTrivialStruct() -> TakesArrayLiteral<Foo2> {
 // CHECK: [[OTHER_FN:%.*]] = function_ref @$s8literals16NestedLValuePathV21otherMutatingFunctionACyF : $@convention(method) (@inout NestedLValuePath) -> @owned NestedLValuePath
 // CHECK: [[TMP:%.*]] = apply [[OTHER_FN]]([[ACCESS]]) : $@convention(method) (@inout NestedLValuePath) -> @owned NestedLValuePath
 // CHECK: end_access [[ACCESS]] : $*NestedLValuePath
-// CHECK: store [[TMP]] to [init] [[POINTER]] : $*NestedLValuePath
+// CHECK: store [[TMP]] to [[POINTER]] : $*NestedLValuePath
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<NestedLValuePath>([[ARR]])
 // CHECK: [[METATYPE:%.*]] = metatype $@thick TakesArrayLiteral<NestedLValuePath>.Type
@@ -288,14 +288,14 @@ class TakesDictionaryLiteral<Key, Value> : ExpressibleByDictionaryLiteral {
 // CHECK: [[TUPLE_ADDR:%.*]] = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*(Int, Int)
 // CHECK: [[KEY_ADDR:%.*]] = tuple_element_addr [[TUPLE_ADDR]] : $*(Int, Int), 0
 // CHECK: [[VALUE_ADDR:%.*]] = tuple_element_addr [[TUPLE_ADDR]] : $*(Int, Int), 1
-// CHECK: store [[TMP]] to [trivial] [[KEY_ADDR]] : $*Int
-// CHECK: store [[TMP]] to [trivial] [[VALUE_ADDR]] : $*Int
+// CHECK: store [[TMP]] to [[KEY_ADDR]] : $*Int
+// CHECK: store [[TMP]] to [[VALUE_ADDR]] : $*Int
 // CHECK: [[IDX1:%.*]] = integer_literal $Builtin.Word, 1
 // CHECK: [[TUPLE_ADDR1:%.*]] = index_addr [[TUPLE_ADDR]] : $*(Int, Int), [[IDX1]] : $Builtin.Word
 // CHECK: [[KEY_ADDR:%.*]] = tuple_element_addr [[TUPLE_ADDR1]] : $*(Int, Int), 0
 // CHECK: [[VALUE_ADDR:%.*]] = tuple_element_addr [[TUPLE_ADDR1]] : $*(Int, Int), 1
-// CHECK: store [[TMP]] to [trivial] [[KEY_ADDR]] : $*Int
-// CHECK: store [[TMP]] to [trivial] [[VALUE_ADDR]] : $*Int
+// CHECK: store [[TMP]] to [[KEY_ADDR]] : $*Int
+// CHECK: store [[TMP]] to [[VALUE_ADDR]] : $*Int
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<(Int, Int)>([[ARR]])
 // CHECK: [[METATYPE:%.*]] = metatype $@thick TakesDictionaryLiteral<Int, Int>.Type

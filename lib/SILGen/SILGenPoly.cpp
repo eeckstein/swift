@@ -3843,7 +3843,7 @@ ManagedValue SILGenFunction::getThunkedAutoDiffLinearMap(
       assert(paramTy.isAddress());
       auto toArg = (*toArgIter++).getValue();
       auto *buf = createAllocStack(toArg->getType());
-      thunkSGF.B.createStore(loc, toArg, buf, StoreOwnershipQualifier::Init);
+      thunkSGF.B.createStore(loc, toArg, buf);
       arguments.push_back(buf);
       continue;
     }

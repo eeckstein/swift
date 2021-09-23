@@ -59,7 +59,7 @@ SILCombiner::visitAllocExistentialBoxInst(AllocExistentialBoxInst *AEBI) {
   //   %6 = alloc_existential_box $Error, $ColorError
   //   %6a = project_existential_box %6
   //   %7 = enum $VendingMachineError, #ColorError.Red
-  //   store %7 to [init] %6a : $*ColorError
+  //   store %7 to %6a : $*ColorError
   //   debug_value %6 : $Error
   //   destroy_value %6 : $Error
   SILValue boxedValue =
@@ -1480,8 +1480,7 @@ SILCombiner::visitInjectEnumAddrInst(InjectEnumAddrInst *IEAI) {
     EnumInst *E =
       Builder.createEnum(IEAI->getLoc(), SILValue(), IEAI->getElement(),
                           IEAI->getOperand()->getType().getObjectType());
-    Builder.createStore(IEAI->getLoc(), E, IEAI->getOperand(),
-                        StoreOwnershipQualifier::Unqualified);
+    Builder.createStore(IEAI->getLoc(), E, IEAI->getOperand());
     return eraseInstFromFunction(*IEAI);
   }
 
@@ -1598,8 +1597,7 @@ SILCombiner::visitInjectEnumAddrInst(InjectEnumAddrInst *IEAI) {
     EnumInst *E = Builder.createEnum(
         DataAddrInst->getLoc(), en, DataAddrInst->getElement(),
         DataAddrInst->getOperand()->getType().getObjectType());
-    Builder.createStore(DataAddrInst->getLoc(), E, DataAddrInst->getOperand(),
-                        StoreOwnershipQualifier::Unqualified);
+    Builder.createStore(DataAddrInst->getLoc(), E, DataAddrInst->getOperand());
     // Cleanup.
     getInstModCallbacks().notifyWillBeDeleted(DataAddrInst);
     deleter.forceDeleteWithUsers(DataAddrInst);
@@ -1654,8 +1652,7 @@ SILCombiner::visitInjectEnumAddrInst(InjectEnumAddrInst *IEAI) {
   EnumInst *E = Builder.createEnum(
       DataAddrInst->getLoc(), Load, DataAddrInst->getElement(),
       DataAddrInst->getOperand()->getType().getObjectType());
-  Builder.createStore(DataAddrInst->getLoc(), E, DataAddrInst->getOperand(),
-                      StoreOwnershipQualifier::Unqualified);
+  Builder.createStore(DataAddrInst->getLoc(), E, DataAddrInst->getOperand());
   Builder.createDeallocStack(DataAddrInst->getLoc(), AllocStack);
   eraseInstFromFunction(*DataAddrInst);
   return eraseInstFromFunction(*IEAI);

@@ -46,7 +46,7 @@ bb0:
   %2 = integer_literal $Builtin.Int32, 10         
   %3 = struct $Int32 (%2 : $Builtin.Int32)        
   %4 = struct $TStruct (%3 : $Int32)              
-  store %4 to [trivial] %1 : $*TStruct                      
+  store %4 to %1 : $*TStruct                      
   %6 = tuple ()                                   
   return %6 : $()                                 
 }
@@ -86,7 +86,7 @@ bb0:
 // CHECK: alloc_global @$nontrivialglobal 
 // CHECK: [[GLOBL_ADDR:%.*]] = global_addr @$nontrivialglobal : $*TClass 
 // CHECK: [[REF:%.*]] = alloc_ref $TClass                          
-// CHECK: store [[REF]] to [init] [[GLOBL_ADDR]] : $*TClass 
+// CHECK: store [[REF]] to [[GLOBL_ADDR]] : $*TClass 
 // CHECK: } // end sil function 'globalinit_nontrivialglobal_func'
 sil private [global_init_once_fn] [ossa] @globalinit_nontrivialglobal_func : $@convention(c) () -> () {
 bb0:
@@ -97,9 +97,9 @@ bb0:
   %4 = alloc_ref $TClass
   %5 = begin_borrow %4 : $TClass                          
   %6 = ref_element_addr %5 : $TClass, #TClass.x
-  store %3 to [trivial] %6 : $*Int32                        
+  store %3 to %6 : $*Int32                        
   end_borrow %5 : $TClass   
-  store %4 to [init] %1 : $*TClass                       
+  store %4 to %1 : $*TClass                       
   %10 = tuple ()                                  
   return %10 : $()                                
 }
@@ -142,7 +142,7 @@ bb0:
   alloc_global @empty_global
   %1 = global_addr @empty_global : $*GenericStruct<()>
   %2 = struct $GenericStruct<()> (undef : $())
-  store %2 to [trivial] %1 : $*GenericStruct<()>
+  store %2 to %1 : $*GenericStruct<()>
   %4 = tuple ()
   return %4 : $()
 }

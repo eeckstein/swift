@@ -105,7 +105,7 @@ public func condCast6<NS, T>(_ ns: NS) -> T? {
 // Any Object Constrained Casts //
 //////////////////////////////////
 
-public func forcedCast<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T {
+public func forcedCast<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // TODO: We should also note the retain as being on 'ns'.
@@ -114,18 +114,18 @@ public func forcedCast<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T {
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func forcedCast2<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T {
+public func forcedCast2<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we seem to completely eliminate 'x' here in the debug info. TODO:
   // Maybe we can recover this info somehow. We should also note the retain as being on 'ns'
-  let x = ns
+  let x = ns // TODO: this note should not be produced // expected-note {{of 'x'}}
   return x as! T  // expected-remark @:12 {{unconditional runtime cast of value with type 'NS' to 'T'}}
                   // expected-note @-7:56 {{of 'ns'}}
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func forcedCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T {
+public func forcedCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we seem to completely eliminate 'x' here in the debug info. TODO:
@@ -138,7 +138,7 @@ public func forcedCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T {
 
 // Interestingly today, with AnyObject codegen, we do not lose the assignment to
 // x and say the cast is on ns2!
-public func forcedCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T {
+public func forcedCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T { // TODO: this note should not be produced // expected-note {{of 'ns2'}}
   // Make sure the colon info is right so that the arrow is under the a.
   var x = ns
   x = ns2
@@ -147,25 +147,25 @@ public func forcedCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T {
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func condCast<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
+public func condCast<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   return ns as? T // expected-remark @:13 {{conditional runtime cast of value with type 'NS' to 'T'}}
                   // expected-note @-3:53 {{of 'ns'}}
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func condCast2<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
+public func condCast2<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we seem to completely eliminate 'x' here in the debug info. TODO:
   // Maybe we can recover this info somehow.
-  let x = ns
+  let x = ns // TODO: this note should not be produced // expected-note {{of 'x'}}
   return x as? T  // expected-remark @:12 {{conditional runtime cast of value with type 'NS' to 'T'}}
                   // expected-note @-7:54 {{of 'ns'}}
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func condCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
+public func condCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we seem to completely eliminate 'x' here in the debug info. TODO:
@@ -176,7 +176,7 @@ public func condCast3<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
                   // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func condCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T? {
+public func condCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns2'}}
   // Make sure the colon info is right so that the arrow is under the a.
   var x = ns
   x = ns2
@@ -185,7 +185,7 @@ public func condCast4<NS: AnyObject, T: AnyObject>(_ ns: NS, _ ns2: NS) -> T? {
                  // expected-remark @-2 {{retain of type 'NS'}}
 }
 
-public func condCast5<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
+public func condCast5<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we lose that x was assigned.
@@ -195,7 +195,7 @@ public func condCast5<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
   return nil
 }
 
-public func condCast6<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? {
+public func condCast6<NS: AnyObject, T: AnyObject>(_ ns: NS) -> T? { // TODO: this note should not be produced // expected-note {{of 'ns'}}
   // Make sure the colon info is right so that the arrow is under the a.
   //
   // Today, we lose that x was assigned.

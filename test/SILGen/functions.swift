@@ -311,7 +311,7 @@ func calls(_ i:Int, j:Int, k:Int) {
   // CHECK: [[FADDR:%.*]] = project_box [[FBOX]]
   // CHECK: [[FUNC_THIN:%[0-9]+]] = function_ref @$s9functions19standalone_function{{[_0-9a-zA-Z]*}}F : $@convention(thin) (Builtin.Int64, Builtin.Int64) -> Builtin.Int64
   // CHECK: [[FUNC_THICK:%[0-9]+]] = thin_to_thick_function [[FUNC_THIN]]
-  // CHECK: store [[FUNC_THICK]] to [init] [[FADDR]]
+  // CHECK: store [[FUNC_THICK]] to [[FADDR]]
   var f = standalone_function
   // CHECK: [[READF:%.*]] = begin_access [read] [unknown] [[FADDR]]
   // CHECK: [[F:%[0-9]+]] = load [copy] [[READF]]

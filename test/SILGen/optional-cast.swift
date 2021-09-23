@@ -19,7 +19,7 @@ class B : A {}
 //
 //   If so, materialize that and inject it into x.
 // CHECK:    [[IS_B]]([[T0:%.*]] : @owned $B):
-// CHECK-NEXT: store [[T0]] to [init] [[X_VALUE]] : $*B
+// CHECK-NEXT: store [[T0]] to [[X_VALUE]] : $*B
 // CHECK-NEXT: inject_enum_addr [[PB]] : $*Optional<B>, #Optional.some
 // CHECK-NEXT: br [[CONT:bb[0-9]+]]
 //
@@ -143,7 +143,7 @@ func bar(_ y : A????) {
 // CHECK-NEXT:    [[X_VALUE:%.*]] = init_enum_data_addr [[PB]] : $*Optional<B>, #Optional.some
 // CHECK-NEXT:    checked_cast_br [[VAL]] : $AnyObject to B, [[IS_B:bb.*]], [[NOT_B:bb[0-9]+]]
 // CHECK:       [[IS_B]]([[CASTED_VALUE:%.*]] : @owned $B):
-// CHECK:         store [[CASTED_VALUE]] to [init] [[X_VALUE]]
+// CHECK:         store [[CASTED_VALUE]] to [[X_VALUE]]
 // CHECK:       [[NOT_B]]([[ORIGINAL_VALUE:%.*]] : @owned $AnyObject):
 // CHECK:         destroy_value [[ORIGINAL_VALUE]]
 // CHECK: } // end sil function '$s4main3bazyyyXlSgF'
@@ -197,7 +197,7 @@ public struct TestAddressOnlyStruct<T> {
 // CHECK-NEXT: debug_value %0 : $Optional<Int>, let, name "a"
 // CHECK-NEXT: [[X:%.*]] = alloc_box ${ var Optional<Int> }, var, name "x"
 // CHECK-NEXT: [[PB:%.*]] = project_box [[X]]
-// CHECK-NEXT: store %0 to [trivial] [[PB]] : $*Optional<Int>
+// CHECK-NEXT: store %0 to [[PB]] : $*Optional<Int>
 // CHECK-NEXT: destroy_value [[X]] : ${ var Optional<Int> }
 func testContextualInitOfNonAddrOnlyType(_ a : Int?) {
   var x: Int! = a

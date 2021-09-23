@@ -239,7 +239,7 @@ func classInoutToPointer() {
   // CHECK: [[WRITEBACK:%.*]] = alloc_stack $@sil_unmanaged C
   // CHECK: [[OWNED:%.*]] = load_borrow [[PB]]
   // CHECK: [[UNOWNED:%.*]] = ref_to_unmanaged [[OWNED]]
-  // CHECK: store [[UNOWNED]] to [trivial] [[WRITEBACK]]
+  // CHECK: store [[UNOWNED]] to [[WRITEBACK]]
   // CHECK: [[POINTER:%.*]] = address_to_pointer [[WRITEBACK]]
   // CHECK: [[CONVERT:%.*]] = function_ref @$ss30_convertInOutToPointerArgument{{[_0-9a-zA-Z]*}}F
   // CHECK: apply [[CONVERT]]<AutoreleasingUnsafeMutablePointer<C>>({{%.*}}, [[POINTER]])
@@ -278,7 +278,7 @@ func functionInoutToPointer() {
 func inoutPointerOrdering() {
   // CHECK: [[ARRAY_BOX:%.*]] = alloc_box ${ var Array<Int> }
   // CHECK: [[ARRAY:%.*]] = project_box [[ARRAY_BOX]] :
-  // CHECK: store {{.*}} to [init] [[ARRAY]]
+  // CHECK: store {{.*}} to [[ARRAY]]
   var array = [Int]()
 
   // CHECK: [[SIDE1:%.*]] = function_ref @$s18pointer_conversion11sideEffect1SiyF

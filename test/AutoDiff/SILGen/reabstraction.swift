@@ -64,7 +64,7 @@ func makeOpaque() {
 // CHECK:   [[VJP_2:%.*]] = partial_apply [callee_guaranteed] [[VJP_THUNK]]([[VJP_1]])
 // CHECK:   [[VJP_3:%.*]] = convert_function [[VJP_2]]
 // CHECK:   [[AFTER:%.*]] = differentiable_function [parameters 0] [results 0] [[ORIG_3]] {{.*}} with_derivative {[[JVP_3]] {{.*}}, [[VJP_3]] {{.*}}}
-// CHECK:   store [[AFTER]] to [init] [[STACK_ADDR]]
+// CHECK:   store [[AFTER]] to [[STACK_ADDR]]
 // CHECK:   [[TRIGGER:%.*]] = function_ref @triggerReabstraction2
 // CHECK:   apply [[TRIGGER]]<@differentiable(reverse) (Float) -> Float>([[STACK_ADDR]])
 

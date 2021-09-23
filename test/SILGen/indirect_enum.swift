@@ -33,8 +33,8 @@ func TreeA_cases<T>(_ t: T, l: TreeA<T>, r: TreeA<T>) {
 // CHECK-NEXT:    [[PB:%.*]] = project_box [[BOX]]
 // CHECK-NEXT:    [[LEFT:%.*]] = tuple_element_addr [[PB]] : $*(left: TreeA<T>, right: TreeA<T>), 0
 // CHECK-NEXT:    [[RIGHT:%.*]] = tuple_element_addr [[PB]] : $*(left: TreeA<T>, right: TreeA<T>), 1
-// CHECK-NEXT:    store [[ARG2_COPY]] to [init] [[LEFT]]
-// CHECK-NEXT:    store [[ARG3_COPY]] to [init] [[RIGHT]]
+// CHECK-NEXT:    store [[ARG2_COPY]] to [[LEFT]]
+// CHECK-NEXT:    store [[ARG3_COPY]] to [[RIGHT]]
 // CHECK-NEXT:    [[BRANCH:%.*]] = enum $TreeA<T>, #TreeA.Branch!enumelt, [[BOX]]
 // CHECK-NEXT:    destroy_value [[BRANCH]]
   let _ = TreeA<T>.Branch(left: l, right: r)
@@ -52,7 +52,7 @@ func TreeA_reabstract(_ f: @escaping (Int) -> Int) {
 // CHECK:         [[THUNK:%.*]] = function_ref @$sS2iIegyd_S2iIegnr_TR
 // CHECK-NEXT:    [[FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[ARG_COPY]])
 // CHECK-NEXT:    [[FNC:%.*]] = convert_function [[FN]]
-// CHECK-NEXT:    store [[FNC]] to [init] [[PB]]
+// CHECK-NEXT:    store [[FNC]] to [[PB]]
 // CHECK-NEXT:    [[LEAF:%.*]] = enum $TreeA<(Int) -> Int>, #TreeA.Leaf!enumelt, [[BOX]]
 // CHECK-NEXT:    destroy_value [[LEAF]]
 // CHECK: return
@@ -101,7 +101,7 @@ func TreeB_cases<T>(_ t: T, l: TreeB<T>, r: TreeB<T>) {
 // CHECK-NEXT:    copy_addr [take] [[ARG2_COPY]] to [initialization] [[RIGHT]] : $*TreeB<T>
 // CHECK-NEXT:    [[BRANCH:%.*]] = alloc_stack $TreeB<T>
 // CHECK-NEXT:    [[PAYLOAD:%.*]] = init_enum_data_addr [[BRANCH]]
-// CHECK-NEXT:    store [[BOX]] to [init] [[PAYLOAD]]
+// CHECK-NEXT:    store [[BOX]] to [[PAYLOAD]]
 // CHECK-NEXT:    inject_enum_addr [[BRANCH]] : $*TreeB<T>, #TreeB.Branch!enumelt
 // CHECK-NEXT:    destroy_addr [[BRANCH]]
 // CHECK-NEXT:    dealloc_stack [[BRANCH]]
@@ -132,8 +132,8 @@ func TreeInt_cases(_ t: Int, l: TreeInt, r: TreeInt) {
 // CHECK-NEXT:    [[PB:%.*]] = project_box [[BOX]]
 // CHECK-NEXT:    [[LEFT:%.*]] = tuple_element_addr [[PB]]
 // CHECK-NEXT:    [[RIGHT:%.*]] = tuple_element_addr [[PB]]
-// CHECK-NEXT:    store [[ARG2_COPY]] to [init] [[LEFT]]
-// CHECK-NEXT:    store [[ARG3_COPY]] to [init] [[RIGHT]]
+// CHECK-NEXT:    store [[ARG2_COPY]] to [[LEFT]]
+// CHECK-NEXT:    store [[ARG3_COPY]] to [[RIGHT]]
 // CHECK-NEXT:    [[BRANCH:%.*]] = enum $TreeInt, #TreeInt.Branch!enumelt, [[BOX]]
 // CHECK-NEXT:    destroy_value [[BRANCH]]
   let _ = TreeInt.Branch(left: l, right: r)

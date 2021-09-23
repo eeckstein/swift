@@ -58,7 +58,7 @@ public func foo(_ x: Double) {
 
   // CHECK: [[WRITE:%.*]] = begin_access [read] [unknown] [[Z]] : $*Struct1
   // CHECK: [[ZVAL:%.*]] = load [trivial] [[WRITE]]
-  // CHECK: store [[ZVAL]] to [trivial] [[ZTMP:%.*]] :
+  // CHECK: store [[ZVAL]] to [[ZTMP:%.*]] :
   // CHECK: [[FN:%.*]] = function_ref @IAMStruct1Rotate : $@convention(c) (@in Struct1, Double) -> Struct1
   // CHECK: apply [[FN]]([[ZTMP]], [[X]])
   z = z.translate(radians: x)
@@ -124,9 +124,9 @@ public func foo(_ x: Double) {
 
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[Z]] : $*Struct1
   // CHECK: [[ZVAL:%.*]] = load [trivial] [[READ]]
-  // CHECK: store [[ZVAL]] to [trivial] [[ZTMP:%.*]] :
+  // CHECK: store [[ZVAL]] to [[ZTMP:%.*]] :
   // CHECK: [[ZVAL_2:%.*]] = load [trivial] [[ZTMP]]
-  // CHECK: store [[ZVAL_2]] to [trivial] [[ZTMP_2:%.*]] :
+  // CHECK: store [[ZVAL_2]] to [[ZTMP_2:%.*]] :
   // CHECK: [[GET:%.*]] = function_ref @IAMStruct1GetRadius : $@convention(c) (@in Struct1) -> Double
   // CHECK: apply [[GET]]([[ZTMP_2]])
   _ = z.radius
@@ -241,7 +241,7 @@ public func foo(_ x: Double) {
 
 // CHECK-LABEL: sil private [ossa] @$s10cf_members3fooyySdFSo10IAMStruct1VSdcADcfu0_ADSdcfu1_ : $@convention(thin) (Double, Struct1) -> Struct1 {
 // CHECK:       bb0([[X:%.*]] : $Double, [[SELF:%.*]] : $Struct1):
-// CHECK:         store [[SELF]] to [trivial] [[TMP:%.*]] :
+// CHECK:         store [[SELF]] to [[TMP:%.*]] :
 // CHECK:         [[CFUNC:%.*]] = function_ref @IAMStruct1Rotate
 // CHECK:         [[RET:%.*]] = apply [[CFUNC]]([[TMP]], [[X]])
 // CHECK:         return [[RET]]

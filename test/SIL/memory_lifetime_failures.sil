@@ -131,7 +131,7 @@ bb2(%4 : @owned $Error):
 sil [ossa] @test_single_block : $@convention(thin) (@owned T) -> () {
 bb0(%0 : @owned $T):
   %2 = alloc_stack $T
-  store %0 to [init] %2 : $*T
+  store %0 to %2 : $*T
   dealloc_stack %2 : $*T
   %r = tuple ()
   return %r : $()
@@ -141,7 +141,7 @@ bb0(%0 : @owned $T):
 sil [ossa] @test_mixed : $@convention(thin) (@in Mixed, Int) -> Int {
 bb0(%0 : $*Mixed, %1 : $Int):
   %2 = struct_element_addr %0 : $*Mixed, #Mixed.i
-  store %1 to [trivial] %2 : $*Int
+  store %1 to %2 : $*Int
   destroy_addr %0 : $*Mixed
   %3 = load [trivial] %2 : $*Int
   return %3 : $Int
@@ -162,7 +162,7 @@ sil [ossa] @test_load_after_dealloc : $@convention(thin) (Int) -> Int {
 bb0(%0 : $Int):
   %1 = alloc_stack $Mixed
   %2 = struct_element_addr %1 : $*Mixed, #Mixed.i
-  store %0 to [trivial] %2 : $*Int
+  store %0 to %2 : $*Int
   dealloc_stack %1 : $*Mixed
   %3 = load [trivial] %2 : $*Int
   return %3 : $Int
@@ -224,15 +224,16 @@ bb3:
   return %r : $()
 }
 
-// CHECK: SIL memory lifetime failure in @test_store_to_enum: memory is initialized, but shouldn't
+// TODO: isn't supported currently
+// CHECK-todo: SIL memory lifetime failure in @test_store_to_enum: memory is initialized, but shouldn't
 sil [ossa] @test_store_to_enum : $@convention(thin) (@owned T) -> () {
 bb0(%0 : @owned $T):
   %1 = alloc_stack $Optional<T>
   %2 = enum $Optional<T>, #Optional.none!enumelt
-  store %2 to [trivial] %1 : $*Optional<T>
+  store %2 to %1 : $*Optional<T>
   destroy_addr %1 : $*Optional<T>
   %3 = enum $Optional<T>, #Optional.some!enumelt, %0 : $T
-  store %3 to [init] %1 : $*Optional<T>
+  store %3 to %1 : $*Optional<T>
   dealloc_stack %1 : $*Optional<T>
   %r = tuple ()
   return %r : $()
@@ -302,7 +303,7 @@ bb0(%0 :  @guaranteed $T, %1 : @owned $T):
   %s = alloc_stack $T
   store_borrow %0 to %s : $*T
   destroy_addr %s : $*T
-  store %1 to [init] %s : $*T
+  store %1 to %s : $*T
   dealloc_stack %s : $*T
   %res = tuple ()
   return %res : $()
@@ -532,7 +533,7 @@ sil @modify_bool : $@convention(thin) (@inout_aliasable Bool) -> ()
 sil [ossa] @test_trivial_alloc_stack : $@convention(thin) (Bool) -> () {
 bb0(%0 : $Bool):
   %1 = alloc_stack $Bool
-  store %0 to [trivial] %1 : $*Bool
+  store %0 to %1 : $*Bool
   dealloc_stack %1 : $*Bool
   %8 = function_ref @modify_bool : $@convention(thin) (@inout_aliasable Bool) -> ()
   %9 = apply %8(%1) : $@convention(thin) (@inout_aliasable Bool) -> ()
@@ -590,7 +591,7 @@ bb1(%3 : $()):
 
 bb2(%7 : @owned $Error):
   %8 = init_enum_data_addr %0 : $*Result<Int, Error>, #Result.failure!enumelt
-  store %7 to [init] %8 : $*Error
+  store %7 to %8 : $*Error
   inject_enum_addr %0 : $*Result<Int, Error>, #Result.failure!enumelt
   br bb3
 

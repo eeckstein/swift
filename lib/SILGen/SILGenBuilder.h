@@ -351,7 +351,7 @@ public:
   /// the memory location will at end of scope have a destroy_addr applied to
   /// it.
   ManagedValue createStore(SILLocation loc, ManagedValue value,
-                           SILValue address, StoreOwnershipQualifier qualifier);
+                           SILValue address);
 
   using SILBuilder::createSuperMethod;
   ManagedValue createSuperMethod(SILLocation loc, ManagedValue operand,

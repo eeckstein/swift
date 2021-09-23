@@ -46,7 +46,7 @@ x.foo()
 // CHECK: [[X_TEMP:%.*]] = alloc_stack $Foo
 // CHECK: [[GET_X:%.*]] = function_ref @$s9writeback1xAA3FooVvg : $@convention(thin) () -> Foo
 // CHECK: [[X:%.*]] = apply [[GET_X]]() : $@convention(thin) () -> Foo
-// CHECK: store [[X]] to [trivial] [[X_TEMP]]
+// CHECK: store [[X]] to [[X_TEMP]]
 // CHECK: [[FOO:%.*]] = function_ref @$s9writeback3FooV3foo{{[_0-9a-zA-Z]*}}F : $@convention(method) (@inout Foo) -> ()
 // CHECK: apply [[FOO]]([[X_TEMP]]) : $@convention(method) (@inout Foo) -> ()
 // CHECK: [[X1:%.*]] = load [trivial] [[X_TEMP]] : $*Foo
@@ -59,7 +59,7 @@ bar(x: &x)
 // CHECK: [[X_TEMP:%.*]] = alloc_stack $Foo
 // CHECK: [[GET_X:%.*]] = function_ref @$s9writeback1xAA3FooVvg : $@convention(thin) () -> Foo
 // CHECK: [[X:%.*]] = apply [[GET_X]]() : $@convention(thin) () -> Foo
-// CHECK: store [[X]] to [trivial] [[X_TEMP]] : $*Foo
+// CHECK: store [[X]] to [[X_TEMP]] : $*Foo
 // CHECK: [[BAR:%.*]] = function_ref @$s9writeback3bar1xyAA3FooVz_tF : $@convention(thin) (@inout Foo) -> ()
 // CHECK: apply [[BAR]]([[X_TEMP]]) : $@convention(thin) (@inout Foo) -> ()
 // CHECK: [[X1:%.*]] = load [trivial] [[X_TEMP]] : $*Foo

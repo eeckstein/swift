@@ -10,7 +10,7 @@ func foo(f f: (() -> ())!) {
 // CHECK:   [[F:%.*]] = alloc_box ${ var Optional<@callee_guaranteed () -> ()> }
 // CHECK:   [[PF:%.*]] = project_box [[F]]
 // CHECK:   [[T0_COPY:%.*]] = copy_value [[T0]]
-// CHECK:   store [[T0_COPY]] to [init] [[PF]]
+// CHECK:   store [[T0_COPY]] to [[PF]]
 // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PF]] : $*Optional<@callee_guaranteed () -> ()>
 // CHECK:   [[HASVALUE:%.*]] = select_enum_addr [[READ]]
 // CHECK:   cond_br [[HASVALUE]], bb1, bb3

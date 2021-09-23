@@ -303,10 +303,6 @@ protected:
                         Aborting : 1,
                         FromBuiltin : 1);
 
-  SWIFT_INLINE_BITFIELD(StoreInst, NonValueInstruction,
-                        NumStoreOwnershipQualifierBits,
-    OwnershipQualifier : NumStoreOwnershipQualifierBits
-  );
   SWIFT_INLINE_BITFIELD(LoadInst, SingleValueInstruction,
                         NumLoadOwnershipQualifierBits,
     OwnershipQualifier : NumLoadOwnershipQualifierBits

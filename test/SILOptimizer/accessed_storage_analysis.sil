@@ -532,9 +532,9 @@ bb0(%0 : $Int):
 sil [ossa] @testCopiedNoEscape : $@convention(thin) (Int) -> () {
 bb0(%0 : $Int):
   %s1 = alloc_stack $Int
-  store %0 to [trivial] %s1 : $*Int
+  store %0 to %s1 : $*Int
   %s2 = alloc_stack $Int
-  store %0 to [trivial] %s2 : $*Int
+  store %0 to %s2 : $*Int
   %f = function_ref @testDirectlyAppliedClosure : $@convention(thin) (@inout Int, @inout_aliasable Int) -> ()
   %pa = partial_apply [callee_guaranteed] %f(%s2) : $@convention(thin) (@inout Int, @inout_aliasable Int) -> ()
   %copy = copy_value %pa : $@callee_guaranteed (@inout Int) -> ()

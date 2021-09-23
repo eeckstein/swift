@@ -44,14 +44,14 @@ bb3:
   %4 = struct_element_addr %1 : $*Inner, #Inner.a
   %5 = copy_value %3 : $T
   destroy_addr %4 : $*T
-  store %5 to [init] %4 : $*T
+  store %5 to %4 : $*T
   br bb5
 bb4:
   %6 = struct_element_addr %0 : $*Outer, #Outer.y
   %7 = struct_element_addr %6 : $*Inner, #Inner.b
   destroy_addr %7 : $*T
   %8 = copy_value %3 : $T
-  store %8 to [init] %7 : $*T
+  store %8 to %7 : $*T
   br bb5
 bb5:
   br bb1
@@ -66,7 +66,7 @@ sil [ossa] @test_struct2 : $@convention(thin) (@in Outer, @owned T) -> () {
 bb0(%0 : $*Outer, %1 : @owned $T):
   %2 = struct_element_addr %0 : $*Outer, #Outer.x
   destroy_addr %2 : $*T
-  store %1 to [init] %2 : $*T
+  store %1 to %2 : $*T
   destroy_addr %0 : $*Outer
   %3 = tuple ()
   return %3 : $()
@@ -132,7 +132,7 @@ bb3:
 sil [ossa] @test_unreachable_block : $@convention(thin) (@owned T) -> () {
 bb0(%0 : @owned $T):
   %2 = alloc_stack $T
-  store %0 to [init] %2 : $*T
+  store %0 to %2 : $*T
   br bb2
 
 bb1:
@@ -150,11 +150,11 @@ bb0(%0 : @owned $T, %1 : $Int):
   %2 = alloc_stack $Mixed
   %3 = struct_element_addr %2 : $*Mixed, #Mixed.t
   %4 = struct_element_addr %2 : $*Mixed, #Mixed.i
-  store %0 to [init] %3 : $*T
+  store %0 to %3 : $*T
   cond_br undef, bb1, bb2
 
 bb1:
-  store %1 to [trivial] %4 : $*Int
+  store %1 to %4 : $*Int
   br bb3
 
 bb2:
@@ -354,13 +354,13 @@ bb0:
 
 bb1(%5 : @owned $T):
   %7 = struct_element_addr %1 : $*Inner, #Inner.a
-  store %5 to [init] %7 : $*T
+  store %5 to %7 : $*T
   %11 = function_ref @getInner : $@convention(thin) () -> (@owned T, @error Error)
   try_apply %11() : $@convention(thin) () -> (@owned T, @error Error), normal bb2, error bb6
 
 bb2(%13 : @owned $T):
   %15 = struct_element_addr %1 : $*Inner, #Inner.b
-  store %13 to [init] %15 : $*T
+  store %13 to %15 : $*T
   br bb3
 
 bb3:
@@ -457,10 +457,10 @@ sil [ossa] @test_store_to_enum : $@convention(thin) (@owned T) -> () {
 bb0(%0 : @owned $T):
   %1 = alloc_stack $Optional<T>
   %2 = enum $Optional<T>, #Optional.some!enumelt, %0 : $T
-  store %2 to [init] %1 : $*Optional<T>
+  store %2 to %1 : $*Optional<T>
   destroy_addr %1 : $*Optional<T>
   %3 = enum $Optional<T>, #Optional.none!enumelt
-  store %3 to [trivial] %1 : $*Optional<T>
+  store %3 to %1 : $*Optional<T>
   dealloc_stack %1 : $*Optional<T>
   %r = tuple ()
   return %r : $()
@@ -471,7 +471,7 @@ bb0(%0 : $Int):
   %2 = enum $Optional<T>, #Optional.none!enumelt
   %3 = tuple (%0 : $Int, %2 : $Optional<T>)
   %8 = alloc_stack $(Int, Optional<T>)
-  store %3 to [trivial] %8 : $*(Int, Optional<T>)
+  store %3 to %8 : $*(Int, Optional<T>)
   dealloc_stack %8 : $*(Int, Optional<T>)
   %13 = tuple ()
   return %13 : $()
@@ -647,7 +647,7 @@ sil [ossa] @test_ignore_empty_types : $@convention(thin) (Int, @guaranteed @call
 bb0(%0 : $Int, %1 : @guaranteed $@callee_guaranteed (@in_guaranteed (Int, ((), ()))) -> Int):
   %2 = alloc_stack $(Int, ((), ()))
   %3 = tuple_element_addr %2 : $*(Int, ((), ())), 0
-  store %0 to [trivial] %3 : $*Int
+  store %0 to %3 : $*Int
   %5 = apply %1(%2) : $@callee_guaranteed (@in_guaranteed (Int, ((), ()))) -> Int
   dealloc_stack %2 : $*(Int, ((), ()))
   return %5 : $Int
@@ -672,7 +672,7 @@ bb1(%3 : $()):
 
 bb2(%6 : @owned $Error):
   %7 = init_enum_data_addr %0 : $*Result<(), Error>, #Result.failure!enumelt
-  store %6 to [init] %7 : $*Error
+  store %6 to %7 : $*Error
   inject_enum_addr %0 : $*Result<(), Error>, #Result.failure!enumelt
   br bb3
 

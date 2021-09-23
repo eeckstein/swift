@@ -1702,7 +1702,7 @@ with partitioned defs/uses annotated inline::
     // consuming since memory is generally assumed to have "owned"
     // semantics. After this instruction executes, we can no longer use %kls2
     // without triggering an ownership violation.
-    store %kls2 to [init] %globalMem : $*Klass
+    store %kls2 to %globalMem : $*Klass
 
     // "Consuming Use" of %kls1.
     // Definition of %kls1Casted.

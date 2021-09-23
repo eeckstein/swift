@@ -24,7 +24,7 @@ func setChildren(p: Parent, c: Child) {
 // CHECK: ([[ARRAY:%.*]], [[BUFFER_PTR:%.*]]) = destructure_tuple [[ARRAY_AND_BUFFER]] : $(Array<Child>, Builtin.RawPointer)
 // CHECK: [[BUFFER:%.*]] = pointer_to_address [[BUFFER_PTR]] : $Builtin.RawPointer to [strict] $*Child
 // CHECK: [[CHILD:%.*]] = copy_value %1 : $Child
-// CHECK: store [[CHILD]] to [init] [[BUFFER]] : $*Child
+// CHECK: store [[CHILD]] to [[BUFFER]] : $*Child
 // CHECK: [[FIN_FN:%.*]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
 // CHECK: [[FIN_ARR:%.*]] = apply [[FIN_FN]]<Child>([[ARRAY]])
 // CHECK: [[FN:%.*]] = function_ref @$sSa10FoundationE19_bridgeToObjectiveCSo7NSArrayCyF : $@convention(method) <τ_0_0> (@guaranteed Array<τ_0_0>) -> @owned NSArray

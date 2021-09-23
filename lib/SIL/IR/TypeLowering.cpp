@@ -773,11 +773,7 @@ namespace {
 
     void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
                        SILValue addr) const override {
-      if (B.getFunction().hasOwnership()) {
-        B.createStore(loc, value, addr, StoreOwnershipQualifier::Trivial);
-        return;
-      }
-      B.createStore(loc, value, addr, StoreOwnershipQualifier::Unqualified);
+      B.createStore(loc, value, addr);
     }
 
     SILValue emitLoad(SILBuilder &B, SILLocation loc, SILValue addr,
@@ -799,12 +795,7 @@ namespace {
                           SILValue addr, IsInitialization_t isInit,
                           Lowering::TypeLowering::TypeExpansionKind
                               expansionKind) const override {
-      auto storeQual = [&]() -> StoreOwnershipQualifier {
-        if (B.getFunction().hasOwnership())
-          return StoreOwnershipQualifier::Trivial;
-        return StoreOwnershipQualifier::Unqualified;
-      }();
-      B.createStore(loc, value, addr, storeQual);
+      B.createStore(loc, value, addr);
     }
 
     void emitDestroyAddress(SILBuilder &B, SILLocation loc,
@@ -867,11 +858,7 @@ namespace {
 
     void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
                        SILValue addr) const override {
-      if (B.getFunction().hasOwnership()) {
-        B.createStore(loc, value, addr, StoreOwnershipQualifier::Init);
-        return;
-      }
-      B.createStore(loc, value, addr, StoreOwnershipQualifier::Unqualified);
+      B.createStore(loc, value, addr);
     }
 
     SILValue emitLoad(SILBuilder &B, SILLocation loc, SILValue addr,
@@ -925,22 +912,13 @@ namespace {
                           SILValue addr, IsInitialization_t isInit,
                           Lowering::TypeLowering::TypeExpansionKind
                               expansionKind) const override {
-      if (B.getFunction().hasOwnership()) {
-        if (isInit == IsNotInitialization) {
-          SILValue oldValue = B.emitLoadValueOperation(
-              loc, addr, LoadOwnershipQualifier::Take);
-          B.emitLoweredDestroyValueOperation(loc, oldValue, expansionKind);
-        }
-        B.createStore(loc, value, addr, StoreOwnershipQualifier::Init);
-        return;
-      }
-
       if (isInit == IsNotInitialization) {
-        SILValue oldValue = B.emitLoadValueOperation(
-            loc, addr, LoadOwnershipQualifier::Unqualified);
+        SILValue oldValue = B.emitLoadValueOperation(loc, addr,
+          B.getFunction().hasOwnership() ? LoadOwnershipQualifier::Take
+                                         : LoadOwnershipQualifier::Unqualified);
         B.emitLoweredDestroyValueOperation(loc, oldValue, expansionKind);
       }
-      B.createStore(loc, value, addr, StoreOwnershipQualifier::Unqualified);
+      B.createStore(loc, value, addr);
     }
   };
 

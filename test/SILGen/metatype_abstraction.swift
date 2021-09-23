@@ -74,7 +74,7 @@ func takeGenericMetatype<T>(_ x: T.Type) {}
 // CHECK-LABEL: sil hidden [ossa] @$ss23staticMetatypeToGeneric{{[_0-9a-zA-Z]*}}F
 // CHECK:         [[MAT:%.*]] = alloc_stack $@thick S.Type
 // CHECK:         [[META:%.*]] = metatype $@thick S.Type
-// CHECK:         store [[META]] to [trivial] [[MAT]] : $*@thick S.Type
+// CHECK:         store [[META]] to [[MAT]] : $*@thick S.Type
 // CHECK:         apply {{%.*}}<S.Type>([[MAT]])
 func staticMetatypeToGeneric(_ x: S.Type) {
   takeGeneric(x)

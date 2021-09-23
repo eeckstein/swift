@@ -90,7 +90,7 @@ static bool shouldExpandShim(SILFunction *fn, SILType type) {
 /// copy_addr %0 to [initialization] %1 : $*T
 /// ->
 ///     %new = load [copy] %0 : $*T
-///     store %new to [init] %1 : $*T
+///     store %new to %1 : $*T
 /// ->
 ///     %new = load %0 : $*T
 ///     strong_retain %new : $T
@@ -100,7 +100,7 @@ static bool shouldExpandShim(SILFunction *fn, SILType type) {
 /// copy_addr [take] %0 to [initialization] %1 : $*T
 /// ->
 ///     %new = load [take] %0 : $*T
-///     store %new to [init] %1 : $*T
+///     store %new to %1 : $*T
 /// ->
 ///     %new = load %0 : $*T
 ///     // no retain of %new!
@@ -146,7 +146,7 @@ static bool expandCopyAddr(CopyAddrInst *cai) {
 
   // Create the store in the guaranteed uninitialized memory.
   //
-  // store %new to [init] %1
+  // store %new to %1
   //
   // If we are not initializing the destination, we need to destroy what is
   // currently there before we re-initialize the memory.

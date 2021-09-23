@@ -40,7 +40,7 @@ bb0(%0 : @owned $Bar):
   %1 = alloc_stack $Bar, let, name "sf"
   %copy1 = copy_value %0 : $Bar 
   %copy2 = copy_value %0 : $Bar 
-  store %0 to [init] %1 : $*Bar
+  store %0 to %1 : $*Bar
   %3 = upcast %copy1 : $Bar to $NSObject
   %4 = objc_super_method %copy2 : $Bar, #NSObject.init!initializer.foreign : (NSObject.Type) -> () -> NSObject, $@convention(objc_method) (@owned NSObject) -> @owned NSObject
   %7 = apply %4(%3) : $@convention(objc_method) (@owned NSObject) -> @owned NSObject
@@ -255,10 +255,10 @@ sil [ossa] @nocse_existential_metatype_addr : $@convention(thin) (@owned B, @own
 bb0(%0 : @owned $B, %1 : @owned $B):
   %2 = alloc_stack $Any
   %3 = init_existential_addr %2 : $*Any, $B
-  store %0 to [init] %3 : $*B
+  store %0 to %3 : $*B
   %5 = existential_metatype $@thick Any.Type, %2 : $*Any
   destroy_addr %3 : $*B
-  store %1 to [init] %3 : $*B
+  store %1 to %3 : $*B
   %7 = existential_metatype $@thick Any.Type, %2 : $*Any
   %99 = tuple (%5 : $@thick Any.Type, %7 : $@thick Any.Type)
   destroy_addr %2 : $*Any

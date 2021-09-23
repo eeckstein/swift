@@ -190,7 +190,7 @@ bb0(%0 : $*NonTrivialStruct):
 sil [ossa] @rle_needsborrow1 : $@convention(thin) (@owned NonTrivialStruct) -> () {
 bb0(%0 : @owned $NonTrivialStruct):
   %1 = alloc_stack $NonTrivialStruct
-  store %0 to [init] %1 : $*NonTrivialStruct
+  store %0 to %1 : $*NonTrivialStruct
   %2 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
   %3 = load [copy] %2 : $*Klass
   %4 = load [take] %1 : $*NonTrivialStruct
@@ -208,7 +208,7 @@ bb0(%0 : @owned $NonTrivialStruct):
 sil [ossa] @rle_needsborrow2 : $@convention(thin) (@owned (Klass, Klass)) -> () {
 bb0(%0 : @owned $(Klass, Klass)):
   %1 = alloc_stack $(Klass, Klass)
-  store %0 to [init] %1 : $*(Klass, Klass)
+  store %0 to %1 : $*(Klass, Klass)
   %2 = tuple_element_addr %1 : $*(Klass, Klass), 0
   %3 = load [copy] %2 : $*Klass
   %4 = tuple_element_addr %1 : $*(Klass, Klass), 1
@@ -411,7 +411,7 @@ bb1:
   %val2 = load [take] %ele : $*Klass
   destroy_value %val2 : $Klass
   %copy0 = copy_value %1 : $Klass
-  store %copy0 to [init] %ele : $*Klass
+  store %copy0 to %ele : $*Klass
   cond_br undef, bb1a, bb2
 
 bb1a:
@@ -623,22 +623,22 @@ bb2:
 
 bb3:
   %7 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
-  store %0 to [init] %7 : $*Klass
+  store %0 to %7 : $*Klass
   br bb7
 
 bb4:
   %10 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
-  store %0 to [init] %10 : $*Klass
+  store %0 to %10 : $*Klass
   br bb7
 
 bb5:
   %13 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
-  store %0 to [init] %13 : $*Klass
+  store %0 to %13 : $*Klass
   br bb8
 
 bb6:
   %16 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
-  store %0 to [init] %16 : $*Klass
+  store %0 to %16 : $*Klass
   br bb8
 
 bb7:
@@ -685,7 +685,7 @@ bb1:
   %4 = load [take] %0 : $*Klass
   %5 = function_ref @use_klass : $@convention(thin) (@owned Klass) -> ()
   %6 = apply %5(%4) : $@convention(thin) (@owned Klass) -> ()
-  store %1 to [init] %0 : $*Klass
+  store %1 to %0 : $*Klass
   %11 = load [copy] %0 : $*Klass
   %12 = function_ref @use_klass : $@convention(thin) (@owned Klass) -> ()
   %13 = apply %12(%11) : $@convention(thin) (@owned Klass) -> ()
@@ -725,7 +725,7 @@ bb1:
 
 bb2:
   destroy_addr %0 : $*NonTrivialStruct
-  store %1 to [init] %0 : $*NonTrivialStruct
+  store %1 to %0 : $*NonTrivialStruct
   %3 = load [copy] %0 : $*NonTrivialStruct
   br bb3(%3 : $NonTrivialStruct)
 
@@ -788,7 +788,7 @@ bb0(%0 : $*NonTrivialStruct, %1 : @owned $Klass, %2 : @owned $Klass):
 
 bb1:
   destroy_addr %ele : $*Klass
-  store %2 to [init] %ele : $*Klass
+  store %2 to %ele : $*Klass
   br bb3
 
 bb2:
@@ -805,7 +805,7 @@ bb5:
   %val2 = load [copy] %ele : $*Klass
   destroy_value %val2 : $Klass
   destroy_addr %ele : $*Klass
-  store %1 to [init] %ele : $*Klass
+  store %1 to %ele : $*Klass
   br bb7
 
 bb6:
@@ -831,13 +831,13 @@ bb9:
 sil [ossa] @rle_ownershipkindmergetest : $@convention(thin) (@owned FakeOptional<Klass>) -> () {
 bb0(%0 : @owned $FakeOptional<Klass>):
   %3 = alloc_stack $FakeOptional<Klass>
-  store %0 to [init] %3 : $*FakeOptional<Klass>
+  store %0 to %3 : $*FakeOptional<Klass>
   cond_br undef, bb1, bb2
 
 bb1:
   %4 = enum $FakeOptional<Klass>, #FakeOptional.none!enumelt
   destroy_addr %3 : $*FakeOptional<Klass>
-  store %4 to [init] %3 : $*FakeOptional<Klass>
+  store %4 to %3 : $*FakeOptional<Klass>
   br bb3
 
 bb2:

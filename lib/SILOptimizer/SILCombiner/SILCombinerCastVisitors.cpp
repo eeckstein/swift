@@ -614,9 +614,9 @@ SILInstruction *SILCombiner::visitUnconditionalCheckedCastAddrInst(
   //   ...
   //   %box = alloc_existential_box $Error, $ConcreteError
   //   %a = project_existential_box $ConcreteError in %b : $Error
-  //   store %value to [init] %a : $*ConcreteError
+  //   store %value to %a : $*ConcreteError
   //   %err = alloc_stack $Error
-  //   store %box to [init] %err : $*Error
+  //   store %box to %err : $*Error
   //   %dest = alloc_stack $ConcreteError
   //   unconditional_checked_cast_addr Error in %err : $*Error to
   //                                ConcreteError in %dest : $*ConcreteError
@@ -627,9 +627,9 @@ SILInstruction *SILCombiner::visitUnconditionalCheckedCastAddrInst(
   //   ...
   //   %box = alloc_existential_box $Error, $ConcreteError
   //   %a = project_existential_box $ConcreteError in %b : $Error
-  //   store %value to [init] %a : $*ConcreteError
+  //   store %value to %a : $*ConcreteError
   //   %err = alloc_stack $Error
-  //   store %box to [init] %err : $*Error
+  //   store %box to %err : $*Error
   //   destroy_addr %err : $*Error
   //   store %value to %dest $*ConcreteError
   //

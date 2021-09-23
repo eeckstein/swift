@@ -18,7 +18,7 @@ sil [ossa] @mem2reg_debug_value : $@convention(thin) (@in_guaranteed ResilientSt
 bb0(%0 : $*ResilientStruct):
   %1 = alloc_stack $ResilientStruct
   %2 = load [copy] %0 : $*ResilientStruct
-  store %2 to [init] %1 : $*ResilientStruct
+  store %2 to %1 : $*ResilientStruct
   debug_value %1 : $*ResilientStruct, expr op_deref
   %3 = load [take] %1 : $*ResilientStruct
   destroy_value %3 : $ResilientStruct

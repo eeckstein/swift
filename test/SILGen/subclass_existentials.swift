@@ -66,7 +66,7 @@ func conversions(
   // CHECK: [[RESULT:%.*]] = alloc_stack $P
   // CHECK: [[RESULT_PAYLOAD:%.*]] = init_existential_addr [[RESULT]] : $*P, $@opened("{{.*}}") Base<Int> & P
   // CHECK: [[REF:%.*]] = copy_value [[PAYLOAD]]
-  // CHECK: store [[REF]] to [init] [[RESULT_PAYLOAD]]
+  // CHECK: store [[REF]] to [[RESULT_PAYLOAD]]
   // CHECK: destroy_addr [[RESULT]] : $*P
   // CHECK: dealloc_stack [[RESULT]] : $*P
   let _: P = baseAndP
@@ -75,7 +75,7 @@ func conversions(
   // CHECK: [[RESULT:%.*]] = alloc_stack $Q
   // CHECK: [[RESULT_PAYLOAD:%.*]] = init_existential_addr [[RESULT]] : $*Q, $@opened("{{.*}}") Base<Int> & P
   // CHECK: [[REF:%.*]] = copy_value [[PAYLOAD]]
-  // CHECK: store [[REF]] to [init] [[RESULT_PAYLOAD]]
+  // CHECK: store [[REF]] to [[RESULT_PAYLOAD]]
   // CHECK: destroy_addr [[RESULT]] : $*Q
   // CHECK: dealloc_stack [[RESULT]] : $*Q
   let _: Q = baseAndP
@@ -374,7 +374,7 @@ func archetypeDowncasts<S,
 
   // CHECK: [[COPIED:%.*]] = copy_value [[ARG9]] : $Base<T> & P
   // CHECK-NEXT: [[COPY:%.*]] = alloc_stack $Base<T> & P
-  // CHECK-NEXT: store [[COPIED]] to [init] [[COPY]] : $*Base<T> & P
+  // CHECK-NEXT: store [[COPIED]] to [[COPY]] : $*Base<T> & P
   // CHECK-NEXT: [[RESULT:%.*]] = alloc_stack $Optional<S>
   // CHECK-NEXT: [[PAYLOAD:%.*]] = init_enum_data_addr [[RESULT]] : $*Optional<S>, #Optional.some
   // CHECK-NEXT: checked_cast_addr_br take_always Base<T> & P in [[COPY]] : $*Base<T> & P to S in [[PAYLOAD]] : $*S
@@ -382,7 +382,7 @@ func archetypeDowncasts<S,
 
   // CHECK:      [[COPY:%.*]] = alloc_stack $Base<T> & P
   // CHECK-NEXT: [[COPIED:%.*]] = copy_value [[ARG9]] : $Base<T> & P
-  // CHECK-NEXT: store [[COPIED]] to [init] [[COPY]] : $*Base<T> & P
+  // CHECK-NEXT: store [[COPIED]] to [[COPY]] : $*Base<T> & P
   // CHECK-NEXT: [[RESULT:%.*]] = alloc_stack $S
   // CHECK-NEXT: unconditional_checked_cast_addr Base<T> & P in [[COPY]] : $*Base<T> & P to S in [[RESULT]] : $*S
   let _ = baseTAndP_concrete as! S
@@ -421,7 +421,7 @@ func archetypeDowncasts<S,
 
   // CHECK: [[COPIED:%.*]] = copy_value [[ARG10]] : $Base<Int> & P
   // CHECK-NEXT: [[COPY:%.*]] = alloc_stack $Base<Int> & P
-  // CHECK-NEXT: store [[COPIED]] to [init] [[COPY]] : $*Base<Int> & P
+  // CHECK-NEXT: store [[COPIED]] to [[COPY]] : $*Base<Int> & P
   // CHECK-NEXT: [[RESULT:%.*]] = alloc_stack $Optional<S>
   // CHECK-NEXT: [[PAYLOAD:%.*]] = init_enum_data_addr [[RESULT]] : $*Optional<S>, #Optional.some
   // CHECK-NEXT: checked_cast_addr_br take_always Base<Int> & P in [[COPY]] : $*Base<Int> & P to S in [[PAYLOAD]] : $*S
@@ -429,7 +429,7 @@ func archetypeDowncasts<S,
 
   // CHECK:      [[COPY:%.*]] = alloc_stack $Base<Int> & P
   // CHECK-NEXT: [[COPIED:%.*]] = copy_value [[ARG10]] : $Base<Int> & P
-  // CHECK-NEXT: store [[COPIED]] to [init] [[COPY]] : $*Base<Int> & P
+  // CHECK-NEXT: store [[COPIED]] to [[COPY]] : $*Base<Int> & P
   // CHECK-NEXT: [[RESULT:%.*]] = alloc_stack $S
   // CHECK-NEXT: unconditional_checked_cast_addr Base<Int> & P in [[COPY]] : $*Base<Int> & P to S in [[RESULT]] : $*S
   let _ = baseIntAndP_concrete as! S

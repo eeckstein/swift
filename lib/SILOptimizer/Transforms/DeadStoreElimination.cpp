@@ -1247,8 +1247,7 @@ bool DSEContext::run() {
       SILInstruction *Inst = I->first->getDefiningInstruction();
       auto *IT = &*std::next(Inst->getIterator());
       SILBuilderWithScope Builder(IT);
-      Builder.createStore(Inst->getLoc(), I->second, I->first,
-                          StoreOwnershipQualifier::Unqualified);
+      Builder.createStore(Inst->getLoc(), I->second, I->first);
     }
     // Delete the dead stores.
     for (auto &I : getBlockState(&bs.block)->DeadStores) {

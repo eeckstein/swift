@@ -3857,24 +3857,12 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     SourceLoc ToLoc, AddrLoc;
     Identifier ToToken;
     SILValue AddrVal;
-    Optional<StoreOwnershipQualifier> StoreQualifier;
     Optional<AssignOwnershipQualifier> AssignQualifier;
     bool IsStore = Opcode == SILInstructionKind::StoreInst;
     bool IsAssign = Opcode == SILInstructionKind::AssignInst;
     if (parseValueName(From) ||
         parseSILIdentifier(ToToken, ToLoc, diag::expected_tok_in_sil_instr,
                            "to"))
-      return true;
-
-    auto parseStoreOwnership = [](StringRef Str) {
-      return llvm::StringSwitch<Optional<StoreOwnershipQualifier>>(Str)
-          .Case("init", StoreOwnershipQualifier::Init)
-          .Case("trivial", StoreOwnershipQualifier::Trivial)
-          .Default(None);
-    };
-    if (IsStore
-        && parseSILQualifier<StoreOwnershipQualifier>(StoreQualifier,
-                                                      parseStoreOwnership))
       return true;
 
     auto parseAssignOwnership = [](StringRef Str) {
@@ -3907,11 +3895,9 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     SILType ValType = AddrVal->getType().getObjectType();
 
     if (IsStore) {
-      if (!StoreQualifier)
-        StoreQualifier = StoreOwnershipQualifier::Unqualified;
       ResultVal =
           B.createStore(InstLoc, getLocalValue(From, ValType, InstLoc, B),
-                        AddrVal, StoreQualifier.getValue());
+                        AddrVal);
     } else {
       assert(IsAssign);
       if (!AssignQualifier)

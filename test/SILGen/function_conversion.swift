@@ -355,7 +355,7 @@ func convFuncExistential(_ f1: @escaping (Any) -> (Int) -> Int) {
 // CHECK-LABEL: sil shared [transparent] [serializable] [reabstraction_thunk] [ossa] @$sS2iIegyd_S2iIegnr_TR : $@convention(thin) (@in_guaranteed Int, @guaranteed @callee_guaranteed (Int) -> Int) -> @out Int
 // CHECK:         [[LOADED:%.*]] = load [trivial] %1 : $*Int
 // CHECK-NEXT:    apply %2([[LOADED]])
-// CHECK-NEXT:    store {{.*}} to [trivial] %0
+// CHECK-NEXT:    store {{.*}} to %0
 // CHECK-NEXT:    [[VOID:%.*]] = tuple ()
 // CHECK:         return [[VOID]]
 
@@ -536,8 +536,8 @@ func convTupleAny(_ f1: @escaping () -> (),
 // CHECK-NEXT:    [[RIGHT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
 // CHECK-NEXT:    [[RESULT:%.*]] = apply %1()
 // CHECK-NEXT:    ([[LEFT:%.*]], [[RIGHT:%.*]]) = destructure_tuple [[RESULT]]
-// CHECK-NEXT:    store [[LEFT:%.*]] to [trivial] [[LEFT_ADDR]]
-// CHECK-NEXT:    store [[RIGHT:%.*]] to [trivial] [[RIGHT_ADDR]]
+// CHECK-NEXT:    store [[LEFT:%.*]] to [[LEFT_ADDR]]
+// CHECK-NEXT:    store [[RIGHT:%.*]] to [[RIGHT_ADDR]]
 // CHECK-NEXT:    tuple ()
 // CHECK-NEXT:    return
 
@@ -548,8 +548,8 @@ func convTupleAny(_ f1: @escaping () -> (),
 // CHECK-NEXT:    [[RIGHT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
 // CHECK-NEXT:    [[RESULT:%.*]] = apply %1()
 // CHECK-NEXT:    ([[LEFT:%.*]], [[RIGHT:%.*]]) = destructure_tuple [[RESULT]]
-// CHECK-NEXT:    store [[LEFT:%.*]] to [trivial] [[LEFT_ADDR]]
-// CHECK-NEXT:    store [[RIGHT:%.*]] to [trivial] [[RIGHT_ADDR]]
+// CHECK-NEXT:    store [[LEFT:%.*]] to [[LEFT_ADDR]]
+// CHECK-NEXT:    store [[RIGHT:%.*]] to [[RIGHT_ADDR]]
 // CHECK-NEXT:    inject_enum_addr %0
 // CHECK-NEXT:    tuple ()
 // CHECK-NEXT:    return
@@ -558,9 +558,9 @@ func convTupleAny(_ f1: @escaping () -> (),
 // CHECK:         [[ANY_VALUE:%.*]] = alloc_stack $Any
 // CHECK-NEXT:    [[ANY_PAYLOAD:%.*]] = init_existential_addr [[ANY_VALUE]]
 // CHECK-NEXT:    [[LEFT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
-// CHECK-NEXT:    store %0 to [trivial] [[LEFT_ADDR]]
+// CHECK-NEXT:    store %0 to [[LEFT_ADDR]]
 // CHECK-NEXT:    [[RIGHT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
-// CHECK-NEXT:    store %1 to [trivial] [[RIGHT_ADDR]]
+// CHECK-NEXT:    store %1 to [[RIGHT_ADDR]]
 // CHECK-NEXT:    apply %2([[ANY_VALUE]])
 // CHECK-NEXT:    tuple ()
 // CHECK-NEXT:    destroy_addr [[ANY_VALUE]]
@@ -571,9 +571,9 @@ func convTupleAny(_ f1: @escaping () -> (),
 // CHECK:         [[ANY_VALUE:%.*]] = alloc_stack $Any
 // CHECK-NEXT:    [[ANY_PAYLOAD:%.*]] = init_existential_addr [[ANY_VALUE]]
 // CHECK-NEXT:    [[LEFT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
-// CHECK-NEXT:    store %0 to [trivial] [[LEFT_ADDR]]
+// CHECK-NEXT:    store %0 to [[LEFT_ADDR]]
 // CHECK-NEXT:    [[RIGHT_ADDR:%.*]] = tuple_element_addr [[ANY_PAYLOAD]]
-// CHECK-NEXT:    store %1 to [trivial] [[RIGHT_ADDR]]
+// CHECK-NEXT:    store %1 to [[RIGHT_ADDR]]
 // CHECK-NEXT:    [[OPTIONAL_VALUE:%.*]] = alloc_stack $Optional<Any>
 // CHECK-NEXT:    [[OPTIONAL_PAYLOAD:%.*]] = init_enum_data_addr [[OPTIONAL_VALUE]]
 // CHECK-NEXT:    copy_addr [take] [[ANY_VALUE]] to [initialization] [[OPTIONAL_PAYLOAD]]
@@ -667,7 +667,7 @@ struct FunctionConversionParameterSubstToOrigReabstractionTest {
 // CHECK:  [[TUPLE:%.*]] = apply %4(%2, %3) : $@noescape @callee_guaranteed (@guaranteed String, @guaranteed String) -> (@owned String, @owned String)
 // CHECK:  ([[LHS:%.*]], [[RHS:%.*]]) = destructure_tuple [[TUPLE]]
 // CHECK:  [[ADDR:%.*]] = alloc_stack $String
-// CHECK:  store [[LHS]] to [init] [[ADDR]] : $*String
+// CHECK:  store [[LHS]] to [[ADDR]] : $*String
 // CHECK:  [[CVT:%.*]] = function_ref @$ss21_convertToAnyHashableys0cD0VxSHRzlF : $@convention(thin) <τ_0_0 where τ_0_0 : Hashable> (@in_guaranteed τ_0_0) -> @out AnyHashable
 // CHECK:  apply [[CVT]]<String>(%0, [[ADDR]])
 // CHECK: } // end sil function '$sS4SIgggoo_S2Ss11AnyHashableVyps5Error_pIegggrrzo_TR'

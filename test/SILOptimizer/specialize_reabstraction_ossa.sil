@@ -53,7 +53,7 @@ bb0(%0 : $*Self):
 sil [ossa] [reabstraction_thunk] @reabstract : $@convention(thin) <Self where Self : ValProto><U> (@owned Ref<Self.T>, @owned @callee_owned (@in Ref<Self.T>) -> @owned @callee_owned (@owned Ref<U>) -> @owned Ref<(Self.T, U)>) -> @owned @callee_owned (@owned Ref<U>) -> @owned Ref<(Self.T, U)> {
 bb0(%0 : @owned $Ref<Self.T>, %1 : @owned $@callee_owned (@in Ref<Self.T>) -> @owned @callee_owned (@owned Ref<U>) -> @owned Ref<(Self.T, U)>):
   %2 = alloc_stack $Ref<Self.T>
-  store %0 to [init] %2 : $*Ref<Self.T>
+  store %0 to %2 : $*Ref<Self.T>
   %4 = apply %1(%2) : $@callee_owned (@in Ref<Self.T>) -> @owned @callee_owned (@owned Ref<U>) -> @owned Ref<(Self.T, U)>
   dealloc_stack %2 : $*Ref<Self.T>
   return %4 : $@callee_owned (@owned Ref<U>) -> @owned Ref<(Self.T, U)>
@@ -82,7 +82,7 @@ bb0(%0 : $Val<Bool>, %1 : $Val<Int>):
 // CHECK-LABEL: sil shared [ossa] @$s9coroutineSb_Tg5 : $@yield_once @convention(thin) (Bool) -> @yields @inout Bool {
 // CHECK:       bb0(%0 : $Bool):
 // CHECK-NEXT:    [[TEMP:%.*]] = alloc_stack $Bool
-// CHECK-NEXT:    store %0 to [trivial] [[TEMP]] : $*Bool
+// CHECK-NEXT:    store %0 to [[TEMP]] : $*Bool
 // CHECK-NEXT:    yield [[TEMP]] : $*Bool, resume bb1, unwind bb2
 // CHECK:       bb1:
 // CHECK-NEXT:    destroy_addr [[TEMP]] : $*Bool
@@ -109,7 +109,7 @@ bb2:
 // CHECK-LABEL: @test_coroutine : $@convention(thin) (Bool) -> () {
 // CHECK:       bb0(%0 : $Bool):
 // CHECK-NEXT:    [[TEMP:%.*]] = alloc_stack $Bool
-// CHECK-NEXT:    store %0 to [trivial] [[TEMP]] : $*Bool
+// CHECK-NEXT:    store %0 to [[TEMP]] : $*Bool
 // CHECK-NEXT:    // function_ref
 // CHECK-NEXT:    [[CORO:%.*]] = function_ref @$s9coroutineSb_Tg5 : $@yield_once @convention(thin) (Bool) -> @yields @inout Bool
 // CHECK-NEXT:    [[LOAD:%.*]] = load [trivial] [[TEMP]] : $*Bool
@@ -123,7 +123,7 @@ sil [ossa] @test_coroutine : $@convention(thin) (Bool) -> () {
 bb0(%0 : $Bool):
   %coro = function_ref @coroutine : $@yield_once @convention(thin) <T> (@in T) -> @yields @inout T
   %temp = alloc_stack $Bool
-  store %0 to [trivial] %temp : $*Bool
+  store %0 to %temp : $*Bool
   (%addr, %token) = begin_apply %coro<Bool>(%temp) : $@yield_once @convention(thin) <T> (@in T) -> @yields @inout T
   end_apply %token
   dealloc_stack %temp : $*Bool

@@ -99,17 +99,17 @@ bb0(%0 : $Builtin.NativeObject):
 sil [ossa] @test_pointer_to_address : $@convention(thin) (Builtin.RawPointer, Builtin.Int64) -> () {
 bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Int64):
   %3 = pointer_to_address %0 : $Builtin.RawPointer to $*Builtin.Int64
-  store %1 to [trivial] %3 : $*Builtin.Int64
+  store %1 to %3 : $*Builtin.Int64
   %5 = pointer_to_address %0 : $Builtin.RawPointer to [strict] $*Builtin.Int64
-  store %1 to [trivial] %5 : $*Builtin.Int64
+  store %1 to %5 : $*Builtin.Int64
   %7 = pointer_to_address %0 : $Builtin.RawPointer to [invariant] $*Builtin.Int64
-  store %1 to [trivial] %7 : $*Builtin.Int64
+  store %1 to %7 : $*Builtin.Int64
   %9 = pointer_to_address %0 : $Builtin.RawPointer to [align=1] $*Builtin.Int64
-  store %1 to [trivial] %9 : $*Builtin.Int64
+  store %1 to %9 : $*Builtin.Int64
   %11 = pointer_to_address %0 : $Builtin.RawPointer to [strict] [align=8] $*Builtin.Int64
-  store %1 to [trivial] %11 : $*Builtin.Int64
+  store %1 to %11 : $*Builtin.Int64
   %13 = pointer_to_address %0 : $Builtin.RawPointer to [align=4294967296] $*Builtin.Int64
-  store %1 to [trivial] %13 : $*Builtin.Int64
+  store %1 to %13 : $*Builtin.Int64
   %28 = tuple ()
   return %28 : $()
 }

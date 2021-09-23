@@ -33,7 +33,7 @@ _ = AddressOnly(x: C(), p: X())
 // CHECK:   [[X_ADDR:%.*]] = struct_element_addr [[RET]] : $*AddressOnly, #AddressOnly.x
 // CHECK:   [[X_UNOWNED:%.*]] = ref_to_unowned [[X]] : $C to $@sil_unowned C
 // CHECK:   [[X_UNOWNED_COPY:%.*]] = copy_value [[X_UNOWNED]] : $@sil_unowned C
-// CHECK:   store [[X_UNOWNED_COPY]] to [init] [[X_ADDR]]
+// CHECK:   store [[X_UNOWNED_COPY]] to [[X_ADDR]]
 // CHECK:   destroy_value [[X]]
 // CHECK: }
 
@@ -52,7 +52,7 @@ func test0(c c: C) {
   // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
   // CHECK:   [[T2:%.*]] = ref_to_unowned [[ARG_COPY]] : $C  to $@sil_unowned C
   // CHECK:   [[T2_COPY:%.*]] = copy_value [[T2]] : $@sil_unowned C
-  // CHECK:   store [[T2_COPY]] to [init] [[PBX]] : $*@sil_unowned C
+  // CHECK:   store [[T2_COPY]] to [[PBX]] : $*@sil_unowned C
   // CHECK:   destroy_value [[ARG_COPY]]
 
   a.x = c
@@ -91,7 +91,7 @@ func testunowned_local() -> C {
   // CHECK: [[C_COPY:%.*]] = copy_value [[BORROWED_C]]
   // CHECK: [[tmp1:%.*]] = ref_to_unowned [[C_COPY]] : $C to $@sil_unowned C
   // CHECK: [[tmp1_copy:%.*]] = copy_value [[tmp1]]
-  // CHECK: store [[tmp1_copy]] to [init] [[PB_UC]]
+  // CHECK: store [[tmp1_copy]] to [[PB_UC]]
   // CHECK: destroy_value [[C_COPY]]
   // CHECK: end_borrow [[BORROWED_C]]
   unowned let uc = c

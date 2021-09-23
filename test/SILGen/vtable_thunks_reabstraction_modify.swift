@@ -24,7 +24,7 @@ public class DerivedClass<Result> : BaseClass<Int, Result> {
 // CHECK: [[THUNK_FN:%.*]] = function_ref @$sSixIegyr_SixIegnr_lTR :
 // CHECK: [[THUNK:%.*]] = partial_apply [callee_guaranteed] [[THUNK_FN]]<τ_0_0>([[RESULT_CONV]]) :
 // CHECK: [[THUNK_CONV:%.*]] = convert_function [[THUNK]]
-// CHECK: store [[THUNK_CONV]] to [init] [[OUTER_RESULT_BUF]] :
+// CHECK: store [[THUNK_CONV]] to [[OUTER_RESULT_BUF]] :
 // CHECK: yield [[OUTER_RESULT_BUF]] :
 
 // CHECK: bb1:
@@ -33,7 +33,7 @@ public class DerivedClass<Result> : BaseClass<Int, Result> {
 // CHECK: [[THUNK_FN:%.*]] = function_ref @$sSixIegnr_SixIegyr_lTR :
 // CHECK: [[THUNK:%.*]] = partial_apply [callee_guaranteed] [[THUNK_FN]]<τ_0_0>([[MOD_CONV]]) :
 // CHECK: [[THUNK_CONV:%.*]] = convert_function [[THUNK]]
-// CHECK: store [[THUNK_CONV]] to [init] [[RESULT_BUF]] :
+// CHECK: store [[THUNK_CONV]] to [[RESULT_BUF]] :
 // CHECK: dealloc_stack [[OUTER_RESULT_BUF]] :
 // CHECK: end_apply [[TOKEN]]
 // CHECK: return

@@ -58,7 +58,7 @@ func s020__________bitCast<T, U>(_ x: T, to type: U.Type) -> U {
 // CHECK: bb0([[ARG:%.*]] : @guaranteed $T, %1 : $@thick U.Type):
 // CHECK: [[COPY:%.*]] = copy_value [[ARG]] : $T
 // CHECK: [[SRC:%.*]] = alloc_stack $T
-// CHECK: store [[COPY]] to [init] [[SRC]] : $*T
+// CHECK: store [[COPY]] to [[SRC]] : $*T
 // CHECK: [[DEST:%.*]] = alloc_stack $U
 // CHECK: unchecked_ref_cast_addr  T in [[SRC]] : $*T to U in [[DEST]] : $*U
 // CHECK: [[LOAD:%.*]] = load [take] [[DEST]] : $*U

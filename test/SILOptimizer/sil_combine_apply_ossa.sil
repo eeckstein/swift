@@ -388,7 +388,7 @@ sil [ossa] @dont_replace_copied_self_in_mutating_method_call : $@convention(thin
 bb0(%0 : $*MutatingProto, %1 : $MStruct):
   %2 = alloc_stack $MutatingProto
   %4 = init_existential_addr %2 : $*MutatingProto, $MStruct
-  store %1 to [trivial] %4 : $*MStruct
+  store %1 to %4 : $*MStruct
   %9 = alloc_stack $MutatingProto
   copy_addr %2 to [initialization] %9 : $*MutatingProto
   %11 = open_existential_addr mutable_access %9 : $*MutatingProto to $*@opened("FC5F3CFA-A7A4-11E7-911F-685B35C48C83") MutatingProto
@@ -607,7 +607,7 @@ bb0:
   %in = alloc_stack $Builtin.Int64
   %out = alloc_stack $Builtin.Int64
   %c3 = integer_literal $Builtin.Int64, 3
-  store %c3 to [trivial] %in : $*Builtin.Int64
+  store %c3 to %in : $*Builtin.Int64
   %call = apply %thick<Builtin.Int64>(%out, %in) : $@noescape @callee_guaranteed <T> (@in T) -> @out T
   dealloc_stack %out : $*Builtin.Int64
   dealloc_stack %in : $*Builtin.Int64
@@ -625,7 +625,7 @@ bb0(%0 : @owned $Klass):
   %thick = thin_to_thick_function %fn : $@convention(thin) <T> (@in T) -> @out T to $@noescape @callee_guaranteed <T> (@in T) -> @out T
   %in = alloc_stack $Klass
   %out = alloc_stack $Klass
-  store %0 to [init] %in : $*Klass
+  store %0 to %in : $*Klass
   %call = apply %thick<Klass>(%out, %in) : $@noescape @callee_guaranteed <T> (@in T) -> @out T
   destroy_addr %out : $*Klass
   dealloc_stack %out : $*Klass
@@ -637,7 +637,7 @@ bb0(%0 : @owned $Klass):
 sil shared [ossa] [transparent] [thunk] @indirectClosure : $@convention(thin) (@in Builtin.Int64) -> @out Builtin.Int64 {
 bb0(%0 : $*Builtin.Int64, %1 : $*Builtin.Int64):
   %val = load [trivial] %1 : $*Builtin.Int64
-  store %val to [trivial] %0 : $*Builtin.Int64
+  store %val to %0 : $*Builtin.Int64
   %999 = tuple ()
   return %999 : $()
 }
@@ -645,7 +645,7 @@ bb0(%0 : $*Builtin.Int64, %1 : $*Builtin.Int64):
 sil shared [ossa] [transparent] [thunk] @indirectClosure_non_trivial : $@convention(thin) (@in Klass) -> @out Klass {
 bb0(%0 : $*Klass, %1 : $*Klass):
   %val = load [take] %1 : $*Klass
-  store %val to [init] %0 : $*Klass
+  store %val to %0 : $*Klass
   %999 = tuple ()
   return %999 : $()
 }
@@ -662,7 +662,7 @@ bb0:
   %out = alloc_stack $Builtin.Int64
   %in = alloc_stack $Builtin.Int64
   %c3 = integer_literal $Builtin.Int64, 3
-  store %c3 to [trivial] %in : $*Builtin.Int64
+  store %c3 to %in : $*Builtin.Int64
   %call = apply %cvt(%out, %in) : $@noescape @callee_guaranteed (@in Builtin.Int64) -> @out Builtin.Int64
   dealloc_stack %in : $*Builtin.Int64
   dealloc_stack %out : $*Builtin.Int64
@@ -682,7 +682,7 @@ bb0(%0 : @owned $Klass):
   %cvt = convert_escape_to_noescape %pa : $@callee_guaranteed (@in Klass) -> @out Klass to $@noescape @callee_guaranteed (@in Klass) -> @out Klass
   %out = alloc_stack $Klass
   %in = alloc_stack $Klass
-  store %0 to [init] %in : $*Klass
+  store %0 to %in : $*Klass
   %call = apply %cvt(%out, %in) : $@noescape @callee_guaranteed (@in Klass) -> @out Klass
   dealloc_stack %in : $*Klass
   destroy_addr %out : $*Klass
@@ -698,7 +698,7 @@ bb0(%0 : @owned $Klass):
 // CHECK:   [[STK:%.*]] = alloc_stack $Builtin.Int64
 // CHECK:   [[STK2:%.*]] = alloc_stack $Builtin.Int64
 // CHECK:   [[I:%.*]] = integer_literal $Builtin.Int64, 3
-// CHECK:   store [[I]] to [trivial] [[STK2]] : $*Builtin.Int64
+// CHECK:   store [[I]] to [[STK2]] : $*Builtin.Int64
 // CHECK:   apply [[F]]([[STK]], [[STK2]]) : $@convention(thin) (@in Builtin.Int64) -> @out Builtin.Int64
 // CHECK:   dealloc_stack [[STK2]] : $*Builtin.Int64
 // CHECK:   dealloc_stack [[STK]] : $*Builtin.Int64
@@ -711,7 +711,7 @@ bb0:
   %out = alloc_stack $Builtin.Int64
   %in = alloc_stack $Builtin.Int64
   %c3 = integer_literal $Builtin.Int64, 3
-  store %c3 to [trivial] %in : $*Builtin.Int64
+  store %c3 to %in : $*Builtin.Int64
   %call = apply %pa(%out, %in) : $@noescape @callee_guaranteed (@in Builtin.Int64) -> @out Builtin.Int64
   dealloc_stack %in : $*Builtin.Int64
   dealloc_stack %out : $*Builtin.Int64
@@ -725,7 +725,7 @@ bb0:
 // CHECK:   [[F:%.*]] = function_ref @indirectClosure_non_trivial : $@convention(thin) (@in Klass) -> @out Klass
 // CHECK:   [[STK:%.*]] = alloc_stack $Klass
 // CHECK:   [[STK2:%.*]] = alloc_stack $Klass
-// CHECK:   store %0 to [init] [[STK2]]
+// CHECK:   store %0 to [[STK2]]
 // CHECK:   apply [[F]]([[STK]], [[STK2]]) : $@convention(thin) (@in Klass) -> @out Klass
 // CHECK:   dealloc_stack [[STK2]]
 // CHECK:   dealloc_stack [[STK]]
@@ -736,7 +736,7 @@ bb0(%0 : @owned $Klass):
   %pa = partial_apply [callee_guaranteed] [on_stack] %fn() : $@convention(thin) (@in Klass) -> @out Klass
   %out = alloc_stack $Klass
   %in = alloc_stack $Klass
-  store %0 to [init] %in : $*Klass
+  store %0 to %in : $*Klass
   %call = apply %pa(%out, %in) : $@noescape @callee_guaranteed (@in Klass) -> @out Klass
   dealloc_stack %in : $*Klass
   destroy_addr %out : $*Klass
@@ -1015,7 +1015,7 @@ bb3:
 // CHECK:     bb0({{.*}}):
 // CHECK-NEXT:  alloc_stack $Bool
 // CHECK-NEXT:  [[S1:%[0-9]+]] = alloc_stack $Int
-// CHECK:       store %0 to [trivial] [[S1]]
+// CHECK:       store %0 to [[S1]]
 // CHECK:       [[S2:%[0-9]+]] = alloc_stack $Int
 // CHECK:       copy_addr [[S1]] to [initialization] [[S2]]
 // CHECK:       apply {{.*}}(%1, [[S2]])
@@ -1032,7 +1032,7 @@ sil [ossa] @test_stack_insertion_for_partial_apply_apply : $@convention(thin) (I
 bb0(%0 : $Int, %1 : $Double):
   %s1 = alloc_stack $Bool
   %s2 = alloc_stack $Int
-  store %0 to [trivial] %s2 : $*Int
+  store %0 to %s2 : $*Int
   %f1 = function_ref @callee : $@convention(thin) (Double, @in_guaranteed Int) -> ()
   %pa = partial_apply %f1(%s2) : $@convention(thin) (Double, @in_guaranteed Int) -> ()
   dealloc_stack %s2 : $*Int
@@ -1054,7 +1054,7 @@ bb2:
 // CHECK:     bb0({{.*}}):
 // CHECK-NEXT:  alloc_stack $Klass
 // CHECK-NEXT:  [[S1:%[0-9]+]] = alloc_stack $Klass
-// CHECK:       store %0 to [init] [[S1]]
+// CHECK:       store %0 to [[S1]]
 // CHECK:       [[S2:%[0-9]+]] = alloc_stack $Klass
 // CHECK:       copy_addr [take] [[S1]] to [initialization] [[S2]]
 // CHECK:       apply {{.*}}(%1, [[S2]])
@@ -1071,7 +1071,7 @@ sil [ossa] @test_stack_insertion_for_partial_apply_apply_non_trivial : $@convent
 bb0(%0 : @owned $Klass, %1 : @guaranteed $Klass):
   %s1 = alloc_stack $Klass
   %s2 = alloc_stack $Klass
-  store %0 to [init] %s2 : $*Klass
+  store %0 to %s2 : $*Klass
   %f1 = function_ref @callee_nontrivial : $@convention(thin) (@guaranteed Klass, @in_guaranteed Klass) -> ()
   %pa = partial_apply %f1(%s2) : $@convention(thin) (@guaranteed Klass, @in_guaranteed Klass) -> ()
   dealloc_stack %s2 : $*Klass

@@ -14,7 +14,7 @@ class Class<T> {
 // CHECK: [[ADDR:%.*]] = ref_element_addr [[BORROW]] : $Class<Int>, #Class.fn
 // CHECK: [[INIT:%.*]] = function_ref @$s34stored_property_init_reabstraction5ClassC2fnyxcSgvpfi : $@convention(thin) <τ_0_0> () -> @owned Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <τ_0_0>>
 // CHECK: [[VALUE:%.*]] = apply [[INIT]]<Int>() : $@convention(thin) <τ_0_0> () -> @owned Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <τ_0_0>>
-// CHECK: store [[VALUE]] to [init] [[ADDR]] : $*Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <Int>>
+// CHECK: store [[VALUE]] to [[ADDR]] : $*Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <Int>>
 // CHECK: end_borrow [[BORROW]] : $Class<Int>
 
 struct Struct<T> {
@@ -29,7 +29,7 @@ struct Struct<T> {
 // CHECK: [[ADDR:%.*]] = struct_element_addr [[SELF]] : $*Struct<Int>, #Struct.fn
 // CHECK: [[INIT:%.*]] = function_ref @$s34stored_property_init_reabstraction6StructV2fnyxcSgvpfi : $@convention(thin) <τ_0_0> () -> @owned Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <τ_0_0>>
 // CHECK: [[VALUE:%.*]] = apply [[INIT]]<Int>() : $@convention(thin) <τ_0_0> () -> @owned Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <τ_0_0>>
-// CHECK: store [[VALUE]] to [init] [[ADDR]] : $*Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <Int>>
+// CHECK: store [[VALUE]] to [[ADDR]] : $*Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <Int>>
 
 struct ComplexExample<T, U> {
   var (fn, value): (((T) -> ())?, U?) = (nil, nil)

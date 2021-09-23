@@ -87,7 +87,7 @@ struct AddressOnlyPayload {
 // CHECK-NEXT:   [[A:%[0-9]+]] = struct_element_addr [[LEFT]]
 // CHECK-NEXT:   copy_addr [take] %1 to [initialization] [[A]]
 // CHECK-NEXT:   [[I:%[0-9]+]] = struct_element_addr [[LEFT]]
-// CHECK-NEXT:   store %2 to [trivial] [[I]]
+// CHECK-NEXT:   store %2 to [[I]]
 // CHECK-NEXT:   inject_enum_addr [[E]]
 // CHECK-NOT:    copy_addr
 // CHECK: } // end sil function 'test_initialize_struct'
@@ -99,7 +99,7 @@ bb0(%0 : $*TestStruct, %1 : $*Any, %2 : $Int):
   %6 = struct_element_addr %5 : $*AddressOnlyPayload, #AddressOnlyPayload.a
   copy_addr [take] %1 to [initialization] %6 : $*Any
   %8 = struct_element_addr %5 : $*AddressOnlyPayload, #AddressOnlyPayload.i
-  store %2 to [trivial] %8 : $*Int
+  store %2 to %8 : $*Int
   %10 = init_enum_data_addr %4 : $*Either<AddressOnlyPayload, Int>, #Either.left!enumelt
   copy_addr [take] %5 to [initialization] %10 : $*AddressOnlyPayload
   inject_enum_addr %4 : $*Either<AddressOnlyPayload, Int>, #Either.left!enumelt
@@ -267,7 +267,7 @@ sil [ossa] @invalidateAliasAnalysis : $@convention(thin) (@owned Child) -> () {
 bb0(%0 :@owned  $Child):
   %2 = alloc_stack $Parent 
   %4 = alloc_stack $Child
-  store %0 to [init] %4 : $*Child
+  store %0 to %4 : $*Child
   %7 = alloc_stack $Child 
   %func = function_ref @gen_child : $@convention(thin) () -> @out Child
   %10 = apply %func(%7) : $@convention(thin)() -> @out Child

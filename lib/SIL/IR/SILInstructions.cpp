@@ -1097,11 +1097,8 @@ uint64_t StringLiteralInst::getCodeUnitCount() {
 }
 
 StoreInst::StoreInst(
-    SILDebugLocation Loc, SILValue Src, SILValue Dest,
-    StoreOwnershipQualifier Qualifier = StoreOwnershipQualifier::Unqualified)
-    : InstructionBase(Loc), Operands(this, Src, Dest) {
-  SILNode::Bits.StoreInst.OwnershipQualifier = unsigned(Qualifier);
-}
+    SILDebugLocation Loc, SILValue Src, SILValue Dest)
+    : InstructionBase(Loc), Operands(this, Src, Dest) {}
 
 StoreBorrowInst::StoreBorrowInst(SILDebugLocation DebugLoc, SILValue Src,
                                  SILValue Dest)

@@ -407,13 +407,13 @@ bb0:
     // CHECK: [[TUPLE:%[0-9]+]] = apply [[ALLOCATORREF]]<Int64>([[NUMELEMS]])
     // CHECK: ([[ARRAY:%[0-9]+]], [[STORAGEPTR:%[0-9]+]]) = destructure_tuple [[TUPLE]]
     // CHECK: [[STORAGEADDR:%[0-9]+]] = pointer_to_address [[STORAGEPTR]] : $Builtin.RawPointer to [strict] $*Int64
-    // CHECK: store [[ELEM1INT]] to [trivial] [[STORAGEADDR]] : $*Int64
+    // CHECK: store [[ELEM1INT]] to [[STORAGEADDR]] : $*Int64
     // CHECK: [[INDEX1:%[0-9]+]] = integer_literal $Builtin.Word, 1
     // CHECK: [[INDEXADDR1:%[0-9]+]] = index_addr [[STORAGEADDR]] : $*Int64, [[INDEX1]] : $Builtin.Word
-    // CHECK: store [[ELEM2INT]] to [trivial] [[INDEXADDR1]] : $*Int64
+    // CHECK: store [[ELEM2INT]] to [[INDEXADDR1]] : $*Int64
     // CHECK: [[INDEX2:%[0-9]+]] = integer_literal $Builtin.Word, 2
     // CHECK: [[INDEXADDR2:%[0-9]+]] = index_addr [[STORAGEADDR]] : $*Int64, [[INDEX2]] : $Builtin.Word
-    // CHECK: store [[ELEM3INT]] to [trivial] [[INDEXADDR2]] : $*Int64
+    // CHECK: store [[ELEM3INT]] to [[INDEXADDR2]] : $*Int64
     // CHECK: [[FINALIZEREF:%[0-9]+]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
     // CHECK: [[FINALIZED:%[0-9]+]] = apply [[FINALIZEREF]]<Int64>([[ARRAY]])
     // CHECK: [[BORROW:%[0-9]+]] = begin_borrow [[FINALIZED]]
@@ -539,7 +539,7 @@ bb0:
     // CHECK: [[TUPLE:%[0-9]+]] = apply [[ALLOCATORREF]]<String>([[NUMELEMS]])
     // CHECK: ([[ARRAY:%[0-9]+]], [[STORAGEPTR:%[0-9]+]]) = destructure_tuple [[TUPLE]]
     // CHECK: [[STORAGEADDR:%[0-9]+]] = pointer_to_address [[STORAGEPTR]] : $Builtin.RawPointer to [strict] $*String
-    // CHECK: store [[STRINGCONST]] to [init] [[STORAGEADDR]] : $*String
+    // CHECK: store [[STRINGCONST]] to [[STORAGEADDR]] : $*String
     // CHECK: [[FINALIZEREF:%[0-9]+]] = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF
     // CHECK: [[FINALIZED:%[0-9]+]] = apply [[FINALIZEREF]]<String>([[ARRAY]])
     // CHECK: [[BORROW:%[0-9]+]] = begin_borrow [[FINALIZED]]
@@ -768,10 +768,10 @@ bb0:
   %1 = alloc_stack $Int64
   %2 = alloc_stack $Bool
   %3 = struct $Bool (%0 : $Builtin.Int1)
-  store %3 to [trivial] %2 : $*Bool
+  store %3 to %2 : $*Bool
   %4 = integer_literal $Builtin.Int64, 81
   %5 = struct $Int64 (%4 : $Builtin.Int64)
-  store %5 to [trivial] %1 : $*Int64
+  store %5 to %1 : $*Int64
 
   %6 = function_ref @genericFunction : $@convention(thin) <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_1) -> Int32
   %7 = partial_apply [callee_guaranteed] %6<Int64, Bool>(%1, %2) : $@convention(thin) <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_1) -> Int32
@@ -1004,7 +1004,7 @@ bb0:
   %5 = apply %4(%0, %1, %2, %3) : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String
   %6 = struct $OSLogInterpolationDCEStub(%5 : $String)
   %7 = alloc_stack $OSLogInterpolationDCEStub
-  store %6 to [init] %7 : $*OSLogInterpolationDCEStub
+  store %6 to %7 : $*OSLogInterpolationDCEStub
   %8 = function_ref @appendInterpolationStub : $@convention(thin) (@inout OSLogInterpolationDCEStub) -> ()
   %9 = apply %8(%7) : $@convention(thin) (@inout OSLogInterpolationDCEStub) -> ()
   %10 = load [copy] %7 : $*OSLogInterpolationDCEStub
@@ -1037,10 +1037,10 @@ bb0:
   %5 = apply %4(%0, %1, %2, %3) : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String
   %6 = struct $OSLogInterpolationDCEStub(%5 : $String)
   %7 = alloc_stack $OSLogInterpolationDCEStub
-  store %6 to [init] %7 : $*OSLogInterpolationDCEStub
+  store %6 to %7 : $*OSLogInterpolationDCEStub
   %8 = alloc_stack $Builtin.Int32
   %lit = integer_literal $Builtin.Int32, -1
-  store %lit to [trivial] %8 : $*Builtin.Int32
+  store %lit to %8 : $*Builtin.Int32
   %9 = function_ref @appendInterpolationStubError : $@convention(thin) (@inout OSLogInterpolationDCEStub, @inout Builtin.Int32) -> ()
   %10 = apply %9(%7, %8) : $@convention(thin) (@inout OSLogInterpolationDCEStub, @inout Builtin.Int32) -> ()
   %11 = load [copy] %7 : $*OSLogInterpolationDCEStub
@@ -1099,7 +1099,7 @@ bb0:
   (%19, %20) = destructure_tuple %18 : $(Builtin.Int64, Builtin.Int1)
   %21 = struct $Int64 (%19 : $Builtin.Int64)
   %22 = init_existential_addr %16 : $*CVarArgStub, $Int64
-  store %21 to [trivial] %22 : $*Int64
+  store %21 to %22 : $*Int64
   // function_ref _finalizeUninitializedArray<A>(_:)
   %23 = function_ref @$ss27_finalizeUninitializedArrayySayxGABnlF : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0>
   %24 = apply %23<CVarArgStub>(%14) : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0>

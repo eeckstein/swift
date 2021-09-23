@@ -2273,35 +2273,6 @@ public:
     requireSameType(SI->getDest()->getType().getObjectType(),
                     SI->getSrc()->getType(),
                     "Store operand type and dest type mismatch");
-
-    // Perform ownership checks.
-    switch (SI->getOwnershipQualifier()) {
-    case StoreOwnershipQualifier::Unqualified:
-      // We should not see loads with unqualified ownership when SILOwnership is
-      // enabled.
-      require(!F.hasOwnership(),
-              "Qualified store in function with unqualified ownership?!");
-      break;
-    case StoreOwnershipQualifier::Init:
-      require(
-          F.hasOwnership(),
-          "Inst with qualified ownership in a function that is not qualified");
-      // TODO: Could probably make this a bit stricter.
-      require(!SI->getSrc()->getType().isTrivial(*SI->getFunction()),
-              "store [init] can only be applied to non-trivial types");
-      break;
-    case StoreOwnershipQualifier::Trivial: {
-      require(
-          F.hasOwnership(),
-          "Inst with qualified ownership in a function that is not qualified");
-      SILValue Src = SI->getSrc();
-      require(Src->getType().isTrivial(*SI->getFunction()) ||
-                  Src.getOwnershipKind() == OwnershipKind::None,
-              "A store with trivial ownership must store a type with trivial "
-              "ownership");
-      break;
-    }
-    }
   }
 
   void checkStoreBorrowInst(StoreBorrowInst *SI) {

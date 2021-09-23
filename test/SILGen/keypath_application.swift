@@ -15,7 +15,7 @@ func loadable(readonly: A, writable: inout A,
   // CHECK: [[ROOT_COPY:%.*]] = copy_value [[READONLY:%0]] :
   // CHECK: [[KP_COPY:%.*]] = copy_value [[KP:%3]]
   // CHECK: [[ROOT_TMP:%.*]] = alloc_stack $A
-  // CHECK: store [[ROOT_COPY]] to [init] [[ROOT_TMP]]
+  // CHECK: store [[ROOT_COPY]] to [[ROOT_TMP]]
   // CHECK: [[GET:%.*]] = function_ref @swift_getAtKeyPath :
   // CHECK: [[RESULT_TMP:%.*]] = alloc_stack $B
   // CHECK: apply [[GET]]<A, B>([[RESULT_TMP]], [[ROOT_TMP]], [[KP_COPY]])
@@ -28,7 +28,7 @@ func loadable(readonly: A, writable: inout A,
   // CHECK: end_access [[ACCESS]]
   // CHECK: [[KP_COPY:%.*]] = copy_value [[KP]]
   // CHECK: [[ROOT_TMP:%.*]] = alloc_stack $A
-  // CHECK: store [[ROOT_COPY]] to [init] [[ROOT_TMP]]
+  // CHECK: store [[ROOT_COPY]] to [[ROOT_TMP]]
   // CHECK: [[GET:%.*]] = function_ref @swift_getAtKeyPath :
   // CHECK: [[RESULT_TMP:%.*]] = alloc_stack $B
   // CHECK: apply [[GET]]<A, B>([[RESULT_TMP]], [[ROOT_TMP]], [[KP_COPY]])
@@ -40,7 +40,7 @@ func loadable(readonly: A, writable: inout A,
   // CHECK: [[KP_COPY:%.*]] = copy_value [[WKP:%4]]
   // CHECK: [[KP_UPCAST:%.*]] = upcast [[KP_COPY]] : $WritableKeyPath<A, B> to $KeyPath<A, B>
   // CHECK: [[ROOT_TMP:%.*]] = alloc_stack $A
-  // CHECK: store [[ROOT_COPY]] to [init] [[ROOT_TMP]]
+  // CHECK: store [[ROOT_COPY]] to [[ROOT_TMP]]
   // CHECK: [[GET:%.*]] = function_ref @swift_getAtKeyPath :
   // CHECK: [[RESULT_TMP:%.*]] = alloc_stack $B
   // CHECK: apply [[GET]]<A, B>([[RESULT_TMP]], [[ROOT_TMP]], [[KP_UPCAST]])
@@ -62,7 +62,7 @@ func loadable(readonly: A, writable: inout A,
   // CHECK-NEXT: [[VALUE_COPY:%.*]] = copy_value [[VALUE:%2]] : $B
   // CHECK-NEXT: [[ACCESS:%.*]] = begin_access [modify] [unknown] [[WRITABLE]] :
   // CHECK-NEXT: [[VALUE_TEMP:%.*]] = alloc_stack $B
-  // CHECK-NEXT: store [[VALUE_COPY]] to [init] [[VALUE_TEMP]]
+  // CHECK-NEXT: store [[VALUE_COPY]] to [[VALUE_TEMP]]
   // CHECK-NEXT: // function_ref
   // CHECK-NEXT: [[SET:%.*]] = function_ref @swift_setAtWritableKeyPath :
   // CHECK-NEXT: apply [[SET]]<A, B>([[ACCESS]], [[KP_COPY]], [[VALUE_TEMP]])
@@ -75,9 +75,9 @@ func loadable(readonly: A, writable: inout A,
   // CHECK-NEXT: [[KP_COPY:%.*]] = copy_value [[RKP:%5]]
   // CHECK-NEXT: [[VALUE_COPY:%.*]] = copy_value [[VALUE]] : $B
   // CHECK-NEXT: [[ROOT_TEMP:%.*]] = alloc_stack $A
-  // CHECK-NEXT: store [[ROOT_COPY]] to [init] [[ROOT_TEMP]]
+  // CHECK-NEXT: store [[ROOT_COPY]] to [[ROOT_TEMP]]
   // CHECK-NEXT: [[VALUE_TEMP:%.*]] = alloc_stack $B
-  // CHECK-NEXT: store [[VALUE_COPY]] to [init] [[VALUE_TEMP]]
+  // CHECK-NEXT: store [[VALUE_COPY]] to [[VALUE_TEMP]]
   // CHECK-NEXT: // function_ref
   // CHECK-NEXT: [[SET:%.*]] = function_ref @swift_setAtReferenceWritableKeyPath :
   // CHECK-NEXT: apply [[SET]]<A, B>([[ROOT_TEMP]], [[KP_COPY]], [[VALUE_TEMP]])
@@ -93,9 +93,9 @@ func loadable(readonly: A, writable: inout A,
   // CHECK-NEXT: [[KP_COPY:%.*]] = copy_value [[RKP:%5]]
   // CHECK-NEXT: [[VALUE_COPY:%.*]] = copy_value [[VALUE]] : $B
   // CHECK-NEXT: [[ROOT_TEMP:%.*]] = alloc_stack $A
-  // CHECK-NEXT: store [[ROOT_COPY]] to [init] [[ROOT_TEMP]]
+  // CHECK-NEXT: store [[ROOT_COPY]] to [[ROOT_TEMP]]
   // CHECK-NEXT: [[VALUE_TEMP:%.*]] = alloc_stack $B
-  // CHECK-NEXT: store [[VALUE_COPY]] to [init] [[VALUE_TEMP]]
+  // CHECK-NEXT: store [[VALUE_COPY]] to [[VALUE_TEMP]]
   // CHECK-NEXT: // function_ref
   // CHECK-NEXT: [[SET:%.*]] = function_ref @swift_setAtReferenceWritableKeyPath :
   // CHECK-NEXT: apply [[SET]]<A, B>([[ROOT_TEMP]], [[KP_COPY]], [[VALUE_TEMP]])

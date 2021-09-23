@@ -143,7 +143,7 @@ bb0(%0 : $*ArrayInt, %1 : $*ArrayInt):
   // Not redundant same index and array but append in between.
   %17 = function_ref @append : $@convention(method) (@in Int32, @inout ArrayInt) -> ()
   %18 = alloc_stack $Int32
-  store %i2 to [trivial] %18 : $*Int32
+  store %i2 to %18 : $*Int32
   %19 = apply %17(%18, %0) : $@convention(method) (@in Int32, @inout ArrayInt) -> ()
   %copy2_10 = copy_value %2 : $ArrayInt
   %20 = apply %func(%i1, %102, %copy2_10) : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
@@ -180,7 +180,7 @@ bb0(%0 : $*ArrayInt, %1 : $*ArrayInt):
   %5 = struct_extract %4 : $ArrayIntBuffer, #ArrayIntBuffer.storage
   %26 = ref_to_raw_pointer %5 : $Builtin.NativeObject to $Builtin.RawPointer
   %27 = pointer_to_address %26 : $Builtin.RawPointer to [strict] $*Builtin.Int32
-  store %x1 to [trivial] %27 : $*Builtin.Int32
+  store %x1 to %27 : $*Builtin.Int32
   end_borrow %borrow2 : $ArrayInt
   %copy2_14 = copy_value %2 : $ArrayInt
   %30 = apply %func(%i4, %102, %copy2_14) : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
@@ -378,7 +378,7 @@ bb2:
   %21 = tuple_extract %20 : $(Builtin.Int32, Builtin.Int1), 0
   %117 = function_ref @append : $@convention(method) (@in Int32, @inout ArrayInt) -> ()
   %118 = alloc_stack $Int32
-  store %0 to [trivial] %118 : $*Int32
+  store %0 to %118 : $*Int32
   %119 = apply %117(%118, %24) : $@convention(method) (@in Int32, @inout ArrayInt) -> ()
   %121 = load [copy] %24 : $*ArrayInt
   %120 = apply %52(%37, %101, %121) : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
@@ -498,7 +498,7 @@ bb3(%10 : $Builtin.Int32):
   %13 = load [take] %1 : $*ArrayInt
   %17 = apply %12(%11, %3, %13) : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
   %copy = copy_value %arg2 : $ArrayInt
-  store %copy to [init] %1 : $*ArrayInt 
+  store %copy to %1 : $*ArrayInt 
   %18 = integer_literal $Builtin.Int32, 1
   %19 = integer_literal $Builtin.Int1, -1
   %20 = builtin "sadd_with_overflow_Int32"(%10 : $Builtin.Int32, %18 : $Builtin.Int32, %19 : $Builtin.Int1) : $(Builtin.Int32, Builtin.Int1)
@@ -743,7 +743,7 @@ bb3(%14 : $Builtin.Int32):
   %28 = apply %26(%15, %17a) : $@convention(method) (Int32, @owned ArrayInt) -> UnsafeMutablePointerInt
   %29 = struct_extract %28 : $UnsafeMutablePointerInt, #UnsafeMutablePointerInt._rawValue
   %30 = pointer_to_address %29 : $Builtin.RawPointer to [strict] $*Int32
-  store %0 to [trivial] %30 : $*Int32
+  store %0 to %30 : $*Int32
   %32 = builtin "cmp_eq_Int32"(%25 : $Builtin.Int32, %4 : $Builtin.Int32) : $Builtin.Int1
   cond_br %32, bb5, bb4
 
@@ -805,7 +805,7 @@ bb3(%14 : $Builtin.Int32):
   %27 = unchecked_ref_cast %19 : $Builtin.NativeObject to $StorageBase
   %28 = ref_tail_addr %27 : $StorageBase, $Int32
   %29 = index_addr %28 : $*Int32, %14 : $Builtin.Int32
-  store %0 to [trivial] %29 : $*Int32
+  store %0 to %29 : $*Int32
   end_borrow %borrow17 : $ArrayInt
   %21 = apply %16(%15, %3, %17) : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
   %22 = integer_literal $Builtin.Int32, 1
@@ -989,7 +989,7 @@ bb3(%14 : $Builtin.Int32):
   %30 = pointer_to_address %29 : $Builtin.RawPointer to [strict] $*IntTupleStruct
   %31 = struct_element_addr %30 : $*IntTupleStruct, #IntTupleStruct.tuple
   %32 = tuple_element_addr %31 : $*(Int32, Int32), 0
-  store %0 to [trivial] %32 : $*Int32
+  store %0 to %32 : $*Int32
   %34 = builtin "cmp_eq_Int32"(%25 : $Builtin.Int32, %4 : $Builtin.Int32) : $Builtin.Int1
   cond_br %34, bb5, bb4
 
@@ -1111,7 +1111,7 @@ bb2:
 bb3(%14 : $Builtin.Int32):
   %15 = alloc_stack $ArrayInt
   %copy = copy_value %2 : $ArrayInt
-  store %copy to [init] %15 : $*ArrayInt
+  store %copy to %15 : $*ArrayInt
   %16 = struct $Int32 (%14 : $Builtin.Int32)
   %17 = function_ref @checkbounds : $@convention(method) (Int32, Bool, @owned ArrayInt) -> _DependenceToken
   %18 = load [take] %15 : $*ArrayInt

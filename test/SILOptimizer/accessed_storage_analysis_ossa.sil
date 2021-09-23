@@ -21,7 +21,7 @@ bb0(%0 : $*Int):
 sil [ossa] @writeIdentifiedArg : $@convention(thin) (Int) -> (@out Int) {
 bb0(%0 : $*Int, %1 : $Int):
   %3 = begin_access [modify] [dynamic] %0 : $*Int
-  store %1 to [trivial] %3 : $*Int
+  store %1 to %3 : $*Int
   end_access %3 : $*Int
   %v = tuple ()
   return %v : $()
@@ -45,7 +45,7 @@ sil [ossa] @writeIdentifiedStack : $@convention(thin) (Int) -> () {
 bb0(%0 : $Int):
   %1 = alloc_stack $Int
   %3 = begin_access [modify] [dynamic] %1 : $*Int
-  store %0 to [trivial] %3 : $*Int
+  store %0 to %3 : $*Int
   end_access %3 : $*Int
   dealloc_stack %1 : $*Int
   %6 = tuple ()
@@ -83,7 +83,7 @@ sil [ossa] @writeIdentifiedBoxArg : $@convention(thin) (@guaranteed { var Int },
 bb0(%0 : @guaranteed ${ var Int }, %1 : $Int):
   %2 = project_box %0 : ${ var Int }, 0
   %3 = begin_access [modify] [dynamic] %2 : $*Int
-  store %1 to [trivial] %3 : $*Int
+  store %1 to %3 : $*Int
   end_access %3 : $*Int
   %v = tuple ()
   return %v : $()
@@ -109,7 +109,7 @@ bb0(%0 : $Int):
   %1 = alloc_box ${ var Int }
   %2 = project_box %1 : ${ var Int }, 0
   %3 = begin_access [read] [dynamic] %2 : $*Int
-  store %0 to [trivial] %3 : $*Int
+  store %0 to %3 : $*Int
   end_access %3 : $*Int
   destroy_value %1 : ${ var Int }
   %6 = tuple ()
@@ -147,7 +147,7 @@ bb0:
   %1 = global_addr @$s25accessed_storage_analysis14defined_globalSivp : $*Int64
   %2 = integer_literal $Builtin.Int64, 0
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = tuple ()
   return %5 : $()
 }
@@ -183,7 +183,7 @@ sil [ossa] @writeIdentifiedDefinedGlobal : $@convention(thin) (Int64) -> () {
 bb0(%0 : $Int64):
   %1 = global_addr @$s25accessed_storage_analysis14defined_globalSivp : $*Int64
   %2 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %0 to [trivial] %2 : $*Int64
+  store %0 to %2 : $*Int64
   end_access %2 : $*Int64
   %v = tuple ()
   return %v : $()
@@ -228,7 +228,7 @@ bb0(%0 : $Int64):
   %2 = apply %1() : $@convention(thin) () -> Builtin.RawPointer
   %3 = pointer_to_address %2 : $Builtin.RawPointer to [strict] $*Int64
   %4 = begin_access [modify] [dynamic] %3 : $*Int64
-  store %0 to [trivial] %4 : $*Int64
+  store %0 to %4 : $*Int64
   end_access %4 : $*Int64
   %v = tuple ()
   return %v : $()
@@ -300,7 +300,7 @@ sil [ossa] @writeIdentifiedExternalGlobal : $@convention(thin) (Int64) -> () {
 bb0(%0 : $Int64):
   %1 = global_addr @external_global : $*Int64
   %2 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %0 to [trivial] %2 : $*Int64
+  store %0 to %2 : $*Int64
   end_access %2 : $*Int64
   %v = tuple ()
   return %v : $()
@@ -362,7 +362,7 @@ bb0(%0 : @guaranteed $C, %1 : $Int):
   %borrow = begin_borrow %0 : $C
   %2 = ref_element_addr %borrow : $C, #C.property
   %3 = begin_access [modify] [dynamic] %2 : $*Int
-  store %1 to [trivial] %3 : $*Int
+  store %1 to %3 : $*Int
   end_access %3 : $*Int
   end_borrow %borrow : $C
   %v = tuple ()
@@ -412,7 +412,7 @@ bb0(%0 : @guaranteed $C, %1 : $Int):
   %2 = ref_element_addr %borrow : $C, #C.property
   %3 = begin_access [read] [dynamic] %2 : $*Int
   %4 = begin_access [modify] [dynamic] %3 : $*Int
-  store %1 to [trivial] %4 : $*Int
+  store %1 to %4 : $*Int
   end_access %4 : $*Int
   end_access %3 : $*Int
   end_borrow %borrow : $C
@@ -470,7 +470,7 @@ struct SomeError: Error {}
 sil [ossa] @writeIdentifiedArgReadUnidentifiedVarious : $@convention(thin) (Int, @owned Error) -> (@out Int) {
 bb0(%out : $*Int, %i : $Int, %e : @owned $Error):
   %argAccess = begin_access [modify] [dynamic] %out : $*Int
-  store %i to [trivial] %argAccess : $*Int
+  store %i to %argAccess : $*Int
   end_access %argAccess : $*Int
 
   %peb = project_existential_box $SomeError in %e : $Error
@@ -532,9 +532,9 @@ bb0(%inout : $*Int, %oi : $*Optional<Int>, %b : $*Builtin.UnsafeValueBuffer):
 sil [ossa] @testDirectlyAppliedNoEscape : $@convention(thin) (Int) -> () {
 bb0(%0 : $Int):
   %s1 = alloc_stack $Int
-  store %0 to [trivial] %s1 : $*Int
+  store %0 to %s1 : $*Int
   %s2 = alloc_stack $Int
-  store %0 to [trivial] %s2 : $*Int
+  store %0 to %s2 : $*Int
   %f = function_ref @testDirectlyAppliedClosure : $@convention(thin) (@inout Int, @inout_aliasable Int) -> ()
   %pa = partial_apply [callee_guaranteed] %f(%s2) : $@convention(thin) (@inout Int, @inout_aliasable Int) -> ()
   %borrow = begin_borrow %pa : $@callee_guaranteed (@inout Int) -> ()
@@ -626,7 +626,7 @@ bb0(%0 : @guaranteed $Optional<C>, %1 : @guaranteed $C):
 sil [ossa] @readIdentifiedArgCaller : $@convention(thin) (Int) -> Int {
 bb0(%0 : $Int):
   %stack = alloc_stack $Int
-  store %0 to [trivial] %stack : $*Int
+  store %0 to %stack : $*Int
   %f = function_ref @readIdentifiedArg : $@convention(thin) (@in Int) -> Int
   %call = apply %f(%stack) : $@convention(thin) (@in Int) -> Int
   dealloc_stack %stack : $*Int

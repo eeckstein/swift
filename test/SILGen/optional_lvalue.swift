@@ -108,7 +108,7 @@ struct ComputedOptional {
 // CHECK:  [[T0:%.*]] = load [trivial] [[SELF]] : $*ComputedOptional
 // CHECK:  [[GETTER:%.*]] = function_ref @$s15optional_lvalue16ComputedOptionalV08computedD0SiSgvg
 // CHECK:  [[VALUE:%.*]] = apply [[GETTER]]([[T0]])
-// CHECK:  store [[VALUE]] to [trivial] [[TEMP]] : $*Optional<Int>
+// CHECK:  store [[VALUE]] to [[TEMP]] : $*Optional<Int>
 // CHECK:  select_enum_addr [[TEMP]] : $*Optional<Int>
 // CHECK:  cond_br
 // CHECK:  [[VALUE_ADDR:%.*]] = unchecked_take_enum_data_addr [[TEMP]] : $*Optional<Int>
@@ -132,7 +132,7 @@ func assign_bound_optional_computed_lvalue(_ co: inout ComputedOptional) {
 // CHECK:  [[T0:%.*]] = load [trivial] [[SELF]] : $*ComputedOptional
 // CHECK:  [[GETTER:%.*]] = function_ref @$s15optional_lvalue16ComputedOptionalV08computedD0SiSgvg
 // CHECK:  [[OPTVALUE:%.*]] = apply [[GETTER]]([[T0]])
-// CHECK:  store [[OPTVALUE]] to [trivial] [[TEMP]]
+// CHECK:  store [[OPTVALUE]] to [[TEMP]]
 // CHECK:  switch_enum_addr [[TEMP]]
 // CHECK:  [[VALUE_ADDR:%.*]] = unchecked_take_enum_data_addr [[TEMP]] : $*Optional<Int>
 // CHECK:  assign [[VALUE]] to [[VALUE_ADDR]] : $*Int

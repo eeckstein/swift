@@ -60,9 +60,9 @@ bb0(%arg : @owned $B):
 // CHECK: bb0(%0 : @owned $C):
 // CHECK: [[ADR:%.*]] = alloc_stack $C
 // CHECK-OPT-NOT: copy_value
-// CHECK-OPT: store %0 to [init] [[ADR]] : $*C
+// CHECK-OPT: store %0 to [[ADR]] : $*C
 // CHECK-ONONE: [[CP:%.*]] = copy_value %0 : $C
-// CHECK-ONONE: store [[CP]] to [init] [[ADR]] : $*C
+// CHECK-ONONE: store [[CP]] to [[ADR]] : $*C
 // CHECK-OPT-NOT: destroy_value
 // CHECK-ONONE: destroy_value %0 : $C
 // CHECK: destroy_addr
@@ -71,7 +71,7 @@ sil [ossa] @testDestroyAfterConsumingStore : $@convention(thin) (@owned C) -> ()
 bb0(%arg : @owned $C):
   %adr = alloc_stack $C
   %copy = copy_value %arg : $C
-  store %copy to [init] %adr : $*C
+  store %copy to %adr : $*C
   destroy_value %arg : $C
   destroy_addr %adr : $*C
   dealloc_stack %adr : $*C
@@ -87,7 +87,7 @@ bb0(%arg : @owned $C):
 // CHECK: [[ADR:%.*]] = alloc_stack $C
 // CHECK-OPT-NOT: copy_value
 // CHECK-ONONE: copy_value %0 : $C
-// CHECK: store %{{.*}} to [init] [[ADR]] : $*C
+// CHECK: store %{{.*}} to [[ADR]] : $*C
 // CHECK-OPT-NOT: destroy_value
 // CHECK-ONONE: destroy_value [poison] %0 : $C
 // CHECK: apply
@@ -97,7 +97,7 @@ sil [ossa] @testDestroyAfterConsumingStoreAndCall : $@convention(thin) (@owned C
 bb0(%arg : @owned $C):
   %adr = alloc_stack $C
   %copy = copy_value %arg : $C
-  store %copy to [init] %adr : $*C
+  store %copy to %adr : $*C
   %f = function_ref @dummy : $@convention(thin) () -> ()
   %call = apply %f() : $@convention(thin) () -> ()
   destroy_value %arg : $C
@@ -254,7 +254,7 @@ sil [ossa] @testProjectBox : $@convention(thin) (@owned B) -> @owned B {
 bb0(%0 : @owned $B):
   %box = alloc_box $<τ_0_0> { var τ_0_0 } <B>
   %boxadr = project_box %box : $<τ_0_0> { var τ_0_0 } <B>, 0
-  store %0 to [init] %boxadr : $*B
+  store %0 to %boxadr : $*B
   %load = load [copy] %boxadr : $*B
   %copy = copy_value %box : $<τ_0_0> { var τ_0_0 } <B>
   destroy_value %box : $<τ_0_0> { var τ_0_0 } <B>
@@ -318,9 +318,9 @@ sil [ossa] @getObject : $@convention(thin) () -> @owned AnyObject
 // CHECK-LABEL: sil [ossa] @testNoOverlapInLiveBlock : $@convention(thin) () -> () {
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK-OPT-NOT: copy_value
-// CHECK-OPT:   store [[DEF]] to [init]
+// CHECK-OPT:   store [[DEF]] to
 // CHECK-ONONE: [[CP:%.*]] = copy_value
-// CHECK-ONONE: store [[CP]] to [init]
+// CHECK-ONONE: store [[CP]] to
 // CHECK:   begin_access
 // CHECK:   end_access
 // CHECK: bb1:
@@ -335,7 +335,7 @@ bb0:
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   // end canonical lifetime
   %access = begin_access [read] [dynamic] %adr : $*AnyObject
   %obj = load [copy] %access : $*AnyObject
@@ -364,9 +364,9 @@ bb1:
 // CHECK-LABEL: sil [ossa] @testNoOverlapInDeadBlock : $@convention(thin) () -> () {
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK-OPT-NOT: copy_value
-// CHECK-OPT:   store [[DEF]] to [init] %{{.*}} : $*AnyObject
+// CHECK-OPT:   store [[DEF]] to %{{.*}} : $*AnyObject
 // CHECK-ONONE: [[CP:%.*]] = copy_value
-// CHECK-ONONE: store [[CP]] to [init] %{{.*}} : $*AnyObject
+// CHECK-ONONE: store [[CP]] to %{{.*}} : $*AnyObject
 // CHECK: br bb1
 // CHECK: bb1:
 // CHECK:   begin_access
@@ -384,7 +384,7 @@ bb0:
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   // end canonical lifetime
   br bb1
 
@@ -415,7 +415,7 @@ bb2:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   end_access
 // CHECK-OPT:   destroy_value [[DEF]] : $AnyObject
 // CHECK-ONONE: destroy_value [poison] [[DEF]] : $AnyObject
@@ -433,7 +433,7 @@ bb0:
   %copy = copy_value %def : $AnyObject
   %access = begin_access [read] [dynamic] %adr : $*AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   %obj = load [copy] %access : $*AnyObject
   end_access %access : $*AnyObject
   // Branch to avoid reusing the destroy_value
@@ -462,7 +462,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK: br bb1
 // CHECK: bb1:
 // CHECK:   end_access
@@ -482,7 +482,7 @@ bb0:
   %copy = copy_value %def : $AnyObject
   %access = begin_access [read] [dynamic] %adr : $*AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   br bb1
 
 bb1:
@@ -511,7 +511,7 @@ bb2:
 // CHECK:   begin_access
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   end_access
 // CHECK-OPT:   destroy_value [[DEF]] : $AnyObject
 // CHECK-ONONE:   destroy_value [poison] [[DEF]] : $AnyObject
@@ -529,7 +529,7 @@ bb0:
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   %obj = load [copy] %access : $*AnyObject
   end_access %access : $*AnyObject
   // Branch to avoid reusing the destroy_value
@@ -560,7 +560,7 @@ bb1:
 // CHECK: bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   end_access
 // CHECK-OPT:   destroy_value [[DEF]] : $AnyObject
 // CHECK-ONONE: destroy_value [poison] [[DEF]] : $AnyObject
@@ -581,7 +581,7 @@ bb1:
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   %obj = load [copy] %access : $*AnyObject
   end_access %access : $*AnyObject
   // Branch to avoid reusing the destroy_value
@@ -613,7 +613,7 @@ bb2:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   end_access
 // CHECK:   destroy_value [[DEF]] : $AnyObject
 // CHECK: br bb1
@@ -628,7 +628,7 @@ bb0:
   %copy = copy_value %def : $AnyObject
   %access = begin_access [read] [dynamic] %adr : $*AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   destroy_value %copy : $AnyObject
   %obj = load [copy] %access : $*AnyObject
   end_access %access : $*AnyObject
@@ -661,7 +661,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   br bb1
 // CHECK: bb1:
 // CHECK:   end_access
@@ -677,7 +677,7 @@ bb0:
   %copy = copy_value %def : $AnyObject
   %access = begin_access [read] [dynamic] %adr : $*AnyObject
   // use
-  store %def to [init] %adr : $*AnyObject
+  store %def to %adr : $*AnyObject
   br bb1
 
 bb1:
@@ -704,7 +704,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access {{.*}} : $*X
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   begin_access {{.*}} : $*Y
 // CHECK:   end_access {{.*}} : $*X
 // CHECK:   end_access {{.*}} : $*Y
@@ -727,7 +727,7 @@ bb0(%0 : $*AnyObject):
   %accessX = begin_access [read] [dynamic] %xadr : $*X
   destroy_addr %0 : $*AnyObject
   // use
-  store %def to [init] %0 : $*AnyObject
+  store %def to %0 : $*AnyObject
   %accessY = begin_access [read] [dynamic] %yadr : $*Y
   // accessX overlaps pruned liveness on the first iteration
   end_access %accessX : $*X
@@ -765,7 +765,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access {{.*}} : $*X
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to %{{.*}} : $*AnyObject
 // CHECK:   br bb1
 // CHECK: bb1:
 // CHECK:   begin_access {{.*}} : $*Y
@@ -794,7 +794,7 @@ bb0(%0 : $*AnyObject):
   %accessX = begin_access [read] [dynamic] %xadr : $*X
   destroy_addr %0 : $*AnyObject
   // use
-  store %def to [init] %0 : $*AnyObject
+  store %def to %0 : $*AnyObject
   br bb1
 
 bb1:

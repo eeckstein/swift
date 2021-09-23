@@ -1260,13 +1260,13 @@ bb0:
   %8 = apply %7<Int64>(%6) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer)
   (%9, %10) = destructure_tuple %8 : $(Array<Int64>, Builtin.RawPointer)
   %11 = pointer_to_address %10 : $Builtin.RawPointer to [strict] $*Int64
-  store %1 to [trivial] %11 : $*Int64
+  store %1 to %11 : $*Int64
   %13 = integer_literal $Builtin.Word, 1 // Index: 1
   %14 = index_addr %11 : $*Int64, %13 : $Builtin.Word
-  store %3 to [trivial] %14 : $*Int64
+  store %3 to %14 : $*Int64
   %16 = integer_literal $Builtin.Word, 2 // Index: 2
   %17 = index_addr %11 : $*Int64, %16 : $Builtin.Word
-  store %5 to [trivial] %17 : $*Int64
+  store %5 to %17 : $*Int64
   return %9 : $Array<Int64>
 }
 
@@ -1294,9 +1294,9 @@ sil [ossa] @interpretArrayAppend : $@convention(thin) () -> @owned Array<Int64> 
   // function_ref Array.init()
   %4 = function_ref @$sS2ayxGycfC : $@convention(method) <τ_0_0> (@thin Array<τ_0_0>.Type) -> @owned Array<τ_0_0>
   %5 = apply %4<Int64>(%3) : $@convention(method) <τ_0_0> (@thin Array<τ_0_0>.Type) -> @owned Array<τ_0_0>
-  store %5 to [init] %2 : $*Array<Int64>
+  store %5 to %2 : $*Array<Int64>
   %10 = alloc_stack $Int64
-  store %1 to [trivial] %10 : $*Int64
+  store %1 to %10 : $*Int64
   // function_ref Array.append(_:)
   %13 = function_ref @$sSa6appendyyxnF : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
   %14 = apply %13<Int64>(%10, %2) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
@@ -1318,9 +1318,9 @@ bb0:
   %3 = metatype $@thin Array<Int64>.Type
   %4 = function_ref @initializeArrayWithLiterals : $@convention(thin) () -> @owned Array<Int64>
   %5 = apply %4() : $@convention(thin) () -> @owned Array<Int64>
-  store %5 to [init] %2 : $*Array<Int64>
+  store %5 to %2 : $*Array<Int64>
   %10 = alloc_stack $Int64
-  store %1 to [trivial] %10 : $*Int64
+  store %1 to %10 : $*Int64
   // function_ref Array.append(_:)
   %13 = function_ref @$sSa6appendyyxnF : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
   %14 = apply %13<Int64>(%10, %2) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
@@ -1350,13 +1350,13 @@ bb0:
   %6 = struct $StructContainingArray (%5 : $Array<Int64>)
 
   %7 = alloc_stack $StructContainingArray, var, name "s"
-  store %6 to [init] %7 : $*StructContainingArray
+  store %6 to %7 : $*StructContainingArray
   %8 = struct_element_addr %7 : $*StructContainingArray, #StructContainingArray.array
 
   %9 = integer_literal $Builtin.Int64, 105
   %10 = struct $Int64 (%9 : $Builtin.Int64)
   %11 = alloc_stack $Int64
-  store %10 to [trivial] %11 : $*Int64
+  store %10 to %11 : $*Int64
 
   // function_ref Array.append(_:)
   %13 = function_ref @$sSa6appendyyxnF : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
@@ -1510,7 +1510,7 @@ bb0:
   %0 = integer_literal $Builtin.Int64, -10
   %1 = struct $Int64 (%0 : $Builtin.Int64)
   %2 = alloc_stack $Int64
-  store %1 to [trivial] %2 : $*Int64
+  store %1 to %2 : $*Int64
   %4 = function_ref @binaryIntegerDescription : $@convention(method) <τ_0_0 where τ_0_0 : BinaryInteger> (@in_guaranteed τ_0_0) -> @owned String
   %5 = apply %4<Int64>(%2) : $@convention(method) <τ_0_0 where τ_0_0 : BinaryInteger> (@in_guaranteed τ_0_0) -> @owned String
   dealloc_stack %2 : $*Int64
@@ -1525,7 +1525,7 @@ bb0:
   %0 = integer_literal $Builtin.Int64, 0xffffffffffffffff
   %1 = struct $UInt64 (%0 : $Builtin.Int64)
   %2 = alloc_stack $UInt64
-  store %1 to [trivial] %2 : $*UInt64
+  store %1 to %2 : $*UInt64
   %4 = function_ref @binaryIntegerDescription : $@convention(method) <τ_0_0 where τ_0_0 : BinaryInteger> (@in_guaranteed τ_0_0) -> @owned String
   %5 = apply %4<UInt64>(%2) : $@convention(method) <τ_0_0 where τ_0_0 : BinaryInteger> (@in_guaranteed τ_0_0) -> @owned String
   dealloc_stack %2 : $*UInt64
@@ -1537,7 +1537,7 @@ sil [ossa] @interpretTsanInstrumentationSkip : $@convention(thin) () -> Builtin.
 bb0:
   %0 = integer_literal $Builtin.Int32, 23
   %1 = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %1 : $*Builtin.Int32
+  store %0 to %1 : $*Builtin.Int32
   // This builtin should be skipped and should not affect the value of the argument
   %2 = builtin "tsanInoutAccess"(%1 : $*Builtin.Int32) : $()
   %3 = load [trivial] %1 : $*Builtin.Int32

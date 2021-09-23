@@ -461,7 +461,7 @@ class FailableDerivedClass : FailableBaseClass {
   // CHECK:   [[SELF_BOX:%.*]] = alloc_box ${ var FailableDerivedClass }, let, name "self"
   // CHECK:   [[MARKED_SELF_BOX:%.*]] = mark_uninitialized [derivedself] [[SELF_BOX]]
   // CHECK:   [[PB_BOX:%.*]] = project_box [[MARKED_SELF_BOX]]
-  // CHECK:   store [[OLD_SELF]] to [init] [[PB_BOX]]
+  // CHECK:   store [[OLD_SELF]] to [[PB_BOX]]
   // CHECK-NEXT: br bb1
   //
   // CHECK: bb1:
@@ -482,7 +482,7 @@ class FailableDerivedClass : FailableBaseClass {
     // CHECK:   [[SELF_BOX:%.*]] = alloc_box ${ var FailableDerivedClass }, let, name "self"
     // CHECK:   [[MARKED_SELF_BOX:%.*]] = mark_uninitialized [derivedself] [[SELF_BOX]]
     // CHECK:   [[PB_BOX:%.*]] = project_box [[MARKED_SELF_BOX]]
-    // CHECK:   store [[OLD_SELF]] to [init] [[PB_BOX]]
+    // CHECK:   store [[OLD_SELF]] to [[PB_BOX]]
     //
     // Then assign canary to other member using a borrow.
     // CHECK:   [[BORROWED_SELF:%.*]] = load_borrow [[PB_BOX]]
@@ -503,7 +503,7 @@ class FailableDerivedClass : FailableBaseClass {
     // CHECK: [[SUCC_BB]]:
     // CHECK:   [[NEW_SELF:%.*]] = unchecked_enum_data [[OPT_NEW_SELF]]
     // CHECK:   [[DOWNCAST_NEW_SELF:%.*]] = unchecked_ref_cast [[NEW_SELF]]
-    // CHECK:   store [[DOWNCAST_NEW_SELF]] to [init] [[PB_BOX]]
+    // CHECK:   store [[DOWNCAST_NEW_SELF]] to [[PB_BOX]]
     // CHECK:   [[RESULT:%.*]] = load [copy] [[PB_BOX]]
     // CHECK:   [[WRAPPED_RESULT:%.*]] = enum $Optional<FailableDerivedClass>, #Optional.some!enumelt, [[RESULT]]
     // CHECK:   destroy_value [[MARKED_SELF_BOX]]
@@ -577,14 +577,14 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[REF:%.*]] = alloc_box ${ var ThrowDerivedClass }, let, name "self"
   // CHECK:   [[MARK_UNINIT:%.*]] = mark_uninitialized [derivedself] [[REF]] : ${ var ThrowDerivedClass }
   // CHECK:   [[PROJ:%.*]] = project_box [[MARK_UNINIT]]
-  // CHECK:   store {{%.*}} to [init] [[PROJ]]
+  // CHECK:   store {{%.*}} to [[PROJ]]
   //
   // Then initialize the canary with nil. We are able to borrow the initialized self to avoid retain/release overhead.
   // CHECK:   [[SELF:%.*]] = load_borrow [[PROJ]]
   // CHECK:   [[CANARY_ADDR:%.*]] = ref_element_addr [[SELF]]
   // CHECK:   [[CANARY_FUNC:%.*]] = function_ref @$s21failable_initializers17ThrowDerivedClassC6canaryAA6CanaryCSgvpfi :
   // CHECK:   [[OPT_CANARY:%.*]] = apply [[CANARY_FUNC]]()
-  // CHECK:   store [[OPT_CANARY]] to [init] [[CANARY_ADDR]]
+  // CHECK:   store [[OPT_CANARY]] to [[CANARY_ADDR]]
   // CHECK:   end_borrow [[SELF]]
   //
   // Now we perform the unwrap.
@@ -597,7 +597,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[BASE_INIT_FN:%.*]] = function_ref @$s21failable_initializers14ThrowBaseClassC6noFailACyt_tcfc : $@convention(method)
   // CHECK:   [[SELF_INIT_BASE:%.*]] = apply [[BASE_INIT_FN]]([[SELF_BASE]])
   // CHECK:   [[SELF:%.*]] = unchecked_ref_cast [[SELF_INIT_BASE]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[SELF]] to [init] [[PROJ]]
+  // CHECK:   store [[SELF]] to [[PROJ]]
   // CHECK:   [[SELF:%.*]] = load [copy] [[PROJ]]
   // CHECK:   destroy_value [[MARK_UNINIT]]
   // CHECK:   return [[SELF]]
@@ -619,14 +619,14 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[REF:%.*]] = alloc_box ${ var ThrowDerivedClass }, let, name "self"
   // CHECK:   [[MARK_UNINIT:%.*]] = mark_uninitialized [derivedself] [[REF]] : ${ var ThrowDerivedClass }
   // CHECK:   [[PROJ:%.*]] = project_box [[MARK_UNINIT]]
-  // CHECK:   store {{%.*}} to [init] [[PROJ]]
+  // CHECK:   store {{%.*}} to [[PROJ]]
   //
   // Then initialize the canary with nil. We are able to borrow the initialized self to avoid retain/release overhead.
   // CHECK:   [[SELF:%.*]] = load_borrow [[PROJ]]
   // CHECK:   [[CANARY_ADDR:%.*]] = ref_element_addr [[SELF]]
   // CHECK:   [[CANARY_FUNC:%.*]] = function_ref @$s21failable_initializers17ThrowDerivedClassC6canaryAA6CanaryCSgvpfi :
   // CHECK:   [[OPT_CANARY:%.*]] = apply [[CANARY_FUNC]]()
-  // CHECK:   store [[OPT_CANARY]] to [init] [[CANARY_ADDR]]
+  // CHECK:   store [[OPT_CANARY]] to [[CANARY_ADDR]]
   // CHECK:   end_borrow [[SELF]]
   //
   // Now we begin argument emission where we perform the unwrap.
@@ -641,7 +641,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[INIT_FN:%.*]] = function_ref @$s21failable_initializers14ThrowBaseClassC6noFailACSi_tcfc : $@convention(method)
   // CHECK:   [[BASE_SELF_INIT:%.*]] = apply [[INIT_FN]]({{%.*}}, [[BASE_SELF]])
   // CHECK:   [[SELF:%.*]] = unchecked_ref_cast [[BASE_SELF_INIT]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[SELF]] to [init] [[PROJ]]
+  // CHECK:   store [[SELF]] to [[PROJ]]
   //
   // Handle the return value.
   // CHECK:   [[SELF:%.*]] = load [copy] [[PROJ]]
@@ -654,7 +654,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // 3. Perform the rethrow.
   // CHECK: [[ERROR_BB]]([[ERROR:%.*]] : @owned $Error):
   // CHECK:   [[SELF:%.*]] = unchecked_ref_cast [[BASE_SELF]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[SELF]] to [init] [[PROJ]]
+  // CHECK:   store [[SELF]] to [[PROJ]]
   // CHECK:   destroy_value [[MARK_UNINIT]]
   // CHECK:   throw [[ERROR]]
   // CHECK: } // end sil function '$s21failable_initializers17ThrowDerivedClassC41delegatingFailDuringDelegationArgEmissionACSi_tKcfc'
@@ -668,7 +668,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[REF:%.*]] = alloc_box ${ var ThrowDerivedClass }, let, name "self"
   // CHECK:   [[MARK_UNINIT:%.*]] = mark_uninitialized [derivedself] [[REF]] : ${ var ThrowDerivedClass }
   // CHECK:   [[PROJ:%.*]] = project_box [[MARK_UNINIT]]
-  // CHECK:   store {{%.*}} to [init] [[PROJ]]
+  // CHECK:   store {{%.*}} to [[PROJ]]
   //
   // Call the initializer.
   // CHECK:   [[SELF:%.*]] = load [take] [[PROJ]]
@@ -679,7 +679,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // Insert the return statement into the normal block...
   // CHECK: [[NORMAL_BB]]([[BASE_SELF_INIT:%.*]] : @owned $ThrowBaseClass):
   // CHECK:   [[OUT_SELF:%.*]] = unchecked_ref_cast [[BASE_SELF_INIT]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[OUT_SELF]] to [init] [[PROJ]]
+  // CHECK:   store [[OUT_SELF]] to [[PROJ]]
   // CHECK:   [[RESULT:%.*]] = load [copy] [[PROJ]]
   // CHECK:   destroy_value [[MARK_UNINIT]]
   // CHECK:   return [[RESULT]]
@@ -699,7 +699,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[REF:%.*]] = alloc_box ${ var ThrowDerivedClass }, let, name "self"
   // CHECK:   [[MARK_UNINIT:%.*]] = mark_uninitialized [derivedself] [[REF]] : ${ var ThrowDerivedClass }
   // CHECK:   [[PROJ:%.*]] = project_box [[MARK_UNINIT]]
-  // CHECK:   store {{%.*}} to [init] [[PROJ]]
+  // CHECK:   store {{%.*}} to [[PROJ]]
   //
   // Call the initializer and then store the new self back into its memory slot.
   // CHECK:   [[SELF:%.*]] = load [take] [[PROJ]]
@@ -707,7 +707,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[INIT_FN:%.*]] = function_ref @$s21failable_initializers14ThrowBaseClassC6noFailACyt_tcfc : $@convention(method)
   // CHECK:   [[NEW_SELF:%.*]] = apply [[INIT_FN]]([[BASE_SELF]]) : $@convention(method) (@owned ThrowBaseClass) -> @owned ThrowBaseClass
   // CHECK:   [[NEW_SELF_CAST:%.*]] = unchecked_ref_cast [[NEW_SELF]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[NEW_SELF_CAST]] to [init] [[PROJ]]
+  // CHECK:   store [[NEW_SELF_CAST]] to [[PROJ]]
   //
   // Finally perform the unwrap.
   // CHECK:   [[UNWRAP_FN:%.*]] = function_ref @$s21failable_initializers6unwrapyS2iKF : $@convention(thin) (Int) -> (Int, @error Error)
@@ -751,7 +751,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   // CHECK:   [[INIT_FN2:%.*]] = function_ref @$s21failable_initializers14ThrowBaseClassC6noFailACSi_tcfc : $@convention(method) (Int, @owned ThrowBaseClass) -> @owned ThrowBaseClass
   // CHECK:   [[NEW_SELF_CAST:%.*]] = apply [[INIT_FN2]]([[INT]], [[SELF_CAST]]) : $@convention(method) (Int, @owned ThrowBaseClass) -> @owned ThrowBaseClass
   // CHECK:   [[NEW_SELF:%.*]] = unchecked_ref_cast [[NEW_SELF_CAST]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[NEW_SELF]] to [init] [[PROJ]]
+  // CHECK:   store [[NEW_SELF]] to [[PROJ]]
   // CHECK:   [[RESULT:%.*]] = load [copy] [[PROJ]]
   // CHECK:   destroy_value [[MARK_UNINIT]]
   // CHECK:   return [[RESULT]]
@@ -762,7 +762,7 @@ class ThrowDerivedClass : ThrowBaseClass {
   //
   // CHECK: [[UNWRAP_ERROR_BB2]]([[ERROR:%.*]] : @owned $Error):
   // CHECK:   [[SELF_CASTED_BACK:%.*]] = unchecked_ref_cast [[SELF_CAST]] : $ThrowBaseClass to $ThrowDerivedClass
-  // CHECK:   store [[SELF_CASTED_BACK]] to [init] [[PROJ]]
+  // CHECK:   store [[SELF_CASTED_BACK]] to [[PROJ]]
   // CHECK:   br [[ERROR_JOIN]]([[ERROR]]
   //
   // CHECK: [[ERROR_JOIN]]([[ERROR_PHI:%.*]] : @owned $Error):

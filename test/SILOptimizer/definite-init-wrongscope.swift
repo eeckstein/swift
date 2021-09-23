@@ -36,8 +36,8 @@ public class M {
 // CHECK:   [[I:%.*]] = integer_literal $Builtin.Int2, 1, loc {{.*}}:23:12, scope 4
 // CHECK:   [[V:%.*]] = load [trivial] %2 : $*Builtin.Int2, loc {{.*}}:23:12, scope 4
 // CHECK:   [[OR:%.*]] = builtin "or_Int2"([[V]] : $Builtin.Int2, [[I]] : $Builtin.Int2) : $Builtin.Int2, loc {{.*}}:23:12, scope 4
-// CHECK:   store [[OR]] to [trivial] %2 : $*Builtin.Int2, loc {{.*}}:23:12, scope 4
-// CHECK:   store %{{.*}} to [init] %{{.*}} : $*C, loc {{.*}}:26:20, scope 4
+// CHECK:   store [[OR]] to %2 : $*Builtin.Int2, loc {{.*}}:23:12, scope 4
+// CHECK:   store %{{.*}} to %{{.*}} : $*C, loc {{.*}}:26:20, scope 4
 
 // Make sure the dealloc_stack gets the same scope of the instructions surrounding it.
 

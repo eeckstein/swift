@@ -14,7 +14,7 @@ func trap() -> Never {
 // CHECK: alloc_global @$s8toplevel1xSiv
 // CHECK: [[X:%[0-9]+]] = global_addr @$s8toplevel1xSivp : $*Int
 // CHECK: integer_literal $Builtin.IntLiteral, 999
-// CHECK: store {{.*}} to [trivial] [[X]]
+// CHECK: store {{.*}} to [[X]]
 
 var x = 999
 
@@ -76,7 +76,7 @@ print_y()
 // CHECK-LABEL: function_ref toplevel.A.__allocating_init
 // CHECK: switch_enum {{%.+}} : $Optional<A>, case #Optional.some!enumelt: [[SOME_CASE:.+]], case #Optional.none!
 // CHECK: [[SOME_CASE]]([[VALUE:%.+]] : @owned $A):
-// CHECK: store [[VALUE]] to [init] [[BOX:%.+]] : $*A
+// CHECK: store [[VALUE]] to [[BOX:%.+]] : $*A
 // CHECK-NOT: destroy_value
 // CHECK: [[SINK:%.+]] = function_ref @$s8toplevel8markUsedyyxlF
 // CHECK-NOT: destroy_value

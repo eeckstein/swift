@@ -76,7 +76,7 @@ class CC {
   // CHECK:    [[X:%.*]] = ref_element_addr [[BORROWED_UNINIT_SELF]] : $CC, #CC.x
   // CHECK:    [[READ:%.*]] = begin_access [read] [dynamic] [[X]] : $*@sil_weak Optional<CC>
   // CHECK:    [[VALUE:%.*]] = load_weak [[READ]] : $*@sil_weak Optional<CC>
-  // CHECK:    store [[VALUE]] to [init] [[PB]] : $*Optional<CC>
+  // CHECK:    store [[VALUE]] to [[PB]] : $*Optional<CC>
   // CHECK:    end_borrow [[BORROWED_UNINIT_SELF]]
   // CHECK:    destroy_value [[FOO]]
   // CHECK: } // end sil function '$s4weak2CCC{{[_0-9a-zA-Z]*}}fc'

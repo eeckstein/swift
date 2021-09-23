@@ -18,7 +18,7 @@ class Base {
 // CHECK:   [[ADDR:%.*]] = alloc_stack $Int
 // CHECK:   [[T0:%.*]] = function_ref @$s6modify4BaseC8computedSivg
 // CHECK:   [[T1:%.*]] = apply [[T0]]([[SELF]])
-// CHECK:   store [[T1]] to [trivial] [[ADDR]] : $*Int
+// CHECK:   store [[T1]] to [[ADDR]] : $*Int
 // CHECK:   yield [[ADDR]] : $*Int
 // CHECK:   [[T2:%.*]] = load [trivial] [[ADDR]] : $*Int
 // CHECK:   [[SETTER:%.*]] = function_ref @$s6modify4BaseC8computedSivs
@@ -70,7 +70,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegd_SiIegr_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> Int) -> @out Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[SUPER_FN]])
 // CHECK-NEXT: [[T2:%.*]] = convert_function [[T1]]
-// CHECK-NEXT: store [[T2]] to [init] [[SUB_ADDR]]
+// CHECK-NEXT: store [[T2]] to [[SUB_ADDR]]
 // CHECK-NEXT: yield [[SUB_ADDR]] : ${{.*}}, resume bb1, unwind bb2
 // CHECK:    bb1:
 // CHECK-NEXT: [[SUB_FN:%.*]] = load [take] [[SUB_ADDR]]
@@ -78,7 +78,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: function_ref
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegr_SiIegd_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> @out Int) -> Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[CVT_FN]])
-// CHECK-NEXT: store [[T1]] to [init] [[SUPER_ADDR]]
+// CHECK-NEXT: store [[T1]] to [[SUPER_ADDR]]
 // CHECK-NEXT: dealloc_stack [[SUB_ADDR]]
 // CHECK-NEXT: end_apply [[TOKEN]]
 // CHECK-NEXT: tuple ()
@@ -98,7 +98,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegd_SiIegr_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> Int) -> @out Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[SUPER_FN]])
 // CHECK-NEXT: [[T2:%.*]] = convert_function [[T1]]
-// CHECK-NEXT: store [[T2]] to [init] [[SUB_ADDR]]
+// CHECK-NEXT: store [[T2]] to [[SUB_ADDR]]
 // CHECK-NEXT: yield [[SUB_ADDR]] : $*{{.*}}, resume bb1, unwind bb2
 // CHECK:    bb1:
 // CHECK-NEXT: [[SUB_FN:%.*]] = load [take] [[SUB_ADDR]]
@@ -106,7 +106,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: function_ref
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegr_SiIegd_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> @out Int) -> Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[CVT_FN]])
-// CHECK-NEXT: store [[T1]] to [init] [[SUPER_ADDR]]
+// CHECK-NEXT: store [[T1]] to [[SUPER_ADDR]]
 // CHECK-NEXT: dealloc_stack [[SUB_ADDR]]
 // CHECK-NEXT: end_apply [[TOKEN]]
 // CHECK-NEXT: tuple ()
@@ -125,7 +125,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegd_SiIegr_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> Int) -> @out Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[SUPER_FN]])
 // CHECK-NEXT: [[T2:%.*]] = convert_function [[T1]]
-// CHECK-NEXT: store [[T2]] to [init] [[SUB_ADDR]]
+// CHECK-NEXT: store [[T2]] to [[SUB_ADDR]]
 // CHECK-NEXT: yield [[SUB_ADDR]] : $*{{.*}}, resume bb1, unwind bb2
 // CHECK:    bb1:
 // CHECK-NEXT: [[SUB_FN:%.*]] = load [take] [[SUB_ADDR]]
@@ -133,7 +133,7 @@ extension Derived : Abstractable {}
 // CHECK-NEXT: function_ref
 // CHECK-NEXT: [[REABSTRACTOR:%.*]] = function_ref @$sSiIegr_SiIegd_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> @out Int) -> Int
 // CHECK-NEXT: [[T1:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACTOR]]([[CVT_FN]])
-// CHECK-NEXT: store [[T1]] to [init] [[SUPER_ADDR]]
+// CHECK-NEXT: store [[T1]] to [[SUPER_ADDR]]
 // CHECK-NEXT: dealloc_stack [[SUB_ADDR]]
 // CHECK-NEXT: end_apply [[TOKEN]]
 // CHECK-NEXT: tuple ()
@@ -196,7 +196,7 @@ class HasDidSet : Base {
 // CHECK:   [[ADDR:%.*]] = alloc_stack $Int
 // CHECK:   [[T0:%.*]] = function_ref @$s6modify9HasDidSetC8computedSivg
 // CHECK:   [[T1:%.*]] = apply [[T0]]([[SELF]])
-// CHECK:   store [[T1]] to [trivial] [[ADDR]] : $*Int
+// CHECK:   store [[T1]] to [[ADDR]] : $*Int
 // CHECK:   yield [[ADDR]]
 // CHECK:   [[T2:%.*]] = load [trivial] [[ADDR]]
 // CHECK:   [[T3:%.*]] = function_ref @$s6modify9HasDidSetC8computedSivs
@@ -232,7 +232,7 @@ class HasWeak {
 // CHECK:   [[ACCESS:%.*]] = begin_access [modify] [dynamic] [[PROP]] : $*@sil_weak Optional<HasWeak>
 // CHECK:   [[ADDR:%.*]] = alloc_stack $Optional<HasWeak>
 // CHECK:   [[T0:%.*]] = load_weak [[ACCESS]]
-// CHECK:   store [[T0]] to [init] [[ADDR]]
+// CHECK:   store [[T0]] to [[ADDR]]
 // CHECK:   yield [[ADDR]]
 // CHECK:   [[T0:%.*]] = load [take] [[ADDR]]
 // CHECK:   store_weak [[T0]] to [[ACCESS]]
@@ -262,11 +262,11 @@ func improveWizard(_ wizard: inout Wizard) {
 //   Call the getter and materialize the result in the temporary.
 // CHECK-NEXT:  [[T0:%.*]] = load [trivial] [[WRITE:.*]] : $*Wizard
 // CHECK:       [[WTEMP:%.*]] = alloc_stack $Wizard
-// CHECK-NEXT:  store [[T0]] to [trivial] [[WTEMP]]
+// CHECK-NEXT:  store [[T0]] to [[WTEMP]]
 // CHECK:       [[GETTER:%.*]] = function_ref @$s6modify5MagicPAAE5hocusSivg
 // CHECK-NEXT:  [[T0:%.*]] = apply [[GETTER]]<Wizard>([[WTEMP]])
 // CHECK-NEXT:  dealloc_stack [[WTEMP]]
-// CHECK-NEXT:  store [[T0]] to [trivial] [[TEMP]]
+// CHECK-NEXT:  store [[T0]] to [[TEMP]]
 //   Call improve.
 // CHECK:       [[IMPROVE:%.*]] = function_ref @$s6modify7improveyySizF :
 // CHECK-NEXT:  apply [[IMPROVE]]([[TEMP]])

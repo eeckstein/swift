@@ -125,7 +125,7 @@ ManagedValue SILGenFunction::emitManagedStoreBorrow(
     SILLocation loc, SILValue v, SILValue addr, const TypeLowering &lowering) {
   assert(lowering.getLoweredType().getObjectType() == v->getType());
   if (lowering.isTrivial() || v.getOwnershipKind() == OwnershipKind::None) {
-    B.createStore(loc, v, addr, StoreOwnershipQualifier::Trivial);
+    B.createStore(loc, v, addr);
     return ManagedValue::forUnmanaged(v);
   }
   assert((!lowering.isAddressOnly() || !silConv.useLoweredAddresses()) &&

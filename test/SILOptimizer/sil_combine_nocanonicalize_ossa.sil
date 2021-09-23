@@ -38,7 +38,7 @@ bb0:
   %0 = integer_literal $Builtin.Int64, 0
   %1 = alloc_box ${ var Builtin.Int64 }
   %1a = project_box %1 : ${ var Builtin.Int64 }, 0
-  store %0 to [trivial] %1a : $*Builtin.Int64
+  store %0 to %1a : $*Builtin.Int64
   %borrow = begin_borrow %1 : ${ var Builtin.Int64 }
   %1b = project_box %borrow : ${ var Builtin.Int64 }, 0
   %1c = address_to_pointer %1b : $*Builtin.Int64 to $Builtin.RawPointer

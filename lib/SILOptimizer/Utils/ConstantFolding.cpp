@@ -1937,7 +1937,7 @@ ConstantFolder::processWorkList() {
           //   %1 = apply %f() : $@convention(thin) () -> @owned Klass
           //   %2 = tuple (%0 : $Int, %1 : $Klass)
           //   (%3, %4) = destructure_tuple %2 : $(Int, Klass)
-          //   store %4 to [init] %mem2: %*Klass
+          //   store %4 to %mem2: %*Klass
           //
           // Without this check, we would infinite loop by processing our
           // worklist as follows:

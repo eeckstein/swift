@@ -133,7 +133,7 @@ public enum MyResilientEnum {
 
   // CHECK-LABEL: sil hidden [ossa] @$s15enum_resilience15MyResilientEnumO9getAHorseACyFZ : $@convention(method) (@thin MyResilientEnum.Type) -> @out MyResilientEnum
   // CHECK:       [[NEW_SELF:%.*]] = enum $MyResilientEnum, #MyResilientEnum.loki!enumelt
-  // CHECK:       store [[NEW_SELF]] to [trivial] %0 : $*MyResilientEnum
+  // CHECK:       store [[NEW_SELF]] to %0 : $*MyResilientEnum
   // CHECK:       return
   static func getAHorse() -> MyResilientEnum {
     return .loki

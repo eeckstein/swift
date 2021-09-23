@@ -136,7 +136,7 @@ bb0(%0 : $@thin Main.Type):
   %11 = alloc_stack $Int                          
   %12 = begin_borrow %4 : $C                      
   %13 = alloc_stack $Int                          
-  store %9 to [trivial] %13 : $*Int               
+  store %9 to %13 : $*Int               
   
   %15 = function_ref @call_generic_function : $@convention(thin) <τ_0_0, τ_0_1 where τ_0_0 : C> (@guaranteed τ_0_0, @in_guaranteed τ_0_1) -> @out τ_0_1 
   %16 = apply %15<C, Int>(%11, %12, %13) : $@convention(thin) <τ_0_0, τ_0_1 where τ_0_0 : C> (@guaranteed τ_0_0, @in_guaranteed τ_0_1) -> @out τ_0_1
@@ -146,7 +146,7 @@ bb0(%0 : $@thin Main.Type):
   debug_value %19 : $Int, let, name "out"         
   dealloc_stack %11 : $*Int                       
   %22 = alloc_stack $Int                          
-  store %19 to [trivial] %22 : $*Int              
+  store %19 to %22 : $*Int              
   
   %24 = function_ref @printGeneric : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> () 
   // CHECK: 42

@@ -301,11 +301,11 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  store %8 to %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
@@ -320,16 +320,16 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  store %8 to %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   store %7 to [init] %6 : $*AnyObject
+// CHECK: ###For MemOp:   store %7 to %6 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -339,16 +339,16 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  store %8 to %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   store %8 to [init] %11 : $*AnyObject
+// CHECK: ###For MemOp:   store %8 to %11 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -358,11 +358,11 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  store %8 to %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
@@ -377,11 +377,11 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  store %8 to %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
@@ -397,11 +397,11 @@ bb1(%5 : $Builtin.RawPointer):
   %6 = pointer_to_address %5 : $Builtin.RawPointer to [strict] $*AnyObject
   %7 = load [take] %6 : $*AnyObject
   %8 = copy_value %7 : $AnyObject
-  store %7 to [init] %6 : $*AnyObject
+  store %7 to %6 : $*AnyObject
   %10 = integer_literal $Builtin.Word, 1
   %11 = index_addr %6 : $*AnyObject, %10 : $Builtin.Word
   destroy_addr %11 : $*AnyObject
-  store %8 to [init] %11 : $*AnyObject
+  store %8 to %11 : $*AnyObject
   %13 = address_to_pointer %11 : $*AnyObject to $Builtin.RawPointer
   cond_br undef, bb2, bb3
 
@@ -729,7 +729,7 @@ class B : A {
 }
 
 // CHECK-LABEL: @testReferenceRootCast
-// CHECK: ###For MemOp:   store %0 to [trivial] [[ADR0:%.*]] : $*Int64
+// CHECK: ###For MemOp:   store %0 to [[ADR0:%.*]] : $*Int64
 // CHECK: Class  %{{.*}} = alloc_ref $B
 // CHECK: Field: var prop0: Int64 Index: 0
 // CHECK: Base:  [[ADR0]] = ref_element_addr %{{.*}} : $A, #A.prop0
@@ -737,16 +737,16 @@ class B : A {
 // CHECK: Field: var prop0: Int64 Index: 0
 // CHECK: Path: ()
 // CHECK: Exact Uses {
-// CHECK-NEXT:  store %0 to [trivial] [[ADR0]] : $*Int64
+// CHECK-NEXT:  store %0 to [[ADR0]] : $*Int64
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT: }
 // CHECK: Overlapping Uses {
-// CHECK-NEXT:  store %0 to [trivial] [[ADR0]] : $*Int64
+// CHECK-NEXT:  store %0 to [[ADR0]] : $*Int64
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  destroy_value
 // CHECK-NEXT:  Path: INVALID
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   store %0 to [trivial] [[ADR1:%.*]] : $*Int64
+// CHECK: ###For MemOp:   store %0 to [[ADR1:%.*]] : $*Int64
 // CHECK-NEXT: Class   %{{.*}} = alloc_ref $B
 // CHECK-NEXT:  Field: var alsoProp0: Int64 Index: 1
 // CHECK-NEXT: Base:   [[ADR1]] = ref_element_addr %{{.*}} : $B, #B.alsoProp0
@@ -754,11 +754,11 @@ class B : A {
 // CHECK-NEXT:  Field: var alsoProp0: Int64 Index: 1
 // CHECK-NEXT: Path: ()
 // CHECK-NEXT: Exact Uses {
-// CHECK-NEXT:  store %0 to [trivial] [[ADR1]] : $*Int64
+// CHECK-NEXT:  store %0 to [[ADR1]] : $*Int64
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT: }
 // CHECK: Overlapping Uses {
-// CHECK-NEXT:  store %0 to [trivial] [[ADR1]] : $*Int64
+// CHECK-NEXT:  store %0 to [[ADR1]] : $*Int64
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  destroy_value
 // CHECK-NEXT:  Path: INVALID
@@ -779,12 +779,12 @@ bb2:
 bb3(%7 : @owned $A):
   %borrowA = begin_borrow %7 : $A
   %8 = ref_element_addr %borrowA : $A, #A.prop0
-  store %0 to [trivial] %8 : $*Int64
+  store %0 to %8 : $*Int64
   end_borrow %borrowA : $A
   %10 = unchecked_ref_cast %7 : $A to $B
   %borrowB = begin_borrow %10 : $B
   %11 = ref_element_addr %borrowB : $B, #B.alsoProp0
-  store %0 to [trivial] %11 : $*Int64
+  store %0 to %11 : $*Int64
   end_borrow %borrowB : $B
   destroy_value %10 : $B
   %99 = tuple ()
@@ -898,11 +898,11 @@ bb5:
 }
 
 // CHECK-LABEL: @test_init_enum_addr
-// CHECK: ###For MemOp:   store %0 to [init] %2 : $*AnyObject
+// CHECK: ###For MemOp:   store %0 to %2 : $*AnyObject
 // CHECK: Stack   %1 = alloc_stack $Optional<AnyObject>
 // CHECK: Path: ()
 // CHECK: Exact Uses {
-// CHECK-NEXT:  store %0 to [init] %{{.*}} : $*AnyObject
+// CHECK-NEXT:  store %0 to %{{.*}} : $*AnyObject
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  inject_enum_addr %1 : $*Optional<AnyObject>, #Optional.some!enumelt
 // CHECK-NEXT:  Path: ()
@@ -917,7 +917,7 @@ bb5:
 // CHECK: Stack   %1 = alloc_stack $Optional<AnyObject>
 // CHECK: Path: ()
 // CHECK: Exact Uses {
-// CHECK-NEXT:  store %0 to [init] %{{.*}} : $*AnyObject
+// CHECK-NEXT:  store %0 to %{{.*}} : $*AnyObject
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  inject_enum_addr %1 : $*Optional<AnyObject>, #Optional.some!enumelt
 // CHECK-NEXT:  Path: ()
@@ -932,7 +932,7 @@ bb5:
 // CHECK: Stack   %1 = alloc_stack $Optional<AnyObject>
 // CHECK: Path: ()
 // CHECK: Exact Uses {
-// CHECK-NEXT:  store %0 to [init] %{{.*}} : $*AnyObject
+// CHECK-NEXT:  store %0 to %{{.*}} : $*AnyObject
 // CHECK-NEXT:  Path: ()
 // CHECK-NEXT:  inject_enum_addr %1 : $*Optional<AnyObject>, #Optional.some!enumelt
 // CHECK-NEXT:  Path: ()
@@ -947,7 +947,7 @@ sil [ossa] @test_init_enum_addr : $@convention(thin) (@owned AnyObject) -> @owne
 bb0(%0 : @owned $AnyObject):
   %1 = alloc_stack $Optional<AnyObject>
   %2 = init_enum_data_addr %1 : $*Optional<AnyObject>, #Optional.some!enumelt
-  store %0 to [init] %2 : $*AnyObject
+  store %0 to %2 : $*AnyObject
   inject_enum_addr %1 : $*Optional<AnyObject>, #Optional.some!enumelt
   %5 = load [copy] %1 : $*Optional<AnyObject>
   destroy_addr %1 : $*Optional<AnyObject>

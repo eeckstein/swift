@@ -39,7 +39,7 @@ func class_bound_generic<T : ClassBound>(x: T) -> T {
   // CHECK:   [[X_ADDR:%.*]] = alloc_box $<τ_0_0 where τ_0_0 : ClassBound> { var τ_0_0 } <T>
   // CHECK:   [[PB:%.*]] = project_box [[X_ADDR]]
   // CHECK:   [[X_COPY:%.*]] = copy_value [[X]]
-  // CHECK:   store [[X_COPY]] to [init] [[PB]]
+  // CHECK:   store [[X_COPY]] to [[PB]]
   return x
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK:   [[X1:%.*]] = load [copy] [[READ]]
@@ -54,7 +54,7 @@ func class_bound_generic_2<T : ClassBound & NotClassBound>(x: T) -> T {
   // CHECK:   [[X_ADDR:%.*]] = alloc_box $<τ_0_0 where τ_0_0 : ClassBound, τ_0_0 : NotClassBound> { var τ_0_0 } <T>
   // CHECK:   [[PB:%.*]] = project_box [[X_ADDR]]
   // CHECK:   [[X_COPY:%.*]] = copy_value [[X]]
-  // CHECK:   store [[X_COPY]] to [init] [[PB]]
+  // CHECK:   store [[X_COPY]] to [[PB]]
   return x
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*T
   // CHECK:   [[X1:%.*]] = load [copy] [[READ]]
@@ -68,7 +68,7 @@ func class_bound_protocol(x: ClassBound) -> ClassBound {
   // CHECK:   [[X_ADDR:%.*]] = alloc_box ${ var ClassBound }
   // CHECK:   [[PB:%.*]] = project_box [[X_ADDR]]
   // CHECK:   [[X_COPY:%.*]] = copy_value [[X]]
-  // CHECK:   store [[X_COPY]] to [init] [[PB]]
+  // CHECK:   store [[X_COPY]] to [[PB]]
   return x
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*ClassBound
   // CHECK:   [[X1:%.*]] = load [copy] [[READ]]
@@ -83,7 +83,7 @@ func class_bound_protocol_composition(x: ClassBound & NotClassBound)
   // CHECK:   [[X_ADDR:%.*]] = alloc_box ${ var ClassBound & NotClassBound }
   // CHECK:   [[PB:%.*]] = project_box [[X_ADDR]]
   // CHECK:   [[X_COPY:%.*]] = copy_value [[X]]
-  // CHECK:   store [[X_COPY]] to [init] [[PB]]
+  // CHECK:   store [[X_COPY]] to [[PB]]
   return x
   // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*ClassBound & NotClassBound
   // CHECK:   [[X1:%.*]] = load [copy] [[READ]]
@@ -114,7 +114,7 @@ func class_bound_existential_upcast(x: ClassBound & ClassBound2)
 // CHECK:   [[X_OPENED:%.*]] = open_existential_ref [[ARG1]] : $ClassBound & NotClassBound to [[OPENED_TYPE:\$@opened(.*) ClassBound & NotClassBound]]
 // CHECK:   [[PAYLOAD_ADDR:%.*]] = init_existential_addr [[ARG0]] : $*NotClassBound, [[OPENED_TYPE]]
 // CHECK:   [[X_OPENED_COPY:%.*]] = copy_value [[X_OPENED]]
-// CHECK:   store [[X_OPENED_COPY]] to [init] [[PAYLOAD_ADDR]]
+// CHECK:   store [[X_OPENED_COPY]] to [[PAYLOAD_ADDR]]
 func class_bound_to_unbound_existential_upcast
 (x: ClassBound & NotClassBound) -> NotClassBound {
   return x
@@ -128,7 +128,7 @@ func class_bound_method(x: ClassBound) {
   // CHECK: [[XBOX:%.*]] = alloc_box ${ var ClassBound }, var, name "x"
   // CHECK: [[XBOX_PB:%.*]] = project_box [[XBOX]]
   // CHECK: [[ARG_COPY:%.*]] = copy_value [[ARG]]
-  // CHECK: store [[ARG_COPY]] to [init] [[XBOX_PB]]
+  // CHECK: store [[ARG_COPY]] to [[XBOX_PB]]
   // CHECK: [[READ:%.*]] = begin_access [read] [unknown] [[XBOX_PB]] : $*ClassBound
   // CHECK: [[X:%.*]] = load [copy] [[READ]] : $*ClassBound
   // CHECK: [[PROJ:%.*]] = open_existential_ref [[X]] : $ClassBound to $[[OPENED:@opened(.*) ClassBound]]
@@ -159,7 +159,7 @@ func takesInheritsMutatingMethod(x: inout InheritsMutatingMethod,
   // CHECK-NEXT: [[X_VALUE:%.*]] = load [copy] [[X_ADDR]] : $*InheritsMutatingMethod
   // CHECK-NEXT: [[X_PAYLOAD:%.*]] = open_existential_ref [[X_VALUE]] : $InheritsMutatingMethod to $@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[TEMPORARY:%.*]] = alloc_stack $@opened("{{.*}}") InheritsMutatingMethod
-  // CHECK-NEXT: store [[X_PAYLOAD]] to [init] [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
+  // CHECK-NEXT: store [[X_PAYLOAD]] to [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[METHOD:%.*]] = witness_method $@opened("{{.*}}") InheritsMutatingMethod, #HasMutatingMethod.mutateMe : <Self where Self : HasMutatingMethod> (inout Self) -> () -> (), [[X_PAYLOAD]] : $@opened("{{.*}}") InheritsMutatingMethod : $@convention(witness_method: HasMutatingMethod) <τ_0_0 where τ_0_0 : HasMutatingMethod> (@inout τ_0_0) -> ()
   // CHECK-NEXT: apply [[METHOD]]<@opened("{{.*}}") InheritsMutatingMethod>([[TEMPORARY]]) : $@convention(witness_method: HasMutatingMethod) <τ_0_0 where τ_0_0 : HasMutatingMethod> (@inout τ_0_0) -> ()
   // CHECK-NEXT: [[X_PAYLOAD:%.*]] = load [take] [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
@@ -173,7 +173,7 @@ func takesInheritsMutatingMethod(x: inout InheritsMutatingMethod,
   // CHECK-NEXT: [[X_VALUE:%.*]] = load [copy] [[X_ADDR]] : $*InheritsMutatingMethod
   // CHECK-NEXT: [[X_PAYLOAD:%.*]] = open_existential_ref [[X_VALUE]] : $InheritsMutatingMethod to $@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[TEMPORARY:%.*]] = alloc_stack $@opened("{{.*}}") InheritsMutatingMethod
-  // CHECK-NEXT: store [[X_PAYLOAD]] to [init] [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
+  // CHECK-NEXT: store [[X_PAYLOAD]] to [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[X_PAYLOAD_RELOADED:%.*]] = load_borrow [[TEMPORARY]]
   //
   // ** *NOTE* This extra copy is here since RValue invariants enforce that all
@@ -197,7 +197,7 @@ func takesInheritsMutatingMethod(x: inout InheritsMutatingMethod,
   // CHECK-NEXT: [[X_VALUE:%.*]] = load [copy] [[X_ADDR]] : $*InheritsMutatingMethod
   // CHECK-NEXT: [[X_PAYLOAD:%.*]] = open_existential_ref [[X_VALUE]] : $InheritsMutatingMethod to $@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[TEMPORARY:%.*]] = alloc_stack $@opened("{{.*}}") InheritsMutatingMethod
-  // CHECK-NEXT: store [[X_PAYLOAD]] to [init] [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
+  // CHECK-NEXT: store [[X_PAYLOAD]] to [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod
   // CHECK-NEXT: [[METHOD:%.*]] = witness_method $@opened("{{.*}}") InheritsMutatingMethod, #HasMutatingMethod.mutatingCounter!setter : <Self where Self : HasMutatingMethod> (inout Self) -> (Value) -> (), [[X_PAYLOAD]] : $@opened("{{.*}}") InheritsMutatingMethod : $@convention(witness_method: HasMutatingMethod) <τ_0_0 where τ_0_0 : HasMutatingMethod> (Value, @inout τ_0_0) -> ()
   // CHECK-NEXT: apply [[METHOD]]<@opened("{{.*}}") InheritsMutatingMethod>(%1, [[TEMPORARY]]) : $@convention(witness_method: HasMutatingMethod) <τ_0_0 where τ_0_0 : HasMutatingMethod> (Value, @inout τ_0_0) -> ()
   // CHECK-NEXT: [[X_PAYLOAD:%.*]] = load [take] [[TEMPORARY]] : $*@opened("{{.*}}") InheritsMutatingMethod

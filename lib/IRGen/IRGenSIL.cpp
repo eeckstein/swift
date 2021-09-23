@@ -4568,13 +4568,7 @@ void IRGenSILFunction::visitStoreInst(swift::StoreInst *i) {
   SILType objType = i->getSrc()->getType().getObjectType();
 
   const auto &typeInfo = cast<LoadableTypeInfo>(getTypeInfo(objType));
-  switch (i->getOwnershipQualifier()) {
-  case StoreOwnershipQualifier::Unqualified:
-  case StoreOwnershipQualifier::Init:
-  case StoreOwnershipQualifier::Trivial:
-    typeInfo.initialize(*this, source, dest, false);
-    break;
-  }
+  typeInfo.initialize(*this, source, dest, false);
 }
 
 /// Emit the artificial error result argument.

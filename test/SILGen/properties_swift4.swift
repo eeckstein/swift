@@ -38,7 +38,7 @@ struct DidSetWillSetTests: ForceAccessors {
       // CHECK-NEXT: // function_ref static properties.DidSetWillSetTests.defaultValue.getter : properties.DidSetWillSetTests
       // CHECK-NEXT: [[DEFAULTVALUE_FN:%.*]] = function_ref @$s10properties{{[_0-9a-zA-Z]*}}vgZ : $@convention(method) (@thin DidSetWillSetTests.Type) -> DidSetWillSetTests
       // CHECK-NEXT: [[DEFAULTRESULT:%.*]] = apply [[DEFAULTVALUE_FN]]([[METATYPE]]) : $@convention(method) (@thin DidSetWillSetTests.Type) -> DidSetWillSetTests
-      // CHECK-NEXT: store [[DEFAULTRESULT]] to [trivial] [[BOXADDR]] : $*DidSetWillSetTests
+      // CHECK-NEXT: store [[DEFAULTRESULT]] to [[BOXADDR]] : $*DidSetWillSetTests
 
       // Access directly even when calling on another instance in order to maintain < Swift 5 behaviour.
       unrelatedValue.a = zero
@@ -80,7 +80,7 @@ struct DidSetWillSetTests: ForceAccessors {
       // CHECK-NEXT: // function_ref static properties.DidSetWillSetTests.defaultValue.getter : properties.DidSetWillSetTests
       // CHECK-NEXT: [[DEFAULTVALUE_FN:%.*]] = function_ref @$s10properties{{[_0-9a-zA-Z]*}}vgZ : $@convention(method) (@thin DidSetWillSetTests.Type) -> DidSetWillSetTests
       // CHECK-NEXT: [[DEFAULTRESULT:%.*]] = apply [[DEFAULTVALUE_FN]]([[METATYPE]]) : $@convention(method) (@thin DidSetWillSetTests.Type) -> DidSetWillSetTests
-      // CHECK-NEXT: store [[DEFAULTRESULT]] to [trivial] [[BOXADDR]] : $*DidSetWillSetTests
+      // CHECK-NEXT: store [[DEFAULTRESULT]] to [[BOXADDR]] : $*DidSetWillSetTests
 
       // Access directly even when calling on another instance in order to maintain < Swift 5 behaviour.
       unrelatedValue.a = zero

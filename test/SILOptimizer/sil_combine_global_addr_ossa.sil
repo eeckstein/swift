@@ -46,7 +46,7 @@ bb0:
   %3 = global_addr @$global_var : $*SomeProtocol
   %4 = init_existential_addr %3 : $*SomeProtocol, $SomeClass
   %5 = alloc_ref $SomeClass
-  store %5 to [init] %4 : $*SomeClass
+  store %5 to %4 : $*SomeClass
   %8 = alloc_stack $SomeProtocol
   copy_addr %3 to [initialization] %8 : $*SomeProtocol
   %9 = open_existential_addr immutable_access %8 : $*SomeProtocol to $*@opened("1B0A5B84-3441-11E8-AC03-DCA9048B1C6D") SomeProtocol
@@ -80,7 +80,7 @@ bb0:
   %3 = global_addr @$global_var : $*SomeProtocol
   %4 = init_existential_addr %3 : $*SomeProtocol, $SomeClass
   %5 = alloc_ref $SomeClass
-  store %5 to [init] %4 : $*SomeClass
+  store %5 to %4 : $*SomeClass
   %6 = init_existential_addr %3 : $*SomeProtocol, $SomeClass
   %8 = alloc_stack $SomeProtocol
   copy_addr %3 to [initialization] %8 : $*SomeProtocol

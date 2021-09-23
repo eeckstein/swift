@@ -38,7 +38,7 @@ extension ClassWithBlockProperty : ProtocolWithBlockProperty {}
 // CHECK-NEXT: [[TEMP:%.*]] = alloc_stack $Optional<@callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> () for <Optional<String>>>
 // CHECK-NEXT: [[IN_FUNCTION:%.*]] = load [take] [[YIELD_ADDR]]
 // CHECK:    {{^}}bb3([[OUT_FUNCTION:%.*]] :
-// CHECK-NEXT: store [[OUT_FUNCTION]] to [init] [[TEMP]] :
+// CHECK-NEXT: store [[OUT_FUNCTION]] to [[TEMP]] :
 // CHECK-NEXT: yield [[TEMP]]
 
 // CHECK-LABEL: sil shared [serializable] [ossa] @$sSo22ClassWithBlockPropertyC09dependentC0ySSSgcSgvM :

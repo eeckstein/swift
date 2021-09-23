@@ -656,10 +656,7 @@ void StringOptimization::replaceAppendWith(ApplyInst *appendCall,
   SILLocation loc = appendCall->getLoc();
   SILValue destAddr = appendCall->getArgument(1);
   builder.createDestroyAddr(loc, destAddr);
-  builder.createStore(loc, newValue, destAddr,
-                      appendCall->getFunction()->hasOwnership() ?
-                        StoreOwnershipQualifier::Init :
-                        StoreOwnershipQualifier::Unqualified);
+  builder.createStore(loc, newValue, destAddr);
   appendCall->eraseFromParent();
 }
 

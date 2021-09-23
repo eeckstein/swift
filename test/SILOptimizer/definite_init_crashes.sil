@@ -20,9 +20,9 @@ bb0(%0 : $Int, %1 : $*Triple):
   %4 = alloc_box $<τ_0_0> { var τ_0_0 } <Triple>
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Triple>, 0
   %5 = load [trivial] %1 : $*Triple
-  store %5 to [trivial] %4a : $*Triple
+  store %5 to %4a : $*Triple
   %8 = struct_element_addr %4a : $*Triple, #Triple.b
-  store %0 to [trivial] %8 : $*Int
+  store %0 to %8 : $*Int
   %10 = load [trivial] %4a : $*Triple
   destroy_value %4 : $<τ_0_0> { var τ_0_0 } <Triple>
   return %10 : $Triple
@@ -39,10 +39,10 @@ bb0(%0 : $*Single, %1 : $Int):
   %4 = alloc_box $<τ_0_0> { var τ_0_0 } <Single>
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Single>, 0
   %5 = load [trivial] %0 : $*Single
-  store %5 to [trivial] %4a : $*Single
+  store %5 to %4a : $*Single
 
   %8 = struct_element_addr %4a : $*Single, #Single.a
-  store %1 to [trivial] %8 : $*Int
+  store %1 to %8 : $*Int
 
   %10 = load [trivial] %4a : $*Single
   destroy_value %4 : $<τ_0_0> { var τ_0_0 } <Single>

@@ -2015,10 +2015,9 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
     auto Ty = MF->getType(TyID);
     SILType addrType = getSILType(Ty, (SILValueCategory)TyCategory, Fn);
     SILType ValType = addrType.getObjectType();
-    auto Qualifier = StoreOwnershipQualifier(Attr);
     ResultInst =
         Builder.createStore(Loc, getLocalValue(ValID, ValType),
-                            getLocalValue(ValID2, addrType), Qualifier);
+                            getLocalValue(ValID2, addrType));
     break;
   }
   case SILInstructionKind::StoreBorrowInst: {

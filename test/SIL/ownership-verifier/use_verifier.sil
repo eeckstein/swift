@@ -204,7 +204,7 @@ bb0(%0 : @owned $Builtin.NativeObject):
 sil [ossa] @alloc_value_buffer_dealloc_value_buffer : $@convention(thin) (@inout Builtin.UnsafeValueBuffer, Builtin.Int32) -> () {
 bb0(%0 : $*Builtin.UnsafeValueBuffer, %1 : $Builtin.Int32):
   %2 = alloc_value_buffer $Builtin.Int32 in %0 : $*Builtin.UnsafeValueBuffer
-  store %1 to [trivial] %2 : $*Builtin.Int32
+  store %1 to %2 : $*Builtin.Int32
   dealloc_value_buffer $Builtin.Int32 in %0 : $*Builtin.UnsafeValueBuffer
   %9999 = tuple()
   return %9999 : $()
@@ -237,7 +237,7 @@ sil [ossa] @existential_box_test : $@convention(thin) (@owned SomeError) -> () {
 bb0(%0 : @owned $SomeError):
   %1 = alloc_existential_box $Error, $SomeError
   %2 = project_existential_box $SomeError in %1 : $Error
-  store %0 to [init] %2 : $*SomeError
+  store %0 to %2 : $*SomeError
   %1a = begin_borrow %1 : $Error
   %4 = open_existential_box %1a : $Error to $*@opened("01234567-89AB-CDEF-0123-333333333333") Error
   destroy_addr %4 : $*@opened("01234567-89AB-CDEF-0123-333333333333") Error
@@ -987,14 +987,14 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @guaranteed $RefWithInt):
   %2 = alloc_stack $Builtin.Int32
   %3 = integer_literal $Builtin.Int32, 0
   %4 = integer_literal $Builtin.Int32, 1
-  store %3 to [trivial] %2 : $*Builtin.Int32
+  store %3 to %2 : $*Builtin.Int32
   %5 = mark_dependence %2 : $*Builtin.Int32 on %0 : $Builtin.NativeObject
-  store %4 to [trivial] %5 : $*Builtin.Int32
+  store %4 to %5 : $*Builtin.Int32
   dealloc_stack %2 : $*Builtin.Int32
   %6 = alloc_stack $Builtin.Int32
-  store %3 to [trivial] %6 : $*Builtin.Int32
+  store %3 to %6 : $*Builtin.Int32
   %7 = mark_dependence %6 : $*Builtin.Int32 on %1 : $RefWithInt
-  store %3 to [trivial] %7 : $*Builtin.Int32
+  store %3 to %7 : $*Builtin.Int32
   dealloc_stack %6 : $*Builtin.Int32
   destroy_value %0 : $Builtin.NativeObject
   %9999 = tuple()

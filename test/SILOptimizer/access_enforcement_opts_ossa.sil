@@ -32,7 +32,7 @@ bb0(%0 : $@thin X.Type):
   %2 = integer_literal $Builtin.Int64, 7
   %3 = struct $Int64 (%2 : $Builtin.Int64)
   %4 = struct_element_addr %1 : $*X, #X.i
-  store %3 to [trivial] %4 : $*Int64
+  store %3 to %4 : $*Int64
   %6 = struct $X (%3 : $Int64)
   dealloc_stack %1 : $*X
   return %6 : $X
@@ -126,7 +126,7 @@ bb0:
   %2 = function_ref @Xinit : $@convention(method) (@thin X.Type) -> X
   %3 = apply %2(%1) : $@convention(method) (@thin X.Type) -> X
   %4 = begin_access [modify] [dynamic] %0 : $*X
-  store %3 to [trivial] %4 : $*X
+  store %3 to %4 : $*X
   end_access %4 : $*X
   %7 = tuple ()
   return %7 : $()
@@ -143,7 +143,7 @@ bb0:
   end_access %1 : $*X
   debug_value %2 : $X, let, name "l"
   %5 = alloc_stack $X
-  store %2 to [trivial] %5 : $*X
+  store %2 to %5 : $*X
   dealloc_stack %5 : $*X
   %10 = tuple ()
   return %10 : $()
@@ -159,7 +159,7 @@ bb0:
   %2 = struct $Int64 (%1 : $Builtin.Int64)
   %3 = begin_access [modify] [dynamic] %0 : $*X
   %4 = struct_element_addr %3 : $*X, #X.i
-  store %2 to [trivial] %4 : $*Int64
+  store %2 to %4 : $*Int64
   end_access %3 : $*X
   %7 = tuple ()
   return %7 : $()
@@ -203,7 +203,7 @@ bb0:
   %2 = struct $Int64 (%1 : $Builtin.Int64)
   %3 = begin_access [modify] [dynamic] %0 : $*X
   %4 = struct_element_addr %3 : $*X, #X.i
-  store %2 to [trivial] %4 : $*Int64
+  store %2 to %4 : $*Int64
   end_access %3 : $*X
   %7 = tuple ()
   return %7 : $()
@@ -226,7 +226,7 @@ bb0:
   %1 = metatype $@thin X.Type
   %2 = function_ref @Xinit : $@convention(method) (@thin X.Type) -> X
   %3 = apply %2(%1) : $@convention(method) (@thin X.Type) -> X
-  store %3 to [trivial] %0 : $*X
+  store %3 to %0 : $*X
   %5 = function_ref @testCaptureReadReadClosure1 : $@convention(thin) (@inout_aliasable X) -> ()
   %6 = partial_apply [callee_guaranteed] %5(%0) : $@convention(thin) (@inout_aliasable X) -> ()
   %7 = copy_value %6 : $@callee_guaranteed () -> ()
@@ -253,7 +253,7 @@ bb0(%0 : $*X):
   %4 = load [trivial] %3 : $*Int64
   end_access %2 : $*X
   %6 = alloc_stack $Int64
-  store %4 to [trivial] %6 : $*Int64
+  store %4 to %6 : $*Int64
   dealloc_stack %6 : $*Int64
   %11 = tuple ()
   return %11 : $()
@@ -280,7 +280,7 @@ bb0:
   %2 = metatype $@thin X.Type
   %3 = function_ref @Xinit : $@convention(method) (@thin X.Type) -> X
   %4 = apply %3(%2) : $@convention(method) (@thin X.Type) -> X
-  store %4 to [trivial] %1 : $*X
+  store %4 to %1 : $*X
   %6 = function_ref @testCaptureBoxReadReadClosure1 : $@convention(thin) (@guaranteed { var X }) -> ()
   %7 = copy_value %0 : ${ var X }
   %8 = partial_apply [callee_guaranteed] %6(%7) : $@convention(thin) (@guaranteed { var X }) -> ()
@@ -305,7 +305,7 @@ bb0(%0 : @guaranteed ${ var X }):
   %5 = load [trivial] %4 : $*Int64
   end_access %3 : $*X
   %7 = alloc_stack $Int64
-  store %5 to [trivial] %7 : $*Int64
+  store %5 to %7 : $*Int64
   dealloc_stack %7 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -326,7 +326,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
 
   %5 = function_ref @testDoubleCaptureClosure1 : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -356,7 +356,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %3 = integer_literal $Builtin.Int64, 7
   %4 = struct $Int64 (%3 : $Builtin.Int64)
   %5 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %4 to [trivial] %5 : $*Int64
+  store %4 to %5 : $*Int64
   end_access %5 : $*Int64
   %8 = tuple ()
   return %8 : $()
@@ -370,7 +370,7 @@ bb0(%0 : $*Int64):
   %2 = integer_literal $Builtin.Int64, 42
   %3 = struct $Int64 (%2 : $Builtin.Int64)
   %4 = begin_access [modify] [dynamic] %0 : $*Int64
-  store %3 to [trivial] %4 : $*Int64
+  store %3 to %4 : $*Int64
   end_access %4 : $*Int64
   %7 = tuple ()
   return %7 : $()
@@ -396,7 +396,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @testInoutReadEscapeReadClosure1 : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
   %7 = partial_apply [callee_guaranteed] %5(%6) : $@convention(thin) (@guaranteed { var Int64 }) -> ()
@@ -412,7 +412,7 @@ bb0:
   %21 = load [trivial] %20 : $*Int64
   end_access %20 : $*Int64
   %23 = alloc_stack $Int64
-  store %21 to [trivial] %23 : $*Int64
+  store %21 to %23 : $*Int64
   dealloc_stack %23 : $*Int64
   destroy_value %7 : $@callee_guaranteed () -> ()
   destroy_value %0 : ${ var Int64 }
@@ -432,7 +432,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   end_access %3 : $*Int64
   debug_value %4 : $Int64, let, name "y"
   %7 = alloc_stack $Int64
-  store %4 to [trivial] %7 : $*Int64
+  store %4 to %7 : $*Int64
   dealloc_stack %7 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -461,7 +461,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   %5 = function_ref @testInoutReadEscapeWriteClosure1 : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
   %7 = partial_apply [callee_guaranteed] %5(%6) : $@convention(thin) (@guaranteed { var Int64 }) -> ()
@@ -479,7 +479,7 @@ bb0:
   %21 = load [trivial] %20 : $*Int64
   end_access %20 : $*Int64
   %23 = alloc_stack $Int64
-  store %21 to [trivial] %23 : $*Int64
+  store %21 to %23 : $*Int64
   dealloc_stack %23 : $*Int64
   destroy_value %7 : $@callee_guaranteed () -> ()
   destroy_value %0 : ${ var Int64 }
@@ -497,7 +497,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %3 = integer_literal $Builtin.Int64, 42
   %4 = struct $Int64 (%3 : $Builtin.Int64)
   %5 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %4 to [trivial] %5 : $*Int64
+  store %4 to %5 : $*Int64
   end_access %5 : $*Int64
   %8 = tuple ()
   return %8 : $()
@@ -531,7 +531,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutWriteEscapeRead()
   %5 = function_ref @$s17enforce_with_opts24testInoutWriteEscapeReadyyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -552,7 +552,7 @@ bb0:
   %21 = load [trivial] %20 : $*Int64
   end_access %20 : $*Int64
   %23 = alloc_stack $Int64
-  store %21 to [trivial] %23 : $*Int64
+  store %21 to %23 : $*Int64
   dealloc_stack %23 : $*Int64
   destroy_value %7 : $@callee_guaranteed () -> ()
   destroy_value %0 : ${ var Int64 }
@@ -575,7 +575,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   end_access %3 : $*Int64
   debug_value %4 : $Int64, let, name "y"
   %7 = alloc_stack $Int64
-  store %4 to [trivial] %7 : $*Int64
+  store %4 to %7 : $*Int64
   dealloc_stack %7 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -609,7 +609,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutWriteEscapeWrite()
   %5 = function_ref @$s17enforce_with_opts020testInoutWriteEscapeF0yyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -630,7 +630,7 @@ bb0:
   %21 = load [trivial] %20 : $*Int64
   end_access %20 : $*Int64
   %23 = alloc_stack $Int64
-  store %21 to [trivial] %23 : $*Int64
+  store %21 to %23 : $*Int64
   dealloc_stack %23 : $*Int64
   destroy_value %7 : $@callee_guaranteed () -> ()
   destroy_value %0 : ${ var Int64 }
@@ -650,7 +650,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %3 = integer_literal $Builtin.Int64, 42
   %4 = struct $Int64 (%3 : $Builtin.Int64)
   %5 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %4 to [trivial] %5 : $*Int64
+  store %4 to %5 : $*Int64
   end_access %5 : $*Int64
   %8 = tuple ()
   return %8 : $()
@@ -670,7 +670,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutReadNoescapeRead()
   %5 = function_ref @$s23enforce_with_opts_nob2s021testInoutReadNoescapeG0yyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -707,7 +707,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   end_access %3 : $*Int64
   debug_value %4 : $Int64, let, name "y"
   %7 = alloc_stack $Int64
-  store %4 to [trivial] %7 : $*Int64
+  store %4 to %7 : $*Int64
   dealloc_stack %7 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -747,7 +747,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutReadNoescapeWrite()
   %5 = function_ref @$s23enforce_with_opts_nob2s26testInoutReadNoescapeWriteyyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -781,7 +781,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %3 = integer_literal $Builtin.Int64, 7
   %4 = struct $Int64 (%3 : $Builtin.Int64)
   %5 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %4 to [trivial] %5 : $*Int64
+  store %4 to %5 : $*Int64
   end_access %5 : $*Int64
   %8 = tuple ()
   return %8 : $()
@@ -819,7 +819,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutWriteNoescapeReadClosure()
   %5 = function_ref @$s23enforce_with_opts_nob2s33testInoutWriteNoescapeReadClosureyyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -855,7 +855,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   end_access %3 : $*Int64
   debug_value %4 : $Int64, let, name "y"
   %7 = alloc_stack $Int64
-  store %4 to [trivial] %7 : $*Int64
+  store %4 to %7 : $*Int64
   dealloc_stack %7 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -893,7 +893,7 @@ bb0:
   %1 = project_box %0 : ${ var Int64 }, 0
   %2 = integer_literal $Builtin.Int64, 3
   %3 = struct $Int64 (%2 : $Builtin.Int64)
-  store %3 to [trivial] %1 : $*Int64
+  store %3 to %1 : $*Int64
   // function_ref closure #1 in testInoutWriteNoescapeWriteClosure()
   %5 = function_ref @$s23enforce_with_opts_nob2s022testInoutWriteNoescapeG7ClosureyyFyycfU_ : $@convention(thin) (@guaranteed { var Int64 }) -> ()
   %6 = copy_value %0 : ${ var Int64 }
@@ -927,7 +927,7 @@ bb0(%0 : @guaranteed ${ var Int64 }):
   %3 = integer_literal $Builtin.Int64, 7
   %4 = struct $Int64 (%3 : $Builtin.Int64)
   %5 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %4 to [trivial] %5 : $*Int64
+  store %4 to %5 : $*Int64
   end_access %5 : $*Int64
   %8 = tuple ()
   return %8 : $()
@@ -1024,7 +1024,7 @@ bb0:
 // CHECK-NEXT: load [trivial] [[BEGIN]] : $*X
 // CHECK-NEXT: end_access [[BEGIN]] : $*X
 // CHECK: [[BEGIN2:%.*]] = begin_access [modify] [dynamic] [no_nested_conflict] [[GLOBAL]] : $*X
-// CHECK-NEXT: store {{.*}} to [trivial] [[BEGIN2]] : $*X
+// CHECK-NEXT: store {{.*}} to [[BEGIN2]] : $*X
 // CHECK-NEXT: end_access [[BEGIN2]] : $*X
 // CHECK: [[BEGIN3:%.*]] = begin_access [read] [dynamic] [no_nested_conflict] [[GLOBAL]] : $*X
 // CHECK-NEXT: load [trivial] [[BEGIN3]] : $*X
@@ -1041,7 +1041,7 @@ bb0:
   %5 = function_ref @Xinit : $@convention(method) (@thin X.Type) -> X
   %6 = apply %5(%4) : $@convention(method) (@thin X.Type) -> X
   %7 = begin_access [modify] [dynamic] %0 : $*X
-  store %6 to [trivial] %7 : $*X
+  store %6 to %7 : $*X
   end_access %7 : $*X
   %10 = begin_access [read] [dynamic] %0 : $*X
   %11 = load [trivial] %10 : $*X
@@ -1668,7 +1668,7 @@ bb0(%0 : @guaranteed $TestClass):
   %7 = integer_literal $Builtin.Int64, 3
   %8 = struct $Int64 (%7 : $Builtin.Int64)
   %9 = begin_access [modify] [dynamic] %1 : $*Int64
-  store %8 to [trivial] %9 : $*Int64
+  store %8 to %9 : $*Int64
   end_access %9 : $*Int64
   %12 = tuple ()
   return %12 : $()
@@ -1748,7 +1748,7 @@ bb0(%0 : $Int64, %1 : @guaranteed ${ var Int64 }, %2 : @guaranteed ${ var Int64 
   %access = begin_access [read] [dynamic] [no_nested_conflict] %boxadr : $*Int64
   %f = function_ref @testTransformArgumentCallee : $@convention(thin) (@guaranteed { var Int64 }) -> Int64
   %call = apply %f(%2) : $@convention(thin) (@guaranteed { var Int64 }) -> Int64
-  store %0 to [trivial] %access : $*Int64
+  store %0 to %access : $*Int64
   end_access %access : $*Int64
   return %call : $Int64
 }
@@ -1810,7 +1810,7 @@ bb0(%0 : @guaranteed $Klass, %1 : $*Int64):
   (%7, %8) = destructure_tuple %6 : $(Builtin.Int64, Builtin.Int1)
   cond_fail %8 : $Builtin.Int1, "arithmetic overflow"
   %10 = struct $Int64 (%7 : $Builtin.Int64)
-  store %10 to [trivial] %2 : $*Int64
+  store %10 to %2 : $*Int64
   end_access %2 : $*Int64
   %13 = unchecked_ref_cast %0 : $Klass to $Builtin.NativeObject
   %14 = unchecked_ownership_conversion %13 : $Builtin.NativeObject, @guaranteed to @owned

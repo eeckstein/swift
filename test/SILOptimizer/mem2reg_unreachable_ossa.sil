@@ -28,13 +28,13 @@ bb0(%0 : $Int32, %1 : $Int32):
 bb1:
   %12 = integer_literal $Builtin.Int32, 5
   %13 = struct $Int32 (%12 : $Builtin.Int32)
-  store %13 to [trivial] %4 : $*Int32
+  store %13 to %4 : $*Int32
   br bb3
 
 bb2:
   %16 = integer_literal $Builtin.Int32, 4
   %17 = struct $Int32 (%16 : $Builtin.Int32)
-  store %17 to [trivial] %4 : $*Int32
+  store %17 to %4 : $*Int32
   br bb3
 
 bb3:
@@ -53,7 +53,7 @@ sil hidden [ossa] @handle_unreachable : $@convention(thin) () -> () {
 bb0:
   %0 = alloc_stack $S, var, name "x"
   %1 = struct $S ()
-  store %1 to [trivial] %0 : $*S
+  store %1 to %0 : $*S
   unreachable
 
 bb1:

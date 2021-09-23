@@ -29,7 +29,7 @@ enum InternalEnumWithPublicStruct : Foo {
 // CHECK-NEXT: [[META_TYPE:%.*]] = metatype $@thin Bar.Type
 // CHECK: [[REF:%.*]] = function_ref @$s21protocol_enum_witness3BarO6buttonyA2CmF : $@convention(method) (@thin Bar.Type) -> Bar
 // CHECK-NEXT: [[RESULT:%.*]] = apply [[REF]]([[META_TYPE]]) : $@convention(method) (@thin Bar.Type) -> Bar
-// CHECK-NEXT: store [[RESULT]] to [trivial] [[BAR]] : $*Bar
+// CHECK-NEXT: store [[RESULT]] to [[BAR]] : $*Bar
 // CHECK-NEXT: [[TUPLE:%.*]] = tuple ()
 // CHECK-NEXT: return [[TUPLE]] : $()
 // CHECK-END: }
@@ -45,7 +45,7 @@ enum InternalEnumWithPublicStruct : Foo {
 // CHECK-NEXT: [[META_TYPE:%.*]] = metatype $@thin AnotherBar.Type
 // CHECK: [[REF:%.*]] = function_ref @$s21protocol_enum_witness10AnotherBarO3baryACSi_tcACmF : $@convention(method) (Int, @thin AnotherBar.Type) -> AnotherBar
 // CHECK-NEXT: [[RESULT:%.*]] = apply [[REF]]([[INT_ARG]], [[META_TYPE]]) : $@convention(method) (Int, @thin AnotherBar.Type) -> AnotherBar
-// CHECK-NEXT: store [[RESULT]] to [trivial] [[ANOTHER_BAR]] : $*AnotherBar
+// CHECK-NEXT: store [[RESULT]] to [[ANOTHER_BAR]] : $*AnotherBar
 // CHECK-NEXT: [[TUPLE:%.*]] = tuple ()
 // CHECK-NEXT: return [[TUPLE]] : $()
 // CHECK-END: }

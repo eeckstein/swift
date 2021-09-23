@@ -502,7 +502,7 @@ bb0(%0 : @guaranteed $ClassLet):
 sil [ossa] @single_init_allocstack : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
   %1 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   %2 = load [copy] %1 : $*Klass
 
   %3 = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
@@ -523,7 +523,7 @@ sil [ossa] @multiple_init_allocstack : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
   %0a = copy_value %0 : $Klass
   %1 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   %2 = load [copy] %1 : $*Klass
 
   %3 = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
@@ -532,7 +532,7 @@ bb0(%0 : @owned $Klass):
   destroy_value %2 : $Klass
   destroy_addr %1 : $*Klass
 
-  store %0a to [init] %1 : $*Klass
+  store %0a to %1 : $*Klass
   destroy_addr %1 : $*Klass
   dealloc_stack %1 : $*Klass
 
@@ -552,7 +552,7 @@ bb0(%0 : @owned $Klass):
   br bb1
 
 bb1:
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   %2 = load [copy] %1 : $*Klass
 
   %3 = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
@@ -575,7 +575,7 @@ bb1:
 sil [ossa] @single_init_loadtake : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
   %1 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   %2 = load [copy] %1 : $*Klass
 
   %3 = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
@@ -641,7 +641,7 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   destroy_value %3 : $Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
 }
@@ -658,7 +658,7 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   destroy_value %3 : $Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
@@ -674,7 +674,7 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   destroy_value %3 : $Builtin.NativeObject
@@ -691,7 +691,7 @@ sil [ossa] @inout_argument_never_written_to_5 : $@convention(thin) (@inout Nativ
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -709,7 +709,7 @@ sil [ossa] @inout_argument_never_written_to_6 : $@convention(thin) (@inout Nativ
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   cond_br undef, bb1, bb2
 
@@ -739,7 +739,7 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
 
 bb0a:
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   cond_br undef, bb1, bb2
 
@@ -766,7 +766,7 @@ sil [ossa] @inout_argument_never_written_to_6b : $@convention(thin) (@inout Nati
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   br bb0a
 
 bb0a:
@@ -797,7 +797,7 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   %1a = copy_value %1 : $Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   br bb0a
 
 bb0a:
@@ -815,7 +815,7 @@ bb2:
 bb3:
   destroy_value %3 : $Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1a to [init] %2 : $*Builtin.NativeObject
+  store %1a to %2 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
 }
@@ -978,7 +978,7 @@ bb3:
 sil [ossa] @switch_enum_test_loadcopy_no_default : $@convention(thin) (@owned FakeOptional<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $FakeOptional<Builtin.NativeObject>):
   %0a = alloc_stack $FakeOptional<Builtin.NativeObject>
-  store %0 to [init] %0a : $*FakeOptional<Builtin.NativeObject>
+  store %0 to %0a : $*FakeOptional<Builtin.NativeObject>
   %1 = load [copy] %0a : $*FakeOptional<Builtin.NativeObject>
   switch_enum %1 : $FakeOptional<Builtin.NativeObject>, case #FakeOptional.some!enumelt: bb1, case #FakeOptional.none!enumelt: bb2
 
@@ -1004,7 +1004,7 @@ bb3:
 sil [ossa] @switch_enum_test_loadcopy_with_default : $@convention(thin) (@owned FakeOptional<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $FakeOptional<Builtin.NativeObject>):
   %0a = alloc_stack $FakeOptional<Builtin.NativeObject>
-  store %0 to [init] %0a : $*FakeOptional<Builtin.NativeObject>
+  store %0 to %0a : $*FakeOptional<Builtin.NativeObject>
   %1 = load [copy] %0a : $*FakeOptional<Builtin.NativeObject>
   switch_enum %1 : $FakeOptional<Builtin.NativeObject>, case #FakeOptional.some!enumelt: bb1, default bb2
 
@@ -1030,7 +1030,7 @@ bb3:
 sil [ossa] @switch_enum_test_loadcopy_with_leaked_enum_case : $@convention(thin) (@owned FakeOptional<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $FakeOptional<Builtin.NativeObject>):
   %0a = alloc_stack $FakeOptional<Builtin.NativeObject>
-  store %0 to [init] %0a : $*FakeOptional<Builtin.NativeObject>
+  store %0 to %0a : $*FakeOptional<Builtin.NativeObject>
   %1 = load [copy] %0a : $*FakeOptional<Builtin.NativeObject>
   switch_enum %1 : $FakeOptional<Builtin.NativeObject>, case #FakeOptional.some!enumelt: bb1, case #FakeOptional.none!enumelt: bb2
 

@@ -20,7 +20,7 @@ class SomeDerivedClass : Parent {
 // CHECK-NEXT: [[INITCALL1:%[0-9]+]] = function_ref @$s30auto_generated_super_init_call6ParentCACycfc : $@convention(method) (@owned Parent) -> @owned Parent
 // CHECK-NEXT: [[RES1:%[0-9]+]] = apply [[INITCALL1]]([[PARENT]])
 // CHECK-NEXT: [[DOWNCAST:%[0-9]+]] = unchecked_ref_cast [[RES1]] : $Parent to $SomeDerivedClass
-// CHECK-NEXT: store [[DOWNCAST]] to [init] [[SELF]] : $*SomeDerivedClass 
+// CHECK-NEXT: store [[DOWNCAST]] to [[SELF]] : $*SomeDerivedClass 
   }
   
   init(x: Int) {
@@ -48,7 +48,7 @@ class SomeDerivedClass : Parent {
 // CHECK-NEXT: [[PARENT_INIT:%.*]] = function_ref @$s30auto_generated_super_init_call6ParentCACycfc : $@convention(method) (@owned Parent) -> @owned Parent,
 // CHECK-NEXT: [[PARENT:%.*]] = apply [[PARENT_INIT]]([[SELFLOAD_PARENT_CAST]])
 // CHECK-NEXT: [[SELFAGAIN:%.*]] = unchecked_ref_cast [[PARENT]]
-// CHECK-NEXT: store [[SELFAGAIN]] to [init] [[SELF]]
+// CHECK-NEXT: store [[SELFAGAIN]] to [[SELF]]
 // CHECK-NEXT: [[SELFLOAD:%.*]] = load [copy] [[SELF]]
 // CHECK-NEXT: destroy_value
 // CHECK-NEXT: return [[SELFLOAD]]

@@ -245,9 +245,7 @@ public:
       auto addr = emitProjectTopLevelSubcontext(
           Builder, loc, borrowedPullbackContextValue, pbStructVal->getType());
       Builder.createStore(
-          loc, pbStructVal, addr,
-          pbStructVal->getType().isTrivial(*pullback) ?
-              StoreOwnershipQualifier::Trivial : StoreOwnershipQualifier::Init);
+          loc, pbStructVal, addr);
       partialApplyArg = pullbackContextValue;
       Builder.createEndBorrow(loc, borrowedPullbackContextValue);
     } else {
@@ -1071,9 +1069,7 @@ EnumInst *VJPCloner::Implementation::buildPredecessorEnumValue(
         loc, rawBufferValue, pbStructType.getAddressType(),
         /*isStrict*/ true);
     builder.createStore(
-        loc, pbStructVal, typedBufferValue,
-        pbStructType.isTrivial(*pullback) ?
-            StoreOwnershipQualifier::Trivial : StoreOwnershipQualifier::Init);
+        loc, pbStructVal, typedBufferValue);
     return builder.createEnum(loc, rawBufferValue, enumEltDecl, enumLoweredTy);
   }
   return builder.createEnum(loc, pbStructVal, enumEltDecl, enumLoweredTy);

@@ -151,7 +151,7 @@ public struct DidSetWillSetTests {
   // CHECK-NEXT:    [[TEMP:%.*]] = alloc_stack $Int
   // CHECK-NEXT:    [[PROP:%.*]] = struct_element_addr [[SELF]] : $*DidSetWillSetTests
   // CHECK-NEXT:    [[LOAD:%.*]] = load [trivial] [[PROP]] : $*Int
-  // CHECK-NEXT:    store [[LOAD]] to [trivial] [[TEMP]] : $*Int
+  // CHECK-NEXT:    store [[LOAD]] to [[TEMP]] : $*Int
   // (modification goes here)
   // CHECK:         [[RELOAD:%.*]] = load [trivial] [[TEMP]] : $*Int
   // CHECK-NEXT:    // function_ref observers.DidSetWillSetTests.a.setter
@@ -239,7 +239,7 @@ func local_observing_property(_ arg: Int) {
   // CHECK: bb0([[ARG:%[0-9]+]] : $Int)
   // CHECK: [[BOX:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK: [[PB:%.*]] = project_box [[BOX]]
-  // CHECK: store [[ARG]] to [trivial] [[PB]]
+  // CHECK: store [[ARG]] to [[PB]]
 }
 
 // didSet of localproperty (above)

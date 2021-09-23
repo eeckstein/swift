@@ -33,7 +33,7 @@ func testShuffleOpaque() {
   // CHECK:      [[T0:%.*]] = function_ref @$s6tuples7make_xySi1x_AA1P_p1ytyF
   // CHECK-NEXT: [[T1:%.*]] = apply [[T0]]([[TMP]])
   // CHECK-NEXT: copy_addr [take] [[TMP]] to [initialization] [[PBX]] : $*P
-  // CHECK-NEXT: store [[T1]] to [trivial] [[PBY]]
+  // CHECK-NEXT: store [[T1]] to [[PBY]]
   // CHECK-NEXT: dealloc_stack [[TMP]]
   var (x,y) : (y:P, x:Int) = make_xy()
 
@@ -46,7 +46,7 @@ func testShuffleOpaque() {
   // CHECK-NEXT: [[PAIR_0:%.*]] = tuple_element_addr [[PBPAIR]] : $*(y: P, x: Int), 0
   // CHECK-NEXT: [[PAIR_1:%.*]] = tuple_element_addr [[PBPAIR]] : $*(y: P, x: Int), 1
   // CHECK-NEXT: copy_addr [take] [[TMP]] to [initialization] [[PAIR_0]] : $*P
-  // CHECK-NEXT: store [[T1]] to [trivial] [[PAIR_1]]
+  // CHECK-NEXT: store [[T1]] to [[PAIR_1]]
   // CHECK-NEXT: dealloc_stack [[TMP]]
   var pair : (y:P, x:Int) = make_xy()
 
@@ -78,7 +78,7 @@ func testShuffleTuple() {
   // CHECK-NEXT: [[T0:%.*]] = function_ref @$s6tuples6make_pAA1P_pyF 
   // CHECK-NEXT: apply [[T0]]([[TMP]])
   // CHECK-NEXT: copy_addr [take] [[TMP]] to [initialization] [[PBX]]
-  // CHECK-NEXT: store [[T1]] to [trivial] [[PBY]]
+  // CHECK-NEXT: store [[T1]] to [[PBY]]
   // CHECK-NEXT: dealloc_stack [[TMP]]
   var (x,y) : (y:P, x:Int) = (x: make_int(), y: make_p())
 
@@ -94,7 +94,7 @@ func testShuffleTuple() {
   // CHECK-NEXT: [[PAIR_0:%.*]] = tuple_element_addr [[PBPAIR]] : $*(y: P, x: Int), 0
   // CHECK-NEXT: [[PAIR_1:%.*]] = tuple_element_addr [[PBPAIR]] : $*(y: P, x: Int), 1
   // CHECK-NEXT: copy_addr [take] [[TMP]] to [initialization] [[PBX]]
-  // CHECK-NEXT: store [[T1]] to [trivial] [[PAIR_1]]
+  // CHECK-NEXT: store [[T1]] to [[PAIR_1]]
   // CHECK-NEXT: dealloc_stack [[TMP]]
   var pair : (y:P, x:Int) = (x: make_int(), y: make_p())
 
@@ -149,7 +149,7 @@ extension P {
   // Initialize the RValue. (This is here to help pattern matching).
   // CHECK:   [[ZERO_ADDR:%.*]] = tuple_element_addr [[RVALUE]] : $*(index: C, value: Self), 0
   // CHECK:   [[TUP0_COPY:%.*]] = copy_value [[TUP0]]
-  // CHECK:   store [[TUP0_COPY]] to [init] [[ZERO_ADDR]]
+  // CHECK:   store [[TUP0_COPY]] to [[ZERO_ADDR]]
   // CHECK:   [[ONE_ADDR:%.*]] = tuple_element_addr [[RVALUE]] : $*(index: C, value: Self), 1
   // CHECK:   copy_addr [[TUP1]] to [initialization] [[ONE_ADDR]]
   //
@@ -199,11 +199,11 @@ public func testTupleAssign(x: inout [Int]) {
 // CHECK:     [[Z_ADDR:%.*]] = tuple_element_addr %10 : $*(y: Optional<Int>, z: Any, x: AnyObject), 1
 // CHECK:     [[X_ADDR:%.*]] = tuple_element_addr %10 : $*(y: Optional<Int>, z: Any, x: AnyObject), 2
 // CHECK:     [[NEW_Y:%.*]] = enum $Optional<Int>, #Optional.some!enumelt, %14 : $Int
-// CHECK:     store [[NEW_Y]] to [trivial] [[Y_ADDR]] : $*Optional<Int>
+// CHECK:     store [[NEW_Y]] to [[Y_ADDR]] : $*Optional<Int>
 // CHECK:     [[NEW_Z:%.*]] = init_existential_addr [[Z_ADDR]] : $*Any, $String
-// CHECK:     store [[Z]] to [init] [[NEW_Z]] : $*String
+// CHECK:     store [[Z]] to [[NEW_Z]] : $*String
 // CHECK:     [[NEW_X:%.*]] = init_existential_ref [[X]] : $C : $C, $AnyObject
-// CHECK:     store [[NEW_X]] to [init] [[X_ADDR]] : $*AnyObject
+// CHECK:     store [[NEW_X]] to [[X_ADDR]] : $*AnyObject
 // CHECK:     end_borrow [[INPUT_BORROW]] : $(x: C, y: Int, z: String)
 // CHECK:     destroy_addr [[OUTPUT]] : $*(y: Optional<Int>, z: Any, x: AnyObject)
 // CHECK:     dealloc_stack [[OUTPUT]] : $*(y: Optional<Int>, z: Any, x: AnyObject)

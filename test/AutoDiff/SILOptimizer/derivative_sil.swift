@@ -75,8 +75,8 @@ func foo(_ x: Float) -> Float {
 // CHECK-SIL:   [[TMP_BUF_RES:%.*]] = alloc_stack $Float
 // CHECK-SIL:   [[TMP_BUF_LHS:%.*]] = alloc_stack $Float
 // CHECK-SIL:   [[TMP_BUF_RHS:%.*]] = alloc_stack $Float
-// CHECK-SIL:   store [[DX_1]] to [trivial] [[TMP_BUF_LHS]] : $*Float
-// CHECK-SIL:   store [[DX_2]] to [trivial] [[TMP_BUF_RHS]] : $*Float
+// CHECK-SIL:   store [[DX_1]] to [[TMP_BUF_LHS]] : $*Float
+// CHECK-SIL:   store [[DX_2]] to [[TMP_BUF_RHS]] : $*Float
 // CHECK-SIL:   [[PLUS_FN:%.*]] = witness_method $Float, #AdditiveArithmetic."+"
 // CHECK-SIL:   apply [[PLUS_FN]]<Float>([[TMP_BUF_RES]], [[TMP_BUF_RHS]], [[TMP_BUF_LHS]], {{.*}})
 // CHECK-SIL:   destroy_addr [[TMP_BUF_LHS]] : $*Float

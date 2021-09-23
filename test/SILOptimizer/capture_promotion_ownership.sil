@@ -43,7 +43,7 @@ bb0:
   %2 = function_ref @foo_allocating_init : $@convention(thin) (@thick Foo.Type) -> @owned Foo
   %3 = metatype $@thick Foo.Type
   %4 = apply %2(%3) : $@convention(thin) (@thick Foo.Type) -> @owned Foo
-  store %4 to [init] %1a : $*Foo
+  store %4 to %1a : $*Foo
 
   // CHECK: [[BOX2:%.*]] = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %6 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
@@ -51,7 +51,7 @@ bb0:
   %7 = function_ref @baz_init : $@convention(thin) (@thin Baz.Type) -> @owned Baz
   %8 = metatype $@thin Baz.Type
   %9 = apply %7(%8) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %9 to [init] %6a : $*Baz
+  store %9 to %6a : $*Baz
 
   // CHECK: [[BOX3:%.*]] = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
   %11 = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
@@ -60,7 +60,7 @@ bb0:
   %13 = metatype $@thin Int.Type
   %14 = integer_literal $Builtin.Word, 3
   %15 = apply %12(%14, %13) : $@convention(thin) (Builtin.Word, @thin Int.Type) -> Int
-  store %15 to [trivial] %11a : $*Int
+  store %15 to %11a : $*Int
 
 // CHECK: [[BOX1_COPY:%.*]] = copy_value [[MARKED_BOX1]]
 // CHECK: [[BOX1_COPY_PB:%.*]] = project_box [[BOX1_COPY]]
@@ -112,7 +112,7 @@ bb0:
   %2 = function_ref @foo_allocating_init : $@convention(thin) (@thick Foo.Type) -> @owned Foo
   %3 = metatype $@thick Foo.Type
   %4 = apply %2(%3) : $@convention(thin) (@thick Foo.Type) -> @owned Foo
-  store %4 to [init] %1a : $*Foo
+  store %4 to %1a : $*Foo
 
   // CHECK: [[BOX2:%.*]] = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %6 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
@@ -120,7 +120,7 @@ bb0:
   %7 = function_ref @baz_init : $@convention(thin) (@thin Baz.Type) -> @owned Baz
   %8 = metatype $@thin Baz.Type
   %9 = apply %7(%8) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %9 to [init] %6a : $*Baz
+  store %9 to %6a : $*Baz
 
   // CHECK: [[BOX3:%.*]] = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
   %11 = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
@@ -129,7 +129,7 @@ bb0:
   %13 = metatype $@thin Int.Type
   %14 = integer_literal $Builtin.Word, 3
   %15 = apply %12(%14, %13) : $@convention(thin) (Builtin.Word, @thin Int.Type) -> Int
-  store %15 to [trivial] %11a : $*Int
+  store %15 to %11a : $*Int
 
   // CHECK: [[BOX1_COPY:%.*]] = copy_value [[BOX1]]
   // CHECK: [[BOX1_COPY_PB:%.*]] = project_box [[BOX1_COPY]]
@@ -235,7 +235,7 @@ bb0:
   %2 = function_ref @foo_allocating_init : $@convention(thin) (@thick Foo.Type) -> @owned Foo
   %3 = metatype $@thick Foo.Type
   %4 = apply %2(%3) : $@convention(thin) (@thick Foo.Type) -> @owned Foo
-  store %4 to [init] %1a : $*Foo
+  store %4 to %1a : $*Foo
   %17 = function_ref @closure1 : $@convention(thin) (@owned <τ_0_0> { var τ_0_0 } <Foo>) -> Int
   %18 = copy_value %1 : $<τ_0_0> { var τ_0_0 } <Foo>
   // CHECK: partial_apply {{%.*}}({{%.*}})
@@ -330,7 +330,7 @@ bb0(%0: $*Int, %1 : @owned $<τ_0_0> { var τ_0_0 } <Foo>, %2 : @owned $<τ_0_0>
   destroy_value %4 : $<τ_0_0> { var τ_0_0 } <Int>
   destroy_value %2 : $<τ_0_0> { var τ_0_0 } <Baz>
   destroy_value %1 : $<τ_0_0> { var τ_0_0 } <Foo>
-  store %15 to [trivial] %0 : $*Int
+  store %15 to %0 : $*Int
   %16 = tuple()
   return %16 : $()
 }
@@ -353,12 +353,12 @@ bb0:
   %2 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %3 = project_box %2 : $<τ_0_0> { var τ_0_0 } <Baz>, 0
   %4 = apply %0(%1) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %4 to [init] %3 : $*Baz
+  store %4 to %3 : $*Baz
 
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %6 = project_box %5 : $<τ_0_0> { var τ_0_0 } <Baz>, 0
   %7 = apply %0(%1) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %7 to [init] %6 : $*Baz
+  store %7 to %6 : $*Baz
 
   %8 = function_ref @closure_multiple_uses_of_struct_element_addr : $@convention(thin) (@owned <τ_0_0> { var τ_0_0 } <Baz>, @owned <τ_0_0> { var τ_0_0 } <Baz>) -> ()
   %9 = partial_apply %8(%2, %5) : $@convention(thin) (@owned <τ_0_0> { var τ_0_0 } <Baz>, @owned <τ_0_0> { var τ_0_0 } <Baz>) -> ()
@@ -395,13 +395,13 @@ bb0:
   %2 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %3 = project_box %2 : $<τ_0_0> { var τ_0_0 } <Baz>, 0
   %4 = apply %0(%1) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %4 to [init] %3 : $*Baz
+  store %4 to %3 : $*Baz
 
   // CHECK: [[BOX2:%.*]] = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Baz>
   %6 = project_box %5 : $<τ_0_0> { var τ_0_0 } <Baz>, 0
   %7 = apply %0(%1) : $@convention(thin) (@thin Baz.Type) -> @owned Baz
-  store %7 to [init] %6 : $*Baz
+  store %7 to %6 : $*Baz
 
   // CHECK: [[BOX1_COPY:%.*]] = copy_value [[BOX1]]
   // CHECK: [[BOX2_COPY:%.*]] = copy_value [[BOX2]]
@@ -500,7 +500,7 @@ sil [ossa] @capture_promotion_caller_guaranteed_box : $@convention(thin) (@owned
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_box ${ var Builtin.NativeObject }
   %2 = project_box %1 : ${ var Builtin.NativeObject }, 0
-  store %0 to [init] %2 : $*Builtin.NativeObject
+  store %0 to %2 : $*Builtin.NativeObject
   %3 = function_ref @capture_promotion_callee_guaranteed_box : $@convention(thin) (@guaranteed { var Builtin.NativeObject }) -> ()
   %pai = partial_apply %3(%1) : $@convention(thin) (@guaranteed { var Builtin.NativeObject }) -> ()
   return %pai : $@callee_owned () -> ()

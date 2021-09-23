@@ -138,7 +138,7 @@ func passingToId<T: CP, U>(receiver: NSIdLover,
   receiver.takesId(any)
 
   // CHECK:   [[TMP:%.*]] = alloc_stack $KnownUnbridged
-  // CHECK:   store [[KNOWN_UNBRIDGED]] to [trivial] [[TMP]]
+  // CHECK:   store [[KNOWN_UNBRIDGED]] to [[TMP]]
   // CHECK:   [[BRIDGE_ANYTHING:%.*]] = function_ref @$ss27_bridgeAnythingToObjectiveC{{.*}}F
   // CHECK:   [[ANYOBJECT:%.*]] = apply [[BRIDGE_ANYTHING]]<KnownUnbridged>([[TMP]])
   // CHECK:   [[METHOD:%.*]] = objc_method [[SELF]] : $NSIdLover,
@@ -356,7 +356,7 @@ func passingToNullableId<T: CP, U>(receiver: NSIdLover,
   receiver.takesNullableId(any)
 
   // CHECK: [[TMP:%.*]] = alloc_stack $KnownUnbridged
-  // CHECK: store [[KNOWN_UNBRIDGED]] to [trivial] [[TMP]]
+  // CHECK: store [[KNOWN_UNBRIDGED]] to [[TMP]]
   // CHECK: [[BRIDGE_ANYTHING:%.*]] = function_ref @$ss27_bridgeAnythingToObjectiveC{{.*}}F
   // CHECK: [[ANYOBJECT:%.*]] = apply [[BRIDGE_ANYTHING]]<KnownUnbridged>([[TMP]])
   // CHECK: [[OPT_ANYOBJECT:%.*]] = enum {{.*}} [[ANYOBJECT]]
@@ -507,7 +507,7 @@ class SwiftIdLover : NSObject, Anyable {
   // CHECK-NEXT:  destroy_value [[SELF_COPY]]
   // CHECK-NEXT:  [[BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage @callee_guaranteed (@in_guaranteed Any) -> ()
   // CHECK-NEXT:  [[BLOCK_STORAGE_ADDR:%.*]] = project_block_storage [[BLOCK_STORAGE]]
-  // CHECK-NEXT:  store [[RESULT:%.*]] to [init] [[BLOCK_STORAGE_ADDR]]
+  // CHECK-NEXT:  store [[RESULT:%.*]] to [[BLOCK_STORAGE_ADDR]]
   // CHECK:       [[THUNK_FN:%.*]] = function_ref @$sypIegn_yXlIeyBy_TR
   // CHECK-NEXT:  [[BLOCK_HEADER:%.*]] = init_block_storage_header [[BLOCK_STORAGE]] : $*@block_storage @callee_guaranteed (@in_guaranteed Any) -> (), invoke [[THUNK_FN]]
   // CHECK-NEXT:  [[BLOCK:%.*]] = copy_block [[BLOCK_HEADER]]
@@ -523,7 +523,7 @@ class SwiftIdLover : NSObject, Anyable {
   // CHECK-NEXT:  [[OPENED_ANY:%.*]] = open_existential_ref [[ANY_COPY]]
   // CHECK-NEXT:  [[RESULT:%.*]] = alloc_stack $Any
   // CHECK-NEXT:  [[INIT:%.*]] = init_existential_addr [[RESULT]] : $*Any
-  // CHECK-NEXT:  store [[OPENED_ANY]] to [init] [[INIT]]
+  // CHECK-NEXT:  store [[OPENED_ANY]] to [[INIT]]
   // CHECK-NEXT:  [[BORROW_FUN:%.*]] =  begin_borrow [[FUNCTION]]
   // CHECK-NEXT:  apply [[BORROW_FUN]]([[RESULT]])
   // CHECK-NEXT:  end_borrow [[BORROW_FUN]]
@@ -584,7 +584,7 @@ class SwiftIdLover : NSObject, Anyable {
   // CHECK-NEXT:  destroy_value [[SELF_COPY]]
   // CHECK-NEXT:  [[BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage @callee_guaranteed () -> @out Any
   // CHECK-NEXT:  [[BLOCK_STORAGE_ADDR:%.*]] = project_block_storage [[BLOCK_STORAGE]]
-  // CHECK-NEXT:  store [[FUNCTION]] to [init] [[BLOCK_STORAGE_ADDR]]
+  // CHECK-NEXT:  store [[FUNCTION]] to [[BLOCK_STORAGE_ADDR]]
   // CHECK-NEXT:  // function_ref
   // CHECK-NEXT:  [[THUNK_FN:%.*]] = function_ref @$sypIegr_yXlIeyBa_TR
   // CHECK-NEXT:  [[BLOCK_HEADER:%.*]] = init_block_storage_header [[BLOCK_STORAGE]] : $*@block_storage @callee_guaranteed () -> @out Any, invoke [[THUNK_FN]]
@@ -647,7 +647,7 @@ extension GenericClass {
     // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
     // CHECK:   [[ANYOBJECT:%.*]] = init_existential_ref [[ARG_COPY]] : $T : $T, $AnyObject
     // CHECK:   [[ANY_BUF:%.*]] = init_existential_addr [[ANY_OUT]] : $*Any, $AnyObject
-    // CHECK:   store [[ANYOBJECT]] to [init] [[ANY_BUF]]
+    // CHECK:   store [[ANYOBJECT]] to [[ANY_BUF]]
     return x
   }
   // CHECK: } // end sil function '$sSo12GenericClassC17objc_bridging_anyE23pseudogenericAnyErasure1xypx_tF'

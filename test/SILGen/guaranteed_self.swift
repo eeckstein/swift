@@ -343,14 +343,14 @@ class D: C {
   // CHECK:         [[SELF_BOX:%.*]] = alloc_box ${ var D }
   // CHECK-NEXT:    [[MARKED_SELF_BOX:%.*]] = mark_uninitialized [derivedself] [[SELF_BOX]]
   // CHECK-NEXT:    [[PB:%.*]] = project_box [[MARKED_SELF_BOX]]
-  // CHECK-NEXT:    store [[SELF]] to [init] [[PB]]
+  // CHECK-NEXT:    store [[SELF]] to [[PB]]
   // CHECK-NOT:     [[PB]]
   // CHECK:         [[SELF1:%.*]] = load [take] [[PB]]
   // CHECK-NEXT:    [[SUPER1:%.*]] = upcast [[SELF1]]
   // CHECK-NOT:     [[PB]]
   // CHECK:         [[SUPER2:%.*]] = apply {{.*}}([[SUPER1]])
   // CHECK-NEXT:    [[SELF2:%.*]] = unchecked_ref_cast [[SUPER2]]
-  // CHECK-NEXT:    store [[SELF2]] to [init] [[PB]]
+  // CHECK-NEXT:    store [[SELF2]] to [[PB]]
   // CHECK-NOT:     [[PB]]
   // CHECK-NOT:     [[SELF1]]
   // CHECK-NOT:     [[SUPER1]]
@@ -465,7 +465,7 @@ class LetFieldClass {
   // CHECK-NEXT: [[PB:%.*]] = project_box [[KRAKEN_BOX]]
   // CHECK-NEXT: [[KRAKEN_ADDR:%.*]] = ref_element_addr [[CLS]] : $LetFieldClass, #LetFieldClass.letk
   // CHECK-NEXT: [[KRAKEN:%.*]] = load [copy] [[KRAKEN_ADDR]]
-  // CHECK-NEXT: store [[KRAKEN]] to [init] [[PB]]
+  // CHECK-NEXT: store [[KRAKEN]] to [[PB]]
   // CHECK-NEXT: [[READ:%.*]] = begin_access [read] [unknown] [[PB]] : $*Kraken
   // CHECK-NEXT: [[KRAKEN_COPY:%.*]] = load [copy] [[READ]]
   // CHECK-NEXT: end_access [[READ]] : $*Kraken
@@ -509,7 +509,7 @@ class LetFieldClass {
   // CHECK-NEXT: [[PB:%.*]] = project_box [[KRAKEN_BOX]]
   // CHECK-NEXT: [[KRAKEN_GETTER_FUN:%.*]] = class_method [[CLS]] : $LetFieldClass, #LetFieldClass.vark!getter : (LetFieldClass) -> () -> Kraken, $@convention(method) (@guaranteed LetFieldClass) -> @owned Kraken
   // CHECK-NEXT: [[KRAKEN2:%.*]] = apply [[KRAKEN_GETTER_FUN]]([[CLS]])
-  // CHECK-NEXT: store [[KRAKEN2]] to [init] [[PB]]
+  // CHECK-NEXT: store [[KRAKEN2]] to [[PB]]
   // CHECK-NEXT: [[WRITE:%.*]] = begin_access [read] [unknown] [[PB]] : $*Kraken
   // CHECK-NEXT: [[KRAKEN_COPY:%.*]] = load [copy] [[WRITE]]
   // CHECK-NEXT: end_access [[WRITE]] : $*Kraken

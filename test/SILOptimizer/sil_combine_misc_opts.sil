@@ -23,7 +23,7 @@ sil @nativeobject_guaranteed_use : $@convention(thin) (@guaranteed Builtin.Nativ
 // CHECK-LABEL: sil [ossa] @fix_lifetime_promotion_ossa : $@convention(thin) (@owned Klass) -> () {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[STACK:%.*]] = alloc_stack $Klass
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   [[BORROW:%.*]] = load_borrow [[STACK]]
 // CHECK:   fix_lifetime [[BORROW]]
 // CHECK:   end_borrow [[BORROW]]
@@ -33,7 +33,7 @@ sil @nativeobject_guaranteed_use : $@convention(thin) (@guaranteed Builtin.Nativ
 sil [ossa] @fix_lifetime_promotion_ossa : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
   %1 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Klass
+  store %0 to %1 : $*Klass
   fix_lifetime %1 : $*Klass
   destroy_addr %1 : $*Klass
   dealloc_stack %1 : $*Klass

@@ -59,10 +59,10 @@ sil [ossa] @store : $@convention(thin) (Builtin.NativeObject, @in Builtin.Int32,
 bb0(%0 : $*Builtin.NativeObject, %1 : @unowned $Builtin.NativeObject, %2 : $*Builtin.Int32, %3 : $Builtin.Int32):
   %4 = copy_value %1 : $Builtin.NativeObject
   %5 = copy_value %1 : $Builtin.NativeObject
-  store %4 to [init] %0 : $*Builtin.NativeObject
+  store %4 to %0 : $*Builtin.NativeObject
   destroy_addr %0 : $*Builtin.NativeObject
-  store %5 to [init] %0 : $*Builtin.NativeObject
-  store %3 to [trivial] %2 : $*Builtin.Int32
+  store %5 to %0 : $*Builtin.NativeObject
+  store %3 to %2 : $*Builtin.Int32
   %9999 = tuple()
   return %9999 : $()
 }

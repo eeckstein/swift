@@ -104,7 +104,7 @@ struct ConformingStruct : X {
   // CHECK-NEXT:    // function_ref
   // CHECK-NEXT:    %4 = function_ref @$s9witnesses16ConformingStructV9selfTypes{{[_0-9a-zA-Z]*}}F : $@convention(method) (ConformingStruct, @inout ConformingStruct) -> ConformingStruct
   // CHECK-NEXT:    %5 = apply %4(%3, %2) : $@convention(method) (ConformingStruct, @inout ConformingStruct) -> ConformingStruct
-  // CHECK-NEXT:    store %5 to [trivial] %0 : $*ConformingStruct
+  // CHECK-NEXT:    store %5 to %0 : $*ConformingStruct
   // CHECK-NEXT:    %7 = tuple ()
   // CHECK-NEXT:    return %7 : $()
   // CHECK-NEXT:  }
@@ -158,7 +158,7 @@ func <~>(_ x: ConformingStruct, y: ConformingStruct) -> ConformingStruct { retur
 // CHECK-NEXT:    // function_ref
 // CHECK-NEXT:    [[FUNC:%.*]] = function_ref @$s9witnesses3ltgoiyAA16ConformingStructVAD_ADtF : $@convention(thin) (ConformingStruct, ConformingStruct) -> ConformingStruct
 // CHECK-NEXT:    [[FUNC_RESULT:%.*]] = apply [[FUNC]]([[LOADED_ARG2]], [[LOADED_ARG3]]) : $@convention(thin) (ConformingStruct, ConformingStruct) -> ConformingStruct
-// CHECK-NEXT:    store [[FUNC_RESULT]] to [trivial] [[ARG1]] : $*ConformingStruct
+// CHECK-NEXT:    store [[FUNC_RESULT]] to [[ARG1]] : $*ConformingStruct
 // CHECK-NEXT:    %9 = tuple ()
 // CHECK-NEXT:    return %9 : $()
 // CHECK-NEXT:  }
@@ -172,7 +172,7 @@ final class ConformingClass : X {
   // CHECK:    [[ARG3_LOADED:%.*]] = load_borrow [[ARG3]] : $*ConformingClass
   // CHECK:    [[FUNC:%.*]] = function_ref @$s9witnesses15ConformingClassC9selfTypes{{[_0-9a-zA-Z]*}}F
   // CHECK:    [[FUNC_RESULT:%.*]] = apply [[FUNC]]([[ARG2_LOADED]], [[ARG3_LOADED]]) : $@convention(method) (@guaranteed ConformingClass, @guaranteed ConformingClass) -> @owned ConformingClass
-  // CHECK:    store [[FUNC_RESULT]] to [init] [[ARG1]] : $*ConformingClass
+  // CHECK:    store [[FUNC_RESULT]] to [[ARG1]] : $*ConformingClass
   // CHECK:    end_borrow [[ARG3_LOADED]]
   // CHECK:  } // end sil function '$s9witnesses15ConformingClassCAA1XA2aDP9selfTypes{{[_0-9a-zA-Z]*}}FTW'
   func loadable(x: Loadable) -> Loadable { return x }
@@ -251,7 +251,7 @@ struct ConformsWithMoreGeneric : X, Y {
   // CHECK:       bb0([[ARG0:%.*]] : @guaranteed $τ_0_0, [[ARG1:%.*]] : $*ConformsWithMoreGeneric):
   // CHECK-NEXT:    [[SELF_BOX:%.*]] = alloc_stack $τ_0_0
   // CHECK-NEXT:    [[ARG0_COPY:%.*]] = copy_value [[ARG0]]
-  // CHECK-NEXT:    store [[ARG0_COPY]] to [init] [[SELF_BOX]] : $*τ_0_0
+  // CHECK-NEXT:    store [[ARG0_COPY]] to [[SELF_BOX]] : $*τ_0_0
   // CHECK-NEXT:    // function_ref witnesses.ConformsWithMoreGeneric.classes
   // CHECK-NEXT:    [[WITNESS_FN:%.*]] = function_ref @$s9witnesses23ConformsWithMoreGenericV7classes{{[_0-9a-zA-Z]*}}F : $@convention(method) <τ_0_0> (@in_guaranteed τ_0_0, @inout ConformsWithMoreGeneric) -> @out τ_0_0
   // CHECK-NEXT:    [[RESULT_BOX:%.*]] = alloc_stack $τ_0_0
@@ -347,7 +347,7 @@ struct FailableModel: FailableRequirement, IUOFailableRequirement {
   // CHECK: bb0([[SELF:%[0-9]+]] : $*Optional<FailableModel>, [[FOO:%[0-9]+]] : $Int, [[META:%[0-9]+]] : $@thick FailableModel.Type):
   // CHECK: [[FN:%.*]] = function_ref @$s9witnesses13FailableModelV{{[_0-9a-zA-Z]*}}fC
   // CHECK: [[INNER:%.*]] = apply [[FN]](
-  // CHECK: store [[INNER]] to [trivial] [[SELF]]
+  // CHECK: store [[INNER]] to [[SELF]]
   // CHECK: return
   init?(foo: Int) {}
 }
@@ -359,7 +359,7 @@ struct IUOFailableModel : NonFailableRefinement, IUOFailableRequirement {
   // CHECK:   [[INIT:%[0-9]+]] = function_ref @$s9witnesses16IUOFailableModelV{{[_0-9a-zA-Z]*}}fC : $@convention(method) (Int, @thin IUOFailableModel.Type) -> Optional<IUOFailableModel>
   // CHECK:   [[IUO_RESULT:%[0-9]+]] = apply [[INIT]]([[FOO]], [[META]]) : $@convention(method) (Int, @thin IUOFailableModel.Type) -> Optional<IUOFailableModel>
   // CHECK: bb2([[RESULT:%.*]] : $IUOFailableModel):
-  // CHECK:   store [[RESULT]] to [trivial] [[SELF]] : $*IUOFailableModel
+  // CHECK:   store [[RESULT]] to [[SELF]] : $*IUOFailableModel
   // CHECK:   return
   init!(foo: Int) { return nil }
 }
@@ -539,7 +539,7 @@ protocol InoutFunctionReq {
 // CHECK-NEXT:   // function_ref
 // CHECK-NEXT:   [[THUNK:%.*]] = function_ref @$sytIegr_Ieg_TR
 // CHECK-NEXT:   [[THUNKED_OLD_FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[OLD_FN_CONV]])
-// CHECK-NEXT:   store [[THUNKED_OLD_FN]] to [init] [[TEMP]] :
+// CHECK-NEXT:   store [[THUNKED_OLD_FN]] to [[TEMP]] :
 //   Call the function.
 // CHECK-NEXT:   [[SELF:%.*]] = load [trivial] %1 : $*InoutFunction
 // CHECK-NEXT:   // function_ref
@@ -552,7 +552,7 @@ protocol InoutFunctionReq {
 // CHECK-NEXT:   [[THUNK:%.*]] = function_ref @$sIeg_ytIegr_TR
 // CHECK-NEXT:   [[THUNKED_NEW_FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[NEW_FN]])
 // CHECK-NEXT:   [[THUNKED_NEW_FN_CONV:%.*]] = convert_function [[THUNKED_NEW_FN]]
-// CHECK-NEXT:   store [[THUNKED_NEW_FN_CONV]] to [init] %0 :
+// CHECK-NEXT:   store [[THUNKED_NEW_FN_CONV]] to %0 :
 // CHECK-NEXT:   dealloc_stack [[TEMP]]
 // CHECK-NEXT:   return [[TUPLE]]
 // CHECK-LABEL:  } // end sil function '$s9witnesses13InoutFunctionVAA0bC3ReqA2aDP06updateC01xy1TQzycz_tFTW'

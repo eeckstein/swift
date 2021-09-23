@@ -420,12 +420,12 @@ bb0(%0 : $@thick SpecialEnum.Type):
 
 // CHECK-LABEL: sil [ossa] @dontSimplifyIndirectMetatype : $@convention(thin) () -> @out @thick Int.Type {
 // CHECK:   [[MT:%[0-9]+]] = metatype $@thick Int.Type
-// CHECK:   store [[MT]] to [trivial] %0
+// CHECK:   store [[MT]] to %0
 // CHECK: }  // end sil function 'dontSimplifyIndirectMetatype'
 sil [ossa] @dontSimplifyIndirectMetatype : $@convention(thin) () -> @out @thick Int.Type {
 bb0(%0 : $*@thick Int.Type):
   %1 = metatype $@thick Int.Type
-  store %1 to [trivial] %0 : $*@thick Int.Type
+  store %1 to %0 : $*@thick Int.Type
   %3 = tuple ()
   return %3 : $()
 }

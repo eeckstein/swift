@@ -30,9 +30,9 @@ bb0(%0 : $Builtin.Int1, %1 : $Builtin.Int64, %2 : $Builtin.Int64):
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %5a = project_box %5 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
-  store %0 to [trivial] %3a : $*Builtin.Int1
-  store %1 to [trivial] %4a : $*Builtin.Int64
-  store %2 to [trivial] %5a : $*Builtin.Int64
+  store %0 to %3a : $*Builtin.Int1
+  store %1 to %4a : $*Builtin.Int64
+  store %2 to %5a : $*Builtin.Int64
   %9 = load [trivial] %3a : $*Builtin.Int1
   cond_br %9, bb1a, bb1b
 
@@ -50,7 +50,7 @@ bb2:
   %15 = function_ref @closure0 : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
   %4b = copy_value %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %17 = partial_apply %15(%4b) : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
-  store %17 to [init] %14a : $*@callee_owned () -> Builtin.Int64
+  store %17 to %14a : $*@callee_owned () -> Builtin.Int64
   %19 = load [trivial] %3a : $*Builtin.Int1
   cond_br %19, bb3a, bb3b
 
@@ -113,15 +113,15 @@ bb0(%0 : $Builtin.Int1, %1 : $Builtin.Int64, %2 : $Builtin.Int64):
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %5a = project_box %5 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
-  store %0 to [trivial] %3a : $*Builtin.Int1
-  store %1 to [trivial] %4a : $*Builtin.Int64
-  store %2 to [trivial] %5a : $*Builtin.Int64
+  store %0 to %3a : $*Builtin.Int1
+  store %1 to %4a : $*Builtin.Int64
+  store %2 to %5a : $*Builtin.Int64
   %9 = alloc_box $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>
   %9a = project_box %9 : $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>, 0
   %10 = function_ref @closure2 : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
   %4b = copy_value %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %12 = partial_apply %10(%4b) : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
-  store %12 to [init] %9a : $*@callee_owned () -> Builtin.Int64
+  store %12 to %9a : $*@callee_owned () -> Builtin.Int64
   %14 = load [trivial] %3a : $*Builtin.Int1
   cond_br %14, bb1a, bb1b
 
@@ -197,15 +197,15 @@ bb0(%0 : $Builtin.Int1, %1 : $Builtin.Int64, %2 : $Builtin.Int64):
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %5a = project_box %5 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
-  store %0 to [trivial] %3a : $*Builtin.Int1
-  store %1 to [trivial] %4a : $*Builtin.Int64
-  store %2 to [trivial] %5a : $*Builtin.Int64
+  store %0 to %3a : $*Builtin.Int1
+  store %1 to %4a : $*Builtin.Int64
+  store %2 to %5a : $*Builtin.Int64
   %9 = alloc_box $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>
   %9a = project_box %9 : $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>, 0
   %10 = function_ref @closure4 : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
   %4c = copy_value %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %12 = partial_apply %10(%4c) : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
-  store %12 to [init] %9a : $*@callee_owned () -> Builtin.Int64
+  store %12 to %9a : $*@callee_owned () -> Builtin.Int64
   %14 = load [trivial] %3a : $*Builtin.Int1
   cond_br %14, bb1a, bb1b
 
@@ -277,15 +277,15 @@ bb0(%0 : $Builtin.Int1, %1 : $Builtin.Int64, %2 : $Builtin.Int64):
   %4a = project_box %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
   %5 = alloc_box $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %5a = project_box %5 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>, 0
-  store %0 to [trivial] %3a : $*Builtin.Int1
-  store %1 to [trivial] %4a : $*Builtin.Int64
-  store %2 to [trivial] %5a : $*Builtin.Int64
+  store %0 to %3a : $*Builtin.Int1
+  store %1 to %4a : $*Builtin.Int64
+  store %2 to %5a : $*Builtin.Int64
   %9 = alloc_box $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>
   %9a = project_box %9 : $<τ_0_0> { var τ_0_0 } <@callee_owned () -> Builtin.Int64>, 0
   %10 = function_ref @closure6 : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
   %4d = copy_value %4 : $<τ_0_0> { var τ_0_0 } <Builtin.Int64>
   %12 = partial_apply %10(%4d) : $@convention(thin) (@guaranteed <τ_0_0> { var τ_0_0 } <Builtin.Int64>) -> Builtin.Int64
-  store %12 to [init] %9a : $*@callee_owned () -> Builtin.Int64
+  store %12 to %9a : $*@callee_owned () -> Builtin.Int64
   br bb1
 
 bb1:

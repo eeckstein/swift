@@ -134,7 +134,7 @@ func reftype_return() -> Ref {
 // CHECK:   [[AADDR:%[0-9]+]] = alloc_box ${ var Ref }
 // CHECK:   [[PA:%[0-9]+]] = project_box [[AADDR]]
 // CHECK:   [[A_COPY:%.*]] = copy_value [[A]]
-// CHECK:   store [[A_COPY]] to [init] [[PA]]
+// CHECK:   store [[A_COPY]] to [[PA]]
 // CHECK:   destroy_value [[AADDR]]
 // CHECK-NOT:   destroy_value [[A]]
 // CHECK:   return
@@ -160,7 +160,7 @@ func reftype_call_store_to_local() {
     // CHECK: = function_ref @$s8lifetime12reftype_funcAA3RefCyF : $@convention(thin) () -> @owned Ref
     // CHECK-NEXT: [[R:%[0-9]+]] = apply
     // CHECK-NOT: copy_value [[R]]
-    // CHECK: store [[R]] to [init] [[PB]]
+    // CHECK: store [[R]] to [[PB]]
     // CHECK-NOT: destroy_value [[R]]
     // CHECK: destroy_value [[A]]
     // CHECK-NOT: destroy_value [[R]]
@@ -183,7 +183,7 @@ func reftype_call_arg() {
 // CHECK:   [[AADDR:%[0-9]+]] = alloc_box ${ var Ref }
 // CHECK:   [[PB:%.*]] = project_box [[AADDR]]
 // CHECK:   [[A1_COPY:%.*]] = copy_value [[A1]]
-// CHECK:   store [[A1_COPY]] to [init] [[PB]]
+// CHECK:   store [[A1_COPY]] to [[PB]]
 // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PB]]
 // CHECK:   [[A2:%[0-9]+]] = load [copy] [[READ]]
 // CHECK:   [[RFWA:%[0-9]+]] = function_ref @$s8lifetime21reftype_func_with_arg{{[_0-9a-zA-Z]*}}F
@@ -253,9 +253,9 @@ struct Daleth {
   // CHECK-LABEL: sil hidden [ossa] @$s8lifetime6DalethV{{[_0-9a-zA-Z]*}}fC : $@convention(method) (@owned Aleph, @owned Beth, @in Unloadable, @thin Daleth.Type) -> @out Daleth {
   // CHECK: bb0([[THIS:%.*]] : $*Daleth, [[A:%.*]] : @owned $Aleph, [[B:%.*]] : @owned $Beth, [[C:%.*]] : $*Unloadable, {{%.*}} : $@thin Daleth.Type):
   // CHECK-NEXT:   [[A_ADDR:%.*]] = struct_element_addr [[THIS]] : $*Daleth, #Daleth.a
-  // CHECK-NEXT:   store [[A]] to [init] [[A_ADDR]]
+  // CHECK-NEXT:   store [[A]] to [[A_ADDR]]
   // CHECK-NEXT:   [[B_ADDR:%.*]] = struct_element_addr [[THIS]] : $*Daleth, #Daleth.b
-  // CHECK-NEXT:   store [[B]] to [init] [[B_ADDR]]
+  // CHECK-NEXT:   store [[B]] to [[B_ADDR]]
   // CHECK-NEXT:   [[C_ADDR:%.*]] = struct_element_addr [[THIS]] : $*Daleth, #Daleth.c
   // CHECK-NEXT:   copy_addr [take] [[C]] to [initialization] [[C_ADDR]]
   // CHECK-NEXT:   tuple ()
@@ -310,7 +310,7 @@ struct Zayin {
   // CHECK-NEXT:   [[THIS_A0_ADDR:%.*]] = tuple_element_addr [[THIS_A_ADDR]] : {{.*}}, 0
   // CHECK-NEXT:   [[THIS_A1_ADDR:%.*]] = tuple_element_addr [[THIS_A_ADDR]] : {{.*}}, 1
   // CHECK-NEXT:   copy_addr [take] [[A0]] to [initialization] [[THIS_A0_ADDR]]
-  // CHECK-NEXT:   store [[A1]] to [trivial] [[THIS_A1_ADDR]]
+  // CHECK-NEXT:   store [[A1]] to [[THIS_A1_ADDR]]
   // CHECK-NEXT:   [[THIS_B_ADDR:%.*]] = struct_element_addr [[THIS]] : $*Zayin, #Zayin.b
   // CHECK-NEXT:   copy_addr [take] [[B]] to [initialization] [[THIS_B_ADDR]]
   // CHECK-NEXT:   tuple ()
@@ -351,7 +351,7 @@ func logical_lvalue_lifetime(_ r: RefWithProp, _ i: Int, _ v: Val) {
   // CHECK: [[PR:%[0-9]+]] = project_box [[RADDR]]
   // CHECK: [[IADDR:%[0-9]+]] = alloc_box ${ var Int }
   // CHECK: [[PI:%[0-9]+]] = project_box [[IADDR]]
-  // CHECK: store %1 to [trivial] [[PI]]
+  // CHECK: store %1 to [[PI]]
   // CHECK: [[VADDR:%[0-9]+]] = alloc_box ${ var Val }
   // CHECK: [[PV:%[0-9]+]] = project_box [[VADDR]]
 
@@ -405,8 +405,8 @@ class Foo<T> {
     // CHECK: [[THIS_Y_1:%.*]] = tuple_element_addr [[THIS_Y]] : $*(Int, Ref), 1
     // CHECK: [[Y_VALUE:%[0-9]+]] = apply [[Y_INIT]]<T>()
     // CHECK: ([[Y_EXTRACTED_0:%.*]], [[Y_EXTRACTED_1:%.*]]) = destructure_tuple
-    // CHECK: store [[Y_EXTRACTED_0]] to [trivial] [[THIS_Y_0]]
-    // CHECK: store [[Y_EXTRACTED_1]] to [init] [[THIS_Y_1]]
+    // CHECK: store [[Y_EXTRACTED_0]] to [[THIS_Y_0]]
+    // CHECK: store [[Y_EXTRACTED_1]] to [[THIS_Y_1]]
     // CHECK: end_borrow [[BORROWED_THIS]]
 
     // -- Initialization for w
@@ -414,7 +414,7 @@ class Foo<T> {
     // CHECK: [[THIS_Z:%.*]] = ref_element_addr [[BORROWED_THIS]]
     // CHECK: [[Z_FUNC:%.*]] = function_ref @$s{{.*}}8lifetime3FooC1wAA3RefCvpfi : $@convention(thin) <τ_0_0> () -> @owned Ref
     // CHECK: [[Z_RESULT:%.*]] = apply [[Z_FUNC]]<T>()
-    // CHECK: store [[Z_RESULT]] to [init] [[THIS_Z]]
+    // CHECK: store [[Z_RESULT]] to [[THIS_Z]]
     // CHECK: end_borrow [[BORROWED_THIS]]
 
     // -- Initialization for x
@@ -461,14 +461,14 @@ class Foo<T> {
     // CHECK:   [[THIS_Y:%.*]] = ref_element_addr [[BORROWED_THIS]] : $Foo<T>, #Foo.y
     // CHECK:   [[THIS_Y_1:%.*]] = tuple_element_addr [[THIS_Y]] : $*(Int, Ref), 0
     // CHECK:   [[THIS_Y_2:%.*]] = tuple_element_addr [[THIS_Y]] : $*(Int, Ref), 1
-    // CHECK:   store {{.*}} to [trivial] [[THIS_Y_1]] : $*Int
-    // CHECK:   store {{.*}} to [init] [[THIS_Y_2]] : $*Ref
+    // CHECK:   store {{.*}} to [[THIS_Y_1]] : $*Int
+    // CHECK:   store {{.*}} to [[THIS_Y_2]] : $*Ref
     // CHECK:   end_borrow [[BORROWED_THIS]]
 
     // -- Then we create a box that we will use to perform a copy_addr into #Foo.x a bit later.
     // CHECK:   [[CHIADDR:%[0-9]+]] = alloc_box ${ var Int }, var, name "chi"
     // CHECK:   [[PCHI:%[0-9]+]] = project_box [[CHIADDR]]
-    // CHECK:   store [[CHI]] to [trivial] [[PCHI]]
+    // CHECK:   store [[CHI]] to [[PCHI]]
 
     // -- Then we initialize #Foo.z
     // CHECK:   [[BORROWED_THIS:%.*]] = begin_borrow [[THIS]]
@@ -713,13 +713,13 @@ class D : B {
     // CHECK: [[SELF_BOX:%[0-9]+]] = alloc_box ${ var D }
     // CHECK: [[MARKED_SELF_BOX:%[0-9]+]] = mark_uninitialized [derivedself] [[SELF_BOX]]
     // CHECK: [[PB_BOX:%[0-9]+]] = project_box [[MARKED_SELF_BOX]]
-    // CHECK: store [[SELF]] to [init] [[PB_BOX]]
+    // CHECK: store [[SELF]] to [[PB_BOX]]
     // CHECK: [[XADDR:%[0-9]+]] = alloc_box ${ var Int }
     // CHECK: [[PX:%[0-9]+]] = project_box [[XADDR]]
-    // CHECK: store [[X]] to [trivial] [[PX]]
+    // CHECK: store [[X]] to [[PX]]
     // CHECK: [[YADDR:%[0-9]+]] = alloc_box ${ var Int }
     // CHECK: [[PY:%[0-9]+]] = project_box [[YADDR]]
-    // CHECK: store [[Y]] to [trivial] [[PY]]
+    // CHECK: store [[Y]] to [[PY]]
 
     super.init(y: y)
     // CHECK: [[THIS1:%[0-9]+]] = load [take] [[PB_BOX]]

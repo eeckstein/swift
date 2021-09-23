@@ -223,7 +223,7 @@ static bool hasExpectedUsesOfNoEscapePartialApply(Operand *partialApplyUse) {
     // %storage = alloc_stack $@block_storage @callee_owned () -> ()
     // %block_addr = project_block_storage %storage
     //   : $*@block_storage @callee_owned () -> ()
-    // store %closure to [init] %block_addr : $*@callee_owned () -> ()
+    // store %closure to %block_addr : $*@callee_owned () -> ()
     // %block = init_block_storage_header %storage
     //     : $*@block_storage @callee_owned () -> (),
     //   invoke %f2 : $@convention(c)

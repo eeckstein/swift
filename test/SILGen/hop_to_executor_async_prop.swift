@@ -407,7 +407,7 @@ actor Dog {
     // CHECK:    hop_to_executor [[CAT]] : $Cat
     // CHECK:    [[MAYBE_GETTER:%[0-9]+]] = class_method [[CAT]] : $Cat, #Cat.maybeFriend!getter : (isolated Cat) -> () -> Cat?, $@convention(method) (@guaranteed Cat) -> @owned Optional<Cat>
     // CHECK:    [[MAYBE_FRIEND:%[0-9]+]] = apply [[MAYBE_GETTER]]([[CAT]]) : $@convention(method) (@guaranteed Cat) -> @owned Optional<Cat>
-    // CHECK:    store [[MAYBE_FRIEND]] to [init] [[FRIEND1_STACK]] : $*Optional<Cat>
+    // CHECK:    store [[MAYBE_FRIEND]] to [[FRIEND1_STACK]] : $*Optional<Cat>
 
     // CHECK:    hop_to_executor [[SELF]] : $Dog
     // CHECK:    [[IS_SOME:%[0-9]+]] = select_enum_addr [[FRIEND1_STACK]] : $*Optional<Cat>

@@ -39,7 +39,7 @@ case second
 //
 // CHECK: [[DEFAULT_BB]](
 // CHECK:   [[STACK_SLOT:%.*]] = alloc_stack $UInt8
-// CHECK:   store [[ARG_INT_REPR]] to [trivial] [[STACK_SLOT]]
+// CHECK:   store [[ARG_INT_REPR]] to [[STACK_SLOT]]
 // CHECK:   [[DIAGNOSE_FUNC:%.*]] = function_ref @$ss32_diagnoseUnexpectedEnumCaseValue4type03rawE0s5NeverOxm_q_tr0_lF : $@convention(thin) <τ_0_0, τ_0_1> (@thick τ_0_0.Type, @in_guaranteed τ_0_1) -> Never
 // CHECK:   apply [[DIAGNOSE_FUNC]]<ObjCEnum, UInt8>([[METATYPE]], [[STACK_SLOT]])
 // CHECK:   unreachable

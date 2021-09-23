@@ -145,7 +145,7 @@ bb0(%0 : $*E):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_takeinit :
 // CHECK: bb0([[OUT:%[0-9]+]] : $*S, [[IN:%[0-9]+]] : $*S):
 // CHECK: [[LOAD:%[0-9]+]] = load [take] [[IN]]
-// CHECK: store [[LOAD]] to [init] [[OUT]]
+// CHECK: store [[LOAD]] to [[OUT]]
 // CHECK: } // end sil function 'expand_copy_addr_takeinit'
 sil [ossa] @expand_copy_addr_takeinit : $@convention(thin) (@in S) -> @out S {
 bb0(%0 : $*S, %1 : $*S):
@@ -157,7 +157,7 @@ bb0(%0 : $*S, %1 : $*S):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_init :
 // CHECK: bb0([[OUT:%[0-9]+]] : $*S, [[IN:%[0-9]+]] : $*S):
 // CHECK: [[LOADED_IN:%[0-9]+]] = load [copy] [[IN]] : $*S
-// CHECK: store [[LOADED_IN]] to [init] [[OUT]]
+// CHECK: store [[LOADED_IN]] to [[OUT]]
 // CHECK: } // end sil function 'expand_copy_addr_init'
 sil [ossa] @expand_copy_addr_init : $@convention(thin) (@in_guaranteed S) -> @out S {
 bb0(%0 : $*S, %1 : $*S):
@@ -169,7 +169,7 @@ bb0(%0 : $*S, %1 : $*S):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_take :
 // CHECK: bb0([[IN_ARG:%[0-9]+]] : $*S, [[INOUT_ARG:%[0-9]+]] : $*S):
 // CHECK: [[LOADED_IN_ARG:%[0-9]+]] = load [take] [[IN_ARG]]
-// CHECK: store [[LOADED_IN_ARG]] to [init] [[INOUT_ARG]]
+// CHECK: store [[LOADED_IN_ARG]] to [[INOUT_ARG]]
 // CHECK: } // end sil function 'expand_copy_addr_take'
 sil [ossa] @expand_copy_addr_take : $@convention(thin) (@in S, @inout S) -> () {
 bb0(%0 : $*S, %1 : $*S):
@@ -196,7 +196,7 @@ bb0(%0 : $*Builtin.Int64, %1 : $*Builtin.Int64):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_aggstructnontrivial :
 // CHECK: bb0([[INOUT_ARG1:%[0-9]+]] : $*S, [[INOUT_ARG2:%[0-9]+]] : $*S):
 // CHECK: [[INOUT_ARG1_LOADED:%[0-9]+]] = load [copy] [[INOUT_ARG1]]
-// CHECK: store [[INOUT_ARG1_LOADED]] to [init] [[INOUT_ARG2]]
+// CHECK: store [[INOUT_ARG1_LOADED]] to [[INOUT_ARG2]]
 // CHECK: } // end sil function 'expand_copy_addr_aggstructnontrivial'
 sil [ossa] @expand_copy_addr_aggstructnontrivial : $@convention(thin) (@inout S, @inout S) -> () {
 bb0(%0 : $*S, %1 : $*S):
@@ -208,7 +208,7 @@ bb0(%0 : $*S, %1 : $*S):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_aggtuplenontrivial :
 // CHECK: bb0([[INOUT_1:%[0-9]+]] : $*(S, S2, C1, E), [[INOUT_2:%[0-9]+]] : $*(S, S2, C1, E)):
 // CHECK: [[INOUT_1_LOADED:%[0-9]+]] = load [copy] [[INOUT_1]] : $*(S, S2, C1, E)
-// CHECK: store [[INOUT_1_LOADED]] to [init] [[INOUT_2]] : $*(S, S2, C1, E)
+// CHECK: store [[INOUT_1_LOADED]] to [[INOUT_2]] : $*(S, S2, C1, E)
 // CHECK: tuple ()
 // CHECK: return
 
@@ -236,7 +236,7 @@ bb0(%0 : $*T, %1 : $*T):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_reference :
 // CHECK: bb0([[INOUT_1:%[0-9]+]] : $*C1, [[INOUT_2:%[0-9]+]] : $*C1):
 // CHECK: [[LOAD1:%[0-9]+]] = load [copy] [[INOUT_1]] : $*C1
-// CHECK: store [[LOAD1]] to [init] [[INOUT_2]]
+// CHECK: store [[LOAD1]] to [[INOUT_2]]
 // CHECK: } // end sil function 'expand_copy_addr_reference'
 sil [ossa] @expand_copy_addr_reference : $@convention(thin) (@inout C1, @inout C1) -> () {
 bb0(%0 : $*C1, %1 : $*C1):
@@ -248,7 +248,7 @@ bb0(%0 : $*C1, %1 : $*C1):
 // CHECK-LABEL: sil [ossa] @expand_copy_addr_enum :
 // CHECK: bb0([[IN1:%[0-9]+]] : $*E, [[IN2:%[0-9]+]] : $*E):
 // CHECK: [[LOAD1:%[0-9]+]] = load [copy] [[IN1]] : $*E
-// CHECK: store [[LOAD1]] to [init] [[IN2]]
+// CHECK: store [[LOAD1]] to [[IN2]]
 // CHECK: } // end sil function 'expand_copy_addr_enum'
 sil [ossa] @expand_copy_addr_enum : $@convention(thin) (@inout E, @inout E) -> () {
 bb0(%0 : $*E, %1 : $*E):

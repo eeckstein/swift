@@ -185,7 +185,7 @@ sil [ossa] @removeTriviallyDeadInstructions : $@convention(thin) (@owned B) -> (
 bb0(%0 : @owned $B):
   %1 = alloc_box $<τ_0_0> { var τ_0_0 } <B>
   %1a = project_box %1 : $<τ_0_0> { var τ_0_0 } <B>, 0
-  store %0 to [init] %1a : $*B
+  store %0 to %1a : $*B
   %3 = load [copy] %1a : $*B
   %5 = unchecked_ref_cast %3 : $B to $Builtin.NativeObject
   destroy_value %5 : $Builtin.NativeObject
@@ -324,7 +324,7 @@ bb3(%3 : $BoolLike):
 // CHECK-NEXT:  [[IN_LOADED:%[0-9]+]] = load [trivial] [[IN_GEP]] : $*Builtin.Int8
 // CHECK-NEXT:  [[LITERAL:%[0-9]+]] = integer_literal $Builtin.Int8, 1
 // CHECK-NEXT:  [[UINT8:%.*]] = struct $UInt8 ([[LITERAL]] : $Builtin.Int8)
-// CHECK-NEXT:  store [[UINT8]] to [trivial] [[IN]] : $*UInt8
+// CHECK-NEXT:  store [[UINT8]] to [[IN]] : $*UInt8
 // CHECK-NEXT:  return [[IN_LOADED]] : $Builtin.Int8
 // CHECK: } // end sil function 'struct_extract_load_to_load_struct_element_addr'
 sil [ossa] @struct_extract_load_to_load_struct_element_addr : $@convention(thin) (@inout UInt8) -> (Builtin.Int8) {
@@ -332,7 +332,7 @@ bb0(%0 : $*UInt8):
   %1 = load [trivial] %0 : $*UInt8
   %2 = integer_literal $Builtin.Int8, 1
   %3 = struct_element_addr %0 : $*UInt8, #UInt8._value
-  store %2 to [trivial] %3 : $*Builtin.Int8
+  store %2 to %3 : $*Builtin.Int8
   %5 = struct_extract %1 : $UInt8, #UInt8._value
   return %5 : $Builtin.Int8
 }
@@ -343,7 +343,7 @@ bb0(%0 : $*UInt8):
 // CHECK-NEXT:  [[IN_LOADED:%[0-9]+]] = load [trivial] [[IN_GEP]] : $*Builtin.Int8
 // CHECK-NEXT:  [[LITERAL:%[0-9]+]] = integer_literal $Builtin.Int8, 1
 // CHECK-NEXT:  [[IN_STORE_GEP:%[0-9]+]] = tuple_element_addr %0 : $*(Builtin.Int8, Builtin.Int8), 0
-// CHECK-NEXT:  store [[LITERAL]] to [trivial] [[IN_STORE_GEP]] : $*Builtin.Int8
+// CHECK-NEXT:  store [[LITERAL]] to [[IN_STORE_GEP]] : $*Builtin.Int8
 // CHECK-NEXT:  return [[IN_LOADED]] : $Builtin.Int8
 // CHECK: } // end sil function 'tuple_extract_load_to_load_tuple_element_addr'
 sil [ossa] @tuple_extract_load_to_load_tuple_element_addr : $@convention(thin) (@inout (Builtin.Int8, Builtin.Int8)) -> (Builtin.Int8) {
@@ -351,7 +351,7 @@ bb0(%0 : $*(Builtin.Int8, Builtin.Int8)):
   %1 = load [trivial] %0 : $*(Builtin.Int8, Builtin.Int8)
   %2 = integer_literal $Builtin.Int8, 1
   %3 = tuple_element_addr %0 : $*(Builtin.Int8, Builtin.Int8), 0
-  store %2 to [trivial] %3 : $*Builtin.Int8
+  store %2 to %3 : $*Builtin.Int8
   %5 = tuple_extract %1 : $(Builtin.Int8, Builtin.Int8), 0
   return %5 : $Builtin.Int8
 }
@@ -372,7 +372,7 @@ bb0(%0 : $*UInt8):
   %1 = load [trivial] %0 : $*UInt8
   %2 = integer_literal $Builtin.Int8, 1
   %3 = struct_element_addr %0 : $*UInt8, #UInt8._value
-  store %2 to [trivial] %3 : $*Builtin.Int8
+  store %2 to %3 : $*Builtin.Int8
   %5 = struct_extract %1 : $UInt8, #UInt8._value
   %6 = tuple (%1 : $UInt8, %5 : $Builtin.Int8)
   return %6 : $(UInt8, Builtin.Int8)
@@ -394,7 +394,7 @@ bb0(%0 : $*(Builtin.Int8, Builtin.Int8)):
   %1 = load [trivial] %0 : $*(Builtin.Int8, Builtin.Int8)
   %2 = integer_literal $Builtin.Int8, 1
   %3 = tuple_element_addr %0 : $*(Builtin.Int8, Builtin.Int8), 0
-  store %2 to [trivial] %3 : $*Builtin.Int8
+  store %2 to %3 : $*Builtin.Int8
   %5 = tuple_extract %1 : $(Builtin.Int8, Builtin.Int8), 0
   %6 = tuple (%1 : $(Builtin.Int8, Builtin.Int8), %5 : $Builtin.Int8)
   return %6 : $((Builtin.Int8, Builtin.Int8), Builtin.Int8)
@@ -1117,7 +1117,7 @@ bb0(%0 : $Builtin.Int32):
 sil shared [ossa] [transparent] @reabstract : $@convention(thin) (Builtin.Int32, @owned @callee_owned (Builtin.Int32) -> Builtin.Int32) -> @out Builtin.Int32 {
 bb0(%0 : $*Builtin.Int32, %1 : $Builtin.Int32, %2 : @owned $@callee_owned (Builtin.Int32) -> Builtin.Int32):
   %3 = apply %2(%1) : $@callee_owned (Builtin.Int32) -> Builtin.Int32
-  store %3 to [trivial] %0 : $*Builtin.Int32
+  store %3 to %0 : $*Builtin.Int32
   %5 = tuple ()
   return %5 : $()
 }
@@ -1275,11 +1275,11 @@ bb3(%16 : $Int32):                                  // Preds: bb1 bb2
 // XHECK: bb0([[INT_PTR:%[0-9]+]]
 // XHECK-NEXT: [[ALLOCA1:%[0-9]+]] = alloc_stack $FakeOptional<Builtin.Int1>
 // XHECK-NEXT: [[ENUM1:%[0-9]+]] = enum $FakeOptional<Builtin.Int1>, #FakeOptional.none!enumelt
-// XHECK-NEXT: store [[ENUM1]] to [trivial] [[ALLOCA1]]
+// XHECK-NEXT: store [[ENUM1]] to [[ALLOCA1]]
 // XHECK-NEXT: [[ALLOCA2:%[0-9]+]] = alloc_stack $FakeOptional<Builtin.Int1>
 // XHECK-NEXT: [[INT:%[0-9]+]] = load [trivial] [[INT_PTR]] : $*Builtin.Int1
 // XHECK-NEXT: [[ENUM2:%[0-9]+]] = enum $FakeOptional<Builtin.Int1>, #FakeOptional.some!enumelt, [[INT]] : $Builtin.Int1
-// XHECK-NEXT: store [[ENUM2]] to [trivial] [[ALLOCA2]] : $*FakeOptional<Builtin.Int1>
+// XHECK-NEXT: store [[ENUM2]] to [[ALLOCA2]] : $*FakeOptional<Builtin.Int1>
 // XHECK-NEXT: [[RESULT1:%[0-9]+]] = load [trivial] [[ALLOCA1]]
 // XHECK-NEXT: [[RESULT2:%[0-9]+]] = load [trivial] [[ALLOCA2]]
 // XHECK-NEXT: [[RESULT:%[0-9]+]] = tuple ([[RESULT1]] : $FakeOptional<Builtin.Int1>, [[RESULT2]] : $FakeOptional<Builtin.Int1>)
@@ -1295,7 +1295,7 @@ bb0(%0 : $*Builtin.Int1):
   %3 = alloc_stack $FakeOptional<Builtin.Int1>
   %4 = init_enum_data_addr %3 : $*FakeOptional<Builtin.Int1>, #FakeOptional.some!enumelt
   %5 = load [trivial] %0 : $*Builtin.Int1
-  store %5 to [trivial] %4 : $*Builtin.Int1
+  store %5 to %4 : $*Builtin.Int1
   inject_enum_addr %3 : $*FakeOptional<Builtin.Int1>, #FakeOptional.some!enumelt
 
   %6 = load [trivial] %1 : $*FakeOptional<Builtin.Int1>
@@ -1315,7 +1315,7 @@ bb0(%0 : $*Builtin.Int1):
 // This copy is the copy that was between the init_enum_data_addr/inject_enum_addr
 // XHECK-NEXT: [[B_PTR_COPY_NOT_OBSTRUCTING:%.*]] = copy_value [[B_PTR]]
 // XHECK-NEXT: [[ENUM:%[0-9]+]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[B_PTR_COPY_FOR_ENUM]] : $B
-// XHECK-NEXT: store [[ENUM]] to [init] [[ALLOCA]]
+// XHECK-NEXT: store [[ENUM]] to [[ALLOCA]]
 // XHECK-NEXT: [[RESULT:%[0-9]+]] = load [take] [[ALLOCA]]
 // XHECK-NEXT: dealloc_stack
 // XHECK-NEXT: destroy_value [[B_PTR]]
@@ -1332,7 +1332,7 @@ bb0(%0 : @owned $B):
   %2 = alloc_stack $FakeOptional<B>
   %3 = init_enum_data_addr %2 : $*FakeOptional<B>, #FakeOptional.some!enumelt
   %0a = copy_value %0 : $B
-  store %0a to [init] %3 : $*B
+  store %0a to %3 : $*B
 
   // This instruction between the store and the inject_enum_addr should not prevent
   // the optimization.
@@ -1673,7 +1673,7 @@ sil [ossa] @MyNSObj_self : $@convention(method) (@guaranteed MyNSObj) -> @owned 
 sil shared [ossa] [transparent] [serializable] [reabstraction_thunk] @reabstraction_thunk1 : $@convention(thin) (@in (), @owned @callee_owned () -> @owned AnotherClass) -> @out AnotherClass {
 bb0(%0 : $*AnotherClass, %1 : $*(), %2 : @owned $@callee_owned () -> @owned AnotherClass):
   %3 = apply %2() : $@callee_owned () -> @owned AnotherClass
-  store %3 to [init] %0 : $*AnotherClass
+  store %3 to %0 : $*AnotherClass
   %5 = tuple ()
   return %5 : $()
 }
@@ -1704,7 +1704,7 @@ bb0(%0 : $*@callee_owned (@in ()) -> @out AnotherClass, %1 : $*AnotherClass):
   // function_ref thunk for @callee_owned () -> (@owned AnotherClass)
   %7 = function_ref @reabstraction_thunk1 : $@convention(thin) (@in (), @owned @callee_owned () -> @owned AnotherClass) -> @out AnotherClass
   %8 = partial_apply %7(%6) : $@convention(thin) (@in (), @owned @callee_owned () -> @owned AnotherClass) -> @out AnotherClass
-  store %8 to [init] %0 : $*@callee_owned (@in ()) -> @out AnotherClass
+  store %8 to %0 : $*@callee_owned (@in ()) -> @out AnotherClass
   %10 = tuple ()
   return %10 : $()
 } // end sil function 'do_not_peephole_convert_function'
@@ -1724,7 +1724,7 @@ bb0(%0 : $*E, %1 : @owned $E, %2 : $*B):
   %4 = unchecked_ref_cast %1 : $E to $B
   %5 = load [copy] %3 : $*B
   destroy_addr %2 : $*B
-  store %5 to [init] %2 : $*B
+  store %5 to %2 : $*B
   return %4 : $B
 }
 
@@ -1743,7 +1743,7 @@ bb0(%0 : $*E, %1 : @owned $E, %2 : $*E):
   %4 = unchecked_ref_cast %1 : $E to $E
   %5 = load [copy] %3 : $*E
   destroy_addr %2 : $*E
-  store %5 to [init] %2 : $*E
+  store %5 to %2 : $*E
   return %4 : $E
 }
 
@@ -2050,8 +2050,8 @@ bb0(%a : $Builtin.Int32):
   %2 = partial_apply %0<Builtin.Int32>() : $@convention(thin) <τ_0_0> (@in τ_0_0) -> @out τ_0_0
   %3 = alloc_stack $Builtin.Int32
   %4 = alloc_stack $Builtin.Int32
-  store %a to [trivial] %3 : $*Builtin.Int32
-  store %a to [trivial] %4 : $*Builtin.Int32
+  store %a to %3 : $*Builtin.Int32
+  store %a to %4 : $*Builtin.Int32
   %5 = apply %2(%3, %4) : $@callee_owned (@in Builtin.Int32) -> @out Builtin.Int32
   %6 = partial_apply %1<Builtin.Int32>() : $@convention(thin) <τ_0_0> (@in τ_0_0) -> Bool
   %7 = apply %6(%3) : $@callee_owned (@in Builtin.Int32) -> Bool
@@ -2779,7 +2779,7 @@ bb0(%0 : @guaranteed $MyClass):
   %3 = ref_to_raw_pointer %2 : $@opened("8CAE06CE-5F10-11E4-AF13-C82A1428F987") AnyObject to $Builtin.RawPointer
   %4 = pointer_to_address %3 : $Builtin.RawPointer to [strict] $*Builtin.Word
   %5 = integer_literal $Builtin.Word, 5
-  store %5 to [trivial] %4 : $*Builtin.Word
+  store %5 to %4 : $*Builtin.Word
   %6 = tuple ()
   return %6 : $()
 }
@@ -2793,7 +2793,7 @@ bb0(%0 : @guaranteed $MyClass):
 sil [ossa] @load_fixlifetime_address : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1: $*Builtin.NativeObject
+  store %0 to %1: $*Builtin.NativeObject
   fix_lifetime %1 : $*Builtin.NativeObject
   destroy_addr %1 : $*Builtin.NativeObject
   dealloc_stack %1 : $*Builtin.NativeObject
@@ -3159,7 +3159,7 @@ bb0:
   %1 = metatype $@thick T.Type
   %2 = init_existential_metatype %1 : $@thick T.Type, $@thick P.Type
   %3 = alloc_stack $@thick P.Type
-  store %2 to [trivial] %3 : $*@thick P.Type
+  store %2 to %3 : $*@thick P.Type
   %5 = alloc_stack $@thick Q.Type
   checked_cast_addr_br take_always P.Type in %3 : $*@thick P.Type to Q.Type in %5 : $*@thick Q.Type, bb1, bb3
 
@@ -3259,7 +3259,7 @@ bb1:                                              // Preds: bb0
   %6 = alloc_existential_box $Error, $VendingMachineError // users: %8, %9, %13
   %6a = project_existential_box $VendingMachineError in %6 : $Error
   %7 = enum $VendingMachineError, #VendingMachineError.OutOfStock!enumelt // user: %8
-  store %7 to [trivial] %6a : $*VendingMachineError        // id: %8
+  store %7 to %6a : $*VendingMachineError        // id: %8
   debug_value %6 : $Error, let, name "error" // id: %9
   %10 = float_literal $Builtin.FPIEEE80, 0x3FFF8000000000000000 // 1 // user: %11
   %11 = builtin "fptrunc_FPIEEE80_FPIEEE64"(%10 : $Builtin.FPIEEE80) : $Builtin.FPIEEE64 // user: %12
@@ -3298,7 +3298,7 @@ bb0(%0 : $*Array<Error>):
   %23 = enum $ErrorEnum, #ErrorEnum.errorCase!enumelt, %22 : $(label: Array<Error>)
   %36 = alloc_existential_box $Error, $ErrorEnum
   %37 = project_existential_box $ErrorEnum in %36 : $Error
-  store %23 to [init] %37 : $*ErrorEnum
+  store %23 to %37 : $*ErrorEnum
   destroy_value %36 : $Error
   %52 = tuple ()
   return %52 : $()
@@ -3318,7 +3318,7 @@ bb0(%0 : $*Array<Error>):
   end_borrow %20 : $Array<Error>
   %36 = alloc_existential_box $Error, $ErrorEnum
   %37 = project_existential_box $ErrorEnum in %36 : $Error
-  store %23a to [init] %37 : $*ErrorEnum
+  store %23a to %37 : $*ErrorEnum
   destroy_value %36 : $Error
   %52 = tuple ()
   return %52 : $()
@@ -3340,10 +3340,10 @@ struct OtherError: Error {
 // CHECK:      [[ERROR_COPY_1:%.*]] = copy_value [[ERROR]]
 // CHECK:      [[E:%[0-9]+]] = alloc_stack $Error
 // CHECK:      [[BOX_COPY:%.*]] = copy_value [[BOX]]
-// CHECK:      store [[BOX_COPY]] to [init] [[E]]
+// CHECK:      store [[BOX_COPY]] to [[E]]
 // CHECK:      [[T:%[0-9]+]] = alloc_stack $TestError
 // CHECK-NEXT: destroy_addr [[E]]
-// CHECK-NEXT: store [[ERROR_COPY_2]] to [init] [[T]]
+// CHECK-NEXT: store [[ERROR_COPY_2]] to [[T]]
 // CHECK-NEXT: struct_element_addr
 // CHECK:   } // end sil function 'unconditional_existential_box_cast'
 sil [ossa] @unconditional_existential_box_cast : $@convention(thin) (@guaranteed TestError) -> @owned AnyObject {
@@ -3351,11 +3351,11 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3376,13 +3376,13 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %u = function_ref @unknown_use_of_TestError : $@convention(thin) (@inout TestError) -> ()
   %r = apply %u(%2) : $@convention(thin) (@inout TestError) -> ()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3403,13 +3403,13 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %u = function_ref @unknown_use_of_box : $@convention(thin) (Error) -> ()
   %r = apply %u(%1) : $@convention(thin) (Error) -> ()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3430,11 +3430,11 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %u = function_ref @unknown_use_of_Error : $@convention(thin) (@inout Error) -> ()
   %r = apply %u(%5) : $@convention(thin) (@inout Error) -> ()
   %7 = alloc_stack $TestError
@@ -3455,13 +3455,13 @@ bb0(%0 : @guaranteed $TestError, %0a : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0c = copy_value %0 : $TestError
-  store %0c to [init] %2 : $*TestError
+  store %0c to %2 : $*TestError
   %0ac = copy_value %0a : $TestError
-  store %0ac to [init] %2 : $*TestError
+  store %0ac to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3480,12 +3480,12 @@ bb0(%0 : @guaranteed $TestError, %0a : @owned $Error):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0c = copy_value %0 : $TestError
-  store %0c to [init] %2 : $*TestError
+  store %0c to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
-  store %1 to [init] %5 : $*Error
+  store %1 to %5 : $*Error
   destroy_addr %5 : $*Error
-  store %0a to [init] %5 : $*Error
+  store %0a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3503,11 +3503,11 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $OtherError
   unconditional_checked_cast_addr Error in %5 : $*Error to OtherError in %7 : $*OtherError
   %10 = struct_element_addr %7 : $*OtherError, #OtherError.payload
@@ -3529,7 +3529,7 @@ bb0(%0 : @guaranteed $TestError):
 
 bb1:
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   br bb2
 
 bb2a:
@@ -3542,7 +3542,7 @@ bb3:
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload
@@ -3562,7 +3562,7 @@ bb4:
 // CHECK:      [[LIFETIME_EXTENDING_COPY:%.*]] = copy_value %0
 // CHECK:      [[E:%[0-9]+]] = alloc_stack $Error
 // CHECK:      [[T:%[0-9]+]] = alloc_stack $TestError
-// CHECK:      store [[LIFETIME_EXTENDING_COPY]] to [init] [[T]]
+// CHECK:      store [[LIFETIME_EXTENDING_COPY]] to [[T]]
 // CHECK-NEXT: [[I:%[0-9]+]] = integer_literal $Builtin.Int1, -1
 // CHECK-NEXT: cond_br [[I]], bb1, bb2
 // CHECK:   } // end sil function 'conditional_existential_box_cast'
@@ -3571,11 +3571,11 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   checked_cast_addr_br copy_on_success Error in %5 : $*Error to TestError in %7 : $*TestError, bb1, bb2
 
@@ -3599,7 +3599,7 @@ bb2:
 // CHECK:      [[E:%[0-9]+]] = alloc_stack $Error
 // CHECK:      [[T:%[0-9]+]] = alloc_stack $TestError
 // CHECK:      destroy_addr [[E]]
-// CHECK-NEXT: store [[LIFETIME_EXTENDING_COPY]] to [init] [[T]]
+// CHECK-NEXT: store [[LIFETIME_EXTENDING_COPY]] to [[T]]
 // CHECK-NEXT: [[I:%[0-9]+]] = integer_literal $Builtin.Int1, -1
 // CHECK-NEXT: cond_br [[I]], bb1, bb2
 // CHECK:   } // end sil function 'taking_conditional_existential_box_cast'
@@ -3608,11 +3608,11 @@ bb0(%0 : @guaranteed $TestError):
   %1 = alloc_existential_box $Error, $TestError
   %2 = project_existential_box $TestError in %1 : $Error
   %0a = copy_value %0 : $TestError
-  store %0a to [init] %2 : $*TestError
+  store %0a to %2 : $*TestError
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   %1a = copy_value %1 : $Error
-  store %1a to [init] %5 : $*Error
+  store %1a to %5 : $*Error
   %7 = alloc_stack $TestError
   checked_cast_addr_br take_on_success Error in %5 : $*Error to TestError in %7 : $*TestError, bb1, bb2
 
@@ -3636,7 +3636,7 @@ sil [reabstraction_thunk] @_TTRXFo_iSS_iSb_XFo_oSS_dSb_ : $@convention(thin) (@o
 // CHECK-LABEL: sil [ossa] @remove_identity_reabstraction_thunks :
 // CHECK:  [[STK:%.*]] = alloc_stack $@callee_owned (@owned String) -> Bool
 // CHECK-NOT: partial_apply
-// CHECK:  store %0 to [init] [[STK]]
+// CHECK:  store %0 to [[STK]]
 // CHECK:  [[LD:%.*]] = load [take] [[STK]]
 // CHECK:  destroy_value [[LD]]
 // CHECK:  dealloc_stack [[STK]]
@@ -3651,7 +3651,7 @@ bb0(%0 : @owned $@callee_owned (@owned String) -> Bool):
   // function_ref reabstraction thunk helper from @callee_owned (@in Swift.String) -> (@out Swift.Bool) to @callee_owned (@owned Swift.String) -> (@unowned Swift.Bool)
   %4 = function_ref @_TTRXFo_iSS_iSb_XFo_oSS_dSb_ : $@convention(thin) (@owned String, @owned @callee_owned (@in String) -> @out Bool) -> Bool
   %5 = partial_apply %4(%3) : $@convention(thin) (@owned String, @owned @callee_owned (@in String) -> @out Bool) -> Bool
-  store %5 to [init] %1 : $*@callee_owned (@owned String) -> Bool
+  store %5 to %1 : $*@callee_owned (@owned String) -> Bool
   %6 = load [take] %1 : $*@callee_owned (@owned String) -> Bool
   destroy_value %6 : $@callee_owned (@owned String) -> Bool
   dealloc_stack %1 : $*@callee_owned (@owned String) -> Bool
@@ -3735,7 +3735,7 @@ bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
 // XHECK-NEXT: [[LIFETIME_EXTEND_B_PTR:%.*]] = copy_value [[B_PTR]]
 // XHECK-NEXT: destroy_value [[B_PTR]]
 // XHECK-NEXT: [[ENUM:%[0-9]+]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[LIFETIME_EXTEND_B_PTR]] : $B
-// XHECK-NEXT: store [[ENUM]] to [init] [[ALLOCA]]
+// XHECK-NEXT: store [[ENUM]] to [[ALLOCA]]
 // XHECK-NEXT: [[RESULT:%[0-9]+]] = load [take] [[ALLOCA]]
 // XHECK-NEXT: dealloc_stack
 // XHECK-NEXT: return [[RESULT]]
@@ -3745,7 +3745,7 @@ bb0(%0 : @owned $B):
   %2 = alloc_stack $FakeOptional<B>
   %3 = init_enum_data_addr %2 : $*FakeOptional<B>, #FakeOptional.some!enumelt
   %0a = copy_value %0 : $B
-  store %0a to [init] %3 : $*B
+  store %0a to %3 : $*B
 
   // This instruction between the store and the inject_enum_addr should not prevent
   // the optimization.
@@ -3764,7 +3764,7 @@ bb0(%0 : @owned $B):
   %2 = alloc_stack $FakeOptional<B>
   %3 = init_enum_data_addr %2 : $*FakeOptional<B>, #FakeOptional.some!enumelt
   %0a = copy_value %0 : $B
-  store %0a to [init] %3 : $*B
+  store %0a to %3 : $*B
 
   // This instruction between the store and the inject_enum_addr should not prevent
   // the optimization.
@@ -3789,7 +3789,7 @@ sil [ossa] @init_enum : $@convention(thin) () -> @out B
 // XHECK:               apply [[V2]]([[V3]])
 // XHECK:  [[V4:%.*]] = load [take] [[V3]]
 // XHECK:  [[V5:%.*]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[V4]]
-// XHECK:  store [[V5]] to [init] [[V1]]
+// XHECK:  store [[V5]] to [[V1]]
 
 sil [ossa] @enum_promotion_case4 : $@convention(thin) () -> @owned FakeOptional<B> {
 bb0:
@@ -3891,7 +3891,7 @@ sil [ossa] @any_to_object : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) 
 // XHECK:   [[S:%[0-9]+]] = alloc_stack $Any
 // XHECK:   [[M:%[0-9]+]] = open_existential_metatype [[EM]]
 // XHECK:   [[E:%[0-9]+]] = init_existential_addr [[S]]
-// XHECK:   store [[M]] to [trivial] [[E]]
+// XHECK:   store [[M]] to [[E]]
 // XHECK:   apply {{%[0-9]+}}<(@opened("5F99B72C-EC40-11EA-9534-8C8590A6A134") AnyObject).Type>([[E]])
 // XHECK: } // end sil function 'dont_crash_when_propagating_existentials'
 sil [ossa] @dont_crash_when_propagating_existentials : $@convention(thin) () -> @owned AnyObject {
@@ -3901,7 +3901,7 @@ bb0:
   %3 = alloc_stack $Any, let, name "object"
   %4 = open_existential_metatype %1 : $@thick AnyObject.Type to $@thick (@opened("5F99B72C-EC40-11EA-9534-8C8590A6A134") AnyObject).Type
   %5 = init_existential_addr %3 : $*Any, $(@opened("5F99B72C-EC40-11EA-9534-8C8590A6A134") AnyObject).Type
-  store %4 to [trivial] %5 : $*@thick (@opened("5F99B72C-EC40-11EA-9534-8C8590A6A134") AnyObject).Type
+  store %4 to %5 : $*@thick (@opened("5F99B72C-EC40-11EA-9534-8C8590A6A134") AnyObject).Type
   %7 = open_existential_addr immutable_access %3 : $*Any to $*@opened("5F9F1B04-EC40-11EA-9534-8C8590A6A134") Any
   %8 = function_ref @any_to_object : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> @owned AnyObject
   %9 = apply %8<@opened("5F9F1B04-EC40-11EA-9534-8C8590A6A134") Any>(%7) : $@convention(thin) <τ_0_0> (@in_guaranteed τ_0_0) -> @owned AnyObject
@@ -4916,7 +4916,7 @@ bb2:
 // CHECK-NEXT: [[LOADED_ARG_3:%.*]] = load [take] [[ARG]]
 // CHECK-NEXT: [[LOADED_ARG_3_EXT:%.*]] = unchecked_enum_data [[LOADED_ARG_3]]
 // CHECK-NEXT: [[NONE:%.*]] = enum $FakeOptional<
-// CHECK-NEXT: store [[NONE]] to [init] [[ARG]]
+// CHECK-NEXT: store [[NONE]] to [[ARG]]
 // CHECK-NEXT: br bb3([[LOADED_ARG_3_EXT]] :
 //
 // CHECK: bb3([[RESULT:%.*]] : @owned
@@ -4934,7 +4934,7 @@ bb1:
 bb2:
   %3 = load [take] %1 : $*KlassNativeObjEither
   %nil = enum $FakeOptional<KlassNativeObjEither>, #FakeOptional.none!enumelt
-  store %nil to [init] %0 : $*FakeOptional<KlassNativeObjEither>
+  store %nil to %0 : $*FakeOptional<KlassNativeObjEither>
   br bb3(%3 : $KlassNativeObjEither)
 
 bb3(%4 : @owned $KlassNativeObjEither):

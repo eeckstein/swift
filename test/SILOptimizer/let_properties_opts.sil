@@ -72,7 +72,7 @@ bb0(%0 : @owned $HasCenter):
   %4 = struct $Point (%3 : $Int64, %3 : $Int64)
   %5 = begin_borrow %0 : $HasCenter
   %6 = ref_element_addr %5 : $HasCenter, #HasCenter.centerPoint
-  store %4 to [trivial] %6 : $*Point
+  store %4 to %6 : $*Point
   end_borrow %5 : $HasCenter
   %9 = copy_value %0 : $HasCenter
   destroy_value %0 : $HasCenter

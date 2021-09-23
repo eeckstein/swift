@@ -171,7 +171,7 @@ enum AddressOnlyEnum {
 // CHECK: destroy_value %[[APY]]
 // CHECK: %[[PTR:.*]] = pointer_to_address %[[TPL]] : $Builtin.RawPointer to [strict] $*Any
 // CHECK: [[IOPAQUE:%.*]] = init_existential_value %{{.*}} : $Int, $Int, $Any
-// CHECK: store [[IOPAQUE]] to [init] %[[PTR]] : $*Any
+// CHECK: store [[IOPAQUE]] to %[[PTR]] : $*Any
 // CHECK: return %{{.*}} : $()
 // CHECK-LABEL: } // end sil function '$s20opaque_values_silgen21s020_______callVarArgyyF'
 public func s020_______callVarArg() {
@@ -347,11 +347,11 @@ func s130_____________wrap<T>(_ x: T) -> T? {
 // CHECK:   [[PROJ_BOX_ARG:%.*]] = project_box %{{.*}} : ${ var IndexingIterator<Range<Int>> }
 // CHECK:   [[APPLY_ARG1:%.*]] = apply
 // CHECK-NOT: alloc_stack $Int
-// CHECK-NOT: store [[APPLY_ARG1]] to [trivial]
+// CHECK-NOT: store [[APPLY_ARG1]] to
 // CHECK-NOT: alloc_stack $Range<Int>
 // CHECK-NOT: dealloc_stack
 // CHECK:   [[APPLY_ARG2:%.*]] = apply %{{.*}}<Range<Int>>
-// CHECK:   store [[APPLY_ARG2]] to [trivial] [[PROJ_BOX_ARG]]
+// CHECK:   store [[APPLY_ARG2]] to [[PROJ_BOX_ARG]]
 // CHECK:   br bb1
 // CHECK: bb1:
 // CHECK-NOT: alloc_stack $Optional<Int>
@@ -462,7 +462,7 @@ func s200______use_foo_var() {
 // CHECK:   [[EXIST_BOX:%.*]] = alloc_existential_box $Error, $@opened({{.*}}) Error & Foo
 // CHECK:   [[PROJ_BOX:%.*]] = project_existential_box $@opened({{.*}}) Error & Foo in [[EXIST_BOX]]
 // CHECK:   [[COPY_OPAQUE:%.*]] = copy_value [[OPAQUE_ARG]] : $@opened({{.*}}) Error & Foo
-// CHECK:   store [[COPY_OPAQUE]] to [init] [[PROJ_BOX]] : $*@opened({{.*}}) Error & Foo
+// CHECK:   store [[COPY_OPAQUE]] to [[PROJ_BOX]] : $*@opened({{.*}}) Error & Foo
 // CHECK-NOT:   destroy_value [[ARG]] : $Error & Foo
 // CHECK:   return [[EXIST_BOX]] : $Error
 // CHECK-LABEL: } // end sil function '$s20opaque_values_silgen21s210______compErasureys5Error_psAC_AA3FoopF'
@@ -510,13 +510,13 @@ func s230______condFromAny(_ x: Any) {
 // CHECK:   [[ALLOC_OF_BOX:%.*]] = alloc_box ${ var Error }
 // CHECK:   [[PROJ_BOX:%.*]] = project_box [[ALLOC_OF_BOX]]
 // CHECK:   [[COPY_ARG:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[COPY_ARG]] to [init] [[PROJ_BOX]]
+// CHECK:   store [[COPY_ARG]] to [[PROJ_BOX]]
 // CHECK:   [[READ:%.*]] = begin_access [read] [unknown] [[PROJ_BOX]] : $*Error
 // CHECK:   [[LOAD_BOX:%.*]] = load [copy] [[READ]]
 // CHECK:   [[OPAQUE_ARG:%.*]] = open_existential_box [[LOAD_BOX]] : $Error to $*@opened({{.*}}) Error
 // CHECK:   [[LOAD_OPAQUE:%.*]] = load [copy] [[OPAQUE_ARG]]
 // CHECK:   [[ALLOC_OPEN:%.*]] = alloc_stack $@opened({{.*}}) Error
-// CHECK:   store [[LOAD_OPAQUE]] to [init] [[ALLOC_OPEN]]
+// CHECK:   store [[LOAD_OPAQUE]] to [[ALLOC_OPEN]]
 // CHECK:   [[RET_VAL:%.*]] = apply {{.*}}<@opened({{.*}}) Error>([[ALLOC_OPEN]])
 // CHECK:   return [[RET_VAL]] : $String
 // CHECK-LABEL: } // end sil function '$s20opaque_values_silgen21s240_____propOfLValueySSs5Error_pF'
@@ -670,7 +670,7 @@ func s330___addrLetClosure<T>(_ x:T) -> T {
 // CHECK:   [[PROJ_BOX:%.*]] = project_box [[ALLOC_OF_BOX]]
 // CHECK:   [[APPLY_FOR_BOX:%.*]] = apply %{{.*}}(%{{.*}}) : $@convention(method) (@thin AddressOnlyStruct.Type) -> AddressOnlyStruct
 // CHECK:   [[INIT_OPAQUE:%.*]] = init_existential_value [[APPLY_FOR_BOX]] : $AddressOnlyStruct, $AddressOnlyStruct, $EmptyP
-// CHECK:   store [[INIT_OPAQUE]] to [init] [[PROJ_BOX]] : $*EmptyP
+// CHECK:   store [[INIT_OPAQUE]] to [[PROJ_BOX]] : $*EmptyP
 // CHECK:   [[BORROW_BOX:%.*]] = begin_borrow [[ALLOC_OF_BOX]] : ${ var EmptyP }
 // CHECK:   mark_function_escape [[PROJ_BOX]] : $*EmptyP
 // CHECK:   apply %{{.*}}([[BORROW_BOX]]) : $@convention(thin) (@guaranteed { var EmptyP }) -> ()
@@ -694,7 +694,7 @@ func s340_______captureBox() {
 // CHECK:   [[PROJ_BOX:%.*]] = project_box [[ALLOC_OF_BOX]]
 // CHECK:   [[APPLY_FOR_BOX:%.*]] = apply %{{.*}}(%{{.*}}) : $@convention(method) (@thin AddressOnlyStruct.Type) -> AddressOnlyStruct
 // CHECK:   [[INIT_OPAQUE:%.*]] = init_existential_value [[APPLY_FOR_BOX]] : $AddressOnlyStruct, $AddressOnlyStruct, $EmptyP
-// CHECK:   store [[INIT_OPAQUE]] to [init] [[PROJ_BOX]] : $*EmptyP
+// CHECK:   store [[INIT_OPAQUE]] to [[PROJ_BOX]] : $*EmptyP
 // CHECK:   [[APPLY_FOR_BRANCH:%.*]] = apply %{{.*}}([[ARG]]) : $@convention(method) (Bool) -> Builtin.Int1
 // CHECK:   cond_br [[APPLY_FOR_BRANCH]], bb2, bb1
 // CHECK: bb1:
@@ -768,7 +768,7 @@ func s370_____optToOptCast<T>(_ x : T!) -> T? {
 // CHECK: bb0([[ARG:%.*]] : $Optional<Int>):
 // CHECK:   [[ALLOC_OF_BOX:%.*]] = alloc_box ${ var Optional<Int> }, var
 // CHECK:   [[PROJ_BOX:%.*]] = project_box [[ALLOC_OF_BOX]]
-// CHECK:   store [[ARG]] to [trivial] [[PROJ_BOX]] : $*Optional<Int>
+// CHECK:   store [[ARG]] to [[PROJ_BOX]] : $*Optional<Int>
 // CHECK:   destroy_value [[ALLOC_OF_BOX]]
 // CHECK:   return %{{.*}} : $()
 // CHECK-LABEL: } // end sil function '$s20opaque_values_silgen21s380___contextualInityySiSgF'
@@ -1063,7 +1063,7 @@ func s999_____condTFromAny<T>(_ x: Any, _ y: T) {
 // CHECK:   [[ACCESS_PROJECT_Y_BOX:%.*]] = begin_access [read] [unknown] [[PROJECT_Y_BOX]] : $*Int
 // CHECK:   [[Y:%.*]] = load [trivial] [[ACCESS_PROJECT_Y_BOX]] : $*Int
 // CHECK:   [[Y_ANY_FOR_X:%.*]] = init_existential_value [[Y]] : $Int, $Int, $Any
-// CHECK:   store [[Y_ANY_FOR_X]] to [init] [[PROJECT_X_BOX]]
+// CHECK:   store [[Y_ANY_FOR_X]] to [[PROJECT_X_BOX]]
 // CHECK:   [[ACCESS_PROJECT_Y_BOX:%.*]] = begin_access [read] [unknown] [[PROJECT_Y_BOX]] : $*Int
 // CHECK:   [[Y:%.*]] = load [trivial] [[ACCESS_PROJECT_Y_BOX]] : $*Int
 // CHECK:   [[Y_ANY_FOR_Z:%.*]] = init_existential_value [[Y]] : $Int, $Int, $Any
@@ -1117,8 +1117,8 @@ public func s020_______assignToVar() {
 // CHECK:   [[APPLYARG:%.*]] = apply [[ARG]]() : $@callee_guaranteed () -> (Int, Int)
 // CHECK:   [[TEXTRACT0:%.*]] = tuple_extract [[APPLYARG]] : $(Int, Int), 0
 // CHECK:   [[TEXTRACT1:%.*]] = tuple_extract [[APPLYARG]] : $(Int, Int), 1
-// CHECK:   store [[TEXTRACT0]] to [trivial] [[TADDR0]] : $*Int
-// CHECK:   store [[TEXTRACT1]] to [trivial] [[TADDR1]] : $*Int
+// CHECK:   store [[TEXTRACT0]] to [[TADDR0]] : $*Int
+// CHECK:   store [[TEXTRACT1]] to [[TADDR1]] : $*Int
 // CHECK:   [[LOAD_EXIST:%.*]] = load [trivial] [[IADDR]] : $*(Int, Int)
 // CHECK:   [[RETVAL:%.*]] = init_existential_value [[LOAD_EXIST]] : $(Int, Int), $(Int, Int), $Any
 // CHECK:   dealloc_stack [[ASTACK]] : $*Any
@@ -1223,9 +1223,9 @@ extension Dictionary {
 // CHECK:   [[ASTACK:%.*]] = alloc_stack $Any
 // CHECK:   [[IADDR:%.*]] = init_existential_addr [[ASTACK]] : $*Any, $(Int, Int)
 // CHECK:   [[TADDR0:%.*]] = tuple_element_addr [[IADDR]] : $*(Int, Int), 0
-// CHECK:   store [[ARG0]] to [trivial] [[TADDR0]] : $*Int
+// CHECK:   store [[ARG0]] to [[TADDR0]] : $*Int
 // CHECK:   [[TADDR1:%.*]] = tuple_element_addr [[IADDR]] : $*(Int, Int), 1
-// CHECK:   store [[ARG1]] to [trivial] [[TADDR1]] : $*Int
+// CHECK:   store [[ARG1]] to [[TADDR1]] : $*Int
 // CHECK:   [[LOAD_EXIST:%.*]] = load [trivial] [[IADDR]] : $*(Int, Int)
 // CHECK:   [[INIT_OPAQUE:%.*]] = init_existential_value [[LOAD_EXIST]] : $(Int, Int), $(Int, Int), $Any
 // CHECK:   [[BORROWED_INIT_OPAQUE:%.*]] = begin_borrow [[INIT_OPAQUE]]

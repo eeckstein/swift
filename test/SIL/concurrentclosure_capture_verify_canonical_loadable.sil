@@ -46,7 +46,7 @@ bb0:
   // function_ref Int.init(_builtinIntegerLiteral:)
   %4 = function_ref @$sSi22_builtinIntegerLiteralSiBI_tcfC : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int // user: %5
   %5 = apply %4(%2, %3) : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int // user: %6
-  store %5 to [trivial] %1 : $*Int                // id: %6
+  store %5 to %1 : $*Int                // id: %6
   // function_ref closure #1 in testCaseTrivialValue()
   %7 = function_ref @$s37concurrentfunction_capturediagnostics20testCaseTrivialValueyyFyyJcfU_ : $@convention(thin) @Sendable (@guaranteed { var Int }) -> () // user: %10
   %8 = copy_value %0 : ${ var Int }               // user: %10

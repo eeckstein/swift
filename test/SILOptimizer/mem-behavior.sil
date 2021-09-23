@@ -454,7 +454,7 @@ bb0(%0 : @owned $Parent, %1 : $*Builtin.Int32):
 
   %three = integer_literal $Builtin.Int32, 3
   %access = begin_access [modify] [static] %1 : $*Builtin.Int32
-  store %three to [trivial] %access : $*Builtin.Int32
+  store %three to %access : $*Builtin.Int32
   end_access %access : $*Builtin.Int32
 
   %borrow2 = begin_borrow %child : $C
@@ -517,7 +517,7 @@ bb0(%0 : $*Builtin.Int32):
   end_access %read : $*Builtin.Int32
   %three = integer_literal $Builtin.Int32, 3
   %write = begin_access [modify] [static] %0 : $*Builtin.Int32
-  store %three to [trivial] %write : $*Builtin.Int32
+  store %three to %write : $*Builtin.Int32
   end_access %write : $*Builtin.Int32
   return %val : $Builtin.Int32
 }
@@ -551,7 +551,7 @@ bb0(%0 : $*Builtin.Int32):
 sil [ossa] @testInitAccess : $@convention(thin) (Builtin.Int32) -> @out Builtin.Int32 {
 bb0(%0 : $*Builtin.Int32, %1 : $Builtin.Int32):
   %init = begin_access [init] [static] %0 : $*Builtin.Int32
-  store %1 to [trivial] %init : $*Builtin.Int32
+  store %1 to %init : $*Builtin.Int32
   end_access %init : $*Builtin.Int32
   %val = load [trivial] %0 : $*Builtin.Int32
   %r = tuple ()
@@ -596,7 +596,7 @@ sil [ossa] @testModifyAccessOfClassProperty : $@convention(thin) (@guaranteed X,
 bb0(%0 : @guaranteed $X, %1 : $Int32):
   %2 = ref_element_addr %0 : $X, #X.a
   %3 = begin_access [modify] [dynamic] %2 : $*Int32
-  store %1 to [trivial] %3 : $*Int32
+  store %1 to %3 : $*Int32
   %5 = function_ref @nouser_func : $@convention(thin) () -> ()
   %6 = apply %5() : $@convention(thin) () -> ()
   end_access %3 : $*Int32

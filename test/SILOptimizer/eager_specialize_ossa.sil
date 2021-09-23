@@ -169,7 +169,7 @@ bb0(%0 : $*T, %1 : $*G<T>, %2 : $*T.Elt):
   // function_ref specialized getGenericContainer<A where ...> (G<A>, e : A.Elt) -> A
 // CHECK:   [[SPEC_FUNC:%.*]] = function_ref @$s16eager_specialize19getGenericContainer_1exAA1GVyxG_3EltQztAA03HasF0RzAA02AnF0AHRQlF4main1SV_Tg5 : $@convention(thin) (G<S>, X) -> S
 // CHECK:   [[RESULT:%.*]] = apply [[SPEC_FUNC]]([[ARG1_VAL]], [[ARG2_VAL]]) : $@convention(thin) (G<S>, X) -> S
-// CHECK:   store [[RESULT]] to [trivial] [[ARG0_CAST]] : $*S
+// CHECK:   store [[RESULT]] to [[ARG0_CAST]] : $*S
 // CHECK:   [[TUP:%.*]] = tuple ()
 // CHECK:   unchecked_trivial_bit_cast [[TUP]] : $() to $()
 // CHECK:   br bb3
@@ -233,7 +233,7 @@ bb0(%0 : $*T, %1 : $GTrivial<T>, %2 : $*T.Elt):
   // function_ref specialized getGenericContainer<A where ...> (G<A>, e : A.Elt) -> A
 // CHECK:   [[SPEC_FUNC:%.*]] = function_ref @$s16eager_specialize26getGenericContainerTrivial_1exAA1GVyxG_3EltQztAA03HasF0RzAA02AnF0AHRQlF4main1SV_Tg5 : $@convention(thin) (GTrivial<S>, X) -> S
 // CHECK:   [[RESULT:%.*]] = apply [[SPEC_FUNC]]([[ARG1_CAST]], [[ARG2_VAL]]) : $@convention(thin) (GTrivial<S>, X) -> S
-// CHECK:   store [[RESULT]] to [trivial] [[ARG0_CAST]] : $*S
+// CHECK:   store [[RESULT]] to [[ARG0_CAST]] : $*S
 // CHECK:   [[TUP:%.*]] = tuple ()
 // CHECK:   unchecked_trivial_bit_cast [[TUP]] : $() to $()
 // CHECK:   br bb5
@@ -263,7 +263,7 @@ bb0(%0 : $*T, %1 : $*G<T>, %2 : $*T.Elt):
 // CHECK:   [[ARG2_LOAD:%.*]] = load [take] [[ARG2_CAST]]
 // CHECK:   [[FUNC:%.*]] =  function_ref @$s16eager_specialize25getGenericContainer_owned_1exAA1GVyxG_3EltQztAA8HasownedRzAA7AnownedAHRQlF4main0E5KlassC_Tg5 : $@convention(thin) (@guaranteed G<ContainerKlass>, @owned EltTrivialKlass) -> @owned ContainerKlass
 // CHECK:   [[RESULT:%.*]] = apply [[FUNC]]([[ARG1_LOAD_BORROW]], [[ARG2_LOAD]]) : $@convention(thin) (@guaranteed G<ContainerKlass>, @owned EltTrivialKlass) -> @owned ContainerKlass
-// CHECK:   store [[RESULT]] to [init] [[ARG0_CAST]]
+// CHECK:   store [[RESULT]] to [[ARG0_CAST]]
 // CHECK: } // end sil function '$s16eager_specialize25getGenericContainer_owned_1exAA1GVyxG_3EltQztAA03HasF0RzAA02AnF0AHRQlF'
 
 sil [_specialize where T == ContainerKlass] [ossa] @$s16eager_specialize30getGenericContainer_guaranteed_1exAA1GVyxG_3EltQztAA03HasF0RzAA02AnF0AHRQlF : $@convention(thin) <T where T : HasElt, T.Elt : AnElt> (@in_guaranteed G<T>, @in_guaranteed T.Elt) -> @out T {
@@ -288,7 +288,7 @@ bb0(%0 : $*T, %1 : $*G<T>, %2 : $*T.Elt):
 // CHECK:   [[ARG2_LOAD:%.*]] = load_borrow [[ARG2_CAST]]
 // CHECK:   [[FUNC:%.*]] = function_ref @$s16eager_specialize30getGenericContainer_guaranteed_1exAA1GVyxG_3EltQztAA13HasguaranteedRzAA12AnguaranteedAHRQlF4main0E5KlassC_Tg5 : $@convention(thin) (@guaranteed G<ContainerKlass>, @guaranteed EltTrivialKlass) -> @owned ContainerKlass
 // CHECK:   [[RESULT:%.*]] = apply [[FUNC]]([[ARG1_LOAD_BORROW]], [[ARG2_LOAD]]) : $@convention(thin) (@guaranteed G<ContainerKlass>, @guaranteed EltTrivialKlass) -> @owned ContainerKlass
-// CHECK:   store [[RESULT]] to [init] [[ARG0_CAST]]
+// CHECK:   store [[RESULT]] to [[ARG0_CAST]]
 // CHECK: } // end sil function '$s16eager_specialize30getGenericContainer_guaranteed_1exAA1GVyxG_3EltQztAA03HasF0RzAA02AnF0AHRQlF'
 
 // --- test: rethrow
@@ -332,7 +332,7 @@ bb1:
   %24 = alloc_existential_box $Error, $ArithmeticError
   %25 = project_existential_box $ArithmeticError in %24 : $Error
   %26 = enum $ArithmeticError, #ArithmeticError.DivByZero!enumelt
-  store %26 to [trivial] %25 : $*ArithmeticError
+  store %26 to %25 : $*ArithmeticError
   throw %24 : $Error
 
 bb2:
@@ -395,7 +395,7 @@ bb2:
 // CHECK:   br bb4(%{{.*}} : $Error)
 
 // CHECK: bb9(%{{.*}} : $Int):
-// CHECK:   store %{{.*}} to [trivial] %{{.*}} : $*Int
+// CHECK:   store %{{.*}} to %{{.*}} : $*Int
 // CHECK:   %{{.*}} = tuple ()
 // CHECK:   %{{.*}} = unchecked_trivial_bit_cast %{{.*}} : $() to $()
 // CHECK:   br bb6
@@ -783,7 +783,7 @@ bb0(%0 : $*T, %1 : $*S):
 // CHECK-LABEL: sil shared [ossa] @$s16eager_specialize34checkExplicitPartialSpecializationyyx_q_tr0_lFs5Int64Vq_ADRszr0_lIetyi_Tp5 : $@convention(thin) <T, S where T == Int64> (Int64, @in S) -> ()
 // CHECK: bb0(%0 : $Int64, %1 : $*S):
 // CHECK:   %2 = alloc_stack $Int64
-// CHECK:   store %0 to [trivial] %2 : $*Int64
+// CHECK:   store %0 to %2 : $*Int64
 // CHECK:   destroy_addr %1 : $*S
 // CHECK:   destroy_addr %2 : $*Int64
 // CHECK:   %{{.*}} = tuple ()
@@ -865,7 +865,7 @@ sil @error : $@convention(thin) () -> Never
 // CHECK:  %{{.*}} = unchecked_trivial_bit_cast %2 : $@thick Self.Type to $@thick T.Type
 // CHECK:  %{{.*}} = function_ref @$s16eager_specialize1PPAAE1fyxxFZ4main1TV_Tg5 : $@convention(method) (T, @thick T.Type) -> T
 // CHECK:  %{{.*}} = apply %{{.*}}(%{{.*}}, %{{.*}}) : $@convention(method) (T, @thick T.Type) -> T
-// CHECK:  store %{{.*}} to [trivial] %{{.*}} : $*T
+// CHECK:  store %{{.*}} to %{{.*}} : $*T
 // CHECK:  %{{.*}} = tuple ()
 // CHECK:  unreachable 
 // CHECK: } // end sil function '$s16eager_specialize1PPAAE1fyxxFZ'

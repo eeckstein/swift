@@ -399,8 +399,7 @@ broadenSingleElementStores(StoreInst *storeInst,
   }
 
   // Store the new struct-wrapped value into the final base address.
-  builder.createStore(storeInst->getLoc(), result, storeAddr,
-                      storeInst->getOwnershipQualifier());
+  builder.createStore(storeInst->getLoc(), result, storeAddr);
 
   // Erase the original store.
   return killInstruction(storeInst, nextII, pass);

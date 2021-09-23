@@ -30,7 +30,7 @@ entry(%0 : $*T, %1 : $Int):
   %f = function_ref @promotable_box : $@convention(thin) (@owned <τ_0_0> { var τ_0_0 } <Int>) -> Int
   %b = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
   %a = project_box %b : $<τ_0_0> { var τ_0_0 } <Int>, 0
-  store %1 to [trivial] %a : $*Int
+  store %1 to %a : $*Int
   %k = partial_apply [callee_guaranteed] %f(%b) : $@convention(thin) (@owned <τ_0_0> { var τ_0_0 } <Int>) -> Int
   return %k : $@callee_guaranteed () -> Int
 }
@@ -66,7 +66,7 @@ entry(%0 : $*T, %1 : $*U, %2 : $Int):
   %f = function_ref @generic_promotable_box : $@convention(thin) <V> (@in V, @owned <τ_0_0> { var τ_0_0 } <Int>) -> Int
   %b = alloc_box $<τ_0_0> { var τ_0_0 } <Int>
   %a = project_box %b : $<τ_0_0> { var τ_0_0 } <Int>, 0
-  store %2 to [trivial] %a : $*Int
+  store %2 to %a : $*Int
   %k = partial_apply [callee_guaranteed] %f<U>(%b) : $@convention(thin) <V> (@in V, @owned <τ_0_0> { var τ_0_0 } <Int>) -> Int
   return %k : $@callee_guaranteed (@in U) -> Int
 }

@@ -623,8 +623,7 @@ SILValue AddressMaterialization::initializeOperandMem(Operand *operand) {
     }
   } else {
     destAddr = materializeProjection(operand);
-    B.createStore(operand->getUser()->getLoc(), operand->get(), destAddr,
-                  StoreOwnershipQualifier::Unqualified);
+    B.createStore(operand->getUser()->getLoc(), operand->get(), destAddr);
   }
   return destAddr;
 }
@@ -791,8 +790,7 @@ void ApplyRewriter::rewriteIndirectParameter(Operand *operand) {
   AllocStackInst *allocInstr =
       argBuilder.createAllocStack(apply.getLoc(), argValue->getType());
 
-  argBuilder.createStore(apply.getLoc(), argValue, allocInstr,
-                         StoreOwnershipQualifier::Unqualified);
+  argBuilder.createStore(apply.getLoc(), argValue, allocInstr);
 
   operand->set(allocInstr);
 
@@ -1115,8 +1113,7 @@ void ReturnRewriter::rewriteReturn(ReturnInst *returnInst) {
             }
           } else {
             // Store the result into the result argument.
-            B.createStore(returnInst->getLoc(), origDirectResultVal, resultArg,
-                          StoreOwnershipQualifier::Unqualified);
+            B.createStore(returnInst->getLoc(), origDirectResultVal, resultArg);
           }
           ++newResultArgIdx;
         } else {
@@ -1251,8 +1248,6 @@ protected:
     SILValue srcAddr = storage.storageAddress;
 
     IsTake_t isTakeFlag = IsTake;
-    assert(storeInst->getOwnershipQualifier()
-           == StoreOwnershipQualifier::Unqualified);
 
     if (storage.isProjection()) {
       assert(!srcAddr);
@@ -1404,8 +1399,7 @@ protected:
       else {
         auto *elementAddr = B.createTupleElementAddr(
             tupleInst->getLoc(), tupleAddr, eltIdx, eltTy.getAddressType());
-        B.createStore(tupleInst->getLoc(), operand.get(), elementAddr,
-                      StoreOwnershipQualifier::Unqualified);
+        B.createStore(tupleInst->getLoc(), operand.get(), elementAddr);
       }
       ++eltIdx;
     }

@@ -2615,9 +2615,9 @@ bool AllocOptimize::tryToRemoveDeadAllocation() {
     // [take]. Consider the following SIL:
     //
     // %mem = alloc_stack
-    // store %arg to [init] %mem
+    // store %arg to %mem
     // %0 = load [take] %mem
-    // store %0 to [init] %mem
+    // store %0 to %mem
     // %1 = load [take] %mem
     // destroy_value %1
     // dealloc_stack %mem

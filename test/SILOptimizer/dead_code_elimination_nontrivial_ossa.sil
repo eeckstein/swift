@@ -355,7 +355,7 @@ struct TestStruct {
 sil [ossa] @dce_destructurenotfullydead : $@convention(thin) (@owned TestStruct) -> Int {
 bb0(%0 : @owned $TestStruct):
   %stk = alloc_stack $TestStruct
-  store %0 to [init] %stk : $*TestStruct
+  store %0 to %stk : $*TestStruct
   %copy = load [take] %stk : $*TestStruct
   (%2, %3) = destructure_struct %copy : $TestStruct
   %4 = struct $TestStruct (%2 : $Klass, %3 : $Int)
@@ -569,7 +569,7 @@ bb3(%newborrow : @guaranteed $NonTrivialStruct, %newowned1 : @owned $NonTrivialS
 sil [ossa] @dce_deadterm1 : $@convention(thin) (@owned FakeOptional<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $FakeOptional<Builtin.NativeObject>):
   %0a = alloc_stack $FakeOptional<Builtin.NativeObject>
-  store %0 to [init] %0a : $*FakeOptional<Builtin.NativeObject>
+  store %0 to %0a : $*FakeOptional<Builtin.NativeObject>
   %1 = load [take] %0a : $*FakeOptional<Builtin.NativeObject>
   switch_enum %1 : $FakeOptional<Builtin.NativeObject>, case #FakeOptional.some!enumelt: bb1, case #FakeOptional.none!enumelt: bb2
 
@@ -593,7 +593,7 @@ bb3:
 sil [ossa] @dce_deadterm2 : $@convention(thin) (@owned FakeOptional<Builtin.NativeObject>) -> () {
 bb0(%0 : @owned $FakeOptional<Builtin.NativeObject>):
   %0a = alloc_stack $FakeOptional<Builtin.NativeObject>
-  store %0 to [init] %0a : $*FakeOptional<Builtin.NativeObject>
+  store %0 to %0a : $*FakeOptional<Builtin.NativeObject>
   %1 = load [copy] %0a : $*FakeOptional<Builtin.NativeObject>
   switch_enum %1 : $FakeOptional<Builtin.NativeObject>, case #FakeOptional.some!enumelt: bb1, case #FakeOptional.none!enumelt: bb2
 

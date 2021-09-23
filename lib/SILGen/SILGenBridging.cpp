@@ -628,7 +628,7 @@ ManagedValue SILGenFunction::emitFuncToBlock(SILLocation loc,
   auto storageAddrTy = SILType::getPrimitiveAddressType(storageTy);
   auto storage = emitTemporaryAllocation(loc, storageAddrTy);
   auto capture = B.createProjectBlockStorage(loc, storage);
-  B.createStore(loc, fn, capture, StoreOwnershipQualifier::Init);
+  B.createStore(loc, fn, capture);
   auto invokeFn = B.createFunctionRefFor(loc, thunk);
 
   auto stackBlock = B.createInitBlockStorageHeader(loc, storage, invokeFn,

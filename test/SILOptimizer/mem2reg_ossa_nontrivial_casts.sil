@@ -14,7 +14,7 @@ import Swift
 sil [ossa] @casttotrivial : $@convention(thin) (@owned AnyObject) -> @owned UInt8 {
 bb0(%0 : @owned $AnyObject):
   %1 = alloc_stack $AnyObject
-  store %0 to [init] %1 : $*AnyObject
+  store %0 to %1 : $*AnyObject
   %2 = unchecked_addr_cast %1 : $*AnyObject to $*UInt8
   %3 = load [trivial] %2 : $*UInt8
   %4 = load [take] %1 : $*AnyObject
@@ -36,7 +36,7 @@ bb0(%0 : @owned $AnyObject):
 sil [ossa] @casttonontrivial : $@convention(thin) (@owned AnyObject) -> @owned String {
 bb0(%0 : @owned $AnyObject):
   %1 = alloc_stack $AnyObject
-  store %0 to [init] %1 : $*AnyObject
+  store %0 to %1 : $*AnyObject
   %2 = unchecked_addr_cast %1 : $*AnyObject to $*String
   %3 = load [copy] %2 : $*String
   %4 = load [take] %1 : $*AnyObject
@@ -56,7 +56,7 @@ struct Pair { var lhs: AnyObject; var rhs: AnyObject }
 sil [ossa] @shorteningcast : $@convention(thin) (@owned Pair) -> @owned AnyObject {
 bb0(%0 : @owned $Pair):
   %1 = alloc_stack $Pair
-  store %0 to [init] %1 : $*Pair
+  store %0 to %1 : $*Pair
   %2 = unchecked_addr_cast %1 : $*Pair to $*AnyObject
   %3 = load [copy] %2 : $*AnyObject
   %4 = load [take] %1 : $*Pair
@@ -72,7 +72,7 @@ bb0(%0 : @owned $Pair):
 sil [ossa] @deadcast : $@convention(thin) (@owned AnyObject) -> () {
 bb0(%0 : @owned $AnyObject):
   %1 = alloc_stack $AnyObject
-  store %0 to [init] %1 : $*AnyObject
+  store %0 to %1 : $*AnyObject
   %2 = unchecked_addr_cast %1 : $*AnyObject to $*String
   destroy_addr %1 : $*AnyObject
   dealloc_stack %1 : $*AnyObject

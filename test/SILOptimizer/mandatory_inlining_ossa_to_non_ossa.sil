@@ -35,7 +35,7 @@ bb0(%0 : @owned $Builtin.NativeObject):
   dealloc_stack %2 : $*Builtin.NativeObject
 
   %3 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %3 : $*Builtin.NativeObject
+  store %0 to %3 : $*Builtin.NativeObject
   %4 = load_borrow %3 : $*Builtin.NativeObject
   %f2 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %f2(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -70,10 +70,10 @@ bb0(%0 : $Builtin.NativeObject):
 sil [ossa] [transparent] @load_store_ossa_nontrivial_callee : $@convention(thin) (@owned Builtin.NativeObject, @owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %2 : $*Builtin.NativeObject
+  store %0 to %2 : $*Builtin.NativeObject
   %1a = copy_value %1 : $Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1a to [init] %2 : $*Builtin.NativeObject
+  store %1a to %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_value %3 : $Builtin.NativeObject
   %4 = load [take] %2 : $*Builtin.NativeObject
@@ -121,7 +121,7 @@ bb0(%0 : $Builtin.NativeObject, %1 : $Builtin.NativeObject):
 sil [ossa] [transparent] @load_store_ossa_trivial_callee : $@convention(thin) (Builtin.Int32) -> () {
 bb0(%0 : $Builtin.Int32):
   %1 = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %1 : $*Builtin.Int32
+  store %0 to %1 : $*Builtin.Int32
   %2 = load [trivial] %1 : $*Builtin.Int32
   %f = function_ref @int_user : $@convention(thin) (Builtin.Int32) -> ()
   apply %f(%2) : $@convention(thin) (Builtin.Int32) -> ()
@@ -296,7 +296,7 @@ sil [transparent] [ossa] @term_ossa_checked_cast_addr_br_takealways_callee : $@c
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
   %2 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   checked_cast_addr_br take_always Builtin.NativeObject in %1 : $*Builtin.NativeObject to Klass in %2 : $*Klass, bb1, bb2
 
 bb1:
@@ -352,7 +352,7 @@ sil [transparent] [ossa] @term_ossa_checked_cast_addr_br_takeonsuccess_callee : 
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
   %2 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   checked_cast_addr_br take_on_success Builtin.NativeObject in %1 : $*Builtin.NativeObject to Klass in %2 : $*Klass, bb1, bb2
 
 bb1:
@@ -406,7 +406,7 @@ sil [transparent] [ossa] @term_ossa_checked_cast_addr_br_copyonsuccess_callee : 
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
   %2 = alloc_stack $Klass
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   checked_cast_addr_br copy_on_success Builtin.NativeObject in %1 : $*Builtin.NativeObject to Klass in %2 : $*Klass, bb1, bb2
 
 bb1:

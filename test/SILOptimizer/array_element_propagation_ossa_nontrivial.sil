@@ -53,11 +53,11 @@ sil [_semantics "array.append_contentsOf"] @arrayAppendContentsOf : $@convention
 // CHECK-NOT: apply [[HFUN]]
 // CHECK-NOT: apply [[CFUN]]
 // CHECK-NOT: apply [[GFUN]]
-// CHECK:   store [[V0]] to [init] [[S0]]
+// CHECK:   store [[V0]] to [[S0]]
 // CHECK:   [[S1:%.*]] = alloc_stack $MyKlass
-// CHECK:   store [[V1]] to [init] [[S1]]
+// CHECK:   store [[V1]] to [[S1]]
 // CHECK:   [[S2:%.*]] = alloc_stack $MyKlass
-// CHECK:   store [[V2]] to [init] [[S2]]
+// CHECK:   store [[V2]] to [[S2]]
 // CHECK-LABEL: } // end sil function 'propagate_with_get_element_returning_direct_result'
 sil [ossa] @propagate_with_get_element_returning_direct_result : $@convention(thin) (@owned MyKlass, @owned MyKlass, @owned MyKlass) -> () {
 bb0(%arg0 : @owned $MyKlass, %arg1 : @owned $MyKlass, %arg2 : @owned $MyKlass):
@@ -75,15 +75,15 @@ bb0(%arg0 : @owned $MyKlass, %arg1 : @owned $MyKlass, %arg2 : @owned $MyKlass):
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyKlass
   %11 = integer_literal $Builtin.Word, 0
   %11a = struct $MyInt (%11 : $Builtin.Word)
-  store %arg0 to [init] %10 : $*MyKlass
+  store %arg0 to %10 : $*MyKlass
   %13 = integer_literal $Builtin.Word, 1
   %13a = struct $MyInt (%13 : $Builtin.Word)
   %14 = index_addr %10 : $*MyKlass, %13 : $Builtin.Word
-  store %arg1 to [init] %14 : $*MyKlass
+  store %arg1 to %14 : $*MyKlass
   %17 = integer_literal $Builtin.Word, 2
   %17a = struct $MyInt (%17 : $Builtin.Word)
   %18 = index_addr %10 : $*MyKlass, %17 : $Builtin.Word
-  store %arg2 to [init] %18 : $*MyKlass
+  store %arg2 to %18 : $*MyKlass
   %copy7 = copy_value %7 : $MyArray<MyKlass>
   %f = function_ref @finalize : $@convention(thin) (@owned MyArray<MyKlass>) -> @owned MyArray<MyKlass>
   %a = apply %f(%copy7) : $@convention(thin) (@owned MyArray<MyKlass>) -> @owned MyArray<MyKlass>
@@ -102,21 +102,21 @@ bb0(%arg0 : @owned $MyKlass, %arg1 : @owned $MyKlass, %arg2 : @owned $MyKlass):
   debug_value %30 : $_MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
   %32 = apply %31(%11a, %28, %30, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %32 to [init] %26 : $*MyKlass
+  store %32 to %26 : $*MyKlass
   %35 = alloc_stack $MyKlass
   debug_value %a : $MyArray<MyKlass>
   debug_value %28 : $MyBool
   %36 = apply %29(%13a, %28, %a) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyKlass>) -> _MyDependenceToken
   debug_value %36 : $_MyDependenceToken
   %37 = apply %31(%13a, %28, %36, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %37 to [init] %35 : $*MyKlass
+  store %37 to %35 : $*MyKlass
   %44 = alloc_stack $MyKlass
   debug_value %a : $MyArray<MyKlass>
   debug_value %28 : $MyBool
   %45 = apply %29(%17a, %28, %a) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyKlass>) -> _MyDependenceToken
   debug_value %45 : $_MyDependenceToken
   %46 = apply %31(%17a, %28, %45, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %46 to [init] %44 : $*MyKlass
+  store %46 to %44 : $*MyKlass
   destroy_addr %44 : $*MyKlass
   destroy_addr %35 : $*MyKlass
   destroy_addr %26 : $*MyKlass
@@ -150,15 +150,15 @@ bb0(%arg0 : @owned $MyKlass, %arg1 : @owned $MyKlass, %arg2 : @owned $MyKlass):
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyKlass
   %11 = integer_literal $Builtin.Word, 0
   %11a = struct $MyInt (%11 : $Builtin.Word)
-  store %arg0 to [init] %10 : $*MyKlass
+  store %arg0 to %10 : $*MyKlass
   %13 = integer_literal $Builtin.Word, 0
   %13a = struct $MyInt (%13 : $Builtin.Word)
   %14 = index_addr %10 : $*MyKlass, %13 : $Builtin.Word
-  store %arg1 to [init] %14 : $*MyKlass
+  store %arg1 to %14 : $*MyKlass
   %17 = integer_literal $Builtin.Word, 1
   %17a = struct $MyInt (%17 : $Builtin.Word)
   %18 = index_addr %10 : $*MyKlass, %17 : $Builtin.Word
-  store %arg2 to [init] %18 : $*MyKlass
+  store %arg2 to %18 : $*MyKlass
   %copy7 = copy_value %7 : $MyArray<MyKlass>
   %f = function_ref @finalize : $@convention(thin) (@owned MyArray<MyKlass>) -> @owned MyArray<MyKlass>
   %a = apply %f(%copy7) : $@convention(thin) (@owned MyArray<MyKlass>) -> @owned MyArray<MyKlass>
@@ -177,21 +177,21 @@ bb0(%arg0 : @owned $MyKlass, %arg1 : @owned $MyKlass, %arg2 : @owned $MyKlass):
   debug_value %30 : $_MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
   %32 = apply %31(%11a, %28, %30, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %32 to [init] %26 : $*MyKlass
+  store %32 to %26 : $*MyKlass
   %35 = alloc_stack $MyKlass
   debug_value %a : $MyArray<MyKlass>
   debug_value %28 : $MyBool
   %36 = apply %29(%13a, %28, %a) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyKlass>) -> _MyDependenceToken
   debug_value %36 : $_MyDependenceToken
   %37 = apply %31(%13a, %28, %36, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %37 to [init] %35 : $*MyKlass
+  store %37 to %35 : $*MyKlass
   %44 = alloc_stack $MyKlass
   debug_value %a : $MyArray<MyKlass>
   debug_value %28 : $MyBool
   %45 = apply %29(%17a, %28, %a) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyKlass>) -> _MyDependenceToken
   debug_value %45 : $_MyDependenceToken
   %46 = apply %31(%17a, %28, %45, %a) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %46 to [init] %44 : $*MyKlass
+  store %46 to %44 : $*MyKlass
   destroy_addr %44 : $*MyKlass
   destroy_addr %35 : $*MyKlass
   destroy_addr %26 : $*MyKlass
@@ -220,7 +220,7 @@ bb0(%arg0 : @owned $MyKlass):
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyKlass
   %11 = integer_literal $Builtin.Word, 0
   %11a = struct $MyInt (%11 : $Builtin.Word)
-  store %arg0 to [init] %10 : $*MyKlass
+  store %arg0 to %10 : $*MyKlass
   %borrow7 = begin_borrow %7 : $MyArray<MyKlass>
   %23 = struct_extract %borrow7 : $MyArray<MyKlass>, #MyArray._buffer
   %24 = struct_extract %23 : $_MyArrayBuffer<MyKlass>, #_MyArrayBuffer._storage
@@ -236,7 +236,7 @@ bb0(%arg0 : @owned $MyKlass):
   debug_value %30 : $_MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
   %32 = apply %31(%11a, %28, %30, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyKlass>) -> @owned MyKlass
-  store %32 to [init] %26 : $*MyKlass
+  store %32 to %26 : $*MyKlass
   %33 = function_ref @unknown_array_use : $@convention(method) (@guaranteed MyArray<MyKlass>) -> MyBool
   %34 = apply %33(%7) : $@convention(method) (@guaranteed MyArray<MyKlass>) -> MyBool
   destroy_addr %26 : $*MyKlass
@@ -255,11 +255,11 @@ sil [_semantics "array.append_contentsOf"] @arrayAppendContentsOfMyKlass : $@con
 // CHECK-NEXT: ([[OWNER:%[0-9]+]], [[PTR:%[0-9]+]]) = destructure_tuple [[ARR]]{{.*}}
 // CHECK:      [[COPY1:%.*]] = copy_value %1 : $MyKlass
 // CHECK-NEXT: [[COPY2:%.*]] = copy_value [[COPY1]] : $MyKlass
-// CHECK-NEXT: store [[COPY1]] to [init] %{{[0-9]+}} : $*MyKlass
+// CHECK-NEXT: store [[COPY1]] to %{{[0-9]+}} : $*MyKlass
 // CHECK-NOT:     apply
 // CHECK:      [[AEFUN:%.*]] = function_ref @$sSa6appendyyxnF
 // CHECK-NEXT: [[STACK:%.*]] = alloc_stack $MyKlass
-// CHECK-NEXT: store [[COPY2]] to [init] [[STACK]]
+// CHECK-NEXT: store [[COPY2]] to [[STACK]]
 // CHECK-NEXT: apply [[AEFUN]]<MyKlass>([[STACK]], %0)
 // CHECK-NEXT: dealloc_stack [[STACK]]
 // CHECK-NEXT: destroy_value [[OWNER]]
@@ -276,7 +276,7 @@ bb0(%0 : $*Array<MyKlass>, %1 : @owned $MyKlass):
   %13 = struct_extract %12 : $UnsafeMutablePointer<MyKlass>, #UnsafeMutablePointer._rawValue
   %22 = pointer_to_address %13 : $Builtin.RawPointer to [strict] $*MyKlass
   %copy1 = copy_value %1 : $MyKlass
-  store %copy1 to [init] %22 : $*MyKlass
+  store %copy1 to %22 : $*MyKlass
   %25 = function_ref @arrayAppendContentsOfMyKlass : $@convention(method) (@owned Array<MyKlass>, @inout Array<MyKlass>) -> ()
   %26 = apply %25(%11, %0) : $@convention(method) (@owned Array<MyKlass>, @inout Array<MyKlass>) -> ()
   return %1 : $MyKlass

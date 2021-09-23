@@ -2615,8 +2615,7 @@ static void updateControlVariable(SILLocation Loc,
     MaskVal = B.createBuiltin(Loc, OrFn, IVType, {}, Args);
   }
 
-  B.createStore(Loc, MaskVal, ControlVariable,
-                StoreOwnershipQualifier::Trivial);
+  B.createStore(Loc, MaskVal, ControlVariable);
 }
 
 /// Test a bit in the control variable at the current insertion point.
@@ -2729,8 +2728,7 @@ SILValue LifetimeChecker::handleConditionalInitAssign() {
   B.setCurrentDebugScope(InsertPoint->getDebugScope());
   SILValue ControlVariableAddr = ControlVariableBox;
   auto Zero = B.createIntegerLiteral(Loc, IVType, 0);
-  B.createStore(Loc, Zero, ControlVariableAddr,
-                StoreOwnershipQualifier::Trivial);
+  B.createStore(Loc, Zero, ControlVariableAddr);
 
   Identifier OrFn;
 

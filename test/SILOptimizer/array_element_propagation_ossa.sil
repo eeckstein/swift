@@ -54,11 +54,11 @@ sil [_semantics "array.append_contentsOf"] @arrayAppendContentsOf : $@convention
 // CHECK-NOT: apply [[HFUN]]
 // CHECK-NOT: apply [[CFUN]]
 // CHECK-NOT: apply [[GFUN]]
-// CHECK:   store [[I0]] to [trivial] [[S0]]
+// CHECK:   store [[I0]] to [[S0]]
 // CHECK:   [[S1:%.*]] = alloc_stack $MyInt
-// CHECK:   store [[I1]] to [trivial] [[S1]]
+// CHECK:   store [[I1]] to [[S1]]
 // CHECK:   [[S2:%.*]] = alloc_stack $MyInt
-// CHECK:   store [[I2]] to [trivial] [[S2]]
+// CHECK:   store [[I2]] to [[S2]]
 // CHECK-LABEL: } // end sil function 'propagate_with_get_element_returning_direct_result'
 sil [ossa] @propagate_with_get_element_returning_direct_result : $@convention(thin) () -> () {
   %0 = function_ref @swift_bufferAllocate : $@convention(thin) () -> @owned AnyObject
@@ -75,17 +75,17 @@ sil [ossa] @propagate_with_get_element_returning_direct_result : $@convention(th
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyInt
   %11 = integer_literal $Builtin.Int64, 0
   %12 = struct $MyInt (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*MyInt
+  store %12 to %10 : $*MyInt
   %13 = integer_literal $Builtin.Word, 1
   %14 = index_addr %10 : $*MyInt, %13 : $Builtin.Word
   %15 = integer_literal $Builtin.Int64, 1
   %16 = struct $MyInt (%15 : $Builtin.Int64)
-  store %16 to [trivial] %14 : $*MyInt
+  store %16 to %14 : $*MyInt
   %17 = integer_literal $Builtin.Word, 2
   %18 = index_addr %10 : $*MyInt, %17 : $Builtin.Word
   %19 = integer_literal $Builtin.Int64, 2
   %20 = struct $MyInt (%19 : $Builtin.Int64)
-  store %20 to [trivial] %18 : $*MyInt
+  store %20 to %18 : $*MyInt
   %borrow7 = begin_borrow %7 : $MyArray<MyInt>
   %23 = struct_extract %borrow7 : $MyArray<MyInt>, #MyArray._buffer
   %24 = struct_extract %23 : $_MyArrayBuffer<MyInt>, #_MyArrayBuffer._storage
@@ -101,7 +101,7 @@ sil [ossa] @propagate_with_get_element_returning_direct_result : $@convention(th
   debug_value %30 : $_MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
   %32 = apply %31(%12, %28, %30, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %32 to [trivial] %26 : $*MyInt
+  store %32 to %26 : $*MyInt
   %35 = alloc_stack $MyInt
   debug_value %16 : $MyInt
   debug_value %7 : $MyArray<MyInt>
@@ -109,14 +109,14 @@ sil [ossa] @propagate_with_get_element_returning_direct_result : $@convention(th
   %36 = apply %29(%16, %28, %7) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyInt>) -> _MyDependenceToken
   debug_value %36 : $_MyDependenceToken
   %37 = apply %31(%16, %28, %36, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %37 to [trivial] %35 : $*MyInt
+  store %37 to %35 : $*MyInt
   %44 = alloc_stack $MyInt
   debug_value %7 : $MyArray<MyInt>
   debug_value %28 : $MyBool
   %45 = apply %29(%20, %28, %7) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyInt>) -> _MyDependenceToken
   debug_value %45 : $_MyDependenceToken
   %46 = apply %31(%20, %28, %45, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %46 to [trivial] %44 : $*MyInt
+  store %46 to %44 : $*MyInt
   %52 = tuple ()
   dealloc_stack %44 : $*MyInt
   dealloc_stack %35 : $*MyInt
@@ -143,12 +143,12 @@ sil [ossa] @repeated_initialization : $@convention(thin) () -> () {
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyInt
   %11 = integer_literal $Builtin.Int64, 0
   %12 = struct $MyInt (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*MyInt
+  store %12 to %10 : $*MyInt
   %13 = integer_literal $Builtin.Word, 0
   %14 = index_addr %10 : $*MyInt, %13 : $Builtin.Word
   %15 = integer_literal $Builtin.Int64, 1
   %16 = struct $MyInt (%15 : $Builtin.Int64)
-  store %16 to [trivial] %14 : $*MyInt
+  store %16 to %14 : $*MyInt
   %borrow7 = begin_borrow %7 : $MyArray<MyInt>
   %23 = struct_extract %borrow7 : $MyArray<MyInt>, #MyArray._buffer
   %24 = struct_extract %23 : $_MyArrayBuffer<MyInt>, #_MyArrayBuffer._storage
@@ -161,11 +161,11 @@ sil [ossa] @repeated_initialization : $@convention(thin) () -> () {
   %30 = apply %29(%12, %28, %7) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyInt>) -> _MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
   %32 = apply %31(%12, %28, %30, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %32 to [trivial] %26 : $*MyInt
+  store %32 to %26 : $*MyInt
   %35 = alloc_stack $MyInt
   %36 = apply %29(%16, %28, %7) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyInt>) -> _MyDependenceToken
   %37 = apply %31(%16, %28, %36, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %37 to [trivial] %35 : $*MyInt
+  store %37 to %35 : $*MyInt
   %52 = tuple ()
   dealloc_stack %35 : $*MyInt
   dealloc_stack %26 : $*MyInt
@@ -190,7 +190,7 @@ sil [ossa] @unknown_use : $@convention(thin) () -> () {
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyInt
   %11 = integer_literal $Builtin.Int64, 0
   %12 = struct $MyInt (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*MyInt
+  store %12 to %10 : $*MyInt
   %borrow7 = begin_borrow %7 : $MyArray<MyInt>
   %23 = struct_extract %borrow7 : $MyArray<MyInt>, #MyArray._buffer
   %24 = struct_extract %23 : $_MyArrayBuffer<MyInt>, #_MyArrayBuffer._storage
@@ -203,7 +203,7 @@ sil [ossa] @unknown_use : $@convention(thin) () -> () {
   %30 = apply %29(%12, %28, %7) : $@convention(method) (MyInt, MyBool, @guaranteed MyArray<MyInt>) -> _MyDependenceToken
   %31 = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
   %32 = apply %31( %12, %28, %30, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
-  store %32 to [trivial] %26 : $*MyInt
+  store %32 to %26 : $*MyInt
   %33 = function_ref @unknown_array_use : $@convention(method) (@guaranteed MyArray<MyInt>) -> MyBool
   %34 = apply %33(%7) : $@convention(method) (@guaranteed MyArray<MyInt>) -> MyBool
   %52 = tuple ()
@@ -219,7 +219,7 @@ sil [ossa] @unknown_use : $@convention(thin) () -> () {
 // CHECK-NOT:  apply [[ACFUN]]
 // CHECK:      [[AEFUN:%.*]] = function_ref @$sSa6appendyyxnF
 // CHECK-NEXT: [[STACK:%.*]] = alloc_stack $MyInt
-// CHECK-NEXT: store %{{[0-9]+}} to [trivial] [[STACK]]
+// CHECK-NEXT: store %{{[0-9]+}} to [[STACK]]
 // CHECK-NEXT: apply [[AEFUN]]<MyInt>([[STACK]]
 // CHECK-NEXT: dealloc_stack [[STACK]]
 // CHECK-NEXT: destroy_value [[OWNER]]
@@ -237,12 +237,12 @@ sil [ossa] @append_contentsOf_int : $@convention(thin) () -> () {
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyInt
   %11 = integer_literal $Builtin.Int64, 27
   %12 = struct $MyInt (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*MyInt
+  store %12 to %10 : $*MyInt
   %13 = alloc_stack $Array<MyInt>
   %14 = metatype $@thin Array<MyInt>.Type
   %15 = function_ref @arrayInit : $@convention(method) (@thin Array<MyInt>.Type) -> @owned Array<MyInt>
   %16 = apply %15(%14) : $@convention(method) (@thin Array<MyInt>.Type) -> @owned Array<MyInt>
-  store %16 to [init] %13 : $*Array<MyInt>
+  store %16 to %13 : $*Array<MyInt>
   %17 = function_ref @arrayAppendContentsOf : $@convention(method) (@owned Array<MyInt>, @inout Array<MyInt>) -> ()
   %18 = apply %17(%7, %13) : $@convention(method) (@owned Array<MyInt>, @inout Array<MyInt>) -> ()
   destroy_addr %13 : $*Array<MyInt>
@@ -254,7 +254,7 @@ sil [ossa] @append_contentsOf_int : $@convention(thin) () -> () {
 // Ignore an invalid negative index without crashing.
 //
 // CHECK-LABEL: sil [ossa] @negative_index
-// CHECK: store %{{[0-9]+}} to [trivial]
+// CHECK: store %{{[0-9]+}} to
 // CHECK: [[GETF:%.*]] = function_ref @getElement : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
 // CHECK: apply [[GETF]](%15, %17, %19, %7) : $@convention(method) (MyInt, MyBool, _MyDependenceToken, @guaranteed MyArray<MyInt>) -> MyInt
 // CHECK-LABEL: // end sil function 'negative_index'
@@ -272,7 +272,7 @@ bb0:
   %10 = pointer_to_address %9 : $Builtin.RawPointer to [strict] $*MyInt
   %11 = integer_literal $Builtin.Int64, 0
   %12 = struct $MyInt (%11 : $Builtin.Int64)
-  store %12 to [trivial] %10 : $*MyInt
+  store %12 to %10 : $*MyInt
   %14 = integer_literal $Builtin.Int64, -1
   %15 = struct $MyInt (%14 : $Builtin.Int64)
   %16 = function_ref @hoistableIsNativeTypeChecked : $@convention(method) (@guaranteed MyArray<MyInt>) -> MyBool

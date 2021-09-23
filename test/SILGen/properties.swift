@@ -212,8 +212,8 @@ func logical_struct_in_reftype_set(_ value: inout Val, z1: Int) {
   // CHECK: [[GET_Z_TUPLE_METHOD:%[0-9]+]] = function_ref @$s10properties3ValV7z_tupleSi_Sitvg
   // CHECK: [[V_R_VP_Z_TUPLE:%[0-9]+]] = apply [[GET_Z_TUPLE_METHOD]]([[LD]])
   // CHECK: ([[T0:%.*]], [[T1:%.*]]) = destructure_tuple [[V_R_VP_Z_TUPLE]]
-  // CHECK: store [[T0]] to [trivial] [[A0]]
-  // CHECK: store [[T1]] to [trivial] [[A1]]
+  // CHECK: store [[T0]] to [[A0]]
+  // CHECK: store [[T1]] to [[A1]]
   // CHECK: end_borrow [[LD]]
   // -- write to val.ref.val_prop.z_tuple.1
   // CHECK: [[V_R_VP_Z_TUPLE_1:%[0-9]+]] = tuple_element_addr [[V_R_VP_Z_TUPLE_MAT]] : {{.*}}, 1
@@ -248,8 +248,8 @@ func tuple_in_logical_struct_set(_ value: inout Val, z1: Int) {
   // CHECK: [[Z_GET_METHOD:%[0-9]+]] = function_ref @$s10properties3ValV7z_tupleSi_Sitvg
   // CHECK: [[Z_TUPLE:%[0-9]+]] = apply [[Z_GET_METHOD]]([[VAL1]])
   // CHECK: ([[T0:%.*]], [[T1:%.*]]) = destructure_tuple [[Z_TUPLE]]
-  // CHECK: store [[T0]] to [trivial] [[A0]]
-  // CHECK: store [[T1]] to [trivial] [[A1]]
+  // CHECK: store [[T0]] to [[A0]]
+  // CHECK: store [[T1]] to [[A1]]
   // CHECK: end_borrow [[VAL1]]
   // CHECK: [[Z_TUPLE_1:%[0-9]+]] = tuple_element_addr [[Z_TUPLE_MATERIALIZED]] : {{.*}}, 1
   // CHECK: assign [[Z1]] to [[Z_TUPLE_1]]
@@ -672,7 +672,7 @@ class r19254812Derived: r19254812Base{
 // CHECK-NEXT:  [[PIPTR:%[0-9]+]] = ref_element_addr [[SELF]] : $r19254812Derived, #r19254812Derived.pi
 // CHECK:  [[FN:%[0-9]+]] = function_ref @$s10properties16r19254812DerivedC2piSdvpfi : $@convention(thin) () -> Double
 // CHECK-NEXT:  [[RESULT:%[0-9]+]] = apply [[FN]]() : $@convention(thin) () -> Double
-// CHECK-NEXT:  store [[RESULT]] to [trivial] [[PIPTR]] : $*Double
+// CHECK-NEXT:  store [[RESULT]] to [[PIPTR]] : $*Double
 
 // CHECK-NOT: destroy_value
 // CHECK-NOT: copy_value
@@ -778,7 +778,7 @@ struct MutatingGetterStruct {
   // CHECK-LABEL: sil hidden [ossa] @$s10properties20MutatingGetterStructV4test
   // CHECK: [[X:%.*]] = alloc_box ${ var MutatingGetterStruct }, var, name "x"
   // CHECK-NEXT: [[PB:%.*]] = project_box [[X]]
-  // CHECK: store {{.*}} to [trivial] [[PB]] : $*MutatingGetterStruct
+  // CHECK: store {{.*}} to [[PB]] : $*MutatingGetterStruct
   // CHECK: [[WRITE:%.*]] = begin_access [modify] [unknown] [[PB]]
   // CHECK: apply {{%.*}}([[WRITE]]) : $@convention(method) (@inout MutatingGetterStruct) -> Int
   static func test() {

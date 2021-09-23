@@ -129,7 +129,6 @@ struct OwnershipModelEliminatorVisitor
   }
 
   bool visitLoadInst(LoadInst *li);
-  bool visitStoreInst(StoreInst *si);
   bool visitStoreBorrowInst(StoreBorrowInst *si);
   bool visitCopyValueInst(CopyValueInst *cvi);
   bool visitDestroyValueInst(DestroyValueInst *dvi);
@@ -224,23 +223,6 @@ bool OwnershipModelEliminatorVisitor::visitLoadInst(LoadInst *li) {
   // Then remove the qualified load and use the unqualified load as the def of
   // all of LI's uses.
   eraseInstructionAndRAUW(li, result);
-  return true;
-}
-
-bool OwnershipModelEliminatorVisitor::visitStoreInst(StoreInst *si) {
-  auto qualifier = si->getOwnershipQualifier();
-
-  // If the qualifier is unqualified, there is nothing further to do
-  // here. Just return.
-  if (qualifier == StoreOwnershipQualifier::Unqualified)
-    return false;
-
-  withBuilder<void>(si, [&](SILBuilder &b, SILLocation loc) {
-    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest());
-  });
-
-  // Then remove the qualified store.
-  eraseInstruction(si);
   return true;
 }
 

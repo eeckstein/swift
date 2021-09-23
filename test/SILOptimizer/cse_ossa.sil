@@ -130,7 +130,7 @@ sil [ossa] @removeTriviallyDeadInstructions : $@convention(thin) (@owned B) -> (
 bb0(%0 : @owned $B):
   %1 = alloc_box $<τ_0_0> { var τ_0_0 } <B>
   %1a = project_box %1 : $<τ_0_0> { var τ_0_0 } <B>, 0
-  store %0 to [init] %1a : $*B
+  store %0 to %1a : $*B
   %3 = load [copy] %1a : $*B
   %5 = unchecked_ref_cast %3 : $B to $Builtin.NativeObject
   destroy_value %1 : $<τ_0_0> { var τ_0_0 } <B>
@@ -1130,7 +1130,7 @@ bb0:
   %5 = integer_literal $Builtin.Int64, 42
   %6 = struct $Int64 (%5 : $Builtin.Int64)
   %7 = begin_access [modify] [dynamic] [no_nested_conflict] %4 : $*Int64
-  store %6 to [trivial] %7 : $*Int64
+  store %6 to %7 : $*Int64
   end_access %7 : $*Int64
   %10 = function_ref @$s4test10testGlobalSivau : $@convention(thin) () -> Builtin.RawPointer
   %11 = apply %10() : $@convention(thin) () -> Builtin.RawPointer
@@ -1178,7 +1178,7 @@ bb2:
   %9 = integer_literal $Builtin.Int64, 27
   %10 = struct $Int64 (%9 : $Builtin.Int64)
   %12 = enum $Optional<Int64>, #Optional.some!enumelt, %10 : $Int64
-  store %12 to [trivial] %2 : $*Optional<Int64>
+  store %12 to %2 : $*Optional<Int64>
   br bb3(%10 : $Int64)
 
 bb3(%15 : $Int64):
@@ -1197,12 +1197,12 @@ bb0:
   %0 = alloc_stack $StructWithLazyProperty
   %4 = enum $Optional<Int64>, #Optional.none!enumelt
   %5 = struct $StructWithLazyProperty (%4 : $Optional<Int64>)
-  store %5 to [trivial] %0 : $*StructWithLazyProperty
+  store %5 to %0 : $*StructWithLazyProperty
   %7 = function_ref @lazy_getter : $@convention(method) (@inout StructWithLazyProperty) -> Int64
   %8 = apply %7(%0) : $@convention(method) (@inout StructWithLazyProperty) -> Int64
   %9 = function_ref @take_int : $@convention(thin) (Int64) -> ()
   %10 = apply %9(%8) : $@convention(thin) (Int64) -> ()
-  store %5 to [trivial] %0 : $*StructWithLazyProperty
+  store %5 to %0 : $*StructWithLazyProperty
   %18 = apply %7(%0) : $@convention(method) (@inout StructWithLazyProperty) -> Int64
   %20 = apply %9(%18) : $@convention(thin) (Int64) -> ()
   dealloc_stack %0 : $*StructWithLazyProperty
@@ -1265,7 +1265,7 @@ bb2:
   %9 = integer_literal $Builtin.Int64, 27
   %10 = struct $Int64 (%9 : $Builtin.Int64)
   %12 = enum $Optional<Int64>, #Optional.some!enumelt, %10 : $Int64
-  store %12 to [trivial] %2 : $*Optional<Int64>
+  store %12 to %2 : $*Optional<Int64>
   br bb3(%10 : $Int64)
 
 bb3(%15 : $Int64):

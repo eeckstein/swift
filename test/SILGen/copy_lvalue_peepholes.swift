@@ -31,7 +31,7 @@ var computed: Int {
 // CHECK-LABEL: sil hidden [ossa] @$s21copy_lvalue_peepholes023init_var_from_computed_B0{{[_0-9a-zA-Z]*}}F
 // CHECK:   [[GETTER:%.*]] = function_ref @$s21copy_lvalue_peepholes8computedBi64_vg
 // CHECK:   [[GOTTEN:%.*]] = apply [[GETTER]]()
-// CHECK:   store [[GOTTEN]] to [trivial] {{%.*}}
+// CHECK:   store [[GOTTEN]] to {{%.*}}
 func init_var_from_computed_lvalue() {
   var y = computed
 }

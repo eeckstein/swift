@@ -1094,24 +1094,12 @@ static AllocStackInst *allocate(StructLoweringState &pass, SILType type) {
   return alloc;
 }
 
-static StoreOwnershipQualifier
-getStoreInitOwnership(StructLoweringState &pass, SILType type) {
-  if (!pass.F->hasOwnership()) {
-    return StoreOwnershipQualifier::Unqualified;
-  } else if (type.isTrivial(*pass.F)) {
-    return StoreOwnershipQualifier::Trivial;
-  } else {
-    return StoreOwnershipQualifier::Init;
-  }
-}
-
 static StoreInst *createStoreInit(StructLoweringState &pass,
                                   SILBasicBlock::iterator where,
                                   SILLocation loc,
                                   SILValue value, SILValue address) {
   SILBuilderWithScope storeBuilder(where);
-  return storeBuilder.createStore(loc, value, address,
-                                 getStoreInitOwnership(pass, value->getType()));
+  return storeBuilder.createStore(loc, value, address);
 }
 
 static SILInstruction *createOutlinedCopyCall(SILBuilder &copyBuilder,
@@ -2319,8 +2307,7 @@ static void rewriteFunction(StructLoweringState &pass,
       SILBuilderWithScope retCopyBuilder(II);
       createOutlinedCopyCall(retCopyBuilder, retOp, retArg, pass, &regLoc);
     } else {
-      retBuilder.createStore(regLoc, retOp, retArg,
-                             getStoreInitOwnership(pass, retOp->getType()));
+      retBuilder.createStore(regLoc, retOp, retArg);
     }
     auto emptyTy = SILType::getPrimitiveObjectType(
         retBuilder.getModule().getASTContext().TheEmptyTupleType);

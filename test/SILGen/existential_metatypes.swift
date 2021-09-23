@@ -68,7 +68,7 @@ func existentialMetatypeVarProperty() -> Value {
   // CHECK:      [[ADDR:%.*]] = project_box [[BOX]] : ${ var @thick P.Type }, 0
   // CHECK:      [[T0:%.*]] = metatype $@thick S.Type
   // CHECK:      [[T1:%.*]] = init_existential_metatype [[T0]]
-  // CHECK:      store [[T1]] to [trivial] [[ADDR]] :
+  // CHECK:      store [[T1]] to [[ADDR]] :
   // CHECK:      [[T0:%.*]] = begin_access [read] [unknown] [[ADDR]] :
   // CHECK:      [[T1:%.*]] = load [trivial] [[T0]]
   // CHECK:      open_existential_metatype [[T1]] :

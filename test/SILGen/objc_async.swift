@@ -15,7 +15,7 @@ func testSlowServer(slowServer: SlowServer) async throws {
   // CHECK: [[WRAPPED:%.*]] = struct $UnsafeContinuation<Int, Never> ([[CONT]] : $Builtin.RawUnsafeContinuation)
   // CHECK: [[BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage UnsafeContinuation<Int, Never>
   // CHECK: [[CONT_SLOT:%.*]] = project_block_storage [[BLOCK_STORAGE]]
-  // CHECK: store [[WRAPPED]] to [trivial] [[CONT_SLOT]]
+  // CHECK: store [[WRAPPED]] to [[CONT_SLOT]]
   // CHECK: [[BLOCK_IMPL:%.*]] = function_ref @[[INT_COMPLETION_BLOCK:.*]] : $@convention(c) (@inout_aliasable @block_storage UnsafeContinuation<Int, Never>, Int) -> ()
   // CHECK: [[BLOCK:%.*]] = init_block_storage_header [[BLOCK_STORAGE]] {{.*}}, invoke [[BLOCK_IMPL]]
   // CHECK: apply [[METHOD]]([[ARG]], [[BLOCK]], %0)
@@ -37,7 +37,7 @@ func testSlowServer(slowServer: SlowServer) async throws {
   // CHECK: [[WRAPPED:%.*]] = struct $UnsafeContinuation<String, Error> ([[CONT]] : $Builtin.RawUnsafeContinuation)
   // CHECK: [[BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage UnsafeContinuation<String, Error>
   // CHECK: [[CONT_SLOT:%.*]] = project_block_storage [[BLOCK_STORAGE]]
-  // CHECK: store [[WRAPPED]] to [trivial] [[CONT_SLOT]]
+  // CHECK: store [[WRAPPED]] to [[CONT_SLOT]]
   // CHECK: [[BLOCK_IMPL:%.*]] = function_ref @[[STRING_COMPLETION_THROW_BLOCK:.*]] : $@convention(c) (@inout_aliasable @block_storage UnsafeContinuation<String, Error>, Optional<NSString>, Optional<NSError>) -> ()
   // CHECK: [[BLOCK:%.*]] = init_block_storage_header [[BLOCK_STORAGE]] {{.*}}, invoke [[BLOCK_IMPL]]
   // CHECK: apply [[METHOD]]([[BLOCK]], %0)
@@ -105,7 +105,7 @@ func testGeneric2<T: AnyObject, U>(x: GenericObject<T>, y: U) async throws {
 // CHECK:   [[CONT_ADDR:%.*]] = project_block_storage %0
 // CHECK:   [[CONT:%.*]] = load [trivial] [[CONT_ADDR]]
 // CHECK:   [[RESULT_BUF:%.*]] = alloc_stack $Int
-// CHECK:   store %1 to [trivial] [[RESULT_BUF]]
+// CHECK:   store %1 to [[RESULT_BUF]]
 // CHECK:   [[RESUME:%.*]] = function_ref @{{.*}}resumeUnsafeContinuation
 // CHECK:   apply [[RESUME]]<Int>([[CONT]], [[RESULT_BUF]])
 
@@ -121,7 +121,7 @@ func testGeneric2<T: AnyObject, U>(x: GenericObject<T>, y: U) async throws {
 // CHECK:   [[RESUME_CP:%.*]] = copy_value [[RESUME_IN]]
 // CHECK:   [[BRIDGE:%.*]] = function_ref @{{.*}}unconditionallyBridgeFromObjectiveC
 // CHECK:   [[BRIDGED_RESULT:%.*]] = apply [[BRIDGE]]([[RESUME_CP]]
-// CHECK:   store [[BRIDGED_RESULT]] to [init] [[RESULT_BUF]]
+// CHECK:   store [[BRIDGED_RESULT]] to [[RESULT_BUF]]
 // CHECK:   [[RESUME:%.*]] = function_ref @{{.*}}resumeUnsafeThrowingContinuation
 // CHECK:   apply [[RESUME]]<String>([[CONT]], [[RESULT_BUF]])
 // CHECK:   br [[END_BB:bb[0-9]+]]
@@ -170,9 +170,9 @@ func testGeneric2<T: AnyObject, U>(x: GenericObject<T>, y: U) async throws {
 // CHECK:   [[RESULT_0_BUF:%.*]] = tuple_element_addr [[RESULT_BUF]] {{.*}}, 0
 // CHECK:   [[BRIDGE:%.*]] = function_ref @{{.*}}unconditionallyBridgeFromObjectiveC
 // CHECK:   [[BRIDGED:%.*]] = apply [[BRIDGE]]
-// CHECK:   store [[BRIDGED]] to [init] [[RESULT_0_BUF]]
+// CHECK:   store [[BRIDGED]] to [[RESULT_0_BUF]]
 // CHECK:   [[RESULT_1_BUF:%.*]] = tuple_element_addr [[RESULT_BUF]] {{.*}}, 1
-// CHECK:   store %2 to [trivial] [[RESULT_1_BUF]]
+// CHECK:   store %2 to [[RESULT_1_BUF]]
 
 // CHECK-LABEL: sil {{.*}}@${{.*}}22testSlowServerFromMain
 @MainActor
@@ -186,7 +186,7 @@ func testSlowServerFromMain(slowServer: SlowServer) async throws {
   // CHECK: [[WRAPPED:%.*]] = struct $UnsafeContinuation<Int, Never> ([[CONT]] : $Builtin.RawUnsafeContinuation)
   // CHECK: [[BLOCK_STORAGE:%.*]] = alloc_stack $@block_storage UnsafeContinuation<Int, Never>
   // CHECK: [[CONT_SLOT:%.*]] = project_block_storage [[BLOCK_STORAGE]]
-  // CHECK: store [[WRAPPED]] to [trivial] [[CONT_SLOT]]
+  // CHECK: store [[WRAPPED]] to [[CONT_SLOT]]
   // CHECK: [[BLOCK_IMPL:%.*]] = function_ref @[[INT_COMPLETION_BLOCK:.*]] : $@convention(c) (@inout_aliasable @block_storage UnsafeContinuation<Int, Never>, Int) -> ()
   // CHECK: [[BLOCK:%.*]] = init_block_storage_header [[BLOCK_STORAGE]] {{.*}}, invoke [[BLOCK_IMPL]]
   // CHECK: apply [[METHOD]]([[ARG]], [[BLOCK]], %0)

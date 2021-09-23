@@ -106,9 +106,9 @@ struct TupleReader {
 // CHECK-NEXT:    [[TEMP_0_0:%.*]] = tuple_element_addr [[TEMP_0]] : $*(String, ()), 0
 // CHECK-NEXT:    [[TEMP_0_1:%.*]] = tuple_element_addr [[TEMP_0]] : $*(String, ()), 1
 // CHECK-NEXT:    [[T0:%.*]] = copy_value [[FIRST]] : $String
-// CHECK-NEXT:    store [[T0]] to [init] [[TEMP_0_0]]
+// CHECK-NEXT:    store [[T0]] to [[TEMP_0_0]]
 // CHECK-NEXT:    [[T0:%.*]] = copy_value [[SECOND]] : $String
-// CHECK-NEXT:    store [[T0]] to [init] [[TEMP_1]]
+// CHECK-NEXT:    store [[T0]] to [[TEMP_1]]
 // CHECK-NEXT:    [[TUPLE:%.*]] = load [copy] [[TEMP]]
 // CHECK-NEXT:    destructure_tuple
 // CHECK-NEXT:    destructure_tuple
@@ -157,7 +157,7 @@ struct TestKeyPath {
 // CHECK-NEXT:    ([[VALUE:%.*]], [[TOKEN:%.*]]) = begin_apply [[READ]]([[SELF]])
 // CHECK-NEXT:    [[COPY:%.*]] = copy_value [[VALUE]]
 // CHECK-NEXT:    end_apply [[TOKEN]]
-// CHECK-NEXT:    store [[COPY]] to [init] %0 : $*String
+// CHECK-NEXT:    store [[COPY]] to %0 : $*String
 // CHECK-NEXT:    [[RET:%.*]] = tuple ()
 // CHECK-NEXT:    return [[RET]] : $()
 // CHECK-LABEL: } // end sil function '$s13read_accessor11TestKeyPathV8readableSSvpACTK'

@@ -66,7 +66,7 @@ struct S2 {
     // CHECK:   [[X_INIT:%[0-9]+]] = function_ref @$s19init_ref_delegation1XV{{[_0-9a-zA-Z]*}}fC : $@convention(method) (@thin X.Type) -> X
     // CHECK:   [[X:%[0-9]+]] = apply [[X_INIT]]([[X_META]]) : $@convention(method) (@thin X.Type) -> X
     // CHECK:   [[X_BOX:%[0-9]+]] = alloc_stack $X
-    // CHECK:   store [[X]] to [trivial] [[X_BOX]] : $*X
+    // CHECK:   store [[X]] to [[X_BOX]] : $*X
     // CHECK:   [[S2_DELEG_INIT:%[0-9]+]] = function_ref @$s19init_ref_delegation2S2V{{[_0-9a-zA-Z]*}}fC : $@convention(method) <τ_0_0> (@in τ_0_0, @thin S2.Type) -> S2
     // CHECK:   [[SELF_BOX1:%[0-9]+]] = apply [[S2_DELEG_INIT]]<X>([[X_BOX]], [[S2_META]]) : $@convention(method) <τ_0_0> (@in τ_0_0, @thin S2.Type) -> S2
     // CHECK:   dealloc_stack [[X_BOX]] : $*X

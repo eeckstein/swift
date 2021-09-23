@@ -49,7 +49,7 @@ struct NativeObjectAndTuple {
 sil [ossa] @simple_trivial_load_promotion : $@convention(thin) (Builtin.Int32) -> Builtin.Int32 {
 bb0(%0 : $Builtin.Int32):
   %1 = alloc_stack $Builtin.Int32
-  store %0 to [trivial] %1 : $*Builtin.Int32
+  store %0 to %1 : $*Builtin.Int32
   %2 = load [trivial] %1 : $*Builtin.Int32
   dealloc_stack %1 : $*Builtin.Int32
   return %2 : $Builtin.Int32
@@ -59,7 +59,7 @@ bb0(%0 : $Builtin.Int32):
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[STACK:%.*]] = alloc_stack $Builtin.NativeObject
 // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   [[ARG_COPY_2:%.*]] = copy_value [[ARG_COPY]]
 // CHECK:   destroy_value [[ARG_COPY]]
 // CHECK:   destroy_addr [[STACK]]
@@ -69,7 +69,7 @@ bb0(%0 : $Builtin.Int32):
 sil [ossa] @simple_nontrivial_load_promotion : $@convention(thin) (@owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   %2 = load [copy] %1 : $*Builtin.NativeObject
   destroy_addr %1 : $*Builtin.NativeObject
   dealloc_stack %1 : $*Builtin.NativeObject
@@ -82,9 +82,9 @@ bb0(%0 : @owned $Builtin.NativeObject):
 // CHECK:   [[FIRST_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   [[ARG1_COPY_BORROW:%.*]] = begin_borrow [[ARG1_COPY]]
 // CHECK:   [[ARG2_COPY_BORROW:%.*]] = begin_borrow [[ARG2_COPY]]
 // CHECK:   [[RESULT:%.*]] = struct $NativeObjectPair ([[ARG1_COPY_BORROW:%.*]] : $Builtin.NativeObject, [[ARG2_COPY_BORROW:%.*]] : $Builtin.NativeObject)
@@ -99,8 +99,8 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $NativeObjectPair
   %3 = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
   %4 = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0 to [init] %3 : $*Builtin.NativeObject
-  store %1 to [init] %4 : $*Builtin.NativeObject
+  store %0 to %3 : $*Builtin.NativeObject
+  store %1 to %4 : $*Builtin.NativeObject
   %5 = load [copy] %2 : $*NativeObjectPair
   destroy_addr %2 : $*NativeObjectPair
   dealloc_stack %2 : $*NativeObjectPair
@@ -113,9 +113,9 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 // CHECK:   [[FIRST_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   [[RESULT:%.*]] = tuple ([[ARG1_COPY:%.*]] : $Builtin.NativeObject, [[ARG2_COPY:%.*]] : $Builtin.NativeObject)
 // CHECK:   destroy_addr [[STACK]]
 // CHECK:   dealloc_stack [[STACK]]
@@ -126,8 +126,8 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $(Builtin.NativeObject, Builtin.NativeObject)
   %3 = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4 = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0 to [init] %3 : $*Builtin.NativeObject
-  store %1 to [init] %4 : $*Builtin.NativeObject
+  store %0 to %3 : $*Builtin.NativeObject
+  store %1 to %4 : $*Builtin.NativeObject
   %5 = load [copy] %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
   destroy_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
   dealloc_stack %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
@@ -141,12 +141,12 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 //
 // CHECK: bb1:
 // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   br bb3([[ARG_COPY]] :
 //
 // CHECK: bb2:
 // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   br bb3([[ARG_COPY]] :
 //
 // CHECK: bb3([[RESULT:%.*]] : @owned $Builtin.NativeObject):
@@ -162,11 +162,11 @@ bb0(%0 : @owned $Builtin.NativeObject):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -185,18 +185,18 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject, [[ARG2_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb2:
 // CHECK:   [[FIRST_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject, [[ARG2_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb3([[ARG1_COPY:%.*]] : @owned $Builtin.NativeObject, [[ARG2_COPY:%.*]] : @owned $Builtin.NativeObject):
@@ -219,15 +219,15 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 bb1:
   %3a = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
   %4a = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0 to [init] %3a : $*Builtin.NativeObject
-  store %1 to [init] %4a : $*Builtin.NativeObject
+  store %0 to %3a : $*Builtin.NativeObject
+  store %1 to %4a : $*Builtin.NativeObject
   br bb3
 
 bb2:
   %3b = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
   %4b = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0 to [init] %3b : $*Builtin.NativeObject
-  store %1 to [init] %4b : $*Builtin.NativeObject
+  store %0 to %3b : $*Builtin.NativeObject
+  store %1 to %4b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -246,18 +246,18 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject, [[ARG2_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb2:
 // CHECK:   [[FIRST_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   [[ARG2_COPY:%.*]] = copy_value [[ARG2]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject, [[ARG2_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb3([[ARG1_COPY:%.*]] : @owned $Builtin.NativeObject, [[ARG2_COPY:%.*]] : @owned $Builtin.NativeObject):
@@ -274,15 +274,15 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 bb1:
   %3a = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4a = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0 to [init] %3a : $*Builtin.NativeObject
-  store %1 to [init] %4a : $*Builtin.NativeObject
+  store %0 to %3a : $*Builtin.NativeObject
+  store %1 to %4a : $*Builtin.NativeObject
   br bb3
 
 bb2:
   %3b = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4b = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0 to [init] %3b : $*Builtin.NativeObject
-  store %1 to [init] %4b : $*Builtin.NativeObject
+  store %0 to %3b : $*Builtin.NativeObject
+  store %1 to %4b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -305,8 +305,8 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   destroy_value [[ARG3]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject)
 //
@@ -314,9 +314,9 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = struct_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   destroy_value [[ARG2]]
-// CHECK:   store [[ARG3]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG3]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb3([[ARG1_COPY:%.*]] : @owned $Builtin.NativeObject):
@@ -340,17 +340,17 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject, %arg2 
 bb1:
   %3a = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
   %4a = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0 to [init] %3a : $*Builtin.NativeObject
-  store %1 to [init] %4a : $*Builtin.NativeObject
+  store %0 to %3a : $*Builtin.NativeObject
+  store %1 to %4a : $*Builtin.NativeObject
   destroy_value %arg2 : $Builtin.NativeObject
   br bb3
 
 bb2:
   %3b = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
   %4b = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0 to [init] %3b : $*Builtin.NativeObject
+  store %0 to %3b : $*Builtin.NativeObject
   destroy_value %1 : $Builtin.NativeObject
-  store %arg2 to [init] %4b : $*Builtin.NativeObject
+  store %arg2 to %4b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -371,8 +371,8 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
-// CHECK:   store [[ARG2]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
+// CHECK:   store [[ARG2]] to [[SECOND_ADDR]]
 // CHECK:   destroy_value [[ARG3]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject)
 //
@@ -380,9 +380,9 @@ bb3:
 // CHECK:   [[FIRST_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[SECOND_ADDR:%.*]] = tuple_element_addr [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[FIRST_ADDR]]
+// CHECK:   store [[ARG1]] to [[FIRST_ADDR]]
 // CHECK:   destroy_value [[ARG2]]
-// CHECK:   store [[ARG3]] to [init] [[SECOND_ADDR]]
+// CHECK:   store [[ARG3]] to [[SECOND_ADDR]]
 // CHECK:   br bb3([[ARG1_COPY]] : $Builtin.NativeObject)
 //
 // CHECK: bb3([[ARG1_COPY:%.*]] : @owned $Builtin.NativeObject):
@@ -400,17 +400,17 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject, %arg2 
 bb1:
   %3a = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4a = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0 to [init] %3a : $*Builtin.NativeObject
-  store %1 to [init] %4a : $*Builtin.NativeObject
+  store %0 to %3a : $*Builtin.NativeObject
+  store %1 to %4a : $*Builtin.NativeObject
   destroy_value %arg2 : $Builtin.NativeObject
   br bb3
 
 bb2:
   %3b = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4b = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0 to [init] %3b : $*Builtin.NativeObject
+  store %0 to %3b : $*Builtin.NativeObject
   destroy_value %1 : $Builtin.NativeObject
-  store %arg2 to [init] %4b : $*Builtin.NativeObject
+  store %arg2 to %4b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -431,7 +431,7 @@ bb3:
 // CHECK:   [[BORROWED_ARG_FIELD:%.*]] = struct_extract [[BORROWED_ARG]]
 // CHECK:   [[COPIED_ARG_FIELD:%.*]] = copy_value [[BORROWED_ARG_FIELD]]
 // CHECK:   end_borrow [[BORROWED_ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   [[COPIED_ARG_FIELD_COPY_1:%.*]] = copy_value [[COPIED_ARG_FIELD]]
 // CHECK:   [[COPIED_ARG_FIELD_COPY_2:%.*]] = copy_value [[COPIED_ARG_FIELD_COPY_1]]
 // CHECK:   destroy_addr [[STACK]]
@@ -441,7 +441,7 @@ bb3:
 sil [ossa] @simple_partialstructuse_load_promotion : $@convention(thin) (@owned NativeObjectPair) -> (@owned Builtin.NativeObject) {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   %2 = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_addr %1 : $*NativeObjectPair
@@ -457,7 +457,7 @@ bb0(%0 : @owned $NativeObjectPair):
 // CHECK:   [[BORROWED_ARG_FIELD_2:%.*]] = tuple_extract [[BORROWED_ARG_FIELD_1]]
 // CHECK:   [[COPIED_ARG_FIELD:%.*]] = copy_value [[BORROWED_ARG_FIELD_2]]
 // CHECK:   end_borrow [[BORROWED_ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   [[COPIED_ARG_FIELD_COPY_1:%.*]] = copy_value [[COPIED_ARG_FIELD]]
 // CHECK:   [[COPIED_ARG_FIELD_COPY_2:%.*]] = copy_value [[COPIED_ARG_FIELD_COPY_1]]
 // CHECK:   destroy_addr [[STACK]]
@@ -467,7 +467,7 @@ bb0(%0 : @owned $NativeObjectPair):
 sil [ossa] @simple_partialtupleuse_load_promotion : $@convention(thin) (@owned NativeObjectAndTuple) -> (@owned Builtin.NativeObject) {
 bb0(%0 : @owned $NativeObjectAndTuple):
   %1 = alloc_stack $NativeObjectAndTuple
-  store %0 to [init] %1 : $*NativeObjectAndTuple
+  store %0 to %1 : $*NativeObjectAndTuple
   %2 = struct_element_addr %1 : $*NativeObjectAndTuple, #NativeObjectAndTuple.second
   %3 = tuple_element_addr %2 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %4 = load [copy] %3 : $*Builtin.NativeObject
@@ -479,9 +479,9 @@ bb0(%0 : @owned $NativeObjectAndTuple):
 // CHECK-LABEL: sil [ossa] @simple_assignstore : $@convention(thin) (@owned Builtin.NativeObject, @owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 // CHECK: bb0([[ARG0:%.*]] : @owned $Builtin.NativeObject, [[ARG1:%.*]] : @owned $Builtin.NativeObject):
 // CHECK:   [[STACK:%.*]] = alloc_stack $Builtin.NativeObject
-// CHECK:   store [[ARG0]] to [init] [[STACK]]
+// CHECK:   store [[ARG0]] to [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [init] [[STACK]]
+// CHECK:   store [[ARG1]] to [[STACK]]
 // CHECK:   [[ARG1_COPY_1:%.*]] = copy_value [[ARG1_COPY]]
 // CHECK:   destroy_addr [[STACK]]
 // CHECK:   dealloc_stack [[STACK]]
@@ -490,9 +490,9 @@ bb0(%0 : @owned $NativeObjectAndTuple):
 sil [ossa] @simple_assignstore : $@convention(thin) (@owned Builtin.NativeObject, @owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %2 : $*Builtin.NativeObject
+  store %0 to %2 : $*Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
-  store %1 to [init] %2 : $*Builtin.NativeObject
+  store %1 to %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
   dealloc_stack %2 : $*Builtin.NativeObject
@@ -508,7 +508,7 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 // CHECK:   [[BORROWED_ARG:%.*]] = begin_borrow [[ARG]]
 // CHECK:   [[LHS2:%.*]] = struct_extract [[BORROWED_ARG]] : $NativeObjectPair, #NativeObjectPair.x
 // CHECK:   [[LHS2_COPY:%.*]] = copy_value [[LHS2]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   cond_br undef, bb1, bb2
 //
 // CHECK: bb1:
@@ -531,7 +531,7 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 sil [ossa] @diamond_test_2 : $@convention(thin) (@owned NativeObjectPair) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   cond_br undef, bb1, bb2
 
 bb1:
@@ -557,7 +557,7 @@ bb3(%6 : @owned $Builtin.NativeObject):
 // CHECK-LABEL: sil [ossa] @simple_nontrivial_loadtake_no_promote : $@convention(thin) (@owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 // CHECK: bb0([[ARG:%.*]] :
 // CHECK:   [[STACK:%.*]] = alloc_stack $Builtin.NativeObject
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   [[RESULT:%.*]] = load [take] [[STACK]]
 // CHECK:   dealloc_stack [[STACK]]
 // CHECK:   return [[RESULT]]
@@ -565,7 +565,7 @@ bb3(%6 : @owned $Builtin.NativeObject):
 sil [ossa] @simple_nontrivial_loadtake_no_promote : $@convention(thin) (@owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   %2 = load [take] %1 : $*Builtin.NativeObject
   dealloc_stack %1 : $*Builtin.NativeObject
   return %2 : $Builtin.NativeObject
@@ -580,7 +580,7 @@ bb0(%0 : @owned $Builtin.NativeObject):
 // Block where we have our store and do our lifetime extending copy_value.
 // CHECK:   [[STACK:%.*]] = alloc_stack $Builtin.NativeObject
 // CHECK:   [[ARG_COPY:%.*]] = copy_value [[ARG]]
-// CHECK:   store [[ARG]] to [init] [[STACK]]
+// CHECK:   store [[ARG]] to [[STACK]]
 // CHECK:   br bb1
 //
 // Our load block. Here, we insert our copy_value + begin_borrow that is
@@ -613,7 +613,7 @@ bb0(%0 : @owned $Builtin.NativeObject):
 sil [ossa] @load_borrow_promotion : $@convention(thin) (@owned Builtin.NativeObject) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   br bb1
 
 bb1:
@@ -637,7 +637,7 @@ bb3:
 sil [ossa] @promote_with_loop_1 : $@convention(thin) (@owned NativeObjectPair) -> () {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   %2 = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   br bb2
 
@@ -655,7 +655,7 @@ bb2:
 sil [ossa] @load_borrow_loop_promote_with_loop_2 : $@convention(thin) (@owned NativeObjectPair) -> () {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   %2 = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   br bb2
 
@@ -682,7 +682,7 @@ bb4:
 sil [ossa] @load_borrow_promote_two_backedge_loop : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   br bb1
 
 bb1:
@@ -746,7 +746,7 @@ sil [canonical] [ossa] @load_borrow_tuple_scalarize : $@convention(thin) (@owned
 bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $(Builtin.NativeObject, Builtin.NativeObject)
   %3 = tuple (%0 : $Builtin.NativeObject, %1 : $Builtin.NativeObject)
-  store %3 to [init] %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
+  store %3 to %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
 
   %4 = load_borrow %2 : $*(Builtin.NativeObject, Builtin.NativeObject)
   %5 = tuple_extract %4 : $(Builtin.NativeObject, Builtin.NativeObject), 0
@@ -776,13 +776,13 @@ bb0(%0a : $Builtin.Int32, %0b : $Builtin.Int32):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb3
 
 bb2:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb3
 
 bb3:
@@ -820,13 +820,13 @@ bb0(%0a : $Builtin.Int32, %0b : $Builtin.Int32, %0c : $Builtin.Int32):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0c to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0c to %1b : $*Builtin.Int32
   br bb3
 
 bb2:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb3
 
 bb3:
@@ -862,13 +862,13 @@ bb0(%0a : $Builtin.Int32, %0b : $Builtin.Int32, %0c : $Builtin.Int32):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb3
 
 bb2:
-  store %0a to [trivial] %1a : $*Builtin.Int32
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0a to %1a : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb3
 
 bb3:
@@ -883,7 +883,7 @@ bb5:
 
 bb6:
   apply %func(%2) : $@convention(thin) (IntPair) -> ()
-  store %0b to [trivial] %1b : $*Builtin.Int32
+  store %0b to %1b : $*Builtin.Int32
   br bb5
 
 bb7:
@@ -906,13 +906,13 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -951,14 +951,14 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0c to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0c to %1b : $*Builtin.NativeObject
   destroy_value %0b : $Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   destroy_value %0c : $Builtin.NativeObject
   br bb3
 
@@ -999,13 +999,13 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -1023,7 +1023,7 @@ bb6:
   end_borrow %2 : $NativeObjectPair
   destroy_addr %1b : $*Builtin.NativeObject
   %0bhat2 = copy_value %0bhat : $Builtin.NativeObject
-  store %0bhat2 to [init] %1b : $*Builtin.NativeObject
+  store %0bhat2 to %1b : $*Builtin.NativeObject
   br bb5
 
 bb7:
@@ -1043,7 +1043,7 @@ sil [canonical] [ossa] @loop_carry_loadborrow : $@convention(thin) (@owned Built
 bb0(%0 : @owned $Builtin.NativeObject):
   %func = function_ref @nativeobject_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1086,7 +1086,7 @@ sil [canonical] [ossa] @loop_carry_loadborrow_2 : $@convention(thin) (@owned Bui
 bb0(%0 : @owned $Builtin.NativeObject):
   %func = function_ref @nativeobject_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1131,8 +1131,8 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   %1 = alloc_stack $(Builtin.NativeObject, Builtin.NativeObject)
   %1a = tuple_element_addr %1 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %1b = tuple_element_addr %1 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1144,7 +1144,7 @@ bb2:
 bb3:
   %0ccopy = copy_value %0c : $Builtin.NativeObject
   destroy_addr %1a : $*Builtin.NativeObject
-  store %0ccopy to [init] %1a : $*Builtin.NativeObject
+  store %0ccopy to %1a : $*Builtin.NativeObject
   %2 = load_borrow %1 : $*(Builtin.NativeObject, Builtin.NativeObject)
   cond_br undef, bb4, bb5
 
@@ -1180,8 +1180,8 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   %1 = alloc_stack $NativeObjectPair
   %1a = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   %1b = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1193,7 +1193,7 @@ bb2:
 bb3:
   %0ccopy = copy_value %0c : $Builtin.NativeObject
   destroy_addr %1a : $*Builtin.NativeObject
-  store %0ccopy to [init] %1a : $*Builtin.NativeObject
+  store %0ccopy to %1a : $*Builtin.NativeObject
   %2 = load_borrow %1 : $*NativeObjectPair
   cond_br undef, bb4, bb5
 
@@ -1233,15 +1233,15 @@ bb1:
   cond_br undef, bb3, bb4
 
 bb2:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb5
 
 bb3:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb6
 
 bb4:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb7
 
 bb5:
@@ -1301,15 +1301,15 @@ bb1:
   cond_br undef, bb3, bb4
 
 bb2:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb5
 
 bb3:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb6
 
 bb4:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb7
 
 bb5:
@@ -1377,7 +1377,7 @@ bbEnd:
 sil [ossa] @load_copy_promote_with_loop_1 : $@convention(thin) (@owned NativeObjectPair) -> () {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   %2 = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   br bb2
 
@@ -1395,7 +1395,7 @@ bb2:
 sil [ossa] @load_copy_loop_promote_with_loop_2 : $@convention(thin) (@owned NativeObjectPair) -> () {
 bb0(%0 : @owned $NativeObjectPair):
   %1 = alloc_stack $NativeObjectPair
-  store %0 to [init] %1 : $*NativeObjectPair
+  store %0 to %1 : $*NativeObjectPair
   %2 = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   br bb2
 
@@ -1422,7 +1422,7 @@ bb4:
 sil [ossa] @load_copy_promote_two_backedge_loop : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   br bb1
 
 bb1:
@@ -1473,13 +1473,13 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -1518,14 +1518,14 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0c to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0c to %1b : $*Builtin.NativeObject
   destroy_value %0b : $Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   destroy_value %0c : $Builtin.NativeObject
   br bb3
 
@@ -1566,13 +1566,13 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   cond_br undef, bb1, bb2
 
 bb1:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb2:
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   br bb3
 
 bb3:
@@ -1590,7 +1590,7 @@ bb6:
   destroy_value %2 : $NativeObjectPair
   destroy_addr %1b : $*Builtin.NativeObject
   %0bhat2 = copy_value %0bhat : $Builtin.NativeObject
-  store %0bhat2 to [init] %1b : $*Builtin.NativeObject
+  store %0bhat2 to %1b : $*Builtin.NativeObject
   br bb5
 
 bb7:
@@ -1610,7 +1610,7 @@ sil [canonical] [ossa] @loop_carry_loadcopy : $@convention(thin) (@owned Builtin
 bb0(%0 : @owned $Builtin.NativeObject):
   %func = function_ref @nativeobject_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1653,7 +1653,7 @@ sil [canonical] [ossa] @loop_carry_loadcopy_2 : $@convention(thin) (@owned Built
 bb0(%0 : @owned $Builtin.NativeObject):
   %func = function_ref @nativeobject_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %1 = alloc_stack $Builtin.NativeObject
-  store %0 to [init] %1 : $*Builtin.NativeObject
+  store %0 to %1 : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1698,8 +1698,8 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   %1 = alloc_stack $(Builtin.NativeObject, Builtin.NativeObject)
   %1a = tuple_element_addr %1 : $*(Builtin.NativeObject, Builtin.NativeObject), 0
   %1b = tuple_element_addr %1 : $*(Builtin.NativeObject, Builtin.NativeObject), 1
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1711,7 +1711,7 @@ bb2:
 bb3:
   %0ccopy = copy_value %0c : $Builtin.NativeObject
   destroy_addr %1a : $*Builtin.NativeObject
-  store %0ccopy to [init] %1a : $*Builtin.NativeObject
+  store %0ccopy to %1a : $*Builtin.NativeObject
   %2 = load [copy] %1 : $*(Builtin.NativeObject, Builtin.NativeObject)
   cond_br undef, bb4, bb5
 
@@ -1747,8 +1747,8 @@ bb0(%0a : @owned $Builtin.NativeObject, %0b : @owned $Builtin.NativeObject, %0c 
   %1 = alloc_stack $NativeObjectPair
   %1a = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.x
   %1b = struct_element_addr %1 : $*NativeObjectPair, #NativeObjectPair.y
-  store %0a to [init] %1a : $*Builtin.NativeObject
-  store %0b to [init] %1b : $*Builtin.NativeObject
+  store %0a to %1a : $*Builtin.NativeObject
+  store %0b to %1b : $*Builtin.NativeObject
   cond_br undef, bb1, bb7
 
 bb1:
@@ -1760,7 +1760,7 @@ bb2:
 bb3:
   %0ccopy = copy_value %0c : $Builtin.NativeObject
   destroy_addr %1a : $*Builtin.NativeObject
-  store %0ccopy to [init] %1a : $*Builtin.NativeObject
+  store %0ccopy to %1a : $*Builtin.NativeObject
   %2 = load [copy] %1 : $*NativeObjectPair
   cond_br undef, bb4, bb5
 
@@ -1800,15 +1800,15 @@ bb1:
   cond_br undef, bb3, bb4
 
 bb2:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb5
 
 bb3:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb6
 
 bb4:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb7
 
 bb5:
@@ -1868,15 +1868,15 @@ bb1:
   cond_br undef, bb3, bb4
 
 bb2:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb5
 
 bb3:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb6
 
 bb4:
-  store %arg to [init] %0 : $*Builtin.NativeObject
+  store %arg to %0 : $*Builtin.NativeObject
   br bb7
 
 bb5:
@@ -1962,13 +1962,13 @@ sil @foo_method : $@convention(method) (@guaranteed Foo) -> MyInt
 sil [ossa] @promote_loads_despite_debug_uses : $@convention(thin) (MyInt, @guaranteed Foo, @guaranteed Baz) -> MyInt {
 bb0(%0 : $MyInt, %1 : @guaranteed $Foo, %2 : @guaranteed $Baz):
   %3 = alloc_stack $MyInt
-  store %0 to [trivial] %3 : $*MyInt
+  store %0 to %3 : $*MyInt
   %5 = alloc_stack $Foo
   %6 = copy_value %1 : $Foo
-  store %6 to [init] %5 : $*Foo
+  store %6 to %5 : $*Foo
   %8 = alloc_stack $Baz
   %9 = copy_value %2 : $Baz
-  store %9 to [init] %8 : $*Baz
+  store %9 to %8 : $*Baz
   debug_value %3 : $*MyInt, var, name "x", argno 1, expr op_deref
   debug_value %5 : $*Foo, var, name "y", argno 2, expr op_deref
   debug_value %8 : $*Baz, var, name "z", argno 3, expr op_deref

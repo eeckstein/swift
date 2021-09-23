@@ -16,7 +16,7 @@ class C: Q {}
 func valueToAddr(x: String) -> some P {
   // CHECK: bb0([[ARG0:%.*]] : $*String, [[ARG1:%.*]] : @guaranteed $String):
   // CHECK: [[VALUE_COPY:%.*]] = copy_value [[ARG1]]
-  // CHECK: store [[VALUE_COPY]] to [init] [[ARG0]]
+  // CHECK: store [[VALUE_COPY]] to [[ARG0]]
   return x
 }
 
@@ -49,7 +49,7 @@ func reabstraction(x: @escaping () -> ()) -> some Any {
   // CHECK: [[REABSTRACT:%.*]] = function_ref @$sIeg_ytIegr_TR
   // CHECK: [[THUNK:%.*]] = partial_apply [callee_guaranteed] [[REABSTRACT]]([[VALUE_COPY]])
   // CHECK: [[THUNK_CONV:%.*]] = convert_function [[THUNK]]
-  // CHECK: store [[THUNK_CONV]] to [init] [[ARG0]]
+  // CHECK: store [[THUNK_CONV]] to [[ARG0]]
   return x
 }
 

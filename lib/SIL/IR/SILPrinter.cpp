@@ -1514,19 +1514,6 @@ public:
     *this << getIDAndType(LBI->getOperand());
   }
 
-  void printStoreOwnershipQualifier(StoreOwnershipQualifier Qualifier) {
-    switch (Qualifier) {
-    case StoreOwnershipQualifier::Unqualified:
-      return;
-    case StoreOwnershipQualifier::Init:
-      *this << "[init] ";
-      return;
-    case StoreOwnershipQualifier::Trivial:
-      *this << "[trivial] ";
-      return;
-    }
-  }
-
   void printAssignOwnershipQualifier(AssignOwnershipQualifier Qualifier) {
     switch (Qualifier) {
     case AssignOwnershipQualifier::Unknown:
@@ -1554,9 +1541,7 @@ public:
   }
 
   void visitStoreInst(StoreInst *SI) {
-    *this << Ctx.getID(SI->getSrc()) << " to ";
-    printStoreOwnershipQualifier(SI->getOwnershipQualifier());
-    *this << getIDAndType(SI->getDest());
+    *this << Ctx.getID(SI->getSrc()) << " to " << getIDAndType(SI->getDest());
   }
 
   void visitStoreBorrowInst(StoreBorrowInst *SI) {

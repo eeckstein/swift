@@ -60,7 +60,7 @@ func goodbye(_: Any) {}
 // CHECK: [[THUNK:%.*]] = function_ref @$sIeg_ytIegr_TR : $@convention(thin) (@guaranteed @callee_guaranteed () -> ()) -> @out ()
 // CHECK: [[ABSTRACT:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[THICK]])
 // CHECK: [[CONV:%.*]] = convert_function [[ABSTRACT]]
-// CHECK: store [[CONV]] to [init] [[BOX]]
+// CHECK: store [[CONV]] to [[BOX]]
 func requires_address_and_reabstraction() {
   switch hello {
   case let a as Any: goodbye(a)

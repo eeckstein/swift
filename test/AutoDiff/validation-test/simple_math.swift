@@ -446,8 +446,8 @@ SimpleMathTests.test("Adjoint value accumulation for aggregate lhs and concrete 
 // CHECK:   [[TMP_RES:%.*]] = alloc_stack $Float
 // CHECK:   [[TMP_ADJ_STRUCT_FIELD:%.*]] = alloc_stack $Float
 // CHECK:   [[TMP_ADJ_CONCRETE:%.*]] = alloc_stack $Float
-// CHECK:   store [[ADJ_STRUCT_FIELD]] to [trivial] [[TMP_ADJ_STRUCT_FIELD]] : $*Float
-// CHECK:   store [[ADJ_CONCRETE]] to [trivial] [[TMP_ADJ_CONCRETE]] : $*Float
+// CHECK:   store [[ADJ_STRUCT_FIELD]] to [[TMP_ADJ_STRUCT_FIELD]] : $*Float
+// CHECK:   store [[ADJ_CONCRETE]] to [[TMP_ADJ_CONCRETE]] : $*Float
 // CHECK:   [[PLUS_EQUAL:%.*]] = witness_method $Float, #AdditiveArithmetic."+"
 // CHECK:   %{{.*}} = apply [[PLUS_EQUAL]]<Float>([[TMP_RES]], [[TMP_ADJ_CONCRETE]], [[TMP_ADJ_STRUCT_FIELD]], {{.*}})
 // CHECK:   [[RES:%.*]] = load [trivial] [[TMP_RES]] : $*Float

@@ -191,7 +191,7 @@ bb3(%12 : $Bool):
 bb4:
   %21 = alloc_stack $Optional<C>
   %0b = copy_value %0 : $Optional<C>
-  store %0b to [init] %21 : $*Optional<C>
+  store %0b to %21 : $*Optional<C>
 // CHECK-NOT: switch_enum
   %0c = copy_value %0 : $Optional<C>
   switch_enum %0c : $Optional<C>, case #Optional.some!enumelt: bb5, case #Optional.none!enumelt: bb6
@@ -251,7 +251,7 @@ bb3(%12 : $Bool):
 bb4:
   %21 = alloc_stack $Optional<C>
   %0a = copy_value %0 : $Optional<C>
-  store %0a to [init] %21 : $*Optional<C>
+  store %0a to %21 : $*Optional<C>
 // CHECK-NOT: switch_enum
   switch_enum %0 : $Optional<C>, case #Optional.some!enumelt: bb5, case #Optional.none!enumelt: bb6
 

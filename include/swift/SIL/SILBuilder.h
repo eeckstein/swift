@@ -757,35 +757,9 @@ public:
   void emitScopedBorrowOperation(SILLocation loc, SILValue original,
                                  function_ref<void(SILValue)> &&fun);
 
-  /// Utility function that returns a trivial store if the stored type is
-  /// trivial and a \p Qualifier store if the stored type is non-trivial.
-  ///
-  /// *NOTE* The SupportUnqualifiedSIL is an option to ease the bring up of
-  /// Semantic SIL. It enables a pass that must be able to run on both Semantic
-  /// SIL and non-Semantic SIL. It has a default argument of false, so if this
-  /// is not necessary for your pass, just ignore the parameter.
-  StoreInst *createTrivialStoreOr(SILLocation Loc, SILValue Src,
-                                  SILValue DestAddr,
-                                  StoreOwnershipQualifier Qualifier,
-                                  bool SupportUnqualifiedSIL = false) {
-    if (SupportUnqualifiedSIL && !hasOwnership()) {
-      return createStore(Loc, Src, DestAddr,
-                         StoreOwnershipQualifier::Unqualified);
-    }
-    if (Src->getType().isTrivial(getFunction())) {
-      return createStore(Loc, Src, DestAddr, StoreOwnershipQualifier::Trivial);
-    }
-    return createStore(Loc, Src, DestAddr, Qualifier);
-  }
-
-  StoreInst *createStore(SILLocation Loc, SILValue Src, SILValue DestAddr,
-                         StoreOwnershipQualifier Qualifier) {
-    assert((Qualifier != StoreOwnershipQualifier::Unqualified) ||
-           !hasOwnership() && "Unqualified inst in qualified function");
-    assert((Qualifier == StoreOwnershipQualifier::Unqualified) ||
-           hasOwnership() && "Qualified inst in unqualified function");
+  StoreInst *createStore(SILLocation Loc, SILValue Src, SILValue DestAddr) {
     return insert(new (getModule()) StoreInst(getSILDebugLocation(Loc), Src,
-                                                DestAddr, Qualifier));
+                                              DestAddr));
   }
 
   /// Convenience function for calling emitStore on the type lowering for

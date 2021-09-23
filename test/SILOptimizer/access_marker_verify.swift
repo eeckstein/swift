@@ -107,7 +107,7 @@ class SubHasInt : SuperHasInt {
 // CHECK:   [[UNINIT:%.*]] = mark_uninitialized [derivedself] [[BOX]] : ${ var SubHasInt }
 // CHECK:   [[PROJ:%.*]] = project_box [[UNINIT]] : ${ var SubHasInt }, 0
 // CHECK-NOT: begin_access
-// CHECK:   store %0 to [init] [[PROJ]] : $*SubHasInt
+// CHECK:   store %0 to [[PROJ]] : $*SubHasInt
 // CHECK-NOT: begin_access
 // CHECK:   [[BORROW:%.*]] = load_borrow [[PROJ]] : $*SubHasInt
 // CHECK:   [[ADR:%.*]] = ref_element_addr [[BORROW]] : $SubHasInt, #SubHasInt.j
@@ -122,7 +122,7 @@ class SubHasInt : SuperHasInt {
 // CHECK:   apply
 // CHECK:   unchecked_ref_cast %{{.*}} : $SuperHasInt to $SubHasInt
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [init] [[PROJ]] : $*SubHasInt
+// CHECK:   store %{{.*}} to [[PROJ]] : $*SubHasInt
 // CHECK:   [[VAL:%.*]] = load [copy] [[PROJ]] : $*SubHasInt
 // CHECK:   destroy_value [[UNINIT]] : ${ var SubHasInt }
 // CHECK:   return [[VAL]] : $SubHasInt
@@ -134,7 +134,7 @@ class SubHasInt : SuperHasInt {
 // CHECK:   [[UNINIT:%.*]] = mark_uninitialized [derivedself] [[BOX]] : ${ var SubHasInt }
 // CHECK:   [[PROJ:%.*]] = project_box [[UNINIT]] : ${ var SubHasInt }, 0
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [init] [[PROJ]] : $*SubHasInt
+// CHECK:   store %{{.*}} to [[PROJ]] : $*SubHasInt
 // CHECK-NOT: begin_access
 // CHECK:   [[BORROW:%.*]] = load_borrow [[PROJ]] : $*SubHasInt
 // CHECK:   [[ADR:%.*]] = ref_element_addr [[BORROW]] : $SubHasInt, #SubHasInt.j
@@ -149,7 +149,7 @@ class SubHasInt : SuperHasInt {
 // CHECK:   apply
 // CHECK:   unchecked_ref_cast %{{.*}} : $SuperHasInt to $SubHasInt
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [init] [[PROJ]] : $*SubHasInt
+// CHECK:   store %{{.*}} to [[PROJ]] : $*SubHasInt
 // CHECK:   [[VAL:%.*]] = load [copy] [[PROJ]] : $*SubHasInt
 // CHECK:   destroy_value [[UNINIT]] : ${ var SubHasInt }
 // CHECK:   return [[VAL]] : $SubHasInt
@@ -191,7 +191,7 @@ final class SubWrapper : BaseClass {
 // CHECK:   mark_uninitialized [derivedself]
 // CHECK:   project_box
 // CHECK-NOT: begin_access
-// CHECK:   store %1 to [init]
+// CHECK:   store %1 to
 // CHECK-NOT: begin_access
 // CHECK:   load_borrow
 // CHECK:   ref_element_addr
@@ -200,7 +200,7 @@ final class SubWrapper : BaseClass {
 // CHECK-NOT: begin_access
 // CHECK:   load [take]
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [init]
+// CHECK:   store %{{.*}} to
 // CHECK:   [[VAL:%.*]] = load [copy]
 // CHECK:   destroy_value %{{.*}} : ${ var SubWrapper }
 // CHECK:   return [[VAL]] : $SubWrapper
@@ -218,7 +218,7 @@ func testCaptureLocal() -> ()->() {
 // CHECK:   alloc_box ${ var Int }, var, name "x"
 // CHECK:   [[PROJ:%.*]] = project_box
 // CHECK:   [[ACCESS:%.*]] = begin_access [modify] [unsafe] [[PROJ]] : $*Int
-// CHECK:   store %{{.*}} to [trivial] [[ACCESS]]
+// CHECK:   store %{{.*}} to [[ACCESS]]
 // CHECK:   end_access
 // CHECK:   [[CAPTURE:%.*]] = copy_value %0 : ${ var Int }
 // CHECK:   partial_apply [callee_guaranteed] %{{.*}}([[CAPTURE]]) : $@convention(thin) (@guaranteed { var Int }) -> ()
@@ -272,7 +272,7 @@ func testInitLValue(p: HasIntGetter) -> Int {
 // CHECK:   witness_method $@opened
 // CHECK:   apply %{{.*}}<@opened("{{.*}}") HasIntGetter>([[X]]) : $@convention(witness_method: HasIntGetter) <τ_0_0 where τ_0_0 : HasIntGetter> (@in_guaranteed τ_0_0) -> Int
 // CHECK:   [[ACCESS:%.*]] = begin_access [modify] [unsafe] [[PROJ]] : $*Int
-// CHECK:   store %{{.*}} to [trivial] [[ACCESS]] : $*Int
+// CHECK:   store %{{.*}} to [[ACCESS]] : $*Int
 // CHECK:   end_access
 // CHECK:   destroy_addr
 // CHECK:   dealloc_stack
@@ -307,7 +307,7 @@ func testLocalVarInit(_ arg: StructOfInt) -> Int {
 // CHECK:   alloc_box ${ var StructOfInt }, var, name "lhs"
 // CHECK:   [[BOX:%.*]] = project_box
 // CHECK:   [[ACCESS:%.*]] = begin_access [modify] [unsafe] [[BOX]]
-// CHECK:   store %0 to [trivial] [[ACCESS]]
+// CHECK:   store %0 to [[ACCESS]]
 // CHECK:   end_access
 // CHECK-LABEL: } // end sil function '$s20access_marker_verify16testLocalVarInitySiAA11StructOfIntVF'
 
@@ -360,7 +360,7 @@ func testIndirectEnum() -> IndirectEnum {
 // CHECK:   alloc_box ${ var Int }
 // CHECK:   [[PROJ:%.*]] = project_box
 // CHECK:   [[ACCESS:%.*]] = begin_access [modify] [unsafe] [[PROJ]]
-// CHECK:   store %{{.*}} to [trivial] [[ACCESS]] : $*Int
+// CHECK:   store %{{.*}} to [[ACCESS]] : $*Int
 // CHECK:   end_access
 // CHECK:   enum $IndirectEnum, #IndirectEnum.V!enumelt
 // CHECK:   return
@@ -489,7 +489,7 @@ func accessOptionalArray(_ dict : MyDict<Int, [Int]>) {
 // CHECK:   [[PROJ:%.*]] = project_box
 // ----- initialize the box.
 // CHECK:   [[INITACCESS:%.*]] = begin_access [modify] [unsafe] [[PROJ]]
-// CHECK:   store %{{.*}} to [init] [[INITACCESS]]
+// CHECK:   store %{{.*}} to [[INITACCESS]]
 // CHECK:   end_access [[INITACCESS]]
 // ----- begin formal access for MyDict.subscript.setter
 // CHECK:   [[BOXACCESS:%.*]] = begin_access [modify] [unknown] [[PROJ]]
@@ -498,7 +498,7 @@ func accessOptionalArray(_ dict : MyDict<Int, [Int]>) {
 // ----- Initialize some trivial temporaries.
 // CHECK:   alloc_stack $Int
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [trivial]
+// CHECK:   store %{{.*}} to
 // ----- Call MyDict.subscript.getter.
 // CHECK-NOT: begin_access
 // CHECK:   apply %{{.*}}<Int, [Int]>
@@ -512,14 +512,14 @@ func accessOptionalArray(_ dict : MyDict<Int, [Int]>) {
 // CHECK:   [[TEMPARRAYADR:%.*]] = unchecked_take_enum_data_addr [[TEMPACCESS]] : $*Optional<Array<Int>>, #Optional.some!enumelt
 // ----- call Array.append
 // CHECK:   alloc_stack $Int
-// CHECK:   store %{{.*}} to [trivial]
+// CHECK:   store %{{.*}} to
 // CHECK:   function_ref @$sSa6appendyyxnF : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
 // CHECK:   apply %{{.*}}<Int>(%{{.*}}, [[TEMPARRAYADR]]) : $@convention(method) <τ_0_0> (@in τ_0_0, @inout Array<τ_0_0>) -> ()
 // CHECK:   [[TEMPARRAYVAL:%.*]] = load [take] [[TEMPACCESS]] : $*Optional<Array<Int>>
 // CHECK:   [[ARRAYCOPY:%.*]] = alloc_stack $Optional<Array<Int>>
-// CHECK:   store [[TEMPARRAYVAL]] to [init] [[ARRAYCOPY]] : $*Optional<Array<Int>>
+// CHECK:   store [[TEMPARRAYVAL]] to [[ARRAYCOPY]] : $*Optional<Array<Int>>
 // CHECK:   alloc_stack $Int
-// CHECK:   store %{{.*}} to [trivial]
+// CHECK:   store %{{.*}} to
 // ----- call MyDict.subscript.setter
 // CHECK: apply %{{.*}}<Int, [Int]>([[ARRAYCOPY]], %{{.*}}, [[BOXACCESS]]) : $@convention(method) <τ_0_0, τ_0_1 where τ_0_0 : Hashable> (@in Optional<τ_0_1>, @in τ_0_0, @inout MyDict<τ_0_0, τ_0_1>) -> ()
 // CHECK:   br [[RETBB:bb[0-9]+]]
@@ -528,10 +528,10 @@ func accessOptionalArray(_ dict : MyDict<Int, [Int]>) {
 // CHECK:   [[TEMPARRAY:%.*]] = load [copy] [[TEMPACCESS]]
 // CHECK:   [[WRITEBACK:%.*]] = alloc_stack $Optional<Array<Int>>
 // CHECK-NOT: begin_access
-// CHECK:   store [[TEMPARRAY]] to [init] [[WRITEBACK]]
+// CHECK:   store [[TEMPARRAY]] to [[WRITEBACK]]
 // CHECK:   [[TEMP3:%.*]] = alloc_stack $Int
 // CHECK-NOT: begin_access
-// CHECK:   store %{{.*}} to [trivial] [[TEMP3]] : $*Int
+// CHECK:   store %{{.*}} to [[TEMP3]] : $*Int
 // Call MyDict.subscript.setter
 // CHECK:   apply %{{.*}}<Int, [Int]>([[WRITEBACK]], [[TEMP3]], [[BOXACCESS]]) : $@convention(method) <τ_0_0, τ_0_1 where τ_0_0 : Hashable> (@in Optional<τ_0_1>, @in τ_0_0, @inout MyDict<τ_0_0, τ_0_1>) -> ()
 // CHECK:   end_access [[TEMPACCESS]] : $*Optional<Array<Int>>
@@ -633,7 +633,7 @@ var globalString1 = "⓪" // start non-empty
 // CHECK: [[GA:%.*]] = global_addr @$s20access_marker_verify13globalString1SSvp : $*String
 // CHECK: apply
 // CHECK: [[ACCESS:%.*]] = begin_access [modify] [unsafe] [[GA]] : $*String
-// CHECK: store %{{.*}} to [init] [[ACCESS]] : $*String
+// CHECK: store %{{.*}} to [[ACCESS]] : $*String
 // CHECK: end_access
 // CHECK-LABEL: } // end sil function '{{.*}}WZ'
 
@@ -699,7 +699,7 @@ struct StructWithSetter {
 // CHECK: [[GETTER:%.*]] = function_ref @$s20access_marker_verify16StructWithSetterV3valSivg
 // CHECK: apply [[GETTER]]
 // CHECK: begin_access [modify] [unsafe]
-// CHECK: store %{{.*}} to [trivial]
+// CHECK: store %{{.*}} to
 // CHECK: end_access
 // CHECK: begin_access [modify] [unsafe]
 // CHECK: [[INC:%.*]] = function_ref @$sSi2peoiyySiz_SitFZ
@@ -730,7 +730,7 @@ func inoutWriteOfLazyFinalClassProperty(l: inout LazyFinalClassProperty) {
 // CHECK:   [[GETTER:%.*]] = function_ref @$s20access_marker_verify22LazyFinalClassPropertyC3catSivg
 // CHECK:   apply [[GETTER]]
 // CHECK:   begin_access [modify] [unsafe]
-// CHECK:   store %{{.*}} to [trivial]
+// CHECK:   store %{{.*}} to
 // CHECK:   end_access
 // CHECK:   [[TEMPACCESS:%.*]] = begin_access [modify] [unsafe] %5 : $*Int
 // CHECK:   [[INC:%.*]] = function_ref @$s20access_marker_verify9incrementyySizF : $@convention(thin) (@inout Int) -> ()
@@ -776,7 +776,7 @@ class C : Abstractable {
 // CHECK-NEXT:   [[THUNK:%.*]] = function_ref @$sSiIegd_SiIegr_TR
 // CHECK-NEXT:   [[THUNKED_OLD_FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[OLD_FN]])
 // CHECK-NEXT:   [[CONVERTED_OLD_FN:%.*]] = convert_function [[THUNKED_OLD_FN]]
-// CHECK-NEXT:   store [[CONVERTED_OLD_FN]] to [init] [[TEMP]] :
+// CHECK-NEXT:   store [[CONVERTED_OLD_FN]] to [[TEMP]] :
 // CHECK-NEXT:   yield [[TEMP]] : {{.*}}, resume bb1, unwind bb2
 
 // CHECK:      bb1:
@@ -785,7 +785,7 @@ class C : Abstractable {
 // CHECK-NEXT:   // function_ref thunk
 // CHECK-NEXT:   [[THUNK:%.*]] = function_ref @$sSiIegr_SiIegd_TR
 // CHECK-NEXT:   [[THUNKED_NEW_FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[NEW_FN_CONV]])
-// CHECK-NEXT:   store [[THUNKED_NEW_FN]] to [init] [[ADDR]] :
+// CHECK-NEXT:   store [[THUNKED_NEW_FN]] to [[ADDR]] :
 // CHECK-NEXT:   dealloc_stack [[TEMP]]
 // CHECK-NEXT:   end_apply [[TOKEN]]
 // CHECK-NEXT:   [[TUPLE:%.*]] = tuple ()
@@ -798,7 +798,7 @@ class C : Abstractable {
 // CHECK-NEXT:   // function_ref thunk
 // CHECK-NEXT:   [[THUNK:%.*]] = function_ref @$sSiIegr_SiIegd_TR
 // CHECK-NEXT:   [[THUNKED_NEW_FN:%.*]] = partial_apply [callee_guaranteed] [[THUNK]]([[NEW_FN_CONV]])
-// CHECK-NEXT:   store [[THUNKED_NEW_FN]] to [init] [[ADDR]] :
+// CHECK-NEXT:   store [[THUNKED_NEW_FN]] to [[ADDR]] :
 // CHECK-NEXT:   dealloc_stack [[TEMP]]
 // CHECK-NEXT:   abort_apply [[TOKEN]]
 // CHECK-NEXT:   end_borrow [[SELF]] : $C
@@ -877,7 +877,7 @@ func testMixedTuple(p: HasClassGetter) -> (BaseClass, Any) {
 // CHECK-NOT: begin_access
 // CHECK: apply {{.*}} $@convention(witness_method: HasClassGetter) <τ_0_0 where τ_0_0 : HasClassGetter> (@in_guaranteed τ_0_0) -> @owned BaseClass
 // CHECK: [[OUTANY:%.*]] = init_existential_addr %0 : $*Any, $BaseClass
-// CHECK: store %{{.*}} to [init] [[OUTANY]] : $*BaseClass
+// CHECK: store %{{.*}} to [[OUTANY]] : $*BaseClass
 // CHECK: return [[OUTC]] : $BaseClass
 // CHECK-LABEL: } // end sil function '$s20access_marker_verify14testMixedTuple1pAA9BaseClassC_yptAA03HasH6Getter_p_tF'
 
@@ -1043,7 +1043,7 @@ class testInitExistentialGlobal {
 // CHECK:   [[GADR:%.*]] = global_addr @$s20access_marker_verify25testInitExistentialGlobalC0D8PropertyAA1P_pvpZ : $*P
 // CHECK:   %{{.*}} = apply %{{.*}}({{.*}}) : $@convention(method) (@thin StructP.Type) -> StructP
 // CHECK:   [[EADR:%.*]] = init_existential_addr [[GADR]] : $*P, $StructP
-// CHECK:   store %{{.*}} to [trivial] [[EADR]] : $*StructP
+// CHECK:   store %{{.*}} to [[EADR]] : $*StructP
 // CHECK-LABEL: } // end sil function '{{.*}}WZ
 
 public enum SomeError: Swift.Error {
@@ -1057,8 +1057,8 @@ public func testInitBox() throws {
 // CHECK-LABEL: sil [ossa] @$s20access_marker_verify11testInitBoxyyKF : $@convention(thin) () -> @error Error {
 // CHECK: [[BOXALLOC:%.*]] = alloc_existential_box $Error, $SomeError
 // CHECK: [[PROJ:%.*]] = project_existential_box $SomeError in [[BOXALLOC]] : $Error
-// CHECK: store [[BOXALLOC]] to [init] [[BOXBUF:%.*]] :
-// CHECK: store %{{.*}} to [trivial] [[PROJ]] : $*SomeError
+// CHECK: store [[BOXALLOC]] to [[BOXBUF:%.*]] :
+// CHECK: store %{{.*}} to [[PROJ]] : $*SomeError
 // CHECK: [[BOXALLOC2:%.*]] = load [take] [[BOXBUF]]
 // CHECK: throw [[BOXALLOC2]] : $Error
 // CHECK-LABEL: } // end sil function '$s20access_marker_verify11testInitBoxyyKF'

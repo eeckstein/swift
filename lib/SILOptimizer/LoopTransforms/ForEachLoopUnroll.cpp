@@ -538,8 +538,7 @@ static void unrollForEach(ArrayInfo &arrayInfo, TryApplyInst *forEachCall,
     SILBuilderWithScope unrollBuilder(currentBB, forEachCall);
     SILValue borrowedElem;
     if (arrayElementType.isTrivial(*fun)) {
-      unrollBuilder.createStore(forEachLoc, elementCopy, allocStack,
-                                StoreOwnershipQualifier::Trivial);
+      unrollBuilder.createStore(forEachLoc, elementCopy, allocStack);
     } else {
       // Borrow the elementCopy and store it in the allocStack. Note that the
       // element's copy is guaranteed to be alive until the array is alive.
