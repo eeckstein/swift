@@ -130,28 +130,6 @@ bb4:
   return %r : $()
 }
 
-// CHECK-LABEL: sil [ossa] @store_splitting
-// CHECK:      destroy_addr %0
-// CHECK-NEXT: store %1 to [init] %0
-// CHECK:      return
-sil [ossa] @store_splitting : $@convention(thin) (@inout S, @owned S, @guaranteed TwoCases) -> () {
-bb0(%0 : $*S, %1 : @owned $S, %2 : @guaranteed $TwoCases):
-  switch_enum %2 : $TwoCases, case #TwoCases.A!enumelt: bb1, case #TwoCases.B!enumelt: bb2
-
-bb1(%4 : @guaranteed $X):
-  %5 = enum $TwoCases, #TwoCases.B!enumelt
-  store %1 to [assign] %0 : $*S
-  br bb3
-
-bb2:
-  destroy_value %1 : $S
-  br bb3
-
-bb3:
-  %r = tuple ()
-  return %r : $()
-}
-
 // Check several things: critical edge splitting, handling of sub-locations, complex control flow
 
 // CHECK-LABEL: sil [ossa] @test_complex
@@ -309,7 +287,8 @@ bb1:
   destroy_addr %60 : $*S
   store %2 to [init] %60 : $*S
   %71 = struct_element_addr %60 : $*S, #S.x
-  store %1 to [assign] %71 : $*X
+  destroy_addr %71 : $*X
+  store %1 to [init] %71 : $*X
 
   %75 = tuple ()
   return %75 : $()

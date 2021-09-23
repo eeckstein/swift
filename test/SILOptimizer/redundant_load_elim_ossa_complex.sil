@@ -724,7 +724,8 @@ bb1:
   br bb3(%2 : $NonTrivialStruct)
 
 bb2:
-  store %1 to [assign] %0 : $*NonTrivialStruct
+  destroy_addr %0 : $*NonTrivialStruct
+  store %1 to [init] %0 : $*NonTrivialStruct
   %3 = load [copy] %0 : $*NonTrivialStruct
   br bb3(%3 : $NonTrivialStruct)
 
@@ -786,7 +787,8 @@ bb0(%0 : $*NonTrivialStruct, %1 : @owned $Klass, %2 : @owned $Klass):
   cond_br undef, bb1, bb2
 
 bb1:
-  store %2 to [assign] %ele : $*Klass
+  destroy_addr %ele : $*Klass
+  store %2 to [init] %ele : $*Klass
   br bb3
 
 bb2:
@@ -802,7 +804,8 @@ bb4:
 bb5:
   %val2 = load [copy] %ele : $*Klass
   destroy_value %val2 : $Klass
-  store %1 to [assign] %ele : $*Klass
+  destroy_addr %ele : $*Klass
+  store %1 to [init] %ele : $*Klass
   br bb7
 
 bb6:
@@ -833,7 +836,8 @@ bb0(%0 : @owned $FakeOptional<Klass>):
 
 bb1:
   %4 = enum $FakeOptional<Klass>, #FakeOptional.none!enumelt
-  store %4 to [assign] %3 : $*FakeOptional<Klass>
+  destroy_addr %3 : $*FakeOptional<Klass>
+  store %4 to [init] %3 : $*FakeOptional<Klass>
   br bb3
 
 bb2:

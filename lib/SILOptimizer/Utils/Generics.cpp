@@ -2074,8 +2074,7 @@ static ApplySite replaceWithSpecializedCallee(ApplySite applySite,
       SILArgument *arg = resultBlock->replacePhiArgument(
           0, resultOut->getType().getObjectType(), OwnershipKind::Owned);
       // Store the direct result to the original result address.
-      builder.emitStoreValueOperation(loc, arg, resultOut,
-                                      StoreOwnershipQualifier::Init);
+      builder.emitStoreValueOperation(loc, arg, resultOut);
     }
     return newTAI;
   }
@@ -2094,8 +2093,7 @@ static ApplySite replaceWithSpecializedCallee(ApplySite applySite,
               builder.getModule(), builder.getTypeExpansionContext())) {
         // Store the direct result to the original result address.
         fixUsedVoidType(ai, loc, builder);
-        builder.emitStoreValueOperation(loc, newAI, resultOut,
-                                        StoreOwnershipQualifier::Init);
+        builder.emitStoreValueOperation(loc, newAI, resultOut);
       } else {
         builder.createUnreachable(loc);
         // unreachable should be the terminator instruction.
@@ -2243,8 +2241,7 @@ SILFunction *ReabstractionThunkGenerator::createThunk() {
 
   if (ReturnValueAddr) {
     // Need to store the direct results to the original indirect address.
-    Builder.emitStoreValueOperation(Loc, ReturnValue, ReturnValueAddr,
-                                    StoreOwnershipQualifier::Init);
+    Builder.emitStoreValueOperation(Loc, ReturnValue, ReturnValueAddr);
     SILType VoidTy = OrigPAI->getSubstCalleeType()->getDirectFormalResultsType(
         M, Builder.getTypeExpansionContext());
     assert(VoidTy.isVoid());

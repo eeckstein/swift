@@ -91,7 +91,8 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass):
   store %0 to [init] %2 : $*Klass
   %3 = integer_literal $Builtin.Int1, 0
   cond_fail %3 : $Builtin.Int1
-  store %1 to [assign] %2 : $*Klass
+  destroy_addr %2 : $*Klass
+  store %1 to [init] %2 : $*Klass
   %4 = function_ref @blackhole_spl : $@convention(thin) (@guaranteed Klass) -> ()
   %5 = load [take] %2 : $*Klass
   %6 = apply %4(%5) : $@convention(thin) (@guaranteed Klass) -> ()
@@ -142,7 +143,8 @@ bb0(%0 : @guaranteed $Klass, %1 : @guaranteed $Klass):
   %3 = integer_literal $Builtin.Int1, 0
   cond_fail %3 : $Builtin.Int1
   %copy1 = copy_value %1 : $Klass
-  store %copy1 to [assign] %2 : $*Klass
+  destroy_addr %2 : $*Klass
+  store %copy1 to [init] %2 : $*Klass
   %4 = function_ref @blackhole_spl : $@convention(thin) (@guaranteed Klass) -> ()
   %5 = load [take] %2 : $*Klass
   %6 = apply %4(%5) : $@convention(thin) (@guaranteed Klass) -> ()
@@ -161,7 +163,8 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass):
   store %0 to [init] %2 : $*Klass
   %3 = alloc_box $<τ_0_0> { var τ_0_0 } <Klass>
   %3a = project_box %3 : $<τ_0_0> { var τ_0_0 } <Klass>, 0
-  store %1 to [assign] %2 : $*Klass
+  destroy_addr %2 : $*Klass
+  store %1 to [init] %2 : $*Klass
   cond_br undef, bb1, bb2
 
 bb1:
@@ -188,8 +191,10 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass, %2 : @owned $Klass):
   store %0 to [init] %stk : $*Klass
   %3 = alloc_box $<τ_0_0> { var τ_0_0 } <Klass>
   %3a = project_box %3 : $<τ_0_0> { var τ_0_0 } <Klass>, 0
-  store %1 to [assign] %stk : $*Klass
-  store %2 to [assign] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %1 to [init] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %2 to [init] %stk : $*Klass
   cond_br undef, bb1, bb2
 
 bb1:
@@ -219,7 +224,8 @@ bb1:
   store %0 to [init] %2 : $*Klass
   %3 = integer_literal $Builtin.Int1, 0
   cond_fail %3 : $Builtin.Int1
-  store %1 to [assign] %2 : $*Klass
+  destroy_addr %2 : $*Klass
+  store %1 to [init] %2 : $*Klass
   br bb2
 
 bb2:
@@ -244,8 +250,10 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass, %2 : @owned $Klass):
   br bb1
 
 bb1:
-  store %1 to [assign] %stk : $*Klass
-  store %2 to [assign] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %1 to [init] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %2 to [init] %stk : $*Klass
   br bb2
 
 bb2:
@@ -270,7 +278,8 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass, %2 : @owned $Klass):
   br bb1
 
 bb1:
-  store %1 to [assign] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %1 to [init] %stk : $*Klass
   destroy_addr %stk : $*Klass
   store %2 to [init] %stk : $*Klass
   br bb2
@@ -294,7 +303,8 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass):
   store %0 to [init] %2 : $*Klass
   %3 = alloc_box $<τ_0_0> { var τ_0_0 } <Klass>
   %3a = project_box %3 : $<τ_0_0> { var τ_0_0 } <Klass>, 0
-  store %1 to [assign] %2 : $*Klass
+  destroy_addr %2 : $*Klass
+  store %1 to [init] %2 : $*Klass
   cond_br undef, bb1, bb2
 
 bb1:
@@ -321,7 +331,8 @@ bb0(%0 : @owned $Klass, %1 : @owned $Klass):
   %3 = alloc_stack $Klass
   store %1 to [init] %3 : $*Klass
   %local = alloc_ref $Klass
-  store %local to [assign] %3 : $*Klass
+  destroy_addr %3 : $*Klass
+  store %local to [init] %3 : $*Klass
   %func = function_ref @blackhole_spl : $@convention(thin) (@guaranteed Klass) -> ()
   %arg = load [take] %3 : $*Klass
   %applyres = apply %func(%arg) : $@convention(thin) (@guaranteed Klass) -> ()
@@ -417,7 +428,8 @@ bb0(%0 : @owned $Klass, %1: @owned $Klass):
   store %0 to [init] %stk : $*Klass
   br bb1
 bb1:
-  store %1 to [assign] %stk : $*Klass
+  destroy_addr %stk : $*Klass
+  store %1 to [init] %stk : $*Klass
   %res = load [take] %stk : $*Klass
   dealloc_stack %stk : $*Klass
   return %res : $Klass
@@ -741,7 +753,8 @@ bb1:
   br bbret(%new1 : $Klass)
 
 bb2:
-  store %1 to [assign] %stk1 : $*Klass
+  destroy_addr %stk1 : $*Klass
+  store %1 to [init] %stk1 : $*Klass
   %new2 = load [take] %stk1 : $*Klass
   dealloc_stack %stk1 : $*Klass
   br bbret(%new2 : $Klass)
@@ -765,7 +778,8 @@ bb1:
   br bbret(%new1 : $Klass)
 
 bb2:
-  store %1 to [assign] %stk1 : $*Klass
+  destroy_addr %stk1 : $*Klass
+  store %1 to [init] %stk1 : $*Klass
   %new2 = load [take] %stk1 : $*Klass
   br bbret(%new2 : $Klass)
 

@@ -2283,14 +2283,12 @@ public:
               "Qualified store in function with unqualified ownership?!");
       break;
     case StoreOwnershipQualifier::Init:
-    case StoreOwnershipQualifier::Assign:
       require(
           F.hasOwnership(),
           "Inst with qualified ownership in a function that is not qualified");
       // TODO: Could probably make this a bit stricter.
       require(!SI->getSrc()->getType().isTrivial(*SI->getFunction()),
-              "store [init] or store [assign] can only be applied to "
-              "non-trivial types");
+              "store [init] can only be applied to non-trivial types");
       break;
     case StoreOwnershipQualifier::Trivial: {
       require(

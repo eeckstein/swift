@@ -72,7 +72,8 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $Builtin.NativeObject
   store %0 to [init] %2 : $*Builtin.NativeObject
   %1a = copy_value %1 : $Builtin.NativeObject
-  store %1a to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1a to [init] %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_value %3 : $Builtin.NativeObject
   %4 = load [take] %2 : $*Builtin.NativeObject
@@ -93,9 +94,8 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 // Then we are performing a store assign, so we load the old value, store the
 // new value, and release the old value.
 // CHECK:   strong_retain [[ARG1]]
-// CHECK:   [[OLD_VALUE:%.*]] = load [[STACK]]
+// CHECK:   destroy_addr [[STACK]]
 // CHECK:   store [[ARG1]] to [[STACK]]
-// CHECK:   strong_release [[OLD_VALUE]]
 //
 // Then we are performing a load [copy] + destroy.
 //

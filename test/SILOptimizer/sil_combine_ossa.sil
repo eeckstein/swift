@@ -1714,6 +1714,7 @@ bb0(%0 : $*@callee_owned (@in ()) -> @out AnotherClass, %1 : $*AnotherClass):
 // CHECK-NEXT: upcast
 // CHECK-NEXT: load
 // CHECK-NEXT: upcast
+// CHECK-NEXT: destroy_addr
 // CHECK-NEXT: store
 // CHECK-NEXT: return
 // CHECK: } // end sil function 'upcast_formation'
@@ -1722,7 +1723,8 @@ bb0(%0 : $*E, %1 : @owned $E, %2 : $*B):
   %3 = unchecked_addr_cast %0 : $*E to $*B
   %4 = unchecked_ref_cast %1 : $E to $B
   %5 = load [copy] %3 : $*B
-  store %5 to [assign] %2 : $*B
+  destroy_addr %2 : $*B
+  store %5 to [init] %2 : $*B
   return %4 : $B
 }
 
@@ -1731,6 +1733,7 @@ bb0(%0 : $*E, %1 : @owned $E, %2 : $*B):
 // CHECK-NEXT: copy_value
 // CHECK-NEXT: destroy_value
 // CHECK-NEXT: load
+// CHECK-NEXT: destroy_addr
 // CHECK-NEXT: store
 // CHECK-NEXT: return
 // CHECK: } // end sil function 'dont_form_upcast_when_casts_are_identity'
@@ -1739,7 +1742,8 @@ bb0(%0 : $*E, %1 : @owned $E, %2 : $*E):
   %3 = unchecked_addr_cast %0 : $*E to $*E
   %4 = unchecked_ref_cast %1 : $E to $E
   %5 = load [copy] %3 : $*E
-  store %5 to [assign] %2 : $*E
+  destroy_addr %2 : $*E
+  store %5 to [init] %2 : $*E
   return %4 : $E
 }
 
@@ -3480,7 +3484,8 @@ bb0(%0 : @guaranteed $TestError, %0a : @owned $Error):
   %4 = builtin "willThrow"(%1 : $Error) : $()
   %5 = alloc_stack $Error
   store %1 to [init] %5 : $*Error
-  store %0a to [assign] %5 : $*Error
+  destroy_addr %5 : $*Error
+  store %0a to [init] %5 : $*Error
   %7 = alloc_stack $TestError
   unconditional_checked_cast_addr Error in %5 : $*Error to TestError in %7 : $*TestError
   %10 = struct_element_addr %7 : $*TestError, #TestError.payload

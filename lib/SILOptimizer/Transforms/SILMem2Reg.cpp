@@ -396,27 +396,8 @@ StoreInst *StackAllocationPromoter::promoteAllocationInBlock(
       if (si->getDest() != asi)
         continue;
 
-      // If we see a store [assign], always convert it to a store [init]. This
-      // simplifies further processing.
-      if (si->getOwnershipQualifier() == StoreOwnershipQualifier::Assign) {
-        if (runningVal) {
-          SILBuilderWithScope(si, ctx).createDestroyValue(si->getLoc(),
-                                                          runningVal);
-        } else {
-          SILBuilderWithScope localBuilder(si, ctx);
-          auto *newLoad = localBuilder.createLoad(si->getLoc(), asi,
-                                                  LoadOwnershipQualifier::Take);
-          localBuilder.createDestroyValue(si->getLoc(), newLoad);
-        }
-        si->setOwnershipQualifier(StoreOwnershipQualifier::Init);
-      }
-
       // If we met a store before this one, delete it.
       if (lastStore) {
-        assert(lastStore->getOwnershipQualifier() !=
-                   StoreOwnershipQualifier::Assign &&
-               "store [assign] to the stack location should have been "
-               "transformed to a store [init]");
         LLVM_DEBUG(llvm::dbgs()
                    << "*** Removing redundant store: " << *lastStore);
         ++NumInstRemoved;
@@ -465,10 +446,6 @@ StoreInst *StackAllocationPromoter::promoteAllocationInBlock(
   }
 
   if (lastStore) {
-    assert(lastStore->getOwnershipQualifier() !=
-               StoreOwnershipQualifier::Assign &&
-           "store [assign] to the stack location should have been "
-           "transformed to a store [init]");
     LLVM_DEBUG(llvm::dbgs()
                << "*** Finished promotion. Last store: " << *lastStore);
   } else {
@@ -1070,11 +1047,6 @@ void MemoryToRegisters::removeSingleBlockAllocation(AllocStackInst *asi) {
     // value.
     if (auto *si = dyn_cast<StoreInst>(inst)) {
       if (si->getDest() == asi) {
-        if (si->getOwnershipQualifier() == StoreOwnershipQualifier::Assign) {
-          assert(runningVal);
-          SILBuilderWithScope(si, ctx).createDestroyValue(si->getLoc(),
-                                                          runningVal);
-        }
         runningVal = si->getSrc();
         deleter.forceDelete(inst);
         ++NumInstRemoved;

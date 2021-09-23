@@ -712,7 +712,7 @@ bb3:
 //
 // CHECK: bb2:
 // CHECK:   [[TRIPLE_RHS_LHS:%.*]] = struct_element_addr [[TRIPLE_RHS]]
-// CHECK:   store [[ARG2]] to [assign] [[TRIPLE_RHS_LHS]]
+// CHECK:   store [[ARG2]] to [init] [[TRIPLE_RHS_LHS]]
 // CHECK:   br bb4
 //
 // CHECK: bb3:
@@ -744,7 +744,8 @@ bb1:
 
 bb2:
   %11 = struct_element_addr %6 : $*NativeObjectPair, #NativeObjectPair.x
-  store %arg2 to [assign] %11 : $*Builtin.NativeObject
+  destroy_addr %11 : $*Builtin.NativeObject
+  store %arg2 to [init] %11 : $*Builtin.NativeObject
   br bb4
 
 bb3:
@@ -806,7 +807,7 @@ bb4:
 // CHECK: [[SUCC_2]]([[PHI1:%.*]] : @owned $Builtin.NativeObject):
 // CHECK:   [[TRIPLE_RHS:%.*]] = struct_element_addr [[BOX]] : $*NativeObjectTriple, #NativeObjectTriple.f2
 // CHECK:   [[TRIPLE_RHS_LHS:%.*]] = struct_element_addr [[TRIPLE_RHS]]
-// CHECK:   store [[ARG2]] to [assign] [[TRIPLE_RHS_LHS]]
+// CHECK:   store [[ARG2]] to [init] [[TRIPLE_RHS_LHS]]
 // CHECK:   br [[EXIT_BB:bb[0-9]+]]([[PHI1:%.*]] : $Builtin.NativeObject)
 //
 // CHECK: [[SUCC_1]]([[PHI:%.*]] : @owned $Builtin.NativeObject):
@@ -860,7 +861,8 @@ bb6:
 bb7:
   %11 = struct_element_addr %2 : $*NativeObjectTriple, #NativeObjectTriple.f2
   %12 = struct_element_addr %11 : $*NativeObjectPair, #NativeObjectPair.x
-  store %arg2 to [assign] %12 : $*Builtin.NativeObject
+  destroy_addr %12 : $*Builtin.NativeObject
+  store %arg2 to [init] %12 : $*Builtin.NativeObject
   br bb9
 
 bb8:
@@ -992,7 +994,8 @@ bb0(%0 : @owned $NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $NativeObjectPair
   store %0 to [init] %2 : $*NativeObjectPair
   %3 = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.x
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   destroy_addr %2 : $*NativeObjectPair
   dealloc_stack %2 : $*NativeObjectPair
   %9999 = tuple()

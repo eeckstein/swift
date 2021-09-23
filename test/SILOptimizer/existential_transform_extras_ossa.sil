@@ -267,7 +267,8 @@ struct Container<T> {
 sil shared [ossa] @testExistentialSpecializeCompositeHelper : $@convention(method) (@owned PlotLayer & Plotable & InView, @inout Container<PlotLayer & Plotable & InView>) -> () {
 bb0(%0 : @owned $PlotLayer & Plotable & InView, %1 : $*Container<PlotLayer & Plotable & InView>):
   %adr = struct_element_addr %1 : $*Container<PlotLayer & Plotable & InView>, #Container.val
-  store %0 to [assign] %adr : $*PlotLayer & Plotable & InView
+  destroy_addr %adr : $*PlotLayer & Plotable & InView
+  store %0 to [init] %adr : $*PlotLayer & Plotable & InView
   %v = tuple ()
   return %v : $()
 }

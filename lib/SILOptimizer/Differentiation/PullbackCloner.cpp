@@ -386,8 +386,7 @@ private:
     /// the destination address.
     case AdjointValueKind::Concrete:
       auto concreteVal = val.getConcreteValue();
-      builder.emitStoreValueOperation(loc, concreteVal, destAddress,
-                                      StoreOwnershipQualifier::Init);
+      builder.emitStoreValueOperation(loc, concreteVal, destAddress);
       break;
     }
   }
@@ -954,8 +953,7 @@ public:
       } else {
         if (origArg->getType().isAddress()) {
           auto *tmpBuf = builder.createAllocStack(loc, tan->getType());
-          builder.emitStoreValueOperation(loc, tan, tmpBuf,
-                                          StoreOwnershipQualifier::Init);
+          builder.emitStoreValueOperation(loc, tan, tmpBuf);
           addToAdjointBuffer(bb, origArg, tmpBuf, loc);
           builder.emitDestroyAddrAndFold(loc, tmpBuf);
           builder.createDeallocStack(loc, tmpBuf);
@@ -1162,8 +1160,7 @@ public:
         auto concreteAdjEltCopy =
             builder.emitCopyValueOperation(loc, concreteAdjElt);
         auto *alloc = builder.createAllocStack(loc, adjElt.getType());
-        builder.emitStoreValueOperation(loc, concreteAdjEltCopy, alloc,
-                                        StoreOwnershipQualifier::Init);
+        builder.emitStoreValueOperation(loc, concreteAdjEltCopy, alloc);
         builder.emitInPlaceAdd(loc, adjBaseElt, alloc);
         builder.createDestroyAddr(loc, alloc);
         builder.createDeallocStack(loc, alloc);
@@ -1437,8 +1434,7 @@ public:
       auto adjBuf = builder.createAllocStack(
           loc, adjVal->getType(), SILDebugVariable());
       auto copy = builder.emitCopyValueOperation(loc, adjVal);
-      builder.emitStoreValueOperation(loc, copy, adjBuf,
-                                      StoreOwnershipQualifier::Init);
+      builder.emitStoreValueOperation(loc, copy, adjBuf);
       // Accumulate the adjoint value in the local buffer into the adjoint
       // buffer.
       addToAdjointBuffer(bb, inst->getOperand(0), adjBuf, loc);
@@ -2269,8 +2265,7 @@ void PullbackCloner::Implementation::accumulateAdjointForOptional(
     auto *enumInst = builder.createEnum(pbLoc, wrappedAdjoint, someEltDecl,
                                         optionalOfWrappedTanType);
     // store %enum to %optArgBuf
-    builder.emitStoreValueOperation(pbLoc, enumInst, optArgBuf,
-                                    StoreOwnershipQualifier::Init);
+    builder.emitStoreValueOperation(pbLoc, enumInst, optArgBuf);
   } else {
     // %enumAddr = init_enum_data_addr %optArgBuf $Optional<T.TangentVector>,
     //                                 #Optional.some!enumelt
@@ -2683,8 +2678,7 @@ bool PullbackCloner::Implementation::runForSemanticMemberGetter() {
         auto adjResultValue = materializeAdjointDirect(adjResult, pbLoc);
         auto adjResultValueCopy =
             builder.emitCopyValueOperation(pbLoc, adjResultValue);
-        builder.emitStoreValueOperation(pbLoc, adjResultValueCopy, adjSelfElt,
-                                        StoreOwnershipQualifier::Init);
+        builder.emitStoreValueOperation(pbLoc, adjResultValueCopy, adjSelfElt);
         break;
       }
       case SILValueCategory::Address: {
@@ -2827,8 +2821,7 @@ SILValue PullbackCloner::Implementation::getAdjointProjection(
             auto *adjElt =
                 builder.createStructExtract(loc, borrowedAdjClass, tanField);
             auto adjEltCopy = builder.emitCopyValueOperation(loc, adjElt);
-            builder.emitStoreValueOperation(loc, adjEltCopy, eltAdjBuffer,
-                                            StoreOwnershipQualifier::Init);
+            builder.emitStoreValueOperation(loc, adjEltCopy, eltAdjBuffer);
           });
       return eltAdjBuffer;
     }

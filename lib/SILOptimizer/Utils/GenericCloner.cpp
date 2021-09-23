@@ -134,8 +134,7 @@ void GenericCloner::populateCloned() {
           // Store the new direct parameter to an alloc_stack.
           createAllocStack();
           if (!NewArg->getArgumentConvention().isGuaranteedConvention()) {
-            getBuilder().emitStoreValueOperation(Loc, NewArg, ASI,
-                                                 StoreOwnershipQualifier::Init);
+            getBuilder().emitStoreValueOperation(Loc, NewArg, ASI);
           } else {
             getBuilder().emitStoreBorrowOperation(Loc, NewArg, ASI);
           }

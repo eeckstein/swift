@@ -43,7 +43,8 @@ bb2:
 bb3:
   %4 = struct_element_addr %1 : $*Inner, #Inner.a
   %5 = copy_value %3 : $T
-  store %5 to [assign] %4 : $*T
+  destroy_addr %4 : $*T
+  store %5 to [init] %4 : $*T
   br bb5
 bb4:
   %6 = struct_element_addr %0 : $*Outer, #Outer.y
@@ -64,7 +65,8 @@ bb6:
 sil [ossa] @test_struct2 : $@convention(thin) (@in Outer, @owned T) -> () {
 bb0(%0 : $*Outer, %1 : @owned $T):
   %2 = struct_element_addr %0 : $*Outer, #Outer.x
-  store %1 to [assign] %2 : $*T
+  destroy_addr %2 : $*T
+  store %1 to [init] %2 : $*T
   destroy_addr %0 : $*Outer
   %3 = tuple ()
   return %3 : $()

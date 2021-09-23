@@ -377,7 +377,7 @@ static void emitCaptureArguments(SILGenFunction &SGF,
       // We have created a copy that needs to be destroyed.
       val = SGF.B.emitCopyValueOperation(Loc, val);
       NeedToDestroyValueAtExit = true;
-      lowering.emitStore(SGF.B, VD, val, addr, StoreOwnershipQualifier::Init);
+      lowering.emitStore(SGF.B, VD, val, addr);
       val = addr;
     }
 

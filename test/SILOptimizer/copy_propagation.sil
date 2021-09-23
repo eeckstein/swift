@@ -704,7 +704,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access {{.*}} : $*X
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [assign] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
 // CHECK:   begin_access {{.*}} : $*Y
 // CHECK:   end_access {{.*}} : $*X
 // CHECK:   end_access {{.*}} : $*Y
@@ -725,8 +725,9 @@ bb0(%0 : $*AnyObject):
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   %accessX = begin_access [read] [dynamic] %xadr : $*X
+  destroy_addr %0 : $*AnyObject
   // use
-  store %def to [assign] %0 : $*AnyObject
+  store %def to [init] %0 : $*AnyObject
   %accessY = begin_access [read] [dynamic] %yadr : $*Y
   // accessX overlaps pruned liveness on the first iteration
   end_access %accessX : $*X
@@ -764,7 +765,7 @@ bb1:
 // CHECK:   [[DEF:%.*]] = apply %{{.*}}() : $@convention(thin) () -> @owned AnyObject
 // CHECK:   begin_access {{.*}} : $*X
 // CHECK:   [[COPY:%.*]] = copy_value [[DEF]] : $AnyObject
-// CHECK:   store [[COPY]] to [assign] %{{.*}} : $*AnyObject
+// CHECK:   store [[COPY]] to [init] %{{.*}} : $*AnyObject
 // CHECK:   br bb1
 // CHECK: bb1:
 // CHECK:   begin_access {{.*}} : $*Y
@@ -791,8 +792,9 @@ bb0(%0 : $*AnyObject):
   %def = apply %f() : $@convention(thin) () -> @owned AnyObject
   %copy = copy_value %def : $AnyObject
   %accessX = begin_access [read] [dynamic] %xadr : $*X
+  destroy_addr %0 : $*AnyObject
   // use
-  store %def to [assign] %0 : $*AnyObject
+  store %def to [init] %0 : $*AnyObject
   br bb1
 
 bb1:

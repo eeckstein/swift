@@ -785,7 +785,8 @@ bb0(%0 : $*AClass, %1 : @guaranteed $AClass):
 // CHECK-NEXT:   [[COPY:%.*]] = copy_value %0
 // CHECK-NEXT:   store %0 to [init] [[LOCAL]] : $*AClass
 // CHECK-NEXT:   copy_addr [[LOCAL]] to %1 : $*AClass
-// CHECK-NEXT:   store [[COPY]] to [assign] %1 : $*AClass
+// CHECK-NEXT:   destroy_addr %1 : $*AClass
+// CHECK-NEXT:   store [[COPY]] to [init] %1 : $*AClass
 // CHECK-NEXT:   br bb1
 // CHECK: bb1:
 // CHECK-NEXT:   destroy_addr [[LOCAL]]
@@ -799,7 +800,8 @@ bb0(%obj : @owned $AClass, %ptr : $*AClass ):
   %copy = copy_value %obj : $AClass
   store %obj to [init] %local : $*AClass
   copy_addr %local to %ptr : $*AClass
-  store %copy to [assign] %ptr : $*AClass
+  destroy_addr %ptr : $*AClass
+  store %copy to [init] %ptr : $*AClass
   br bb1
 bb1:
   destroy_addr %local : $*AClass

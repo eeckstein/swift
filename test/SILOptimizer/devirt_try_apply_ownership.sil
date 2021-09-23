@@ -211,7 +211,8 @@ bb0(%0 : @owned $Derived1):
   %7 = apply %4(%3) : $@convention(method) (@owned Base) -> @owned Base
   %8 = unchecked_ref_cast %7 : $Base to $Derived1
   %9 = copy_value %8 : $Derived1
-  store %8 to [assign] %1 : $*Derived1
+  destroy_addr %1 : $*Derived1
+  store %8 to [init] %1 : $*Derived1
   destroy_addr %1 : $*Derived1
   dealloc_stack %1 : $*Derived1
   return %9 : $Derived1
@@ -294,7 +295,8 @@ bb0(%0 : @owned $Derived2):
   %7 = apply %4(%3) : $@convention(method) (@owned Base) -> @owned Base
   %8 = unchecked_ref_cast %7 : $Base to $Derived2
   %9 = copy_value %8 : $Derived2
-  store %8 to [assign] %1 : $*Derived2
+  destroy_addr %1 : $*Derived2
+  store %8 to [init] %1 : $*Derived2
   destroy_addr %1 : $*Derived2
   dealloc_stack %1 : $*Derived2
   return %9 : $Derived2
@@ -401,7 +403,8 @@ bb0(%0 : @owned $CP2):
   %7 = apply %4(%3) : $@convention(method) (@owned CP1) -> @owned CP1
   %8 = unchecked_ref_cast %7 : $CP1 to $CP2
   %9 = copy_value %8 : $CP2
-  store %8 to [assign] %1 : $*CP2
+  destroy_addr %1 : $*CP2
+  store %8 to [init] %1 : $*CP2
   destroy_addr %1 : $*CP2
   dealloc_stack %1 : $*CP2
   return %9 : $CP2
@@ -474,7 +477,8 @@ bb0(%0 : @owned $Base):
 
 bb1(%11 : @owned $Base):
   %12 = enum $Optional<Base>, #Optional.some!enumelt, %11 : $Base
-  store %12 to [assign] %1 : $*Optional<Base>
+  destroy_addr %1 : $*Optional<Base>
+  store %12 to [init] %1 : $*Optional<Base>
   br bb2
 
 bb2:
@@ -510,7 +514,8 @@ bb0(%0 : @owned $Base):
   try_apply %9(%0) : $@convention(method) (@guaranteed Base) -> (@owned Optional<Base>, @error Error), normal bb1, error bb4
 
 bb1(%11 : @owned $Optional<Base>):
-  store %11 to [assign] %1 : $*Optional<Base>
+  destroy_addr %1 : $*Optional<Base>
+  store %11 to [init] %1 : $*Optional<Base>
   br bb2
 
 bb2:

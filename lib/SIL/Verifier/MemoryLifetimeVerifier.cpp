@@ -558,9 +558,6 @@ void MemoryLifetimeVerifier::checkBlock(SILBasicBlock *block, Bits &bits) {
             requireBitsClear(bits & nonTrivialLocations, SI->getDest(), &I);
             locations.setBits(bits, SI->getDest());
             break;
-          case StoreOwnershipQualifier::Assign:
-            requireBitsSet(bits | ~nonTrivialLocations, SI->getDest(), &I);
-            break;
           case StoreOwnershipQualifier::Trivial:
             locations.setBits(bits, SI->getDest());
             break;

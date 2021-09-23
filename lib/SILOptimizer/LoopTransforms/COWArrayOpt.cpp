@@ -741,10 +741,6 @@ bool COWArrayOpt::hasLoopOnlyDestructorSafeArrayOperations() {
 
       // Stores to array elements.
       if (auto *SI = dyn_cast<StoreInst>(Inst)) {
-        if (SI->getOwnershipQualifier() == StoreOwnershipQualifier::Assign) {
-          LLVM_DEBUG(llvm::dbgs() << "     (NO) store with [assign]" << *SI);
-          return ReturnWithCleanup(false);
-        }
         if (isAddressOfArrayElement(SI->getDest()))
           continue;
         LLVM_DEBUG(llvm::dbgs() << "     (NO) unknown store " << *SI);

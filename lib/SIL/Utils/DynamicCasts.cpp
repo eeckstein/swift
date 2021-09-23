@@ -1312,8 +1312,7 @@ void swift::emitIndirectConditionalCastWithScalar(
     }
 
     // And then store the succValue into dest.
-    B.emitStoreValueOperation(loc, succValue, destAddr,
-                              StoreOwnershipQualifier::Init);
+    B.emitStoreValueOperation(loc, succValue, destAddr);
     B.createBranch(loc, indirectSuccBB);
   }
 
@@ -1338,8 +1337,7 @@ void swift::emitIndirectConditionalCastWithScalar(
     case CastConsumptionKind::TakeOnSuccess:
       // If we have take_on_success, since we failed, just store the value back
       // into the src location that we originally took from.
-      B.emitStoreValueOperation(loc, failValue, srcAddr,
-                                StoreOwnershipQualifier::Init);
+      B.emitStoreValueOperation(loc, failValue, srcAddr);
       break;
     case CastConsumptionKind::CopyOnSuccess:
       B.emitEndBorrowOperation(loc, srcValue);

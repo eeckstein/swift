@@ -558,8 +558,6 @@ void FunctionSideEffects::analyzeInstruction(SILInstruction *I) {
     auto *si = cast<StoreInst>(I);
     auto *effects = getEffectsOn(si->getDest());
     effects->Writes = true;
-    if (si->getOwnershipQualifier() == StoreOwnershipQualifier::Assign)
-      effects->Releases = true;
     return;
   }
   case SILInstructionKind::CondFailInst:

@@ -299,16 +299,18 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK: Overlapping Uses {
 // CHECK-NEXT:  %3 = load [copy] %2 : $*AnyObject
 // CHECK-NEXT:  Path: ()
-// CHECK-NEXT:  %7 = load [copy] %6 : $*AnyObject
+// CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [assign] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [assign] %11 : $*AnyObject
+// CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  %17 = load [copy] %16 : $*AnyObject
+// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  Path: (@Unknown)
+// CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   %7 = load [copy] %6 : $*AnyObject
+// CHECK: ###For MemOp:   %7 = load [take] %6 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -316,16 +318,18 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK: Overlapping Uses {
 // CHECK-NEXT:  %3 = load [copy] %2 : $*AnyObject
 // CHECK-NEXT:  Path: ()
-// CHECK-NEXT:  %7 = load [copy] %6 : $*AnyObject
+// CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [assign] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [assign] %11 : $*AnyObject
+// CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  %17 = load [copy] %16 : $*AnyObject
+// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  Path: (@Unknown)
+// CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   store %7 to [assign] %6 : $*AnyObject
+// CHECK: ###For MemOp:   store %7 to [init] %6 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -333,16 +337,18 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK: Overlapping Uses {
 // CHECK-NEXT:  %3 = load [copy] %2 : $*AnyObject
 // CHECK-NEXT:  Path: ()
-// CHECK-NEXT:  %7 = load [copy] %6 : $*AnyObject
+// CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [assign] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [assign] %11 : $*AnyObject
+// CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  %17 = load [copy] %16 : $*AnyObject
+// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  Path: (@Unknown)
+// CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   store %8 to [assign] %11 : $*AnyObject
+// CHECK: ###For MemOp:   store %8 to [init] %11 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -350,16 +356,18 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK: Overlapping Uses {
 // CHECK-NEXT:  %3 = load [copy] %2 : $*AnyObject
 // CHECK-NEXT:  Path: ()
-// CHECK-NEXT:  %7 = load [copy] %6 : $*AnyObject
+// CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [assign] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [assign] %11 : $*AnyObject
+// CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  %17 = load [copy] %16 : $*AnyObject
+// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  Path: (@Unknown)
+// CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
-// CHECK: ###For MemOp:   %17 = load [copy] %16 : $*AnyObject
+// CHECK: ###For MemOp:   %18 = load [copy] %17 : $*AnyObject
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
 // CHECK: Exact Uses {
@@ -367,13 +375,15 @@ bb0(%0 : $Builtin.RawPointer):
 // CHECK: Overlapping Uses {
 // CHECK-NEXT:  %3 = load [copy] %2 : $*AnyObject
 // CHECK-NEXT:  Path: ()
-// CHECK-NEXT:  %7 = load [copy] %6 : $*AnyObject
+// CHECK-NEXT:  %7 = load [take] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %7 to [assign] %6 : $*AnyObject
+// CHECK-NEXT:  store %7 to [init] %6 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  store %8 to [assign] %11 : $*AnyObject
+// CHECK-NEXT:  destroy_addr %11 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
-// CHECK-NEXT:  %17 = load [copy] %16 : $*AnyObject
+// CHECK-NEXT:  store %8 to [init] %11 : $*AnyObject
+// CHECK-NEXT:  Path: (@Unknown)
+// CHECK-NEXT:  %18 = load [copy] %17 : $*AnyObject
 // CHECK-NEXT:  Path: (@Unknown)
 // CHECK-NEXT: }
 sil shared [ossa] @testIndexLoop : $@convention(thin) (UnsafeMutablePointer<AnyObject>) -> @owned AnyObject {
@@ -385,12 +395,13 @@ bb0(%0 : $UnsafeMutablePointer<AnyObject>):
 
 bb1(%5 : $Builtin.RawPointer):
   %6 = pointer_to_address %5 : $Builtin.RawPointer to [strict] $*AnyObject
-  %7 = load [copy] %6 : $*AnyObject
+  %7 = load [take] %6 : $*AnyObject
   %8 = copy_value %7 : $AnyObject
-  store %7 to [assign] %6 : $*AnyObject
+  store %7 to [init] %6 : $*AnyObject
   %10 = integer_literal $Builtin.Word, 1
   %11 = index_addr %6 : $*AnyObject, %10 : $Builtin.Word
-  store %8 to [assign] %11 : $*AnyObject
+  destroy_addr %11 : $*AnyObject
+  store %8 to [init] %11 : $*AnyObject
   %13 = address_to_pointer %11 : $*AnyObject to $Builtin.RawPointer
   cond_br undef, bb2, bb3
 

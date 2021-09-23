@@ -306,9 +306,6 @@ bool ElementUseCollector::collectUses(SILValue Pointer) {
           case StoreOwnershipQualifier::Init:
             return PMOUseKind::Initialization;
 
-          case StoreOwnershipQualifier::Assign:
-            return PMOUseKind::Assign;
-
           case StoreOwnershipQualifier::Trivial:
             return PMOUseKind::InitOrAssign;
           }

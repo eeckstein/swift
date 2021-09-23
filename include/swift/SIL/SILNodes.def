@@ -870,7 +870,7 @@ NON_VALUE_INST(BeginUnpairedAccessInst, begin_unpaired_access,
 NON_VALUE_INST(EndUnpairedAccessInst, end_unpaired_access,
                SILInstruction, MayHaveSideEffects, DoesNotRelease)
 BRIDGED_NON_VALUE_INST(StoreInst, store,
-               SILInstruction, MayHaveSideEffects, MayRelease)
+               SILInstruction, MayWrite, DoesNotRelease)
 NON_VALUE_INST(AssignInst, assign,
                SILInstruction, MayWrite, DoesNotRelease)
 NON_VALUE_INST(AssignByWrapperInst, assign_by_wrapper,

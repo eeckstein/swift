@@ -180,10 +180,8 @@ SILValue TangentBuilder::emitAdd(SILLocation loc, SILValue lhs, SILValue rhs) {
   auto *lhsBuf = createAllocStack(loc, type);
   auto *rhsBuf = createAllocStack(loc, type);
   // Initialize input buffers.
-  emitStoreValueOperation(loc, lhsCopy, lhsBuf,
-                          StoreOwnershipQualifier::Init);
-  emitStoreValueOperation(loc, rhsCopy, rhsBuf,
-                          StoreOwnershipQualifier::Init);
+  emitStoreValueOperation(loc, lhsCopy, lhsBuf);
+  emitStoreValueOperation(loc, rhsCopy, rhsBuf);
   emitAddIntoBuffer(loc, resultBuf, lhsBuf, rhsBuf);
   emitDestroyAddr(loc, lhsBuf);
   emitDestroyAddr(loc, rhsBuf);

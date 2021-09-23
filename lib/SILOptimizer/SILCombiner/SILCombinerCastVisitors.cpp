@@ -564,8 +564,7 @@ SILCombiner::visitUncheckedRefCastAddrInst(UncheckedRefCastAddrInst *urci) {
          "SILBuilder cannot handle reference-castable types");
   auto *cast = Builder.createUncheckedRefCast(loc, load,
                                               destTy.getObjectType());
-  Builder.emitStoreValueOperation(loc, cast, urci->getDest(),
-                                  StoreOwnershipQualifier::Init);
+  Builder.emitStoreValueOperation(loc, cast, urci->getDest());
 
   return eraseInstFromFunction(*urci);
 }
@@ -662,8 +661,7 @@ SILInstruction *SILCombiner::visitUnconditionalCheckedCastAddrInst(
     SILBuilderWithScope builder(uccai, Builder);
     SILLocation loc = uccai->getLoc();
     builder.createDestroyAddr(loc, uccai->getSrc());
-    builder.emitStoreValueOperation(loc, val, uccai->getDest(),
-                                    StoreOwnershipQualifier::Init);
+    builder.emitStoreValueOperation(loc, val, uccai->getDest());
     return eraseInstFromFunction(*uccai);
   }
 
@@ -948,8 +946,7 @@ visitCheckedCastAddrBranchInst(CheckedCastAddrBranchInst *CCABI) {
       case CastConsumptionKind::BorrowAlways:
         llvm_unreachable("BorrowAlways is not supported on addresses");
     }
-    builder.emitStoreValueOperation(loc, val, CCABI->getDest(),
-                                    StoreOwnershipQualifier::Init);
+    builder.emitStoreValueOperation(loc, val, CCABI->getDest());
 
     // Replace the cast with a constant conditional branch.
     // Don't just create an unconditional branch to not change the CFG in

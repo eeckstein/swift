@@ -257,7 +257,8 @@ bb0(%0 : @owned $B, %1 : @owned $B):
   %3 = init_existential_addr %2 : $*Any, $B
   store %0 to [init] %3 : $*B
   %5 = existential_metatype $@thick Any.Type, %2 : $*Any
-  store %1 to [assign] %3 : $*B
+  destroy_addr %3 : $*B
+  store %1 to [init] %3 : $*B
   %7 = existential_metatype $@thick Any.Type, %2 : $*Any
   %99 = tuple (%5 : $@thick Any.Type, %7 : $@thick Any.Type)
   destroy_addr %2 : $*Any

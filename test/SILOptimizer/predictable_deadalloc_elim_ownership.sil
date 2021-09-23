@@ -419,7 +419,8 @@ bb0(%0 : @owned $NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $NativeObjectPair
   store %0 to [init] %2 : $*NativeObjectPair
   %3 = struct_element_addr %2 : $*NativeObjectPair, #NativeObjectPair.f1
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   destroy_addr %2 : $*NativeObjectPair
   dealloc_stack %2 : $*NativeObjectPair
   %9999 = tuple()

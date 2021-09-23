@@ -700,11 +700,11 @@ public:
   /// non-address values.
   void emitLoweredStoreValueOperation(
       SILLocation Loc, SILValue Value, SILValue Addr,
-      StoreOwnershipQualifier Qual,
+      IsInitialization_t isInit,
       Lowering::TypeLowering::TypeExpansionKind ExpansionKind) {
     assert(isLoadableOrOpaque(Value->getType()));
     const auto &lowering = getTypeLowering(Value->getType());
-    lowering.emitLoweredStore(*this, Loc, Value, Addr, Qual, ExpansionKind);
+    lowering.emitLoweredStore(*this, Loc, Value, Addr, isInit, ExpansionKind);
   }
 
   LoadBorrowInst *createLoadBorrow(SILLocation Loc, SILValue LV) {
@@ -769,9 +769,6 @@ public:
                                   StoreOwnershipQualifier Qualifier,
                                   bool SupportUnqualifiedSIL = false) {
     if (SupportUnqualifiedSIL && !hasOwnership()) {
-      assert(
-          Qualifier != StoreOwnershipQualifier::Assign &&
-          "In unqualified SIL, assigns must be represented via 2 instructions");
       return createStore(Loc, Src, DestAddr,
                          StoreOwnershipQualifier::Unqualified);
     }
@@ -793,11 +790,10 @@ public:
 
   /// Convenience function for calling emitStore on the type lowering for
   /// non-address values.
-  void emitStoreValueOperation(SILLocation Loc, SILValue Src, SILValue DestAddr,
-                               StoreOwnershipQualifier Qualifier) {
+  void emitStoreValueOperation(SILLocation Loc, SILValue Src, SILValue DestAddr) {
     assert(!Src->getType().isAddress());
     const auto &lowering = getTypeLowering(Src->getType());
-    return lowering.emitStore(*this, Loc, Src, DestAddr, Qualifier);
+    return lowering.emitStore(*this, Loc, Src, DestAddr);
   }
 
   EndBorrowInst *createEndBorrow(SILLocation loc, SILValue borrowedValue) {
@@ -883,16 +879,9 @@ public:
   /// * Otherwise, emit an actual store_borrow.
   void emitStoreBorrowOperation(SILLocation loc, SILValue src,
                                 SILValue destAddr) {
-    if (!hasOwnership()) {
-      return emitStoreValueOperation(loc, src, destAddr,
-                                     StoreOwnershipQualifier::Unqualified);
+    if (!hasOwnership() || src->getType().isTrivial(getFunction())) {
+      return emitStoreValueOperation(loc, src, destAddr);
     }
-
-    if (src->getType().isTrivial(getFunction())) {
-      return emitStoreValueOperation(loc, src, destAddr,
-                                     StoreOwnershipQualifier::Trivial);
-    }
-
     createStoreBorrow(loc, src, destAddr);
   }
 

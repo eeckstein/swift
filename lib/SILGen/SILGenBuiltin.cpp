@@ -679,8 +679,7 @@ emitBuiltinCastReference(SILGenFunction &SGF,
     // a retain. The cast will load the reference from the source temp and
     // store it into a dest temp effectively forwarding the cleanup.
     fromAddr = SGF.emitTemporaryAllocation(loc, srcVal->getType());
-    fromTL.emitStore(SGF.B, loc, srcVal, fromAddr,
-                     StoreOwnershipQualifier::Init);
+    fromTL.emitStore(SGF.B, loc, srcVal, fromAddr);
   } else {
     // The cast loads directly from the source address.
     fromAddr = srcVal;
@@ -718,8 +717,7 @@ static ManagedValue emitBuiltinReinterpretCast(SILGenFunction &SGF,
     // If the from value is not an address, move it to a buffer.
     if (!fromTL.isAddress()) {
       fromAddr = SGF.emitTemporaryAllocation(loc, args[0].getValue()->getType());
-      fromTL.emitStore(SGF.B, loc, args[0].getValue(), fromAddr,
-                       StoreOwnershipQualifier::Init);
+      fromTL.emitStore(SGF.B, loc, args[0].getValue(), fromAddr);
     } else {
       fromAddr = args[0].getValue();
     }
@@ -1305,8 +1303,7 @@ static ManagedValue emitBuiltinConvertStrongToUnownedUnsafe(
       SGF.getASTContext(), ReferenceOwnership::Unmanaged);
   SILValue unownedObjectSrcValue = SGF.B.createRefToUnmanaged(
       loc, objectSrcValue, unmanagedOptType.getObjectType());
-  SGF.B.emitStoreValueOperation(loc, unownedObjectSrcValue, inoutDest,
-                                StoreOwnershipQualifier::Trivial);
+  SGF.B.emitStoreValueOperation(loc, unownedObjectSrcValue, inoutDest);
   return ManagedValue::forUnmanaged(SGF.emitEmptyTuple(loc));
 }
 

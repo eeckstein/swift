@@ -1690,8 +1690,7 @@ emitCastOperand(SILGenFunction &SGF, SILLocation loc,
   // materializing an object into memory and addresses can not be stored into
   // memory.
   SGF.B.emitStoreValueOperation(loc, finalValue.forward(SGF),
-                                init->getAddress(),
-                                StoreOwnershipQualifier::Init);
+                                init->getAddress());
   init->finishInitialization(SGF);
 
   // We know that either our initial value was already take_always or we made a

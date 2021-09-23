@@ -4863,16 +4863,14 @@ ManagedValue SILGenFunction::emitInjectEnum(SILLocation loc,
         if (payloadMV) {
           // If the payload was indirect, we already evaluated it and
           // have a single value. Store it into the result.
-          B.emitStoreValueOperation(loc, payloadMV.forward(*this), resultData,
-                                    StoreOwnershipQualifier::Init);
+          B.emitStoreValueOperation(loc, payloadMV.forward(*this), resultData);
         } else if (payloadTL.isLoadable()) {
           // The payload of this specific enum case might be loadable
           // even if the overall enum is address-only.
           payloadMV =
             std::move(payload).getAsSingleValue(*this, origFormalType,
                                                 loweredPayloadType);
-          B.emitStoreValueOperation(loc, payloadMV.forward(*this), resultData,
-                                    StoreOwnershipQualifier::Init);
+          B.emitStoreValueOperation(loc, payloadMV.forward(*this), resultData);
         } else {
           // The payload is address-only. Evaluate it directly into
           // the enum.

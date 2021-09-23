@@ -4574,9 +4574,6 @@ void IRGenSILFunction::visitStoreInst(swift::StoreInst *i) {
   case StoreOwnershipQualifier::Trivial:
     typeInfo.initialize(*this, source, dest, false);
     break;
-  case StoreOwnershipQualifier::Assign:
-    typeInfo.assign(*this, source, dest, false);
-    break;
   }
 }
 

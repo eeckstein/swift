@@ -595,8 +595,8 @@ static SILValue emitCodeForConstantArray(ArrayRef<SILValue> elements,
     // Store the generated element into the currentStorageAddr. This is an
     // initializing store and therefore there is no need to free any existing
     // element.
-    elementTypeLowering.emitStore(builder, loc, elementSIL, currentStorageAddr,
-                                  StoreOwnershipQualifier::Init);
+    elementTypeLowering.emitStore(builder, loc, elementSIL,
+                                  currentStorageAddr);
     ++elementIndex;
   }
   if (arrayFinalizeFun) {
@@ -1132,11 +1132,6 @@ static bool hasOnlyStoreUses(SingleValueInstruction *addressInst) {
       continue;
     }
     case SILInstructionKind::StoreInst: {
-      // For now, ignore assigns as we need to destroy_addr its dest if it
-      // is deleted.
-      if (cast<StoreInst>(user)->getOwnershipQualifier() ==
-          StoreOwnershipQualifier::Assign)
-        return false;
       continue;
     }
     case SILInstructionKind::EndAccessInst:

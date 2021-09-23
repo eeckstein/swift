@@ -667,7 +667,7 @@ swift::getStaticOverloadForSpecializedPolymorphicBuiltin(BuiltinInst *bi) {
   // If we have an out parameter initialize it now.
   if (info.hasOutParam) {
     builder.emitStoreValueOperation(newBI->getLoc(), newBI->getResult(0),
-                                    result, StoreOwnershipQualifier::Trivial);
+                                    result);
   }
 
   return newBI;

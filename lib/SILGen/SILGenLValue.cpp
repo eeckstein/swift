@@ -3832,7 +3832,7 @@ static void emitUnloweredStoreOfCopy(SILGenBuilder &B, SILLocation loc,
                                      SILValue value, SILValue addr,
                                      IsInitialization_t isInit) {
   if (isInit) {
-    B.emitStoreValueOperation(loc, value, addr, StoreOwnershipQualifier::Init);
+    B.emitStoreValueOperation(loc, value, addr);
   } else {
     B.createAssign(loc, value, addr, AssignOwnershipQualifier::Unknown);
   }

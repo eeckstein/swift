@@ -481,7 +481,7 @@ bb0(%0 : @owned $NativeObjectAndTuple):
 // CHECK:   [[STACK:%.*]] = alloc_stack $Builtin.NativeObject
 // CHECK:   store [[ARG0]] to [init] [[STACK]]
 // CHECK:   [[ARG1_COPY:%.*]] = copy_value [[ARG1]]
-// CHECK:   store [[ARG1]] to [assign] [[STACK]]
+// CHECK:   store [[ARG1]] to [init] [[STACK]]
 // CHECK:   [[ARG1_COPY_1:%.*]] = copy_value [[ARG1_COPY]]
 // CHECK:   destroy_addr [[STACK]]
 // CHECK:   dealloc_stack [[STACK]]
@@ -491,7 +491,8 @@ sil [ossa] @simple_assignstore : $@convention(thin) (@owned Builtin.NativeObject
 bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %2 = alloc_stack $Builtin.NativeObject
   store %0 to [init] %2 : $*Builtin.NativeObject
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   destroy_addr %2 : $*Builtin.NativeObject
   dealloc_stack %2 : $*Builtin.NativeObject

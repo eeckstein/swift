@@ -299,7 +299,7 @@ void SILGenFunction::emitCaptures(SILLocation loc,
         auto addr = emitTemporaryAllocation(vd, entryValue->getType());
         auto val = B.emitCopyValueOperation(vd, entryValue);
         auto &lowering = getTypeLowering(entryValue->getType());
-        lowering.emitStore(B, vd, val, addr, StoreOwnershipQualifier::Init);
+        lowering.emitStore(B, vd, val, addr);
         entryValue = addr;
         enterDestroyCleanup(addr);
       }

@@ -301,7 +301,8 @@ sil [ossa] @test_store_borrow_store : $@convention(thin) (@guaranteed T, @owned 
 bb0(%0 :  @guaranteed $T, %1 : @owned $T):
   %s = alloc_stack $T
   store_borrow %0 to %s : $*T
-  store %1 to [assign] %s : $*T
+  destroy_addr %s : $*T
+  store %1 to [init] %s : $*T
   dealloc_stack %s : $*T
   %res = tuple ()
   return %res : $()

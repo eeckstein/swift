@@ -173,8 +173,7 @@ convertObjectToLoadableBridgeableType(SILBuilderWithScope &builder,
     case CastConsumptionKind::CopyOnSuccess:
       // Without ownership, we do not need to consume the taken value.
       if (failureBuilder.hasOwnership()) {
-        failureBuilder.emitStoreValueOperation(loc, defaultArg, src,
-                                               StoreOwnershipQualifier::Init);
+        failureBuilder.emitStoreValueOperation(loc, defaultArg, src);
       }
       break;
     case CastConsumptionKind::BorrowAlways:
@@ -378,8 +377,7 @@ CastOptimizer::optimizeBridgedObjCToSwiftCast(SILDynamicCastInst dynamicCast) {
           writeback =
               failureBuilder.createUncheckedRefCast(Loc, writeback, srcType);
         }
-        failureBuilder.emitStoreValueOperation(Loc, writeback, src,
-                                               StoreOwnershipQualifier::Init);
+        failureBuilder.emitStoreValueOperation(Loc, writeback, src);
       }
     }
     break;
@@ -396,8 +394,7 @@ CastOptimizer::optimizeBridgedObjCToSwiftCast(SILDynamicCastInst dynamicCast) {
       if (writeback->getType() != srcType) {
         writeback = Builder.createUncheckedRefCast(Loc, writeback, srcType);
       }
-      Builder.emitStoreValueOperation(Loc, writeback, src,
-                                      StoreOwnershipQualifier::Init);
+      Builder.emitStoreValueOperation(Loc, writeback, src);
     }
     break;
   }
@@ -726,19 +723,16 @@ CastOptimizer::optimizeBridgedSwiftToObjCCast(SILDynamicCastInst dynamicCast) {
         succBuilder.emitDestroyOperation(Loc, Src);
       } else {
         if (oldSrc) {
-          succBuilder.emitStoreValueOperation(Loc, Src, oldSrc,
-                                              StoreOwnershipQualifier::Init);
+          succBuilder.emitStoreValueOperation(Loc, Src, oldSrc);
         }
       }
       SILBuilderWithScope failBuilder(&*FailureBB->begin(), Builder);
       if (oldSrc) {
-        failBuilder.emitStoreValueOperation(Loc, Src, oldSrc,
-                                            StoreOwnershipQualifier::Init);
+        failBuilder.emitStoreValueOperation(Loc, Src, oldSrc);
       }
     } else {
       if (oldSrc) {
-        Builder.emitStoreValueOperation(Loc, Src, oldSrc,
-                                        StoreOwnershipQualifier::Init);
+        Builder.emitStoreValueOperation(Loc, Src, oldSrc);
       }
     }
   }
@@ -1197,11 +1191,6 @@ SILInstruction *CastOptimizer::optimizeCheckedCastAddrBranchInst(
       if (isa<DeallocStackInst>(User) || User == Inst)
         continue;
       if (auto *SI = dyn_cast<StoreInst>(User)) {
-        if (SI->getOwnershipQualifier() == StoreOwnershipQualifier::Assign) {
-          // We do not handle [assign]
-          isLegal = false;
-          break;
-        }
         if (!Store) {
           Store = SI;
           continue;
@@ -1238,8 +1227,7 @@ SILInstruction *CastOptimizer::optimizeCheckedCastAddrBranchInst(
                                        OwnershipKind::Owned);
           B.setInsertionPoint(SuccessBB->begin());
           // Store the result
-          B.emitStoreValueOperation(Loc, SuccessBB->getArgument(0), Dest,
-                                    StoreOwnershipQualifier::Trivial);
+          B.emitStoreValueOperation(Loc, SuccessBB->getArgument(0), Dest);
           if (B.hasOwnership())
             FailureBB->createPhiArgument(MI->getType(), OwnershipKind::None);
           eraseInstAction(Inst);
@@ -1590,8 +1578,7 @@ static bool optimizeStaticallyKnownProtocolConformance(
       auto Existential =
           B.createInitExistentialRef(Loc, Dest->getType().getObjectType(),
                                      SourceType, Value, Conformances);
-      B.emitStoreValueOperation(Loc, Existential, Dest,
-                                StoreOwnershipQualifier::Init);
+      B.emitStoreValueOperation(Loc, Existential, Dest);
       break;
     }
     case ExistentialRepresentation::Boxed: {
@@ -1602,8 +1589,7 @@ static bool optimizeStaticallyKnownProtocolConformance(
       // This needs to be a copy_addr (for now) because we must handle
       // address-only types.
       B.createCopyAddr(Loc, Src, Projection, IsTake, IsInitialization);
-      B.emitStoreValueOperation(Loc, AllocBox, Dest,
-                                StoreOwnershipQualifier::Init);
+      B.emitStoreValueOperation(Loc, AllocBox, Dest);
       break;
     }
     };

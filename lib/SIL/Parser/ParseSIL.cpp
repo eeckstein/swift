@@ -3869,7 +3869,6 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     auto parseStoreOwnership = [](StringRef Str) {
       return llvm::StringSwitch<Optional<StoreOwnershipQualifier>>(Str)
           .Case("init", StoreOwnershipQualifier::Init)
-          .Case("assign", StoreOwnershipQualifier::Assign)
           .Case("trivial", StoreOwnershipQualifier::Trivial)
           .Default(None);
     };

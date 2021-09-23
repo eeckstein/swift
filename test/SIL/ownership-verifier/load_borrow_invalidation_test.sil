@@ -91,7 +91,8 @@ bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   br bb1
 
 bb1:
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   %3 = begin_access [read] [unsafe] %0 : $*Builtin.NativeObject
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
@@ -112,7 +113,8 @@ bb1:
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
   end_access %3 : $*Builtin.NativeObject
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   br bb2
 
 bb2:
@@ -127,7 +129,8 @@ bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   br bb1
 
 bb1:
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   %3 = begin_access [modify] [unsafe] %0 : $*Builtin.NativeObject
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
@@ -142,7 +145,8 @@ bb2:
 
 sil [ossa] @begin_access_modify_write_before_different_block : $@convention(thin) (@inout Builtin.NativeObject, @owned Builtin.NativeObject) -> () {
 bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   br bb1
 
 bb1:
@@ -166,7 +170,8 @@ bb1:
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
   end_access %3 : $*Builtin.NativeObject
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   br bb2
 
 bb2:
@@ -186,7 +191,8 @@ bb1:
   br bb2
 
 bb2:
-  store %1 to [assign] %0 : $*Builtin.NativeObject
+  destroy_addr %0 : $*Builtin.NativeObject
+  store %1 to [init] %0 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
 }
@@ -199,7 +205,8 @@ bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
 
 bb1:
   %3 = begin_access [modify] [unsafe] %0 : $*Builtin.NativeObject
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
   end_access %3 : $*Builtin.NativeObject
@@ -214,7 +221,8 @@ bb2:
 sil [ossa] @begin_access_modify_same_scope_write_before_different_block : $@convention(thin) (@inout Builtin.NativeObject, @owned Builtin.NativeObject) -> () {
 bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   %3 = begin_access [modify] [unsafe] %0 : $*Builtin.NativeObject
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   br bb1
 
 bb1:
@@ -236,7 +244,8 @@ bb1:
   %3 = begin_access [modify] [unsafe] %0 : $*Builtin.NativeObject
   %2 = load_borrow %3 : $*Builtin.NativeObject
   end_borrow %2 : $Builtin.NativeObject
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   end_access %3 : $*Builtin.NativeObject
   br bb2
 
@@ -256,7 +265,8 @@ bb1:
   br bb2
 
 bb2:
-  store %1 to [assign] %3 : $*Builtin.NativeObject
+  destroy_addr %3 : $*Builtin.NativeObject
+  store %1 to [init] %3 : $*Builtin.NativeObject
   end_access %3 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()

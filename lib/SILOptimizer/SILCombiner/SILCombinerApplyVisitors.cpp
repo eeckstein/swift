@@ -1006,8 +1006,7 @@ struct ConcreteArgumentCopy {
       // instruction so, create a store into the temporary argument.
       auto copy =
           builder.emitCopyValueOperation(loc, existentialInfo.ConcreteValue);
-      builder.emitStoreValueOperation(loc, copy, asi,
-                                      StoreOwnershipQualifier::Init);
+      builder.emitStoreValueOperation(loc, copy, asi);
     }
     return ConcreteArgumentCopy(origArg, asi);
   }

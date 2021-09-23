@@ -771,8 +771,7 @@ void SILGenFunction::emitClassConstructorInitializer(ConstructorDecl *ctor) {
       SILLocation prologueLoc = RegularLocation(ctor);
       prologueLoc.markAsPrologue();
       B.emitStoreValueOperation(prologueLoc, selfArg.forward(*this),
-                                VarLocs[selfDecl].value,
-                                StoreOwnershipQualifier::Init);
+                                VarLocs[selfDecl].value);
     } else {
       selfArg = B.createMarkUninitialized(selfDecl, selfArg, MUKind);
       VarLocs[selfDecl] = VarLoc::get(selfArg.getValue());

@@ -256,8 +256,7 @@ void SROAMemoryUseAnalyzer::chopUpAlloca(std::vector<AllocStackInst *> &Worklist
                                           destructured);
     for (unsigned eltNo : indices(NewAllocations)) {
       builder.emitStoreValueOperation(SI->getLoc(), destructured[eltNo],
-                                      NewAllocations[eltNo],
-                                      SI->getOwnershipQualifier());
+                                      NewAllocations[eltNo]);
     }
     SI->eraseFromParent();
   }

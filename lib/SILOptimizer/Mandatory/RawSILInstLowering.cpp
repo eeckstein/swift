@@ -88,7 +88,8 @@ static void lowerAssignInstruction(SILBuilderWithScope &b, AssignInst *inst) {
   // considered to be retained (by the semantics of the storage type),
   // and we're transferring that ownership count into the destination.
 
-  b.createStore(loc, src, dest, StoreOwnershipQualifier::Assign);
+  auto &lowering = b.getTypeLowering(src->getType());
+  lowering.emitStoreOfCopy(b, loc, src, dest, IsNotInitialization);
   inst->eraseFromParent();
 }
 
@@ -206,7 +207,8 @@ static void lowerAssignByWrapperInstruction(SILBuilderWithScope &b,
           b.createTrivialStoreOr(loc, wrappedSrc, dest,
                                  StoreOwnershipQualifier::Init);
         } else {
-          b.createStore(loc, wrappedSrc, dest, StoreOwnershipQualifier::Assign);
+          auto &lowering = b.getTypeLowering(wrappedSrc->getType());
+          lowering.emitStoreOfCopy(b, loc, wrappedSrc, dest, IsNotInitialization);
         }
       }
       // The unused partial_apply violates memory lifetime rules in case "self"

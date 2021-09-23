@@ -768,11 +768,11 @@ namespace {
     void emitStoreOfCopy(SILBuilder &B, SILLocation loc,
                          SILValue value, SILValue addr,
                          IsInitialization_t isInit) const override {
-      emitStore(B, loc, value, addr, StoreOwnershipQualifier::Trivial);
+      emitStore(B, loc, value, addr);
     }
 
     void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
-                   SILValue addr, StoreOwnershipQualifier qual) const override {
+                       SILValue addr) const override {
       if (B.getFunction().hasOwnership()) {
         B.createStore(loc, value, addr, StoreOwnershipQualifier::Trivial);
         return;
@@ -796,7 +796,7 @@ namespace {
     }
 
     void emitLoweredStore(SILBuilder &B, SILLocation loc, SILValue value,
-                          SILValue addr, StoreOwnershipQualifier qual,
+                          SILValue addr, IsInitialization_t isInit,
                           Lowering::TypeLowering::TypeExpansionKind
                               expansionKind) const override {
       auto storeQual = [&]() -> StoreOwnershipQualifier {
@@ -857,33 +857,21 @@ namespace {
     void emitStoreOfCopy(SILBuilder &B, SILLocation loc,
                          SILValue newValue, SILValue addr,
                          IsInitialization_t isInit) const override {
-      auto qual = isInit ? StoreOwnershipQualifier::Init
-                         : StoreOwnershipQualifier::Assign;
-      emitStore(B, loc, newValue, addr, qual);
+      if (isInit == IsNotInitialization) {
+        assert(B.getFunction().hasOwnership() &&
+               "Cannot lower asssign in non-OSSA");
+        B.createDestroyAddr(loc, addr);
+      }
+      emitStore(B, loc, newValue, addr);
     }
 
     void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
-                   SILValue addr, StoreOwnershipQualifier qual) const override {
+                       SILValue addr) const override {
       if (B.getFunction().hasOwnership()) {
-        B.createStore(loc, value, addr, qual);
+        B.createStore(loc, value, addr, StoreOwnershipQualifier::Init);
         return;
       }
-
-      if (qual != StoreOwnershipQualifier::Assign) {
-        B.createStore(loc, value, addr, StoreOwnershipQualifier::Unqualified);
-        return;
-      }
-
-      // If the ownership qualifier is [assign], then we need to eliminate the
-      // old value.
-      //
-      // 1. Load old value.
-      // 2. Store new value.
-      // 3. Release old value.
-      SILValue old =
-          B.createLoad(loc, addr, LoadOwnershipQualifier::Unqualified);
       B.createStore(loc, value, addr, StoreOwnershipQualifier::Unqualified);
-      B.emitDestroyValueOperation(loc, old);
     }
 
     SILValue emitLoad(SILBuilder &B, SILLocation loc, SILValue addr,
@@ -934,15 +922,20 @@ namespace {
     }
 
     void emitLoweredStore(SILBuilder &B, SILLocation loc, SILValue value,
-                          SILValue addr, StoreOwnershipQualifier qual,
+                          SILValue addr, IsInitialization_t isInit,
                           Lowering::TypeLowering::TypeExpansionKind
                               expansionKind) const override {
       if (B.getFunction().hasOwnership()) {
-        B.createStore(loc, value, addr, qual);
+        if (isInit == IsNotInitialization) {
+          SILValue oldValue = B.emitLoadValueOperation(
+              loc, addr, LoadOwnershipQualifier::Take);
+          B.emitLoweredDestroyValueOperation(loc, oldValue, expansionKind);
+        }
+        B.createStore(loc, value, addr, StoreOwnershipQualifier::Init);
         return;
       }
 
-      if (qual == StoreOwnershipQualifier::Assign) {
+      if (isInit == IsNotInitialization) {
         SILValue oldValue = B.emitLoadValueOperation(
             loc, addr, LoadOwnershipQualifier::Unqualified);
         B.emitLoweredDestroyValueOperation(loc, oldValue, expansionKind);
@@ -1497,7 +1490,7 @@ namespace {
     }
 
     void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
-                   SILValue addr, StoreOwnershipQualifier qual) const override {
+                       SILValue addr) const override {
       llvm_unreachable("calling emitStore on non-loadable type");
     }
 
@@ -1514,7 +1507,7 @@ namespace {
     }
 
     void emitLoweredStore(SILBuilder &B, SILLocation loc, SILValue value,
-                          SILValue addr, StoreOwnershipQualifier qual,
+                          SILValue addr, IsInitialization_t isInit,
                           Lowering::TypeLowering::TypeExpansionKind
                               expansionKind) const override {
       llvm_unreachable("calling emitLoweredStore on non-loadable type?!");

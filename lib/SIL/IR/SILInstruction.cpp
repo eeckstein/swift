@@ -1076,9 +1076,6 @@ SILInstruction::MemoryBehavior SILInstruction::getMemoryBehavior() const {
     case StoreOwnershipQualifier::Trivial:
     case StoreOwnershipQualifier::Init:
       return MemoryBehavior::MayWrite;
-    case StoreOwnershipQualifier::Assign:
-      // For the release.
-      return MemoryBehavior::MayHaveSideEffects;
     }
     llvm_unreachable("Covered switch isn't covered?!");
   }
@@ -1200,18 +1197,6 @@ bool SILInstruction::mayRelease() const {
     }
     return true;
   }
-  case SILInstructionKind::StoreInst:
-    switch (cast<StoreInst>(this)->getOwnershipQualifier()) {
-    case StoreOwnershipQualifier::Unqualified:
-    case StoreOwnershipQualifier::Init:
-    case StoreOwnershipQualifier::Trivial:
-      return false;
-    case StoreOwnershipQualifier::Assign:
-      // Assign destroys the old value that was in the memory location before we
-      // write the new value into the location.
-      return true;
-    }
-    llvm_unreachable("Covered switch isn't covered?!");
   }
 }
 

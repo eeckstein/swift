@@ -202,7 +202,7 @@ struct X3 {
 // CHECK: [[ACCESS:%.*]] = begin_access [modify] [unknown] %0 : $*X3
 // CHECK: [[X2:%.*]] = struct $X2 ([[CP]] : $Builtin.NativeObject)
 // CHECK: [[X3:%.*]] = struct $X3 ([[X2]] : $X2)
-// CHECK: store [[X3]] to [assign] [[ACCESS]] : $*X3
+// CHECK: store [[X3]] to [init] [[ACCESS]] : $*X3
 // CHECK: end_access [[ACCESS]] : $*X3
 // CHECK: } // end sil function 'testStoreNontrivial'
 sil private [ossa] @testStoreNontrivial : $@convention(thin) (@inout X3, @guaranteed Builtin.NativeObject) -> () {
@@ -211,7 +211,8 @@ bb0(%0 : $*X3, %1 : @guaranteed $Builtin.NativeObject):
   %5 = begin_access [modify] [unknown] %0 : $*X3
   %6 = struct_element_addr %5 : $*X3, #X3.x2
   %7 = struct_element_addr %6 : $*X2, #X2.obj
-  store %4 to [assign] %7 : $*Builtin.NativeObject
+  destroy_addr %7 : $*Builtin.NativeObject
+  store %4 to [init] %7 : $*Builtin.NativeObject
   end_access %5 : $*X3
   %12 = tuple ()
   return %12 : $()

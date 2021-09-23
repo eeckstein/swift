@@ -125,7 +125,7 @@ ManagedValue SILGenFunction::emitManagedStoreBorrow(
     SILLocation loc, SILValue v, SILValue addr, const TypeLowering &lowering) {
   assert(lowering.getLoweredType().getObjectType() == v->getType());
   if (lowering.isTrivial() || v.getOwnershipKind() == OwnershipKind::None) {
-    lowering.emitStore(B, loc, v, addr, StoreOwnershipQualifier::Trivial);
+    B.createStore(loc, v, addr, StoreOwnershipQualifier::Trivial);
     return ManagedValue::forUnmanaged(v);
   }
   assert((!lowering.isAddressOnly() || !silConv.useLoweredAddresses()) &&
@@ -754,8 +754,7 @@ struct OwnedValueWritebackCleanup final : Cleanup {
                                                   lvalueObjTy);
     }
 
-    SGF.B.emitStoreValueOperation(loc, valueToStore, lvalueAddress,
-                                  StoreOwnershipQualifier::Init);
+    SGF.B.emitStoreValueOperation(loc, valueToStore, lvalueAddress);
   }
 
   void dump(SILGenFunction &) const override {

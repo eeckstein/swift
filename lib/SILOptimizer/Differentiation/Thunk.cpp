@@ -409,8 +409,7 @@ SILFunction *getOrCreateReabstractionThunk(SILOptFunctionBuilder &fb,
       auto toArg = *toArgIter++;
       auto *buf = createAllocStack(toArg->getType());
       toArg = builder.emitCopyValueOperation(loc, toArg);
-      builder.emitStoreValueOperation(loc, toArg, buf,
-                                      StoreOwnershipQualifier::Init);
+      builder.emitStoreValueOperation(loc, toArg, buf);
       valuesToCleanup.push_back(buf);
       arguments.push_back(buf);
       continue;
@@ -486,8 +485,7 @@ SILFunction *getOrCreateReabstractionThunk(SILOptFunctionBuilder &fb,
 #endif
     auto indRes = *toIndResultsIter++;
     auto dirRes = *fromDirResultsIter++;
-    builder.emitStoreValueOperation(loc, dirRes, indRes,
-                                    StoreOwnershipQualifier::Init);
+    builder.emitStoreValueOperation(loc, dirRes, indRes);
   }
   auto retVal = joinElements(results, builder, loc);
 

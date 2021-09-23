@@ -640,7 +640,8 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   destroy_value %3 : $Builtin.NativeObject
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
 }
@@ -656,7 +657,8 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %3 = load [copy] %2 : $*Builtin.NativeObject
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   destroy_value %3 : $Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
@@ -671,7 +673,8 @@ sil [ossa] @inout_argument_never_written_to_4a : $@convention(thin) (@inout Nati
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   %3 = load [copy] %2 : $*Builtin.NativeObject
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   destroy_value %3 : $Builtin.NativeObject
@@ -687,7 +690,8 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
 sil [ossa] @inout_argument_never_written_to_5 : $@convention(thin) (@inout NativeObjectPair, @owned Builtin.NativeObject) -> () {
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
@@ -704,7 +708,8 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
 sil [ossa] @inout_argument_never_written_to_6 : $@convention(thin) (@inout NativeObjectPair, @owned Builtin.NativeObject) -> () {
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   cond_br undef, bb1, bb2
 
@@ -733,7 +738,8 @@ bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   br bb0a
 
 bb0a:
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   %3 = load [copy] %2 : $*Builtin.NativeObject
   cond_br undef, bb1, bb2
 
@@ -759,7 +765,8 @@ bb3:
 sil [ossa] @inout_argument_never_written_to_6b : $@convention(thin) (@inout NativeObjectPair, @owned Builtin.NativeObject) -> () {
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   br bb0a
 
 bb0a:
@@ -789,7 +796,8 @@ sil [ossa] @inout_argument_never_written_to_6c : $@convention(thin) (@inout Nati
 bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
   %2 = struct_element_addr %0 : $*NativeObjectPair, #NativeObjectPair.obj1
   %1a = copy_value %1 : $Builtin.NativeObject
-  store %1 to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1 to [init] %2 : $*Builtin.NativeObject
   br bb0a
 
 bb0a:
@@ -806,7 +814,8 @@ bb2:
 
 bb3:
   destroy_value %3 : $Builtin.NativeObject
-  store %1a to [assign] %2 : $*Builtin.NativeObject
+  destroy_addr %2 : $*Builtin.NativeObject
+  store %1a to [init] %2 : $*Builtin.NativeObject
   %9999 = tuple()
   return %9999 : $()
 }

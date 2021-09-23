@@ -202,8 +202,7 @@ ManagedValue ManagedValue::materialize(SILGenFunction &SGF,
 
   // The temporary memory is +0 if the value was.
   if (hadCleanup) {
-    SGF.B.emitStoreValueOperation(loc, forward(SGF), temporary,
-                                  StoreOwnershipQualifier::Init);
+    SGF.B.emitStoreValueOperation(loc, forward(SGF), temporary);
 
     // SEMANTIC SIL TODO: This should really be called a temporary LValue.
     return ManagedValue::forOwnedAddressRValue(temporary,

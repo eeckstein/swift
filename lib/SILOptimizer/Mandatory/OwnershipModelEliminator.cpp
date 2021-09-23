@@ -236,8 +236,7 @@ bool OwnershipModelEliminatorVisitor::visitStoreInst(StoreInst *si) {
     return false;
 
   withBuilder<void>(si, [&](SILBuilder &b, SILLocation loc) {
-    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest(),
-                              si->getOwnershipQualifier());
+    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest());
   });
 
   // Then remove the qualified store.
@@ -248,8 +247,7 @@ bool OwnershipModelEliminatorVisitor::visitStoreInst(StoreInst *si) {
 bool OwnershipModelEliminatorVisitor::visitStoreBorrowInst(
     StoreBorrowInst *si) {
   withBuilder<void>(si, [&](SILBuilder &b, SILLocation loc) {
-    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest(),
-                              StoreOwnershipQualifier::Unqualified);
+    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest());
   });
 
   // Then remove the qualified store after RAUWing si with its dest. This

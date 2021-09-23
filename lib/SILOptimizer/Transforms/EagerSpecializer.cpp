@@ -419,8 +419,7 @@ void EagerDispatch::emitDispatchTo(SILFunction *NewFunc) {
   auto VoidTy = Builder.getModule().Types.getEmptyTupleType();
   if (StoreResultTo) {
     // Store the direct result to the original result address.
-    Builder.emitStoreValueOperation(Loc, Result, StoreResultTo,
-                                    StoreOwnershipQualifier::Init);
+    Builder.emitStoreValueOperation(Loc, Result, StoreResultTo);
     // And return Void.
     Result = Builder.createTuple(Loc, VoidTy, { });
   }

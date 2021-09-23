@@ -44,7 +44,8 @@ bb0(%0 : $String):
 // CHECK:       [[A:%[0-9]+]] = apply [[F]]
 // CHECK-NEXT:  store [[A]] to [init] [[S]]
 // CHECK-NEXT:  [[COPY:%[0-9]+]] = copy_value %0
-// CHECK-NEXT:  store [[COPY]] to [assign] [[S]]
+// CHECK-NEXT:  destroy_addr [[S]]
+// CHECK-NEXT:  store [[COPY]] to [init] [[S]]
 // CHECK-NEXT:  [[L:%[0-9]+]] = load [take] [[S]]
 // CHECK:       return [[L]]
 // CHECK:     } // end sil function 'ossa_append_to_empty_string'

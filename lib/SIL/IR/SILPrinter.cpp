@@ -1521,9 +1521,6 @@ public:
     case StoreOwnershipQualifier::Init:
       *this << "[init] ";
       return;
-    case StoreOwnershipQualifier::Assign:
-      *this << "[assign] ";
-      return;
     case StoreOwnershipQualifier::Trivial:
       *this << "[trivial] ";
       return;

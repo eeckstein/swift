@@ -79,8 +79,6 @@ class DestroyHoisting {
   DominanceInfo *domTree = nullptr;
   bool madeChanges = false;
 
-  void expandStores(BitDataflow &dataFlow);
-
   void initDataflow(BitDataflow &dataFlow);
 
   void initDataflowInBlock(SILBasicBlock *block, BlockState &state);
@@ -133,86 +131,6 @@ public:
 
   bool hoistDestroys();
 };
-
-static bool isExpansionEnabler(SILInstruction *I) {
-  return isa<SwitchEnumInst>(I);
-}
-
-// A pre-pass which expands
-//    store %s to [assign] %a
-// to
-//    destroy_addr %a
-//    store %s to [init] %a
-//
-// This is not a good thing in general. If we would do it unconditionally, it
-// would result in some benchmark regressions. Therefore we only expand stores
-// where we expect that we can move the destroys to or across a switch_enum.
-// This enables the switch-enum optimization (see above).
-// TODO: investigate the benchmark regressions and enable store-expansion more
-//       aggressively.
-void DestroyHoisting::expandStores(BitDataflow &dataFlow) {
-  Bits usedLocs(locations.getNumLocations());
-
-  // Initialize the dataflow, which tells us which destroy_addr instructions are
-  // reachable through a switch_enum, without a use of the location in between.
-  // The gen-sets are initialized at all expansion-enabler instructions
-  // (currently only switch_enum instructions).
-  // The kill-sets are initialized with the used locations, because we would not
-  // move a destroy across a use.
-  bool expansionEnablerFound = false;
-  for (auto bs : dataFlow) {
-    bs.data.entrySet.reset();
-    bs.data.genSet.reset();
-    bs.data.killSet.reset();
-    bs.data.exitSet.reset();
-    for (SILInstruction &I : bs.block) {
-      if (isExpansionEnabler(&I)) {
-        expansionEnablerFound = true;
-        bs.data.genSet.set();
-        bs.data.killSet.reset();
-      }
-      usedLocs.reset();
-      getUsedLocationsOfInst(usedLocs, &I);
-      bs.data.genSet.reset(usedLocs);
-      bs.data.killSet |= usedLocs;
-    }
-  }
-  if (!expansionEnablerFound)
-    return;
-
-  // Solve the dataflow, which tells us if a destroy_addr is reachable from
-  // a expansion-enabler on _any_ path (therefore "Union" and not "Intersect")
-  // without hitting a use of that location.
-  dataFlow.solveForwardWithUnion();
-
-  Bits activeLocs(locations.getNumLocations());
-  for (auto bs : dataFlow) {
-    activeLocs = bs.data.entrySet;
-    for (SILInstruction &I : bs.block) {
-      if (isExpansionEnabler(&I)) {
-        // Set all bits: an expansion-enabler enables expansion for all
-        // locations.
-        activeLocs.set();
-      }
-      if (auto *SI = dyn_cast<StoreInst>(&I)) {
-        if (SI->getOwnershipQualifier() == StoreOwnershipQualifier::Assign) {
-          int locIdx = locations.getLocationIdx(SI->getDest());
-          if (locIdx >= 0 && activeLocs.test(locIdx)) {
-            // Expand the store.
-            SILBuilder builder(SI);
-            builder.createDestroyAddr(SI->getLoc(), SI->getDest());
-            SI->setOwnershipQualifier(StoreOwnershipQualifier::Init);
-            madeChanges = true;
-          }
-        }
-      }
-      // Clear the bits of used locations.
-      usedLocs.reset();
-      getUsedLocationsOfInst(usedLocs, &I);
-      activeLocs.reset(usedLocs);
-    }
-  }
-}
 
 // Initialize the dataflow for moving destroys up the control flow.
 void DestroyHoisting::initDataflow(BitDataflow &dataFlow) {
@@ -732,16 +650,12 @@ bool DestroyHoisting::hoistDestroys() {
     BitDataflow dataFlow(function, locations.getNumLocations());
     dataFlow.exitReachableAnalysis();
 
-    // Step 1: pre-processing: expand store instructions
-    expandStores(dataFlow);
-
-    // Step 2: hoist destroy_addr instructions.
-    // (reuse dataFlow to avoid re-allocating all the data structures)
+    // Step 1: hoist destroy_addr instructions.
     initDataflow(dataFlow);
     dataFlow.solveBackwardWithIntersect();
     moveDestroys(dataFlow);
 
-    // Step 3: post-processing: tail merge inserted destroy_addr instructions.
+    // Step 2: post-processing: tail merge inserted destroy_addr instructions.
     tailMerging(dataFlow);
     addressProjections.clear();
   }

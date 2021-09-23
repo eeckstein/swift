@@ -1790,8 +1790,14 @@ void AvailableValueDataflowContext::explodeCopyAddr(CopyAddrInst *CAI) {
   SILValue StoredValue =
       TL.emitLoadOfCopy(B, CAI->getLoc(), CAI->getSrc(), CAI->isTakeOfSrc());
 
+  if (!CAI->isInitializationOfDest() && !StoredValue->getType().isTrivial(*F)) {
+    SILValue old = B.createLoad(CAI->getLoc(), CAI->getDest(),
+                                LoadOwnershipQualifier::Take);
+    B.emitDestroyValueOperation(CAI->getLoc(), old);
+  }
+
   TL.emitStoreOfCopy(B, CAI->getLoc(), StoredValue, CAI->getDest(),
-                     CAI->isInitializationOfDest());
+                     IsInitialization);
 
   // Update our internal state for this being gone.
   NonLoadUses.erase(CAI);
@@ -1875,6 +1881,7 @@ void AvailableValueDataflowContext::explodeCopyAddr(CopyAddrInst *CAI) {
     case SILInstructionKind::RetainValueInst:
     case SILInstructionKind::StrongRetainInst:
     case SILInstructionKind::StrongReleaseInst:
+    case SILInstructionKind::DestroyValueInst: // Destroy overwritten value
     case SILInstructionKind::ReleaseValueInst: // Destroy overwritten value
       // These are ignored.
       continue;

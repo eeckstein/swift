@@ -383,7 +383,7 @@ bb18(%0 : $*MyStruct):
 // CHECK: Base:   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
-// CHECK: ###For MemOp:   store %7 to [assign] %6 : $*AnyObject                    // id: %8
+// CHECK: ###For MemOp:   store %7 to [init] %6 : $*AnyObject
 // CHECK: Base:   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Storage: Unidentified   %1 = struct_extract %0 : $UnsafeMutablePointer<AnyObject>, #UnsafeMutablePointer._rawValue
 // CHECK: Path: (@Unknown)
@@ -397,7 +397,8 @@ bb0(%0 : $UnsafeMutablePointer<AnyObject>):
 bb1(%5 : $Builtin.RawPointer):
   %6 = pointer_to_address %5 : $Builtin.RawPointer to [strict] $*AnyObject
   %7 = load [copy] %6 : $*AnyObject
-  store %7 to [assign] %6 : $*AnyObject
+  destroy_addr %6 : $*AnyObject
+  store %7 to [init] %6 : $*AnyObject
   %9 = integer_literal $Builtin.Word, 1
   %10 = index_addr %6 : $*AnyObject, %9 : $Builtin.Word
   %11 = address_to_pointer %10 : $*AnyObject to $Builtin.RawPointer

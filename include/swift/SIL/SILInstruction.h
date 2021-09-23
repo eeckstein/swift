@@ -3965,7 +3965,7 @@ public:
 // *NOTE* When serializing, we can only represent up to 4 values here. If more
 // qualifiers are added, SIL serialization must be updated.
 enum class StoreOwnershipQualifier {
-  Unqualified, Init, Assign, Trivial
+  Unqualified, Init, Trivial
 };
 static_assert(2 == SILNode::NumStoreOwnershipQualifierBits, "Size mismatch");
 

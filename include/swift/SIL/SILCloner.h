@@ -1091,23 +1091,6 @@ template <typename ImplClass>
 void SILCloner<ImplClass>::visitStoreInst(StoreInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
   if (!getBuilder().hasOwnership()) {
-    switch (Inst->getOwnershipQualifier()) {
-    case StoreOwnershipQualifier::Assign: {
-      auto *li = getBuilder().createLoad(getOpLocation(Inst->getLoc()),
-                                         getOpValue(Inst->getDest()),
-                                         LoadOwnershipQualifier::Unqualified);
-      auto *si = getBuilder().createStore(
-          getOpLocation(Inst->getLoc()), getOpValue(Inst->getSrc()),
-          getOpValue(Inst->getDest()), StoreOwnershipQualifier::Unqualified);
-      getBuilder().emitDestroyValueOperation(getOpLocation(Inst->getLoc()), li);
-      return recordClonedInstruction(Inst, si);
-    }
-    case StoreOwnershipQualifier::Init:
-    case StoreOwnershipQualifier::Trivial:
-    case StoreOwnershipQualifier::Unqualified:
-      break;
-    }
-
     return recordClonedInstruction(
         Inst, getBuilder().createStore(getOpLocation(Inst->getLoc()),
                                        getOpValue(Inst->getSrc()),

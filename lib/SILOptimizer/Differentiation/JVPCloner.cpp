@@ -876,8 +876,7 @@ public:
     auto loc = si->getLoc();
     auto tanValSrc = materializeTangent(getTangentValue(si->getSrc()), loc);
     auto &tanValDest = getTangentBuffer(si->getParent(), si->getDest());
-    diffBuilder.emitStoreValueOperation(loc, tanValSrc, tanValDest,
-                                        si->getOwnershipQualifier());
+    diffBuilder.emitStoreValueOperation(loc, tanValSrc, tanValDest);
   }
 
   /// Handle `store_borrow` instruction in the differential.

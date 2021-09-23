@@ -245,8 +245,7 @@ void ExistentialSpecializerCloner::cloneArguments(
       if (!NewArg->getType().isObject()) {
         auto alloc = NewFBuilder.createAllocStack(InsertLoc,
                                                   InitRef->getType());
-        NewFBuilder.emitStoreValueOperation(InsertLoc, InitRef, alloc,
-                                            StoreOwnershipQualifier::Init);
+        NewFBuilder.emitStoreValueOperation(InsertLoc, InitRef, alloc);
         InitRef = alloc;
         AllocStackInsts.push_back(alloc);
       }
@@ -493,8 +492,7 @@ void ExistentialTransform::populateThunkBody() {
         // the open_existential_ref.
         if (!OrigOperand->getType().isObject()) {
           SILValue ASI = Builder.createAllocStack(Loc, OpenedSILType);
-          Builder.emitStoreValueOperation(Loc, archetypeValue, ASI,
-                                          StoreOwnershipQualifier::Init);
+          Builder.emitStoreValueOperation(Loc, archetypeValue, ASI);
           Temps.push_back({ASI, SILValue()});
           archetypeValue = ASI;
         } else {

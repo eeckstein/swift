@@ -260,11 +260,9 @@ MemBehavior MemoryBehaviorVisitor::visitStoreInst(StoreInst *SI) {
   if (isLetValue() && (getAccessBase(SI->getDest()) != getValueAddress())) {
     return MemBehavior::None;
   }
-  // If the store dest cannot alias the pointer in question and we are not
-  // releasing anything due to an assign, then the specified value cannot be
-  // modified by the store.
-  if (!mayAlias(SI->getDest()) &&
-      SI->getOwnershipQualifier() != StoreOwnershipQualifier::Assign)
+  // If the store dest cannot alias the pointer in question then the specified
+  // value cannot be modified by the store.
+  if (!mayAlias(SI->getDest()))
     return MemBehavior::None;
 
   // Otherwise, a store just writes.

@@ -2843,8 +2843,7 @@ void ResultPlanner::execute(ArrayRef<SILValue> innerDirectResults,
     case Operation::DirectToIndirect: {
       auto result = claimNextInnerDirectResult(op.InnerResult);
       SGF.B.emitStoreValueOperation(Loc, result.forward(SGF),
-                                    op.OuterResultAddr,
-                                    StoreOwnershipQualifier::Init);
+                                    op.OuterResultAddr);
       continue;
     }
 

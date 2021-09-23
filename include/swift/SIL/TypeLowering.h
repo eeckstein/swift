@@ -368,7 +368,7 @@ public:
   /// This abstracts over the differences in between trivial and non-trivial
   /// types.
   virtual void emitStore(SILBuilder &B, SILLocation loc, SILValue value,
-                         SILValue addr, StoreOwnershipQualifier qual) const = 0;
+                         SILValue addr) const = 0;
 
   /// Emit a load from \p addr given the LoadOwnershipQualifier \p qual.
   ///
@@ -432,7 +432,7 @@ public:
   /// code.
   virtual void emitLoweredStore(
       SILBuilder &B, SILLocation loc, SILValue value, SILValue addr,
-      StoreOwnershipQualifier qual,
+      IsInitialization_t isInit,
       Lowering::TypeLowering::TypeExpansionKind expansionKind) const = 0;
 
   //===--------------------------------------------------------------------===//

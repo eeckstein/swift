@@ -129,8 +129,7 @@ static bool expandCopyAddr(CopyAddrInst *cai) {
         cai->getLoc(), source, LoadOwnershipQualifier::Trivial);
     SILValue destAddr = cai->getDest();
     // Create the store.
-    builder.emitStoreValueOperation(cai->getLoc(), newValue, destAddr,
-                                    StoreOwnershipQualifier::Trivial);
+    builder.emitStoreValueOperation(cai->getLoc(), newValue, destAddr);
     ++NumExpand;
     return true;
   }
@@ -147,17 +146,12 @@ static bool expandCopyAddr(CopyAddrInst *cai) {
 
   // Create the store in the guaranteed uninitialized memory.
   //
-  // store %new to [init|assign] %1
+  // store %new to [init] %1
   //
   // If we are not initializing the destination, we need to destroy what is
   // currently there before we re-initialize the memory.
-  auto storeQualifier = [&]() -> StoreOwnershipQualifier {
-    if (IsInitialization_t::IsInitialization != cai->isInitializationOfDest())
-      return StoreOwnershipQualifier::Assign;
-    return StoreOwnershipQualifier::Init;
-  }();
   builder.emitLoweredStoreValueOperation(cai->getLoc(), newValue, destAddr,
-                                         storeQualifier, expansionKind);
+                cai->isInitializationOfDest(), expansionKind);
 
   ++NumExpand;
   return true;

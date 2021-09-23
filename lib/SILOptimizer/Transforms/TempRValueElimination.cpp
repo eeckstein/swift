@@ -608,10 +608,6 @@ void TempRValueOptPass::tryOptimizeCopyIntoTemp(CopyAddrInst *copyInst) {
 
 SILBasicBlock::iterator
 TempRValueOptPass::tryOptimizeStoreIntoTemp(StoreInst *si) {
-  // If our store is an assign, bail.
-  if (si->getOwnershipQualifier() == StoreOwnershipQualifier::Assign)
-    return std::next(si->getIterator());
-
   auto *tempObj = dyn_cast<AllocStackInst>(si->getDest());
   if (!tempObj) {
     return std::next(si->getIterator());
@@ -685,15 +681,13 @@ TempRValueOptPass::tryOptimizeStoreIntoTemp(StoreInst *si) {
       auto *cai = cast<CopyAddrInst>(user);
       assert(cai->getSrc() == tempObj);
       SILBuilderWithScope builder(user);
-      auto qualifier = cai->isInitializationOfDest()
-                           ? StoreOwnershipQualifier::Init
-                           : StoreOwnershipQualifier::Assign;
       SILValue src = si->getSrc();
       if (!cai->isTakeOfSrc()) {
         src = builder.emitCopyValueOperation(cai->getLoc(), src);
       }
-      builder.emitStoreValueOperation(cai->getLoc(), src, cai->getDest(),
-                                      qualifier);
+      if (!cai->isInitializationOfDest())
+        builder.emitDestroyAddr(cai->getLoc(), cai->getDest());
+      builder.emitStoreValueOperation(cai->getLoc(), src, cai->getDest());
       toDelete.push_back(cai);
       break;
     }
