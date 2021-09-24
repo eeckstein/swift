@@ -348,8 +348,10 @@ class StructElementAddrInst : SingleValueInstruction, UnaryInstruction {
   public var fieldIndex: Int { StructElementAddrInst_fieldIndex(bridged) }
 }
 
-final public class EnumInst : SingleValueInstruction, UnaryInstruction {
+final public class EnumInst : SingleValueInstruction {
   public var caseIndex: Int { EnumInst_caseIndex(bridged) }
+  
+  public var operand: Value? { operands.first?.value }
 }
 
 final public

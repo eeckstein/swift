@@ -503,8 +503,9 @@ struct EscapeInfo {
           guard let newPath = p.popIfMatches(.enumCase, index: e.caseIndex) else {
             return false
           }
+          guard let op = e.operand else { return false }
           p = newPath
-          val = e.operand
+          val = op
         case let ued as UncheckedEnumDataInst:
           val = ued.operand
           p = p.push(.enumCase, index: ued.caseIndex)
