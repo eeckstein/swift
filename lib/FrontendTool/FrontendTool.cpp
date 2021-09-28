@@ -736,7 +736,7 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
                                          ReturnValue, observer);
   }
   // Cross-module optimization only works with whole-module optimization.
-  SILOpts.CrossModuleOptimization = false;
+  Invocation.getSILOptions().CrossModuleOptimization = false;
 
   // If there are primary source files, build a separate SILModule for
   // each source file, and run the remaining SILOpt-Serialize-IRGen-LLVM
@@ -748,7 +748,7 @@ static bool performCompileStepsPostSema(CompilerInstance &Instance,
           Instance.getPrimarySpecificPathsForSourceFile(*PrimaryFile);
       SILOptions SILOpts = getSILOptions(PSPs);
       auto SM = performASTLowering(*PrimaryFile, Instance.getSILTypes(),
-                                   SILOpts), TBDGenOpts;
+                                   SILOpts, TBDGenOpts);
       result |= performCompileStepsPostSILGen(Instance, std::move(SM),
                                               PrimaryFile, PSPs, ReturnValue,
                                               observer);
