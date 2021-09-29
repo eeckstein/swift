@@ -1139,7 +1139,7 @@ bool IRGenerator::canEmitWitnessTableLazily(SILWitnessTable *wt) {
 
     default:
       if (auto *ubiAttr = ConformingTy->getAttrs().getAttribute<UsableFromInlineAttr>()) {
-        if (ubiAttr->addedByCMO)
+        if (!ubiAttr->metadataNeeded)
           return true;
       }
 

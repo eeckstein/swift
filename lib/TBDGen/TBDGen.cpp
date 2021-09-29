@@ -74,10 +74,6 @@ TBDGenVisitor::TBDGenVisitor(const TBDGenDescriptor &desc,
 void TBDGenVisitor::addSymbolInternal(StringRef name, SymbolKind kind,
                                       SymbolSource source) {
                                       
-if (name == "_$s4Test8FooClassCAA12PrivateProto33_EDA3972DA3844EEF57B8E8A066EB23F6LLA2adELLP3fooyyFTW")
-  int br = 1;
-                                      
-                                      
   if (!source.isLinkerDirective() && Opts.LinkerDirectivesOnly)
     return;
 

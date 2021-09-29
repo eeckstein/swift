@@ -35,6 +35,9 @@ using namespace swift;
 static llvm::cl::opt<int> CMOFunctionSizeLimit("cmo-function-size-limit",
                                                llvm::cl::init(20));
 
+static llvm::cl::opt<int> CMOGenericFunctionSizeLimit("cmo-generic-function-size-limit",
+                                               llvm::cl::init(50));
+
 namespace {
 
 /// Scans a whole module and marks functions and types as inlinable or usable
@@ -82,7 +85,7 @@ class CrossModuleSerializationSetup {
 
   void handleReferencedMethod(SILDeclRef method);
 
-  void makeTypeUsableFromInline(CanType type);
+  void makeTypeUsableFromInline(CanType type, bool needMetadata);
 
   void makeSubstUsableFromInline(const SubstitutionMap &substs);
 
@@ -114,12 +117,15 @@ public:
   }
 
   SILType remapType(SILType Ty) {
-    CMS.makeTypeUsableFromInline(Ty.getASTType());
+    CMS.makeTypeUsableFromInline(Ty.getASTType(),
+                    /*needMetadata*/!Ty.isLoadable(getBuilder().getFunction()));
     return Ty;
   }
 
   CanType remapASTType(CanType Ty) {
-    CMS.makeTypeUsableFromInline(Ty);
+    SILType silTy = SILType::getPrimitiveObjectType(Ty);
+    CMS.makeTypeUsableFromInline(Ty,
+                 /*needMetadata*/!silTy.isLoadable(getBuilder().getFunction()));
     return Ty;
   }
 
@@ -145,7 +151,16 @@ public:
 };
 
 /// Make a nominal type, including it's context, usable from inline.
-static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M) {
+static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M,
+                                     bool needMetadata) {
+                                     
+  if (needMetadata && decl->getAttrs().hasAttribute<UsableFromInlineAttr>()) {
+    assert(decl->getEffectiveAccess() >= AccessLevel::Public);
+    auto *attr = decl->getAttrs().getAttribute<UsableFromInlineAttr>();
+    attr->metadataNeeded = true;
+    return;
+  }
+                                     
   if (decl->getEffectiveAccess() >= AccessLevel::Public)
     return;
 
@@ -156,15 +171,15 @@ static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M) {
     // immutable at this point.
     auto &ctx = decl->getASTContext();
     auto *attr = new (ctx) UsableFromInlineAttr(/*implicit=*/true,
-                                                /*addedByCMO*/true);
+                                                /*metadataNeeded*/needMetadata);
     decl->getAttrs().add(attr);
   }
   
   if (auto *nominalCtx = dyn_cast<NominalTypeDecl>(decl->getDeclContext())) {
-    makeDeclUsableFromInline(nominalCtx, M);
+    makeDeclUsableFromInline(nominalCtx, M, needMetadata);
   } else if (auto *extCtx = dyn_cast<ExtensionDecl>(decl->getDeclContext())) {
     if (auto *extendedNominal = extCtx->getExtendedNominal()) {
-      makeDeclUsableFromInline(extendedNominal, M);
+      makeDeclUsableFromInline(extendedNominal, M, needMetadata);
     }
   } else if (decl->getDeclContext()->isLocalContext()) {
     // TODO
@@ -172,20 +187,21 @@ static void makeDeclUsableFromInline(ValueDecl *decl, SILModule &M) {
 }
 
 /// Ensure that the \p type is usable from serialized functions.
-void CrossModuleSerializationSetup::makeTypeUsableFromInline(CanType type) {
+void CrossModuleSerializationSetup::
+makeTypeUsableFromInline(CanType type, bool needMetadata) {
   if (!typesHandled.insert(type.getPointer()).second)
     return;
 
   if (NominalTypeDecl *NT = type->getNominalOrBoundGenericNominal()) {
-    makeDeclUsableFromInline(NT, M);
+    makeDeclUsableFromInline(NT, M, needMetadata);
   }
 
   // Also make all sub-types usable from inline.
-  type.visit([this](Type rawSubType) {
+  type.visit([this, needMetadata](Type rawSubType) {
     CanType subType = rawSubType->getCanonicalType();
     if (typesHandled.insert(subType.getPointer()).second) {
       if (NominalTypeDecl *subNT = subType->getNominalOrBoundGenericNominal()) {
-        makeDeclUsableFromInline(subNT, M);
+        makeDeclUsableFromInline(subNT, M, needMetadata);
       }
     }
   });
@@ -196,12 +212,12 @@ void CrossModuleSerializationSetup::makeTypeUsableFromInline(CanType type) {
 void CrossModuleSerializationSetup::
 makeSubstUsableFromInline(const SubstitutionMap &substs) {
   for (Type replType : substs.getReplacementTypes()) {
-    makeTypeUsableFromInline(replType->getCanonicalType());
+    makeTypeUsableFromInline(replType->getCanonicalType(), /*needMetadata*/true);
   }
   for (ProtocolConformanceRef pref : substs.getConformances()) {
     if (pref.isConcrete()) {
       ProtocolConformance *concrete = pref.getConcrete();
-      makeDeclUsableFromInline(concrete->getProtocol(), M);
+      makeDeclUsableFromInline(concrete->getProtocol(), M, /*needMetadata*/true);
     }
   }
 }
@@ -228,22 +244,20 @@ static bool shouldSerialize(SILFunction *F) {
   if (F->hasPrespecialization())
     return false;
 
-return true;
-
   if (SerializeEverything)
     return true;
 
   // The basic heursitic: serialize all generic functions, because it makes a
   // huge difference if generic functions can be specialized or not.
-  if (F->getLoweredFunctionType()->isPolymorphic())
-    return true;
+  int sizeLimit = F->getLoweredFunctionType()->isPolymorphic() ?
+      CMOGenericFunctionSizeLimit : CMOFunctionSizeLimit;
 
   // Also serialize "small" non-generic functions.
   int size = 0;
   for (SILBasicBlock &block : *F) {
     for (SILInstruction &inst : block) {
       size += (int)instructionInlineCost(inst);
-      if (size >= CMOFunctionSizeLimit)
+      if (size >= sizeLimit)
         return false;
     }
   }
@@ -305,7 +319,7 @@ prepareInstructionForSerialization(SILInstruction *inst) {
     return;
   }
   if (auto *REAI = dyn_cast<RefElementAddrInst>(inst)) {
-    makeDeclUsableFromInline(REAI->getField(), M);
+    makeDeclUsableFromInline(REAI->getField(), M, /*needMetadata*/ false);
   }
 }
 

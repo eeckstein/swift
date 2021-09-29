@@ -523,14 +523,14 @@ public:
 class UsableFromInlineAttr : public DeclAttribute {
 public:
   UsableFromInlineAttr(SourceLoc AtLoc, SourceRange Range, bool Implicit,
-                       bool addedByCMO = false)
+                       bool metadataNeeded = true)
     : DeclAttribute(DAK_UsableFromInline, AtLoc, Range, Implicit),
-      addedByCMO(addedByCMO) {}
+      metadataNeeded(metadataNeeded) {}
 
   UsableFromInlineAttr(bool Implicit, bool addedByCMO = false)
     : UsableFromInlineAttr(SourceLoc(), SourceRange(), Implicit, addedByCMO) {}
 
-  bool addedByCMO;
+  bool metadataNeeded;
 
   static bool classof(const DeclAttribute *DA) {
     return DA->getKind() == DAK_UsableFromInline;

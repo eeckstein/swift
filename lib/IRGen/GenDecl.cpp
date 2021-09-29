@@ -1458,7 +1458,7 @@ bool IRGenerator::hasLazyMetadata(TypeDecl *type) {
       case AccessLevel::Open:
       case AccessLevel::Public:
         if (auto *ubiAttr = type->getAttrs().getAttribute<UsableFromInlineAttr>()) {
-          if (ubiAttr->addedByCMO)
+          if (!ubiAttr->metadataNeeded)
             return true;
         }
 
