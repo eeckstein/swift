@@ -247,6 +247,9 @@ static bool shouldSerialize(SILFunction *F) {
   if (SerializeEverything)
     return true;
 
+  if (F->getName() == "main")
+    return false;
+
   // The basic heursitic: serialize all generic functions, because it makes a
   // huge difference if generic functions can be specialized or not.
   int sizeLimit = F->getLoweredFunctionType()->isPolymorphic() ?
@@ -269,8 +272,7 @@ static void makeFunctionUsableFromInline(SILFunction *F) {
   if (!isAvailableExternally(F->getLinkage()) &&
       F->getLinkage() != SILLinkage::Public) {
       
-    if (F->getLinkage() == SILLinkage::Shared)
-      F->setIsExportedShared(true);
+    assert(F->getLinkage() != SILLinkage::Shared);
 
     F->setLinkage(SILLinkage::Public);
     F->getModule().getTBDGenOptions().addPublicCMOSymbol(F->getName().str());
@@ -326,7 +328,9 @@ prepareInstructionForSerialization(SILInstruction *inst) {
 void CrossModuleSerializationSetup::handleReferencedFunction(SILFunction *func) {
   if (!func->isDefinition() || func->getLinkage() == SILLinkage::PublicExternal)
     return;
-  if (func->isSerialized() == IsSerialized)
+  if (func->isSerialized() == IsSerialized ||
+      (func->getLinkage() == SILLinkage::Shared &&
+       func->isSerialized() == IsSerializable))
     return;
 
   if (shouldSerialize(func)) {
@@ -453,7 +457,10 @@ bool CrossModuleSerializationSetup::canUseFromInline(SILFunction *func,
   case SILLinkage::PublicNonABI:
     return func->isSerialized() != IsNotSerialized;
   case SILLinkage::Shared:
-    return true;
+    // Currently we cannot serialize functions which reference non-serializable
+    // shared functions, like specializations.
+    // TODO: enable this once we can share specializations across modules.
+    return func->isSerialized() == IsSerializable;
   case SILLinkage::HiddenExternal:
     return false;
   case SILLinkage::Public:

@@ -1,6 +1,6 @@
 import Foundation
 
-final class ObjcClass : NSObject {
+final public class ObjcClass : NSObject {
   fileprivate var ii: Int = 127
 }
 
@@ -10,8 +10,7 @@ func returnObjcClassMember<T>(_ c: ObjcClass, _ t: T) -> Int {
 }
 
 @inline(never)
-public func callObjcClassMember<T>(_ t: T) -> Int {
-  let c = ObjcClass()
+public func callObjcClassMember<T>(_ c: ObjcClass, _ t: T) -> Int {
   return returnObjcClassMember(c, t)
 }
 

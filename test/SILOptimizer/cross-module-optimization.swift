@@ -28,6 +28,7 @@
 import Test
 
 
+@inline(never)
 func testNestedTypes() {
   let c = Container()
 
@@ -35,29 +36,19 @@ func testNestedTypes() {
   // CHECK-OUTPUT: 27
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test9ContainerV9testclassyxxlFSi_Tg5
   print(c.testclass(27))
-  // CHECK-OUTPUT [Test.Container.Base]
-  // CHECK-OUTPUT: 27
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test9ContainerV13testclass_genyxxlF
-  print(c.testclass_gen(27))
-  // CHECK-OUTPUT [Test.PE<Swift.Int>.B(27)]
+  // CHECK-OUTPUT Test.PE<Swift.Int>.B(27)
   // CHECK-OUTPUT: 27
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test9ContainerV8testenumyxxlFSi_Tg5
   print(c.testenum(27))
-  // CHECK-OUTPUT [Test.PE<Swift.Int>.B(27)]
-  // CHECK-OUTPUT: 27
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test9ContainerV12testenum_genyxxlF
-  print(c.testenum_gen(27))
 }
 
 
+@inline(never)
 func testClass() {
   // CHECK-OUTPUT: 28
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test11createClassySixlFSi_Tg5
   // CHECK-SIL-DAG: sil shared [noinline] @${{.*Test.*getClass}}
   print(createClass(0))
-  // CHECK-OUTPUT: 28
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test15createClass_genySixlF
-  print(createClass_gen(0))
 }
 
 // CHECK-SIL2-LABEL: sil hidden [noinline] @$s4Main9testErroryyF
@@ -76,47 +67,38 @@ func testError() {
 
 class DerivedFromOpen<T> : OpenClass<T> { }
 
+@inline(never)
 func testProtocolsAndClasses() {
   // CHECK-OUTPUT: false
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test20checkIfClassConformsyyxlFSi_Tg5
   checkIfClassConforms(27)
-  // CHECK-OUTPUT: false
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test24checkIfClassConforms_genyyxlF
-  checkIfClassConforms_gen(27)
   // CHECK-OUTPUT: 123
   // CHECK-OUTPUT: 1234
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test7callFooyyxlFSi_Tg5
-  // CHECK-SIL-DAG: sil [{{.*}}] @$s4Test19printFooExistential33_{{.*}} : $@convention(thin) (@in_guaranteed PrivateProtocol) -> (){{$}}
+  // CHECK-SIL-DAG: sil [{{.*}}] @$s4Test19printFooExistential33_{{.*}}
   callFoo(27)
-  // CHECK-OUTPUT: 123
-  // CHECK-OUTPUT: 1234
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test11callFoo_genyyxlF
-  callFoo_gen(27)
   // CHECK-OUTPUT: 55
   callClassMethod(55)
   // CHECK-OUTPUT: 321
   callFooViaConformance(0)
 }
 
+@inline(never)
 func testSubModule() {
   // CHECK-OUTPUT: 10
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test24callGenericSubmoduleFuncyyxlFSi_Tg5
   // CHECK-SIL-DAG: sil shared [noinline] @$s9Submodule07genericA4FuncyyxlF
   callGenericSubmoduleFunc(10)
-  // CHECK-OUTPUT: 101
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test28callGenericSubmoduleFunc_genyyxlF
-  callGenericSubmoduleFunc_gen(101)
 }
 
+@inline(never)
 func testClosures() {
   // CHECK-OUTPUT: 23
   // CHECK-SIL-DAG: sil shared [noinline] @$s4Test14genericClosureyxxlFSi_Tg5
   print(genericClosure(23))
-  // CHECK-OUTPUT: 24
-  // CHECK-SIL-DAG: sil shared_external {{.*}} @$s4Test18genericClosure_genyxxlF
-  print(genericClosure_gen(24))
 }
 
+@inline(never)
 func testKeypath() {
   // CHECK-OUTPUT: 27
   print(useStructKeypath(0))
@@ -124,10 +106,12 @@ func testKeypath() {
   print(useClassKeypath(0))
 }
 
+@inline(never)
 func testMisc() {
   // CHECK-OUTPUT: 43
   // CHECK-OUTPUT: 42
-  // CHECK-SIL-DAG: sil shared {{.*}} @$s4Test13callUnrelatedyxxlFSi_Tg5
+  // Currently we don't serialize functions which contain calls to shared (e.g. specialized) functions.
+  // CHECK-SIL-DAG: sil [noinline] {{.*}}@$s4Test13callUnrelatedyxxlF :
   print(callUnrelated(42))
 
   // CHECK-OUTPUT: 27

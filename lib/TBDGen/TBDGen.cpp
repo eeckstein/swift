@@ -81,7 +81,7 @@ void TBDGenVisitor::addSymbolInternal(StringRef name, SymbolKind kind,
     return;
 
 #ifndef NDEBUG
-  if (kind == SymbolKind::GlobalSymbol) {
+  if (kind == SymbolKind::GlobalSymbol && !source.isFromCrossModuleOptimization()) {
     if (!DuplicateSymbolChecker.insert(name).second) {
       llvm::dbgs() << "TBDGen duplicate symbol: " << name << '\n';
       assert(false && "TBDGen symbol appears twice");
@@ -1209,7 +1209,7 @@ void TBDGenVisitor::visit(const TBDGenDescriptor &desc) {
   addFirstFileSymbols();
 
   for (const std::string &sym : Opts.publicCMOSymbols) {
-    addSymbol(sym, SymbolSource::forUnknown());
+    addSymbol(sym, SymbolSource::forCrossModuleOptimization());
   }
   
   if (auto *singleFile = desc.getSingleFile()) {

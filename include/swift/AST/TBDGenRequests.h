@@ -154,6 +154,8 @@ public:
     /// A symbol used to customize linker behavior, introduced by TBDGen.
     LinkerDirective,
 
+    CrossModuleOptimization,
+
     /// A symbol with an unknown origin.
     // FIXME: This should be eliminated.
     Unknown
@@ -173,7 +175,8 @@ private:
     irEntity = entity;
   }
   explicit SymbolSource(Kind kind) : kind(kind) {
-    assert(kind == Kind::LinkerDirective || kind == Kind::Unknown);
+    assert(kind == Kind::LinkerDirective || kind == Kind::Unknown ||
+           kind == Kind::CrossModuleOptimization);
   }
 
 public:
@@ -186,12 +189,19 @@ public:
   static SymbolSource forLinkerDirective() {
     return SymbolSource{Kind::LinkerDirective};
   }
+  static SymbolSource forCrossModuleOptimization() {
+    return SymbolSource{Kind::CrossModuleOptimization};
+  }
   static SymbolSource forUnknown() {
     return SymbolSource{Kind::Unknown};
   }
 
   bool isLinkerDirective() const {
     return kind == Kind::LinkerDirective;
+  }
+
+  bool isFromCrossModuleOptimization() const {
+    return kind == Kind::CrossModuleOptimization;
   }
 
   SILDeclRef getSILDeclRef() const {

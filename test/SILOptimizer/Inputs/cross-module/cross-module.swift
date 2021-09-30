@@ -14,35 +14,14 @@ public struct Container {
 
   @inline(never)
   public func testclass<T>(_ t: T) -> T {
-    var arr = Array<Base>()
-    arr.append(Base())
-    print(arr)
-    return t
-  }
-
-  @inline(never)
-  @_semantics("optimize.sil.specialize.generic.never")
-  public func testclass_gen<T>(_ t: T) -> T {
-    var arr = Array<Base>()
-    arr.append(Base())
+    var arr = [Base()]
     print(arr)
     return t
   }
 
   @inline(never)
   public func testenum<T>(_ t: T) -> T {
-    var arr = Array<PE<T>>()
-    arr.append(.B(t))
-    print(arr)
-    return t
-  }
-
-  @inline(never)
-  @_semantics("optimize.sil.specialize.generic.never")
-  public func testenum_gen<T>(_ t: T) -> T {
-    var arr = Array<PE<T>>()
-    arr.append(.B(t))
-    print(arr)
+    print(PE.B(t))
     return t
   }
 
@@ -67,12 +46,6 @@ private func getClass<T>(_ t : T) -> PrivateBase<T> {
 
 @inline(never)
 public func createClass<T>(_ t: T) -> Int {
-  return getClass(t).foo()
-}
-
-@inline(never)
-@_semantics("optimize.sil.specialize.generic.never")
-public func createClass_gen<T>(_ t: T) -> Int {
   return getClass(t).foo()
 }
 
@@ -115,13 +88,6 @@ public func checkIfClassConforms<T>(_ t: T) {
 }
 
 @inline(never)
-@_semantics("optimize.sil.specialize.generic.never")
-public func checkIfClassConforms_gen<T>(_ t: T) {
-  let x = OpenClass<T>()
-  print(x.testit())
-}
-
-@inline(never)
 public func callClassMethod<T>(_ t: T) {
   let k = OpenClass<T>()
   k.bar(t)
@@ -144,13 +110,6 @@ private func printFooGeneric<T: PrivateProtocol>(_ p: T) {
 
 @inline(never)
 public func callFoo<T>(_ t: T) {
-  printFooExistential(123)
-  printFooGeneric(1234)
-}
-
-@inline(never)
-@_semantics("optimize.sil.specialize.generic.never")
-public func callFoo_gen<T>(_ t: T) {
   printFooExistential(123)
   printFooGeneric(1234)
 }
@@ -203,20 +162,7 @@ public func callGenericSubmoduleFunc<T>(_ t: T) {
 }
 
 @inline(never)
-@_semantics("optimize.sil.specialize.generic.never")
-public func callGenericSubmoduleFunc_gen<T>(_ t: T) {
-  genericSubmoduleFunc(t)
-}
-
-@inline(never)
 public func genericClosure<T>(_ t: T) -> T {
-  let c : () -> T = { return t }
-  return c()
-}
-
-@inline(never)
-@_semantics("optimize.sil.specialize.generic.never")
-public func genericClosure_gen<T>(_ t: T) -> T {
   let c : () -> T = { return t }
   return c()
 }
