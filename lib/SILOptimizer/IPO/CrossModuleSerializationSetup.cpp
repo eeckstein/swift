@@ -123,9 +123,12 @@ public:
   }
 
   CanType remapASTType(CanType Ty) {
-    SILType silTy = SILType::getPrimitiveObjectType(Ty);
-    CMS.makeTypeUsableFromInline(Ty,
-                 /*needMetadata*/!silTy.isLoadable(getBuilder().getFunction()));
+    bool needMetadata = true;
+    if (Ty->isLegalSILType()) {
+      SILType silTy = SILType::getPrimitiveObjectType(Ty);
+      needMetadata = !silTy.isLoadable(getBuilder().getFunction());
+    }
+    CMS.makeTypeUsableFromInline(Ty, needMetadata);
     return Ty;
   }
 
@@ -266,6 +269,14 @@ static bool shouldSerialize(SILFunction *F) {
   }
 
   return true;
+}
+
+static bool shouldSerialize(SILWitnessTable &wt) {
+  // Otherwise we might keep a dead witness table alive (dead due to IRGen's
+  // lazy witness table emission).
+  // And it's unlikely that a non-public witness table is used outside the
+  // module.
+  return wt.getLinkage() == SILLinkage::Public;
 }
 
 static void makeFunctionUsableFromInline(SILFunction *F) {
@@ -527,7 +538,7 @@ void CrossModuleSerializationSetup::scanModule() {
   }
 
   for (auto &WT : M.getWitnessTables()) {
-    if (canSerialize(WT))
+    if (shouldSerialize(WT) && canSerialize(WT))
       setUpForSerialization(WT);
   }
   

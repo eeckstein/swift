@@ -1,6 +1,6 @@
-// RUN: %target-swift-frontend -c -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
-// RUN: %target-swift-frontend -emit-sil -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
-// RUN: %target-swift-frontend -emit-module -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix SKIPPING
+// RUN: %target-swift-frontend -no-cmo -c -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
+// RUN: %target-swift-frontend -no-cmo -emit-sil -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
+// RUN: %target-swift-frontend -no-cmo -emit-module -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix SKIPPING
 
 // This test ensures that we don't run the Perf Inliner after serializing a
 // module, if we're stopping optimizations after serializing. We want to also
