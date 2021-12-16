@@ -10,5 +10,6 @@ open class ButtHolder {
     print("\(x) \(y) \(z)")
   }
 
+  @inlinable
   public init() {  x = 0; y = [:]; z = "" }
 }
