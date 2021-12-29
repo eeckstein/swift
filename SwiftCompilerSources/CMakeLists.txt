@@ -225,6 +225,21 @@ else()
         SWIFT_EXEC $<TARGET_FILE_DIR:swift-frontend-bootstrapping1>/swiftc${CMAKE_EXECUTABLE_SUFFIX}
         DEPENDS ${b1_deps})
 
+    if(${BOOTSTRAPPING_MODE} STREQUAL "BOOTSTRAPPING")
+      # Add the stdlib libraries also as libraries (and not only as dependencies) to get the right
+      # library search paths, etc.
+      target_link_libraries(swiftCompilerModules-bootstrapping1 PRIVATE swiftCore-bootstrapping0)
+      target_link_libraries(swiftCompilerModules PRIVATE swiftCore-bootstrapping1)
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_link_libraries(swiftCompilerModules-bootstrapping1 PRIVATE swiftSwiftOnoneSupport-bootstrapping0)
+        target_link_libraries(swiftCompilerModules PRIVATE swiftSwiftOnoneSupport-bootstrapping1)
+      endif()
+      if(SWIFT_HOST_VARIANT_SDK IN_LIST SWIFT_DARWIN_PLATFORMS)
+        target_link_libraries(swiftCompilerModules-bootstrapping1 PRIVATE swiftDarwin-bootstrapping0)
+        target_link_libraries(swiftCompilerModules PRIVATE swiftDarwin-bootstrapping1)
+      endif()
+    endif()
+
     if(BOOTSTRAPPING_MODE STREQUAL "BOOTSTRAPPING-WITH-HOSTLIBS")
       file(GLOB module_dirs "${CMAKE_BINARY_DIR}/bootstrapping*/lib/swift/macosx/*.swiftmodule")
       foreach(module_dir ${module_dirs})
