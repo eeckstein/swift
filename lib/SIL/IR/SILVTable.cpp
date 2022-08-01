@@ -65,16 +65,4 @@ SILVTable::SILVTable(ClassDecl *c, IsSerialized_t serialized,
   : Class(c), Serialized(serialized), NumEntries(entries.size()) {
   std::uninitialized_copy(entries.begin(), entries.end(),
                           getTrailingObjects<Entry>());
-
-  // Bump the reference count of functions referenced by this table.
-  for (const Entry &entry : getEntries()) {
-    entry.getImplementation()->incrementRefCount();
-  }
-}
-
-SILVTable::~SILVTable() {
-  // Drop the reference count of functions referenced by this table.
-  for (const Entry &entry : getEntries()) {
-    entry.getImplementation()->decrementRefCount();
-  }
 }

@@ -42,15 +42,6 @@ class SILModule;
 // TODO: Entry should include substitutions needed to invoke an overridden
 // generic base class method.
 class SILVTableEntry {
-  /// The declaration reference to the least-derived method visible through
-  /// the class.
-  SILDeclRef Method;
-
-  /// The function which implements the method for the class and the entry kind.
-  llvm::PointerIntPair<SILFunction *, 2, unsigned> ImplAndKind;
-
-  bool IsNonOverridden;
-
 public:
   enum Kind : uint8_t {
     /// The vtable entry is for a method defined directly in this class.
@@ -64,23 +55,34 @@ public:
     // Please update the PointerIntPair above if you add/remove enums.
   };
 
-  SILVTableEntry() : ImplAndKind(nullptr, Kind::Normal),
-                     IsNonOverridden(false) {}
+private:
+  /// The declaration reference to the least-derived method visible through
+  /// the class.
+  SILDeclRef Method;
+
+  /// The function which implements the method for the class and the entry kind.
+  SILFunctionReference impl;
+
+  bool IsNonOverridden = false;
+  Kind kind = Kind::Normal;
+
+public:
+  SILVTableEntry() : impl(nullptr, nullptr) {}
 
   SILVTableEntry(SILDeclRef Method, SILFunction *Implementation, Kind TheKind,
                  bool NonOverridden)
-      : Method(Method), ImplAndKind(Implementation, TheKind),
-        IsNonOverridden(NonOverridden) {}
+      : Method(Method), impl(Implementation, nullptr),
+        IsNonOverridden(NonOverridden), kind(TheKind) {}
 
   SILDeclRef getMethod() const { return Method; }
 
-  Kind getKind() const { return Kind(ImplAndKind.getInt()); }
-  void setKind(Kind kind) { ImplAndKind.setInt(kind); }
+  Kind getKind() const { return kind; }
+  void setKind(Kind k) { kind = k; }
 
   bool isNonOverridden() const { return IsNonOverridden; }
   void setNonOverridden(bool value) { IsNonOverridden = value; }
 
-  SILFunction *getImplementation() const { return ImplAndKind.getPointer(); }
+  SILFunction *getImplementation() const { return impl; }
   
   void print(llvm::raw_ostream &os) const;
   
@@ -100,7 +102,8 @@ public:
 /// SILFunction that implements the method for that class.
 /// Note that dead methods are completely removed from the vtable.
 class SILVTable final : public SILAllocated<SILVTable>,
-                        llvm::TrailingObjects<SILVTable, SILVTableEntry> {
+                        llvm::TrailingObjects<SILVTable, SILVTableEntry>,
+                        public SILFunctionReference::Owner {
   friend TrailingObjects;
 
 public:
@@ -125,8 +128,6 @@ private:
   SILVTable(ClassDecl *c, IsSerialized_t serialized, ArrayRef<Entry> entries);
 
 public:
-  ~SILVTable();
-
   /// Create a new SILVTable with the given method-to-implementation mapping.
   /// The SILDeclRef keys should reference the most-overridden members available
   /// through the class.
@@ -171,7 +172,6 @@ public:
     Entry *end = std::remove_if(
         Entries.begin(), Entries.end(), [&](Entry &entry) -> bool {
           if (predicate(entry)) {
-            entry.getImplementation()->decrementRefCount();
             removeFromVTableCache(entry);
             return true;
           }
@@ -190,6 +190,10 @@ public:
 private:
   void removeFromVTableCache(Entry &entry);
 };
+
+template <> SILVTable *SILFunctionReference::Owner::getAs<SILVTable>() {
+  return functionOwnerKind == FunctionOwnerKind::VTable? static_cast<SILVTable *>(this) : nullptr;
+}
 
 } // end swift namespace
 

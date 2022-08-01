@@ -116,27 +116,6 @@ SILWitnessTable::SILWitnessTable(SILModule &M, SILLinkage Linkage, StringRef N,
     : Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
       ConditionalConformances(), IsDeclaration(true), Serialized(false) {}
 
-SILWitnessTable::~SILWitnessTable() {
-  if (isDeclaration())
-    return;
-
-  // Drop the reference count of witness functions referenced by this table.
-  for (auto entry : getEntries()) {
-    switch (entry.getKind()) {
-    case Method:
-      if (entry.getMethodWitness().Witness) {
-        entry.getMethodWitness().Witness->decrementRefCount();
-      }
-      break;
-    case AssociatedType:
-    case AssociatedTypeProtocol:
-    case BaseProtocol:
-    case Invalid:
-      break;
-    }
-  }
-}
-
 void SILWitnessTable::convertToDefinition(
     ArrayRef<Entry> entries,
     ArrayRef<ConditionalConformance> conditionalConformances,
@@ -148,21 +127,7 @@ void SILWitnessTable::convertToDefinition(
   Entries = Mod.allocateCopy(entries);
   ConditionalConformances = Mod.allocateCopy(conditionalConformances);
 
-  // Bump the reference count of witness functions referenced by this table.
-  for (auto entry : getEntries()) {
-    switch (entry.getKind()) {
-    case Method:
-      if (entry.getMethodWitness().Witness) {
-        entry.getMethodWitness().Witness->incrementRefCount();
-      }
-      break;
-    case AssociatedType:
-    case AssociatedTypeProtocol:
-    case BaseProtocol:
-    case Invalid:
-      break;
-    }
-  }
+  // TODO: set the owner of methods.
 }
 
 bool SILWitnessTable::conformanceIsSerialized(

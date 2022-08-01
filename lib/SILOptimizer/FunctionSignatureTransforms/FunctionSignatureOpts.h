@@ -23,7 +23,6 @@
 #include "swift/SILOptimizer/Analysis/ARCAnalysis.h"
 #include "swift/SILOptimizer/Analysis/AliasAnalysis.h"
 #include "swift/SILOptimizer/Analysis/Analysis.h"
-#include "swift/SILOptimizer/Analysis/CallerAnalysis.h"
 #include "swift/SILOptimizer/Analysis/RCIdentityAnalysis.h"
 #include "swift/SILOptimizer/PassManager/PassManager.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"

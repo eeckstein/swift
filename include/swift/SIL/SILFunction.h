@@ -149,7 +149,7 @@ private:
 /// objects making up the function.
 class SILFunction
   : public llvm::ilist_node<SILFunction>, public SILAllocated<SILFunction>,
-    public SwiftObjectHeader {
+    public SILFunctionReference::Owner, public SwiftObjectHeader {
     
 private:
   void *libswiftSpecificData[1];
@@ -173,6 +173,7 @@ private:
   template <class, class> friend class SILBitfield;
   friend class BasicBlockBitfield;
   friend class NodeBitfield;
+  friend class SILFunctionReference;
 
   /// Module - The SIL module that the function belongs to.
   SILModule &Module;
@@ -180,6 +181,8 @@ private:
   /// The mangled name of the SIL function, which will be propagated
   /// to the binary.  A pointer into the module's lookup table.
   StringRef Name;
+
+  SILFunctionReference *firstUse = nullptr;
 
   /// A single-linked list of snapshots of the function.
   ///
@@ -223,7 +226,7 @@ private:
 
   /// The function this function is meant to replace. Null if this is not a
   /// @_dynamicReplacement(for:) function.
-  SILFunction *ReplacedFunction = nullptr;
+  SILFunctionReference ReplacedFunction;
 
   /// This SILFunction REFerences an ad-hoc protocol requirement witness in
   /// order to keep it alive, such that it main be obtained in IRGen. Without
@@ -234,7 +237,7 @@ private:
   /// 'decodeNextArgument' which must be retained, as it is only used from IRGen
   /// and such, appears as-if unused in SIL and would get optimized away.
   // TODO: Consider making this a general "references adhoc functions" and make it an array?
-  SILFunction *RefAdHocRequirementFunction = nullptr;
+  SILFunctionReference RefAdHocRequirementFunction;
 
   Identifier ObjCReplacementFor;
 
@@ -273,10 +276,6 @@ private:
   Purpose specialPurpose = Purpose::None;
 
   PerformanceConstraints perfConstraints = PerformanceConstraints::None;
-
-  /// This is the number of uses of this SILFunction inside the SIL.
-  /// It does not include references from debug scopes.
-  unsigned RefCount = 0;
 
   /// Used to verify if a BasicBlockData is not valid anymore.
   /// This counter is incremented every time a BasicBlockData re-assigns new
@@ -472,6 +471,10 @@ public:
   /// Deletes a snapshot with the `ID`.
   void deleteSnapshot(int ID);
 
+  iterator_range<SILFunctionReference::Iterator> getUses() {
+    return {SILFunctionReference::Iterator(firstUse), SILFunctionReference::Iterator()};
+  }
+
   SILType getLoweredType() const {
     return SILType::getPrimitiveObjectType(LoweredType);
   }
@@ -509,16 +512,10 @@ public:
     assert(ReplacedFunction == nullptr && "already set");
     assert(!hasObjCReplacement());
 
-    if (f == nullptr)
-      return;
     ReplacedFunction = f;
-    ReplacedFunction->incrementRefCount();
   }
   /// This function should only be called when SILFunctions are bulk deleted.
   void dropDynamicallyReplacedFunction() {
-    if (!ReplacedFunction)
-      return;
-    ReplacedFunction->decrementRefCount();
     ReplacedFunction = nullptr;
   }
 
@@ -531,15 +528,9 @@ public:
   void setReferencedAdHocRequirementWitnessFunction(SILFunction *f) {
     assert(RefAdHocRequirementFunction == nullptr && "already set");
 
-    if (f == nullptr)
-      return;
     RefAdHocRequirementFunction = f;
-    RefAdHocRequirementFunction->incrementRefCount();
   }
   void dropReferencedAdHocRequirementWitnessFunction() {
-    if (!RefAdHocRequirementFunction)
-      return;
-    RefAdHocRequirementFunction->decrementRefCount();
     RefAdHocRequirementFunction = nullptr;
   }
 
@@ -580,22 +571,6 @@ public:
   /// You have to do that yourself
   void rewriteLoweredTypeUnsafe(CanSILFunctionType newType) {
     LoweredType = newType;
-  }
-
-  /// Return the number of entities referring to this function (other
-  /// than the SILModule).
-  unsigned getRefCount() const { return RefCount; }
-
-  /// Increment the reference count.
-  void incrementRefCount() {
-    RefCount++;
-    assert(RefCount != 0 && "Overflow of reference count!");
-  }
-
-  /// Decrement the reference count.
-  void decrementRefCount() {
-    assert(RefCount != 0 && "Expected non-zero reference count on decrement!");
-    RefCount--;
   }
 
   /// Drops all uses belonging to instructions in this function. The only valid
@@ -880,11 +855,7 @@ public:
   }
 
   /// Removes all specialize attributes from this function.
-  void clearSpecializeAttrs() {
-    forEachSpecializeAttrTargetFunction(
-        [](SILFunction *targetFun) { targetFun->decrementRefCount(); });
-    SpecializeAttrSet.clear();
-  }
+  void clearSpecializeAttrs() { SpecializeAttrSet.clear(); }
 
   void addSpecializeAttr(SILSpecializeAttr *Attr);
 
@@ -1398,6 +1369,11 @@ public:
   void viewCFGOnly() const;
 
 };
+
+template <> SILFunction *SILFunctionReference::Owner::getAs<SILFunction>() {
+  return functionOwnerKind == FunctionOwnerKind::Function ? static_cast<SILFunction *>(this) : nullptr;
+}
+
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
                                      const SILFunction &F) {

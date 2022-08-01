@@ -2036,7 +2036,7 @@ void IRGenerator::ensureRelativeSymbolCollocation(SILWitnessTable &wt) {
   for (auto &entry : wt.getEntries()) {
     if (entry.getKind() != SILWitnessTable::Method)
       continue;
-    auto *witness = entry.getMethodWitness().Witness;
+    SILFunction *witness = entry.getMethodWitness().Witness;
     if (witness)
       forceLocalEmitOfLazyFunction(witness);
   }
@@ -2049,7 +2049,7 @@ void IRGenerator::ensureRelativeSymbolCollocation(SILDefaultWitnessTable &wt) {
   for (auto &entry : wt.getEntries()) {
     if (entry.getKind() != SILWitnessTable::Method)
       continue;
-    auto *witness = entry.getMethodWitness().Witness;
+    SILFunction *witness = entry.getMethodWitness().Witness;
     if (witness)
       forceLocalEmitOfLazyFunction(witness);
   }
@@ -2189,7 +2189,7 @@ static void addWTableTypeMetadata(IRGenModule &IGM,
 
   uint64_t minOffset = UINT64_MAX;
   uint64_t maxOffset = 0;
-  for (auto entry : wt->getEntries()) {
+  for (const SILWitnessTable::Entry &entry : wt->getEntries()) {
     if (entry.getKind() != SILWitnessTable::WitnessKind::Method)
       continue;
 

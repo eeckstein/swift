@@ -45,8 +45,6 @@ SILSpecializeAttr::SILSpecializeAttr(bool exported, SpecializationKind kind,
                                      AvailabilityContext availability)
     : kind(kind), exported(exported), specializedSignature(specializedSig),
       spiGroup(spiGroup), availability(availability), spiModule(spiModule), targetFunction(target) {
-  if (targetFunction)
-    targetFunction->incrementRefCount();
 }
 
 SILSpecializeAttr *
@@ -68,10 +66,6 @@ void SILFunction::addSpecializeAttr(SILSpecializeAttr *Attr) {
 }
 
 void SILFunction::removeSpecializeAttr(SILSpecializeAttr *attr) {
-  // Drop the reference to the _specialize(target:) function.
-  if (auto *targetFun = attr->getTargetFunction()) {
-    targetFun->decrementRefCount();
-  }
   SpecializeAttrSet.erase(std::remove_if(SpecializeAttrSet.begin(),
                                          SpecializeAttrSet.end(),
                                          [attr](SILSpecializeAttr *member) {
@@ -219,17 +213,12 @@ SILFunction::~SILFunction() {
   if (snapshots)
     snapshots->~SILFunction();
 
-  if (ReplacedFunction) {
-    ReplacedFunction->decrementRefCount();
-    ReplacedFunction = nullptr;
-  }
-
   auto &M = getModule();
   for (auto &BB : *this) {
     BB.eraseAllInstructions(M);
   }
 
-  assert(RefCount == 0 &&
+  assert(!firstUse &&
          "Function cannot be deleted while function_ref's still exist");
   assert(!newestAliveBlockBitfield &&
          "Not all BasicBlockBitfields deleted at function destruction");
@@ -534,6 +523,20 @@ void SILFunction::moveBlockBefore(SILBasicBlock *BB, SILFunction::iterator IP) {
     return;
   BlockList.remove(BB);
   BlockList.insert(IP, BB);
+}
+
+//===----------------------------------------------------------------------===//
+//                        SILFunctionReference members
+//===----------------------------------------------------------------------===//
+
+void SILFunctionReference::insertInto(SILFunction *f) {
+  if ((function = f) != nullptr) {
+    prevPtr = &function->firstUse;
+    next = function->firstUse;
+    if (next)
+      next->prevPtr = &next;
+    function->firstUse = this;
+  }
 }
 
 //===----------------------------------------------------------------------===//

@@ -804,8 +804,6 @@ SILDeserializer::readSILFunctionChecked(DeclID FID, SILFunction *existingFn,
   bool isFullyDeserialized = (isEmptyFunction || !declarationOnly);
   if (cacheEntry.isDeserialized()) {
     assert(fn == cacheEntry.get() && "changing SIL function during deserialization!");
-  } else {
-    fn->incrementRefCount();
   }
   cacheEntry.set(fn, isFullyDeserialized);
 
@@ -3940,18 +3938,12 @@ void SILDeserializer::getAllDifferentiabilityWitnesses() {
 }
 
 SILDeserializer::~SILDeserializer() {
-  // Drop our references to anything we've deserialized.
-  for (auto &fnEntry : Funcs) {
-    if (fnEntry.isDeserialized())
-      fnEntry.get()->decrementRefCount();
-  }
 }
 
 // Invalidate all cached SILFunctions.
 void SILDeserializer::invalidateFunctionCache() {
   for (auto &fnEntry : Funcs)
     if (fnEntry.isDeserialized()) {
-      fnEntry.get()->decrementRefCount();
       fnEntry.reset();
     }
 }
@@ -3959,7 +3951,6 @@ void SILDeserializer::invalidateFunctionCache() {
 bool SILDeserializer::invalidateFunction(SILFunction *F) {
   for (auto &fnEntry : Funcs) {
     if (fnEntry.isDeserialized() && fnEntry.get() == F) {
-      fnEntry.get()->decrementRefCount();
       fnEntry.reset();
       return true;
     }

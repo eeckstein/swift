@@ -58,9 +58,6 @@ class ExistentialSpecializer : public SILFunctionTransform {
   bool findConcreteTypeFromSoleConformingType(
     SILFunctionArgument *Arg, CanType &ConcreteType);
 
-  /// CallerAnalysis information.
-  CallerAnalysis *CA;
-
   // Determine the set of types a protocol conforms to in whole-module
   // compilation mode.
   ProtocolConformanceAnalysis *PCA;
@@ -74,9 +71,6 @@ public:
     if (!F->shouldOptimize() || !EnableExistentialSpecializer) {
       return;
     }
-
-    /// Get CallerAnalysis information handy.
-    CA = PM->getAnalysis<CallerAnalysis>();
 
     /// Get ProtocolConformanceAnalysis.
     PCA = PM->getAnalysis<ProtocolConformanceAnalysis>();

@@ -86,28 +86,10 @@ convertToDefinition(ArrayRef<Entry> entries) {
   IsDeclaration = false;
 
   Entries = Mod.allocateCopy(entries);
-
-  // Bump the reference count of witness functions referenced by this table.
-  for (auto entry : getEntries()) {
-    if (entry.isValid() && entry.getKind() == SILWitnessTable::Method) {
-      if (SILFunction *f = entry.getMethodWitness().Witness)
-        f->incrementRefCount();
-    }
-  }
 }
 
 std::string SILDefaultWitnessTable::getUniqueName() const {
   Mangle::ASTMangler Mangler;
   return Mangler.mangleTypeWithoutPrefix(
     getProtocol()->getDeclaredInterfaceType());
-}
-
-SILDefaultWitnessTable::~SILDefaultWitnessTable() {
-  // Drop the reference count of witness functions referenced by this table.
-  for (auto entry : getEntries()) {
-    if (entry.isValid() && entry.getKind() == SILWitnessTable::Method) {
-      if (SILFunction *f = entry.getMethodWitness().Witness)
-        f->decrementRefCount();
-    }
-  }
 }

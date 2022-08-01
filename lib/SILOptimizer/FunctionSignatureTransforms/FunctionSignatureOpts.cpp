@@ -99,8 +99,8 @@ static bool isSpecializableRepresentation(SILFunctionTypeRepresentation Rep,
 /// Returns true if F is a function which the pass knows how to specialize
 /// function signatures for.
 static bool canSpecializeFunction(SILFunction *F,
-                                  const CallerAnalysis::FunctionInfo *FuncInfo,
-                                  bool OptForPartialApply) {
+                                  bool OptForPartialApply,
+                                  int minPartialApplyArgs) {
   // Do not specialize the signature of SILFunctions that are external
   // declarations since there is no body to optimize.
   if (F->isExternalDeclaration())
@@ -119,9 +119,8 @@ static bool canSpecializeFunction(SILFunction *F,
   // functions that these sorts of functions are inlined into.
   // It is OK to specialize always inline functions if they are
   // used by partial_apply instructions.
-  assert(!OptForPartialApply || FuncInfo);
   if (F->getInlineStrategy() == Inline_t::AlwaysInline &&
-      (!OptForPartialApply || !FuncInfo->getMinPartialAppliedArgs()))
+      (!OptForPartialApply || minPartialApplyArgs != 0))
     return false;
 
   // For now ignore generic functions to keep things simple...
@@ -797,18 +796,35 @@ public:
     // No need for CallerAnalysis if we are not optimizing for partial
     // applies.
     if (!OptForPartialApply &&
-        !canSpecializeFunction(F, nullptr, OptForPartialApply)) {
+        !canSpecializeFunction(F, OptForPartialApply, /*minPartialApplyArgs=*/0)) {
       LLVM_DEBUG(llvm::dbgs() << "  cannot specialize function -> abort\n");
       return;
     }
-
-    const CallerAnalysis *CA = PM->getAnalysis<CallerAnalysis>();
-    const CallerAnalysis::FunctionInfo &FuncInfo = CA->getFunctionInfo(F);
+    
+    unsigned minPartialApplyArgs = std::numeric_limits<int>::max();
+    bool allCallersKnown = true;
+    bool atLeastOneDirectCallerFound = false;
+    for (auto *owner : F->getUses()) {
+      if (auto *fRef = owner->getAs<FunctionRefBaseInst>()) {
+        for (Operand *use : fRef->getUses()) {
+          SILInstruction *user = use->getUser();
+          if (auto *pai = dyn_cast<PartialApplyInst>(user)) {
+            minPartialApplyArgs = std::min(pai->getNumArguments(), minPartialApplyArgs);
+          } else if (FullApplySite::isa(user)) {
+            atLeastOneDirectCallerFound = true;
+          } else {
+            allCallersKnown = false;
+          }
+        }
+      } else {
+        allCallersKnown = false;
+      }
+    }
 
     // Check the signature of F to make sure that it is a function that we
     // can specialize. These are conditions independent of the call graph.
     if (OptForPartialApply &&
-        !canSpecializeFunction(F, &FuncInfo, OptForPartialApply)) {
+        !canSpecializeFunction(F, OptForPartialApply, minPartialApplyArgs)) {
       LLVM_DEBUG(llvm::dbgs() << "  cannot specialize function -> abort\n");
       return;
     }
@@ -861,13 +877,13 @@ public:
     // Owned to guaranteed optimization.
     FunctionSignatureTransform FST(FuncBuilder, F, RCIA, EA, Mangler, AIM,
                                    ArgumentDescList, ResultDescList,
-                                   FuncInfo.foundAllCallers());
+                                   allCallersKnown);
 
     bool Changed = false;
     if (OptForPartialApply) {
-      Changed = FST.removeDeadArgs(FuncInfo.getMinPartialAppliedArgs());
+      Changed = FST.removeDeadArgs(minPartialApplyArgs);
     } else {
-      Changed = FST.run(FuncInfo.hasDirectCaller());
+      Changed = FST.run(atLeastOneDirectCallerFound);
     }
 
     if (!Changed) {

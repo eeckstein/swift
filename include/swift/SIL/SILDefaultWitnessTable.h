@@ -32,14 +32,14 @@
 namespace swift {
 
 class ProtocolDecl;
-class SILFunction;
 class SILModule;
 
 /// A mapping from each requirement of a protocol to the SIL-level entity
 /// satisfying the requirement for conformances which do not explicitly
 /// provide a witness.
 class SILDefaultWitnessTable : public llvm::ilist_node<SILDefaultWitnessTable>,
-                               public SILAllocated<SILDefaultWitnessTable>
+                               public SILAllocated<SILDefaultWitnessTable>,
+                               public SILFunctionReference::Owner
 {
 public:
   /// A default witness table entry describing the default witness for a
@@ -103,8 +103,6 @@ public:
 
   void convertToDefinition(ArrayRef<Entry> entries);
 
-  ~SILDefaultWitnessTable();
-
   /// Return true if this is a declaration with no body.
   bool isDeclaration() const { return IsDeclaration; }
 
@@ -120,7 +118,7 @@ public:
       if (entry.getKind() != SILWitnessTable::Method)
         continue;
 
-      auto *MW = entry.getMethodWitness().Witness;
+      SILFunction *MW = entry.getMethodWitness().Witness;
       if (MW && predicate(MW)) {
         entry.removeWitnessMethod();
       }
@@ -140,6 +138,10 @@ public:
   void dump() const;
 };
   
+template <> SILDefaultWitnessTable *SILFunctionReference::Owner::getAs<SILDefaultWitnessTable>() {
+  return functionOwnerKind == FunctionOwnerKind::DefaultWitnessTable? static_cast<SILDefaultWitnessTable *>(this) : nullptr;
+}
+
 } // end swift namespace
 
 //===----------------------------------------------------------------------===//

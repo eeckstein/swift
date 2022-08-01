@@ -139,17 +139,12 @@ public:
       }
       data.push_back(init(&block));
     }
-    function->incrementRefCount();
 
     // If we assigned new block indices, it invalidates all older BasicBlockData
     // instances.
     if (blockListChanged)
       ++function->BlockListChangeIdx;
     validForBlockOrder = function->BlockListChangeIdx;
-  }
-
-  ~BasicBlockData() {
-    function->decrementRefCount();
   }
 
   // For iterating over the function's basic blocks, yielding the block and its

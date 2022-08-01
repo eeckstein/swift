@@ -868,18 +868,10 @@ FunctionRefBaseInst::FunctionRefBaseInst(SILInstructionKind Kind,
                                          SILFunction *F,
                                          TypeExpansionContext context)
     : LiteralInst(Kind, DebugLoc, F->getLoweredTypeInContext(context)), f(F) {
-  F->incrementRefCount();
 }
 
 void FunctionRefBaseInst::dropReferencedFunction() {
-  if (auto *Function = getInitiallyReferencedFunction())
-    Function->decrementRefCount();
   f = nullptr;
-}
-
-FunctionRefBaseInst::~FunctionRefBaseInst() {
-  if (getInitiallyReferencedFunction())
-    getInitiallyReferencedFunction()->decrementRefCount();
 }
 
 FunctionRefInst::FunctionRefInst(SILDebugLocation Loc, SILFunction *F,
@@ -2378,6 +2370,24 @@ ConvertEscapeToNoEscapeInst *ConvertEscapeToNoEscapeInst::create(
   return CFI;
 }
 
+KeyPathPatternComponent::KeyPathPatternComponent(ComputedPropertyId id,
+                        SILFunction *getter,
+                        SILFunction *setter,
+                        ArrayRef<Index> indices,
+                        SILFunction *indicesEqual,
+                        SILFunction *indicesHash,
+                        AbstractStorageDecl *externalStorage,
+                        SubstitutionMap externalSubstitutions,
+                        CanType ComponentType)
+  : kind(setter ? Kind::SettableProperty : Kind::GettableProperty),
+    ComponentType(ComponentType) {
+  assert(getter && "must provide a getter");
+  SILModule &mod = getter->getModule();
+  void *mem = mod.allocate(sizeof(ComputedProperty), alignof(ComputedProperty));
+  computedProperty = ::new (mem) ComputedProperty(id, getter, setter, indices,
+          indicesEqual, indicesHash, externalStorage, externalSubstitutions);
+}
+
 bool KeyPathPatternComponent::isComputedSettablePropertyMutating() const {
   switch (getKind()) {
   case Kind::StoredProperty:
@@ -2396,49 +2406,7 @@ bool KeyPathPatternComponent::isComputedSettablePropertyMutating() const {
   llvm_unreachable("unhandled kind");
 }
 
-static void
-forEachRefcountableReference(const KeyPathPatternComponent &component,
-                         llvm::function_ref<void (SILFunction*)> forFunction) {
-  switch (component.getKind()) {
-  case KeyPathPatternComponent::Kind::StoredProperty:
-  case KeyPathPatternComponent::Kind::OptionalChain:
-  case KeyPathPatternComponent::Kind::OptionalWrap:
-  case KeyPathPatternComponent::Kind::OptionalForce:
-  case KeyPathPatternComponent::Kind::TupleElement:
-    return;
-  case KeyPathPatternComponent::Kind::SettableProperty:
-    forFunction(component.getComputedPropertySetter());
-    LLVM_FALLTHROUGH;
-  case KeyPathPatternComponent::Kind::GettableProperty:
-    forFunction(component.getComputedPropertyGetter());
-    
-    switch (component.getComputedPropertyId().getKind()) {
-    case KeyPathPatternComponent::ComputedPropertyId::DeclRef:
-      // Mark the vtable entry as used somehow?
-      break;
-    case KeyPathPatternComponent::ComputedPropertyId::Function:
-      forFunction(component.getComputedPropertyId().getFunction());
-      break;
-    case KeyPathPatternComponent::ComputedPropertyId::Property:
-      break;
-    }
-    
-    if (auto equals = component.getSubscriptIndexEquals())
-      forFunction(equals);
-    if (auto hash = component.getSubscriptIndexHash())
-      forFunction(hash);
-    return;
-  }
-}
 
-void KeyPathPatternComponent::incrementRefCounts() const {
-  forEachRefcountableReference(*this,
-    [&](SILFunction *f) { f->incrementRefCount(); });
-}
-void KeyPathPatternComponent::decrementRefCounts() const {
-  forEachRefcountableReference(*this,
-                               [&](SILFunction *f) { f->decrementRefCount(); });
-}
 
 KeyPathPattern *
 KeyPathPattern::get(SILModule &M, CanGenericSignature signature,
@@ -2503,6 +2471,10 @@ KeyPathPattern::KeyPathPattern(CanGenericSignature signature,
   auto *componentsBuf = getTrailingObjects<KeyPathPatternComponent>();
   std::uninitialized_copy(components.begin(), components.end(),
                           componentsBuf);
+  auto cs = MutableArrayRef<KeyPathPatternComponent>(getTrailingObjects<KeyPathPatternComponent>(), NumComponents);
+  for (KeyPathPatternComponent &comp : cs   ) {
+    comp.setOwner(this);
+  }
 }
 
 ArrayRef<KeyPathPatternComponent>
@@ -2608,11 +2580,12 @@ KeyPathInst::KeyPathInst(SILDebugLocation Loc,
   for (unsigned i = 0; i < Args.size(); ++i) {
     ::new ((void*)&operandsBuf[i]) Operand(this, Args[i]);
   }
-  
-  // Increment the use of any functions referenced from the keypath pattern.
-  for (auto component : Pattern->getComponents()) {
-    component.incrementRefCounts();
-  }
+
+  prevPatternUsePtr = &Pattern->firstUse;
+  nextPatternUse = Pattern->firstUse;
+  if (nextPatternUse)
+    nextPatternUse->prevPatternUsePtr = &nextPatternUse;
+  Pattern->firstUse = this;
 }
 
 MutableArrayRef<Operand>
@@ -2624,10 +2597,8 @@ KeyPathInst::~KeyPathInst() {
   if (!Pattern)
     return;
 
-  // Decrement the use of any functions referenced from the keypath pattern.
-  for (auto component : Pattern->getComponents()) {
-    component.decrementRefCounts();
-  }
+  dropReferencedPattern();
+
   // Destroy operands.
   for (auto &operand : getAllOperands())
     operand.~Operand();
@@ -2639,9 +2610,17 @@ KeyPathPattern *KeyPathInst::getPattern() const {
 }
 
 void KeyPathInst::dropReferencedPattern() {
-  for (auto component : Pattern->getComponents()) {
-    component.decrementRefCounts();
+  if (!Pattern) {
+    assert(!prevPatternUsePtr);
+    return;
   }
+  *prevPatternUsePtr = nextPatternUse;
+  if (nextPatternUse)
+    nextPatternUse->prevPatternUsePtr = prevPatternUsePtr;
+
+  if (!Pattern->firstUse)
+    Pattern->dropAllReferences();
+
   Pattern = nullptr;
 }
 

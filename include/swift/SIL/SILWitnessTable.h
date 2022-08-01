@@ -31,7 +31,6 @@
 
 namespace swift {
 
-class SILFunction;
 class SILModule;
 class ProtocolConformance;
 class RootProtocolConformance;
@@ -40,7 +39,8 @@ enum IsSerialized_t : unsigned char;
 /// A mapping from each requirement of a protocol to the SIL-level entity
 /// satisfying the requirement for a concrete type.
 class SILWitnessTable : public llvm::ilist_node<SILWitnessTable>,
-                        public SILAllocated<SILWitnessTable>
+                        public SILAllocated<SILWitnessTable>,
+                        public SILFunctionReference::Owner
 {
 public:
   /// A witness table entry describing the witness for a method.
@@ -50,7 +50,7 @@ public:
     /// The witness for the method.
     /// This can be null in case dead function elimination has removed the method
     /// or if the method was not serialized (for de-serialized witness tables).
-    SILFunction *Witness;
+    SILFunctionReference Witness;
   };
   
   /// A witness table entry describing the witness for an associated type.
@@ -95,33 +95,85 @@ public:
   /// A witness table entry.
   class Entry {
     WitnessKind Kind;
-    union {
+    union Value {
       MethodWitness Method;
       AssociatedTypeWitness AssociatedType;
       AssociatedTypeProtocolWitness AssociatedTypeProtocol;
       BaseProtocolWitness BaseProtocol;
-    };
+      
+      Value() {}
+      ~Value() {}
+      Value(const MethodWitness &rhs) : Method(rhs) {}
+      Value(const AssociatedTypeWitness &rhs) : AssociatedType(rhs) {}
+      Value(const AssociatedTypeProtocolWitness &rhs) : AssociatedTypeProtocol(rhs) {}
+      Value(const BaseProtocolWitness &rhs) : BaseProtocol(rhs) {}
+    } value;
     
   public:
     Entry() : Kind(WitnessKind::Invalid) {}
     
     Entry(const MethodWitness &Method)
-      : Kind(WitnessKind::Method), Method(Method)
+      : Kind(WitnessKind::Method), value(Method)
     {}
     
     Entry(const AssociatedTypeWitness &AssociatedType)
-      : Kind(WitnessKind::AssociatedType), AssociatedType(AssociatedType)
+      : Kind(WitnessKind::AssociatedType), value(AssociatedType)
     {}
     
     Entry(const AssociatedTypeProtocolWitness &AssociatedTypeProtocol)
       : Kind(WitnessKind::AssociatedTypeProtocol),
-        AssociatedTypeProtocol(AssociatedTypeProtocol)
+        value(AssociatedTypeProtocol)
     {}
     
     Entry(const BaseProtocolWitness &BaseProtocol)
       : Kind(WitnessKind::BaseProtocol),
-        BaseProtocol(BaseProtocol)
+        value(BaseProtocol)
     {}
+    
+    Entry(const Entry &rhs) : Kind(rhs.Kind) {
+      switch (Kind) {
+        case Invalid:
+          break;
+        case Method:
+          new (&value) Value(rhs.value.Method);
+          break;
+        case AssociatedType:
+          new (&value) Value(rhs.value.AssociatedType);
+          break;
+        case AssociatedTypeProtocol:
+          new (&value) Value(rhs.value.AssociatedTypeProtocol);
+          break;
+        case BaseProtocol:
+          new (&value) Value(rhs.value.BaseProtocol);
+          break;
+      }
+    }
+    
+    ~Entry() {
+      if (Kind == Method)
+        value.Method.~MethodWitness();
+    }
+    
+    Entry &operator=(const Entry &rhs) {
+      Kind = rhs.Kind;
+      switch (Kind) {
+        case Invalid:
+          break;
+        case Method:
+          value.Method = rhs.value.Method;
+          break;
+        case AssociatedType:
+          value.AssociatedType = rhs.value.AssociatedType;
+          break;
+        case AssociatedTypeProtocol:
+          value.AssociatedTypeProtocol = rhs.value.AssociatedTypeProtocol;
+          break;
+        case BaseProtocol:
+          value.BaseProtocol = rhs.value.BaseProtocol;
+          break;
+      }
+      return *this;
+    }
     
     WitnessKind getKind() const { return Kind; }
 
@@ -129,28 +181,25 @@ public:
 
     const MethodWitness &getMethodWitness() const {
       assert(Kind == WitnessKind::Method);
-      return Method;
+      return value.Method;
     }
     const AssociatedTypeWitness &getAssociatedTypeWitness() const {
       assert(Kind == WitnessKind::AssociatedType);
-      return AssociatedType;
+      return value.AssociatedType;
     }
     const AssociatedTypeProtocolWitness &
     getAssociatedTypeProtocolWitness() const {
       assert(Kind == WitnessKind::AssociatedTypeProtocol);
-      return AssociatedTypeProtocol;
+      return value.AssociatedTypeProtocol;
     }
     const BaseProtocolWitness &getBaseProtocolWitness() const {
       assert(Kind == WitnessKind::BaseProtocol);
-      return BaseProtocol;
+      return value.BaseProtocol;
     }
     
     void removeWitnessMethod() {
       assert(Kind == WitnessKind::Method);
-      if (Method.Witness) {
-        Method.Witness->decrementRefCount();
-      }
-      Method.Witness = nullptr;
+      value.Method.Witness = nullptr;
     }
 
     void print(llvm::raw_ostream &out, bool verbose,
@@ -221,8 +270,6 @@ public:
   /// Create a new SILWitnessTable declaration.
   static SILWitnessTable *create(SILModule &M, SILLinkage Linkage,
                                  RootProtocolConformance *conformance);
-
-  ~SILWitnessTable();
 
   /// Return the AST ProtocolConformance this witness table represents.
   RootProtocolConformance *getConformance() const {
@@ -323,6 +370,10 @@ public:
   /// Dump the witness table to stderr.
   void dump() const;
 };
+
+template <> SILWitnessTable *SILFunctionReference::Owner::getAs<SILWitnessTable>() {
+  return functionOwnerKind == FunctionOwnerKind::WitnessTable? static_cast<SILWitnessTable *>(this) : nullptr;
+}
 
 } // end swift namespace
 

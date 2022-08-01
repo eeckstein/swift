@@ -61,6 +61,8 @@ class MultipleValueInstruction;
 class MultipleValueInstructionResult;
 class DestructureTupleInst;
 class DestructureStructInst;
+class KeyPathInst;
+class KeyPathPattern;
 class NonValueInstruction;
 class SILBasicBlock;
 class SILBuilder;
@@ -80,8 +82,96 @@ class ValueDecl;
 class VarDecl;
 class FunctionRefBaseInst;
 class SILPrintContext;
+class SILWitnessTable;
+class SILDefaultWitnessTable;
+class SILVTable;
 
 template <typename ImplClass> class SILClonerWithScopes;
+
+class SILFunctionReference {
+public:
+  struct Owner {
+    enum class FunctionOwnerKind : uint8_t {
+      FunctionRefInst, Function, WitnessTable, DefaultWitnessTable, KeyPathPattern, VTable
+    } functionOwnerKind;
+  
+    template <class C> C *getAs() { return nullptr; }
+
+    template <> inline FunctionRefBaseInst *getAs<FunctionRefBaseInst>();
+    template <> inline KeyPathPattern *getAs<KeyPathPattern>();
+    template <> inline SILFunction *getAs<SILFunction>();
+    template <> inline SILWitnessTable *getAs<SILWitnessTable>();
+    template <> inline SILDefaultWitnessTable *getAs<SILDefaultWitnessTable>();
+    template <> inline SILVTable *getAs<SILVTable>();
+  };
+    
+private:
+  SILFunction *function = nullptr;
+
+  SILFunctionReference *next = nullptr;
+  SILFunctionReference **prevPtr = nullptr;
+
+  Owner *owner = nullptr;
+
+public:
+
+  class Iterator {
+    SILFunctionReference *current = nullptr;
+  public:
+    Iterator() = default;
+    explicit Iterator(SILFunctionReference *r) : current(r) {}
+    Owner *operator->() const { return current->getOwner(); }
+    Owner *operator*() const { return current->getOwner(); }
+    
+    Iterator &operator++() {
+      assert(current && "can't increment end-iterator");
+      current = current->next;
+      return *this;
+    }
+    
+    friend bool operator==(Iterator lhs, Iterator rhs) {
+      return lhs.current == rhs.current;
+    }
+    friend bool operator!=(Iterator lhs, Iterator rhs) {
+      return !(lhs == rhs);
+    }
+  };
+
+  SILFunctionReference() {}
+  SILFunctionReference(SILFunction *f, Owner *owner = nullptr) : owner(owner) { insertInto(f); }
+  ~SILFunctionReference() { removeFromCurrent(); }
+
+  SILFunctionReference(const SILFunctionReference &use) : SILFunctionReference(use.function, use.owner) {}
+
+  SILFunctionReference &operator=(SILFunction *f) {
+    removeFromCurrent();
+    insertInto(f);
+    return *this;
+  }
+
+  SILFunctionReference &operator=(const SILFunctionReference &use) {
+    *this = use.function;
+    return *this;
+  }
+
+  SILFunction *operator->() const { return function; }
+  operator SILFunction *() const { return function; }
+
+  Owner *getOwner() const { return owner; }
+  void setOwner(Owner *o) { owner = o; }
+
+private:
+
+  void removeFromCurrent() {
+    if (!prevPtr)
+      return;
+    *prevPtr = next;
+    if (next)
+      next->prevPtr = prevPtr;
+  }
+
+  void insertInto(SILFunction *f);
+};
 
 // An enum class for SILInstructions that enables exhaustive switches over
 // instructions.
@@ -3028,16 +3118,14 @@ public:
   DEFINE_ABSTRACT_SINGLE_VALUE_INST_BOILERPLATE(LiteralInst)
 };
 
-class FunctionRefBaseInst : public LiteralInst {
+class FunctionRefBaseInst : public LiteralInst, public SILFunctionReference::Owner {
 protected:
-  SILFunction *f;
+  SILFunctionReference f;
 
   FunctionRefBaseInst(SILInstructionKind Kind, SILDebugLocation DebugLoc,
                       SILFunction *F, TypeExpansionContext context);
 
 public:
-  ~FunctionRefBaseInst();
-
   /// Return the referenced function if this is a function_ref instruction and
   /// therefore a client can rely on the dynamically called function being equal
   /// to the returned value and null otherwise.
@@ -3078,6 +3166,10 @@ public:
         node->getKind() == SILNodeKind::PreviousDynamicFunctionRefInst);
   }
 };
+
+template <> FunctionRefBaseInst *SILFunctionReference::Owner::getAs<FunctionRefBaseInst>() {
+  return functionOwnerKind == FunctionOwnerKind::FunctionRefInst? static_cast<FunctionRefBaseInst *>(this) : nullptr;
+}
 
 /// FunctionRefInst - Represents a reference to a SIL function.
 class FunctionRefInst : public FunctionRefBaseInst {
@@ -3219,57 +3311,95 @@ public:
     ProtocolConformanceRef Hashable;
   };
   
-private:
-  enum PackedKind: unsigned {
-    PackedStored,
-    PackedComputed,
-    Unpacked,
-  };
-  
-  static const unsigned KindPackingBits = 2;
-  
-  static unsigned getPackedKind(Kind k) {
-    switch (k) {
-    case Kind::StoredProperty:
-    case Kind::TupleElement:
-      return PackedStored;
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return PackedComputed;
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-      return Unpacked;
+  struct ComputedProperty {
+    ComputedPropertyId::KindType idKind;
+    
+    union IdValue {
+      VarDecl *property;
+      SILFunctionReference function;
+      SILDeclRef declRef;
+      
+      IdValue() : function(nullptr) {}
+      ~IdValue() {
+        llvm_unreachable("keypath patterns should never be destroyed");
+      }
+    } idValue;
+
+    ArrayRef<Index> indices;
+    
+    SILFunctionReference getter;
+    SILFunctionReference setter;
+    SILFunctionReference indicesEqual;
+    SILFunctionReference indicesHash;
+    
+    AbstractStorageDecl *externalStorage;
+    SubstitutionMap externalSubstitutions;
+    
+    ComputedProperty(ComputedPropertyId id,
+                     SILFunction *getter,
+                     SILFunction *setter,
+                     ArrayRef<Index> indices,
+                     SILFunction *indicesEqual,
+                     SILFunction *indicesHash,
+                     AbstractStorageDecl *externalStorage,
+                     SubstitutionMap externalSubstitutions)
+     : indices(indices), getter(getter), setter(setter),
+       indicesEqual(indicesEqual), indicesHash(indicesHash),
+       externalStorage(externalStorage),
+       externalSubstitutions(externalSubstitutions) {
+      switch (id.getKind()) {
+        case ComputedPropertyId::Property:
+          idValue.property = id.getProperty();
+          break;
+        case ComputedPropertyId::DeclRef:
+          idValue.declRef = id.getDeclRef();
+          break;
+        case ComputedPropertyId::Function:
+          idValue.function = id.getFunction();
+          break;
+      }
     }
-  }
-  
-  // Value is the VarDecl* for StoredProperty, the SILFunction* of the
-  // Getter for computed properties, or the Kind for other kinds
-  llvm::PointerIntPair<void *, KindPackingBits, unsigned> ValueAndKind;
-  llvm::PointerIntPair<SILFunction *, 2,
-                       ComputedPropertyId::KindType> SetterAndIdKind;
+    
+    ~ComputedProperty() = delete;
 
-  // If this component refers to a tuple element then TupleIndex is the
-  // 1-based index of the element in the tuple, in order to allow the
-  // discrimination of the TupleElement Kind from the StoredProperty Kind
-  union {
-    unsigned TupleIndex = 0;
-    ComputedPropertyId::ValueType IdValue;
+    inline void setOwner(KeyPathPattern *pattern);
+
+    void dropAllReferences() {
+      if (idKind == ComputedPropertyId::Function)
+        idValue.function = nullptr;
+      getter = nullptr;
+      setter = nullptr;
+      indicesEqual = nullptr;
+      indicesHash = nullptr;
+    }
+    
+    ComputedPropertyId getId() const {
+      switch (idKind) {
+        case ComputedPropertyId::Property:
+          return ComputedPropertyId(idValue.property);
+        case ComputedPropertyId::DeclRef:
+          return ComputedPropertyId(idValue.declRef);
+        case ComputedPropertyId::Function:
+          return ComputedPropertyId(idValue.function);
+      }
+    }
   };
 
-  ArrayRef<Index> Indices;
-  struct {
-    SILFunction *Equal;
-    SILFunction *Hash;
-  } IndexEquality;
+private:
+  Kind kind;
+
+  union {
+    unsigned tupleIndex = 0;
+    VarDecl *storedProperty;
+    ComputedProperty *computedProperty;
+  };
+
   CanType ComponentType;
-  AbstractStorageDecl *ExternalStorage;
-  SubstitutionMap ExternalSubstitutions;
 
   /// Constructor for stored components
   KeyPathPatternComponent(VarDecl *storedProp,
                           CanType ComponentType)
-    : ValueAndKind(storedProp, PackedStored),
+    : kind(Kind::StoredProperty), storedProperty(storedProp),
       ComponentType(ComponentType) {}
 
   /// Constructor for computed components
@@ -3281,21 +3411,11 @@ private:
                           SILFunction *indicesHash,
                           AbstractStorageDecl *externalStorage,
                           SubstitutionMap externalSubstitutions,
-                          CanType ComponentType)
-    : ValueAndKind(getter, PackedComputed),
-      SetterAndIdKind{setter, id.Kind},
-      IdValue{id.Value},
-      Indices(indices),
-      IndexEquality{indicesEqual, indicesHash},
-      ComponentType(ComponentType),
-      ExternalStorage(externalStorage),
-      ExternalSubstitutions(externalSubstitutions)
-  {
-  }
+                          CanType ComponentType);
   
   /// Constructor for optional components.
   KeyPathPatternComponent(Kind kind, CanType componentType)
-    : ValueAndKind((void*)((uintptr_t)kind << KindPackingBits), Unpacked),
+    : kind(kind),
       ComponentType(componentType) {
     assert((unsigned)kind >= (unsigned)Kind::OptionalChain
            && "not an optional component");
@@ -3303,42 +3423,61 @@ private:
 
   /// Constructor for tuple element.
   KeyPathPatternComponent(unsigned tupleIndex, CanType componentType)
-    : ValueAndKind((void*)((uintptr_t)Kind::TupleElement << KindPackingBits), PackedStored),
-    TupleIndex(tupleIndex + 1),
+    : kind(Kind::TupleElement),
+    tupleIndex(tupleIndex),
     ComponentType(componentType)
   {
   }
 
 public:
-  KeyPathPatternComponent() : ValueAndKind(nullptr, 0) {}
+  KeyPathPatternComponent() : kind(Kind::StoredProperty), storedProperty(nullptr) {}
 
   bool isNull() const {
-    return ValueAndKind.getPointer() == nullptr;
+    return kind == Kind::StoredProperty && storedProperty == nullptr;
   }
 
-  Kind getKind() const {
-    auto packedKind = ValueAndKind.getInt();
-    switch ((PackedKind)packedKind) {
-    case PackedStored:
-      return TupleIndex
-        ? Kind::TupleElement : Kind::StoredProperty;
-    case PackedComputed:
-      return SetterAndIdKind.getPointer()
-        ? Kind::SettableProperty : Kind::GettableProperty;
-    case Unpacked:
-      return (Kind)((uintptr_t)ValueAndKind.getPointer() >> KindPackingBits);
-    }
-    llvm_unreachable("unhandled kind");
-  }
+  Kind getKind() const { return kind; }
 
   CanType getComponentType() const {
     return ComponentType;
   }
 
+  void setOwner(KeyPathPattern *pattern) const {
+    switch (getKind()) {
+    case Kind::StoredProperty:
+    case Kind::OptionalChain:
+    case Kind::OptionalForce:
+    case Kind::OptionalWrap:
+    case Kind::TupleElement:
+      break;
+    case Kind::GettableProperty:
+    case Kind::SettableProperty:
+      computedProperty->setOwner(pattern);
+      break;
+    }
+    llvm_unreachable("unhandled kind");
+  }
+
+  void dropAllReferences() const {
+    switch (getKind()) {
+    case Kind::StoredProperty:
+    case Kind::OptionalChain:
+    case Kind::OptionalForce:
+    case Kind::OptionalWrap:
+    case Kind::TupleElement:
+      break;
+    case Kind::GettableProperty:
+    case Kind::SettableProperty:
+      computedProperty->dropAllReferences();
+      break;
+    }
+    llvm_unreachable("unhandled kind");
+  }
+
   VarDecl *getStoredPropertyDecl() const {
     switch (getKind()) {
     case Kind::StoredProperty:
-      return static_cast<VarDecl*>(ValueAndKind.getPointer());
+      return storedProperty;
     case Kind::GettableProperty:
     case Kind::SettableProperty:
     case Kind::OptionalChain:
@@ -3360,8 +3499,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return ComputedPropertyId(IdValue,
-                                SetterAndIdKind.getInt());
+      return computedProperty->getId();
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3376,7 +3514,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return static_cast<SILFunction*>(ValueAndKind.getPointer());
+      return computedProperty->getter;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3391,7 +3529,7 @@ public:
     case Kind::TupleElement:
       llvm_unreachable("not a settable computed property");
     case Kind::SettableProperty:
-      return SetterAndIdKind.getPointer();
+      return computedProperty->setter;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3406,7 +3544,7 @@ public:
       return {};
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return Indices;
+      return computedProperty->indices;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3421,7 +3559,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return IndexEquality.Equal;
+      return computedProperty->indicesEqual;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3435,7 +3573,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return IndexEquality.Hash;
+      return computedProperty->indicesHash;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3457,7 +3595,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return ExternalStorage;
+      return computedProperty->externalStorage;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3472,7 +3610,7 @@ public:
       llvm_unreachable("not a computed property");
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      return ExternalSubstitutions;
+      return computedProperty->externalSubstitutions;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3487,7 +3625,7 @@ public:
     case Kind::SettableProperty:
       llvm_unreachable("not a tuple element");
     case Kind::TupleElement:
-      return TupleIndex - 1;
+      return tupleIndex;
     }
     llvm_unreachable("unhandled kind");
   }
@@ -3553,9 +3691,6 @@ public:
       std::function<void (SILFunction *)> functionCallBack,
       std::function<void (SILDeclRef)> methodCallBack) const;
     
-  void incrementRefCounts() const;
-  void decrementRefCounts() const;
-
   void print(SILPrintContext &ctxt) const;
 
   void Profile(llvm::FoldingSetNodeID &ID);
@@ -3565,14 +3700,18 @@ public:
 class KeyPathPattern final
   : public llvm::FoldingSetNode,
     private llvm::TrailingObjects<KeyPathPattern,
-                                  KeyPathPatternComponent>
+                                  KeyPathPatternComponent>,
+    public SILFunctionReference::Owner
 {
   friend TrailingObjects;
+  friend class KeyPathInst;
 
   unsigned NumOperands, NumComponents;
   CanGenericSignature Signature;
   CanType RootType, ValueType;
   StringRef ObjCString;
+
+  KeyPathInst *firstUse = nullptr;
   
   KeyPathPattern(CanGenericSignature signature,
                  CanType rootType,
@@ -3611,6 +3750,12 @@ public:
   
   ArrayRef<KeyPathPatternComponent> getComponents() const;
   
+  void dropAllReferences() {
+    for (auto &component : getComponents()) {
+      component.dropAllReferences();
+    }
+  }
+
   void visitReferencedFunctionsAndMethods(
       std::function<void (SILFunction *)> functionCallBack,
       std::function<void (SILDeclRef)> methodCallBack) {
@@ -3639,6 +3784,19 @@ public:
             getComponents(), getObjCString());
   }
 };
+
+void KeyPathPatternComponent::ComputedProperty::setOwner(KeyPathPattern *pattern) {
+  if (idKind == ComputedPropertyId::Function)
+    idValue.function.setOwner(pattern);
+  getter.setOwner(pattern);
+  setter.setOwner(pattern);
+  indicesEqual.setOwner(pattern);
+  indicesHash.setOwner(pattern);
+}
+
+template <> KeyPathPattern *SILFunctionReference::Owner::getAs<KeyPathPattern>() {
+  return functionOwnerKind == FunctionOwnerKind::KeyPathPattern ? static_cast<KeyPathPattern *>(this) : nullptr;
+}
 
 /// Base class for instructions that access the continuation of an async task,
 /// in order to set up a suspension.
@@ -3756,6 +3914,9 @@ class KeyPathInst final
   unsigned NumOperands;
   SubstitutionMap Substitutions;
   
+  KeyPathInst *nextPatternUse = nullptr;
+  KeyPathInst **prevPatternUsePtr = nullptr;
+
   static KeyPathInst *create(SILDebugLocation Loc,
                              KeyPathPattern *Pattern,
                              SubstitutionMap Subs,

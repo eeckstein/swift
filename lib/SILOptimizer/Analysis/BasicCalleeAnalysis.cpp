@@ -150,7 +150,7 @@ void CalleeCache::computeWitnessMethodCalleesForWitnessTable(
 
     auto &WitnessEntry = Entry.getMethodWitness();
     auto Requirement = WitnessEntry.Requirement;
-    auto *WitnessFn = WitnessEntry.Witness;
+    SILFunction *WitnessFn = WitnessEntry.Witness;
 
     // Dead function elimination nulls out entries for functions it removes.
     if (!WitnessFn)
