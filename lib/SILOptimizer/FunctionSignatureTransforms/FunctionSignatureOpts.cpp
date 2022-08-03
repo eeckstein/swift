@@ -99,8 +99,7 @@ static bool isSpecializableRepresentation(SILFunctionTypeRepresentation Rep,
 /// Returns true if F is a function which the pass knows how to specialize
 /// function signatures for.
 static bool canSpecializeFunction(SILFunction *F,
-                                  bool OptForPartialApply,
-                                  int minPartialApplyArgs) {
+                                  bool OptForPartialApply) {
   // Do not specialize the signature of SILFunctions that are external
   // declarations since there is no body to optimize.
   if (F->isExternalDeclaration())
@@ -119,8 +118,7 @@ static bool canSpecializeFunction(SILFunction *F,
   // functions that these sorts of functions are inlined into.
   // It is OK to specialize always inline functions if they are
   // used by partial_apply instructions.
-  if (F->getInlineStrategy() == Inline_t::AlwaysInline &&
-      (!OptForPartialApply || minPartialApplyArgs != 0))
+  if (F->getInlineStrategy() == Inline_t::AlwaysInline && !OptForPartialApply)
     return false;
 
   // For now ignore generic functions to keep things simple...
@@ -796,13 +794,16 @@ public:
     // No need for CallerAnalysis if we are not optimizing for partial
     // applies.
     if (!OptForPartialApply &&
-        !canSpecializeFunction(F, OptForPartialApply, /*minPartialApplyArgs=*/0)) {
+        !canSpecializeFunction(F, /*OptForPartialApply*/false)) {
       LLVM_DEBUG(llvm::dbgs() << "  cannot specialize function -> abort\n");
       return;
     }
     
     unsigned minPartialApplyArgs = std::numeric_limits<int>::max();
-    bool allCallersKnown = true;
+    bool allCallersKnown =
+      !F->getDynamicallyReplacedFunction() &&
+      !F->getReferencedAdHocRequirementWitnessFunction() &&
+      !F->isPossiblyUsedExternally();
     bool atLeastOneDirectCallerFound = false;
     for (auto *owner : F->getUses()) {
       if (auto *fRef = owner->getAs<FunctionRefBaseInst>()) {
@@ -820,11 +821,13 @@ public:
         allCallersKnown = false;
       }
     }
+    if (minPartialApplyArgs == std::numeric_limits<int>::max())
+      minPartialApplyArgs = 0;
 
     // Check the signature of F to make sure that it is a function that we
     // can specialize. These are conditions independent of the call graph.
     if (OptForPartialApply &&
-        !canSpecializeFunction(F, OptForPartialApply, minPartialApplyArgs)) {
+        !canSpecializeFunction(F, OptForPartialApply && minPartialApplyArgs > 0)) {
       LLVM_DEBUG(llvm::dbgs() << "  cannot specialize function -> abort\n");
       return;
     }

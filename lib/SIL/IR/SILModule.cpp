@@ -128,8 +128,14 @@ SILModule::~SILModule() {
     v.clear();
   }
 
-  for (auto vt : vtables)
+  for (auto vt : vtables) {
     vt->~SILVTable();
+  }
+  WitnessTableMap.clear();
+  witnessTables.clear();
+  DefaultWitnessTableMap.clear();
+  defaultWitnessTables.clear();
+  properties.clear();
 
   // Drop everything functions in this module reference.
   //
@@ -557,7 +563,7 @@ SILModule::lookUpFunctionInWitnessTable(ProtocolConformanceRef C,
     if (Entry.getKind() != SILWitnessTable::WitnessKind::Method)
       continue;
 
-    SILWitnessTable::MethodWitness MethodEntry = Entry.getMethodWitness();
+    const SILWitnessTable::MethodWitness &MethodEntry = Entry.getMethodWitness();
     // Check if this is the member we were looking for.
     if (MethodEntry.Requirement != Requirement)
       continue;

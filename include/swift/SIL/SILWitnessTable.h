@@ -175,6 +175,8 @@ public:
       return *this;
     }
     
+    inline void setOwner(SILFunctionReference::Owner *table);
+    
     WitnessKind getKind() const { return Kind; }
 
     bool isValid() const { return Kind != WitnessKind::Invalid; }
@@ -261,6 +263,12 @@ private:
   void addWitnessTable();
 
 public:
+  ~SILWitnessTable() {
+    for (Entry &entry : Entries) {
+      entry.~Entry();
+    }
+  }
+
   /// Create a new SILWitnessTable definition with the given entries.
   static SILWitnessTable *
   create(SILModule &M, SILLinkage Linkage, IsSerialized_t Serialized,
@@ -370,6 +378,12 @@ public:
   /// Dump the witness table to stderr.
   void dump() const;
 };
+
+inline void SILWitnessTable::Entry::setOwner(SILFunctionReference::Owner *table) {
+  if (Kind == Method)
+    value.Method.Witness.setOwner(table);
+}
+    
 
 template <> SILWitnessTable *SILFunctionReference::Owner::getAs<SILWitnessTable>() {
   return functionOwnerKind == FunctionOwnerKind::WitnessTable? static_cast<SILWitnessTable *>(this) : nullptr;

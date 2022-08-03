@@ -32,7 +32,8 @@ class SILPrintContext;
 /// A descriptor for a public property or subscript that can be resiliently
 /// referenced from key paths in external modules.
 class SILProperty : public llvm::ilist_node<SILProperty>,
-                    public SILAllocated<SILProperty>
+                    public SILAllocated<SILProperty>,
+                    public SILFunctionReference::Owner
 {
 private:
   /// True if serialized.
@@ -47,10 +48,18 @@ private:
   SILProperty(bool Serialized,
               AbstractStorageDecl *Decl,
               Optional<KeyPathPatternComponent> Component)
-    : Serialized(Serialized), Decl(Decl), Component(Component)
-  {}
+    : Owner(FunctionOwnerKind::Property), Serialized(Serialized), Decl(Decl), Component(Component)
+  {
+    if (Component.hasValue())
+      Component.getValue().setOwner(this);
+  }
 
 public:
+  ~SILProperty() {
+    if (Component.hasValue())
+      Component.getValue().dropAllReferences();
+  }
+
   static SILProperty *create(SILModule &M,
                              bool Serialized,
                              AbstractStorageDecl *Decl,
@@ -73,7 +82,11 @@ public:
   
   void verify(const SILModule &M) const;
 };
-  
+
+template <> SILProperty *SILFunctionReference::Owner::getAs<SILProperty>() {
+  return functionOwnerKind == FunctionOwnerKind::Property ? static_cast<SILProperty *>(this) : nullptr;
+}
+
 } // end namespace swift
 
 namespace llvm {

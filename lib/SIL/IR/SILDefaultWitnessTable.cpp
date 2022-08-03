@@ -68,7 +68,8 @@ SILDefaultWitnessTable(SILModule &M,
                        SILLinkage Linkage,
                        const ProtocolDecl *Protocol,
                        ArrayRef<Entry> entries)
-  : Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
+  : Owner(FunctionOwnerKind::DefaultWitnessTable),
+    Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
     IsDeclaration(true) {
 
   convertToDefinition(entries);
@@ -77,7 +78,8 @@ SILDefaultWitnessTable(SILModule &M,
 SILDefaultWitnessTable::SILDefaultWitnessTable(SILModule &M,
                                                SILLinkage Linkage,
                                                const ProtocolDecl *Protocol)
-  : Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
+  : Owner(FunctionOwnerKind::DefaultWitnessTable),
+    Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
     IsDeclaration(true) {}
 
 void SILDefaultWitnessTable::
@@ -86,6 +88,10 @@ convertToDefinition(ArrayRef<Entry> entries) {
   IsDeclaration = false;
 
   Entries = Mod.allocateCopy(entries);
+ 
+  for (Entry &entry : Entries) {
+    entry.setOwner(this);
+  }
 }
 
 std::string SILDefaultWitnessTable::getUniqueName() const {

@@ -80,6 +80,12 @@ private:
   void addDefaultWitnessTable();
 
 public:
+  ~SILDefaultWitnessTable() {
+    for (Entry &entry : Entries) {
+      entry.~Entry();
+    }
+  }
+
   /// Create a new SILDefaultWitnessTable declaration.
   static SILDefaultWitnessTable *create(SILModule &M, SILLinkage Linkage,
                                         const ProtocolDecl *Protocol);

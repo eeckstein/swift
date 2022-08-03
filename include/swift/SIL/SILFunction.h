@@ -1374,7 +1374,6 @@ template <> SILFunction *SILFunctionReference::Owner::getAs<SILFunction>() {
   return functionOwnerKind == FunctionOwnerKind::Function ? static_cast<SILFunction *>(this) : nullptr;
 }
 
-
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
                                      const SILFunction &F) {
   F.print(OS);

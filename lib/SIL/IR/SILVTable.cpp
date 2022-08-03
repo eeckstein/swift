@@ -32,22 +32,24 @@ SILVTable *SILVTable::create(SILModule &M, ClassDecl *Class,
   M.vtables.push_back(vt);
   M.VTableMap[Class] = vt;
   // Update the Module's cache with new vtable + vtable entries:
+  unsigned indexOfEntry = 0;
   for (const Entry &entry : Entries) {
-    M.VTableEntryCache.insert({{vt, entry.getMethod()}, entry});
+    M.VTableEntryCache.insert({{vt, entry.getMethod()}, indexOfEntry++});
   }
   return vt;
 }
 
-Optional<SILVTable::Entry>
-SILVTable::getEntry(SILModule &M, SILDeclRef method) const {
+const SILVTable::Entry *SILVTable::getEntry(SILModule &M, SILDeclRef method) const {
   SILDeclRef m = method;
   do {
     auto entryIter = M.VTableEntryCache.find({this, m});
     if (entryIter != M.VTableEntryCache.end()) {
-      return (*entryIter).second;
+      const Entry *entry = &getEntries()[entryIter->second];
+      assert(entry->getMethod() == m);
+      return entry;
     }
   } while ((m = m.getOverridden()));
-  return None;
+  return nullptr;
 }
 
 void SILVTable::removeFromVTableCache(Entry &entry) {
@@ -55,14 +57,20 @@ void SILVTable::removeFromVTableCache(Entry &entry) {
   M.VTableEntryCache.erase({this, entry.getMethod()});
 }
 
-void SILVTable::updateVTableCache(const Entry &entry) {
-  SILModule &M = entry.getImplementation()->getModule();
-  M.VTableEntryCache[{this, entry.getMethod()}] = entry;
+void SILVTable::updateVTableCache(SILModule &module) {
+  unsigned indexOfEntry = 0;
+  for (const Entry &entry : getEntries()) {
+    module.VTableEntryCache[{this, entry.getMethod()}] = indexOfEntry++;
+  }
 }
 
 SILVTable::SILVTable(ClassDecl *c, IsSerialized_t serialized,
                      ArrayRef<Entry> entries)
-  : Class(c), Serialized(serialized), NumEntries(entries.size()) {
+  : Owner(FunctionOwnerKind::VTable),
+    Class(c), Serialized(serialized), NumEntries(entries.size()) {
   std::uninitialized_copy(entries.begin(), entries.end(),
                           getTrailingObjects<Entry>());
+  for (auto &entry : getMutableEntries()) {
+    entry.setOwner(this);
+  }
 }

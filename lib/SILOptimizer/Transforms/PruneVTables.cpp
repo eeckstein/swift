@@ -99,7 +99,6 @@ class PruneVTables : public SILModuleTransform {
                  llvm::dbgs() << " can be marked non-overridden!\n");
       ++NumNonoverriddenVTableEntries;
       entry.setNonOverridden(true);
-      vtable->updateVTableCache(entry);
     }
   }
   

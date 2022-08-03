@@ -243,7 +243,7 @@ private:
   std::vector<SILVTable*> vtables;
 
   /// This is a cache of vtable entries for quick look-up
-  llvm::DenseMap<std::pair<const SILVTable *, SILDeclRef>, SILVTable::Entry>
+  llvm::DenseMap<std::pair<const SILVTable *, SILDeclRef>, unsigned>
       VTableEntryCache;
 
   /// Lookup table for SIL witness tables from conformances.

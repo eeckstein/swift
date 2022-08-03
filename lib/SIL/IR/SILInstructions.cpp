@@ -867,7 +867,9 @@ FunctionRefBaseInst::FunctionRefBaseInst(SILInstructionKind Kind,
                                          SILDebugLocation DebugLoc,
                                          SILFunction *F,
                                          TypeExpansionContext context)
-    : LiteralInst(Kind, DebugLoc, F->getLoweredTypeInContext(context)), f(F) {
+    : LiteralInst(Kind, DebugLoc, F->getLoweredTypeInContext(context)),
+      Owner(FunctionOwnerKind::FunctionRefInst),
+      f(F, this) {
 }
 
 void FunctionRefBaseInst::dropReferencedFunction() {
@@ -2423,17 +2425,8 @@ KeyPathPattern::get(SILModule &M, CanGenericSignature signature,
   
   // Determine the number of operands.
   int maxOperandNo = -1;
-  for (auto component : components) {
-    switch (component.getKind()) {
-    case KeyPathPatternComponent::Kind::StoredProperty:
-    case KeyPathPatternComponent::Kind::OptionalChain:
-    case KeyPathPatternComponent::Kind::OptionalWrap:
-    case KeyPathPatternComponent::Kind::OptionalForce:
-    case KeyPathPatternComponent::Kind::TupleElement:
-      break;
-    
-    case KeyPathPatternComponent::Kind::GettableProperty:
-    case KeyPathPatternComponent::Kind::SettableProperty:
+  for (const KeyPathPatternComponent &component : components) {
+    if (component.isComputedProperty()) {
       for (auto &index : component.getSubscriptIndices()) {
         maxOperandNo = std::max(maxOperandNo, (int)index.Operand);
       }
@@ -2464,7 +2457,8 @@ KeyPathPattern::KeyPathPattern(CanGenericSignature signature,
                                ArrayRef<KeyPathPatternComponent> components,
                                StringRef objcString,
                                unsigned numOperands)
-  : NumOperands(numOperands), NumComponents(components.size()),
+  : Owner(FunctionOwnerKind::KeyPathPattern),
+    NumOperands(numOperands), NumComponents(components.size()),
     Signature(signature), RootType(rootType), ValueType(valueType),
     ObjCString(objcString)
 {

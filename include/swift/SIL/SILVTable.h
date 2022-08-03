@@ -71,8 +71,10 @@ public:
 
   SILVTableEntry(SILDeclRef Method, SILFunction *Implementation, Kind TheKind,
                  bool NonOverridden)
-      : Method(Method), impl(Implementation, nullptr),
+      : Method(Method), impl(Implementation),
         IsNonOverridden(NonOverridden), kind(TheKind) {}
+
+  inline void setOwner(SILVTable *vtable);
 
   SILDeclRef getMethod() const { return Method; }
 
@@ -128,6 +130,13 @@ private:
   SILVTable(ClassDecl *c, IsSerialized_t serialized, ArrayRef<Entry> entries);
 
 public:
+  ~SILVTable() {
+    Entry *entries = getTrailingObjects<SILVTableEntry>();
+    for (unsigned i = 0; i < NumEntries; i++) {
+      entries[i].~Entry();
+    }
+  }
+
   /// Create a new SILVTable with the given method-to-implementation mapping.
   /// The SILDeclRef keys should reference the most-overridden members available
   /// through the class.
@@ -154,20 +163,17 @@ public:
   }
 
   /// Return all of the method entries mutably.
-  /// If you do modify entries, make sure to invoke `updateVTableCache` to update the
-  /// SILModule's cache entry.
   MutableArrayRef<Entry> getMutableEntries() {
     return {getTrailingObjects<SILVTableEntry>(), NumEntries};
   }
                           
-  void updateVTableCache(const Entry &entry);
-
   /// Look up the implementation function for the given method.
-  Optional<Entry> getEntry(SILModule &M, SILDeclRef method) const;
+  const Entry *getEntry(SILModule &M, SILDeclRef method) const;
 
   /// Removes entries from the vtable.
   /// \p predicate Returns true if the passed entry should be removed.
-  template <typename Predicate> void removeEntries_if(Predicate predicate) {
+  template <typename Predicate>
+  void removeEntries_if(Predicate predicate, SILModule &module) {
     auto Entries = getMutableEntries();
     Entry *end = std::remove_if(
         Entries.begin(), Entries.end(), [&](Entry &entry) -> bool {
@@ -177,7 +183,14 @@ public:
           }
           return false;
         });
+    unsigned origNumEntries = NumEntries;
     NumEntries = std::distance(Entries.begin(), end);
+    if (NumEntries < origNumEntries) {
+      for (unsigned i = NumEntries; i < origNumEntries; ++i) {
+        Entries[i].~Entry();
+      }
+      updateVTableCache(module);
+    }
   }
 
   /// Verify that the vtable is well-formed for the given class.
@@ -189,10 +202,15 @@ public:
 
 private:
   void removeFromVTableCache(Entry &entry);
+  void updateVTableCache(SILModule &module);
 };
 
 template <> SILVTable *SILFunctionReference::Owner::getAs<SILVTable>() {
   return functionOwnerKind == FunctionOwnerKind::VTable? static_cast<SILVTable *>(this) : nullptr;
+}
+
+void SILVTableEntry::setOwner(SILVTable *vtable) {
+  impl.setOwner(vtable);
 }
 
 } // end swift namespace

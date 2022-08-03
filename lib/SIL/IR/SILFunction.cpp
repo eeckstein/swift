@@ -144,7 +144,8 @@ SILFunction::SILFunction(SILModule &Module, SILLinkage Linkage, StringRef Name,
                          IsDynamicallyReplaceable_t isDynamic,
                          IsExactSelfClass_t isExactSelfClass,
                          IsDistributed_t isDistributed)
-    : SwiftObjectHeader(functionMetatype), Module(Module),
+    : Owner(FunctionOwnerKind::Function),
+      SwiftObjectHeader(functionMetatype), Module(Module),
       index(Module.getNewFunctionIndex()),
       Availability(AvailabilityContext::alwaysAvailable()) {
   init(Linkage, Name, LoweredType, genericEnv, Loc, isBareSILFunction, isTrans,
@@ -529,8 +530,10 @@ void SILFunction::moveBlockBefore(SILBasicBlock *BB, SILFunction::iterator IP) {
 //                        SILFunctionReference members
 //===----------------------------------------------------------------------===//
 
-void SILFunctionReference::insertInto(SILFunction *f) {
-  if ((function = f) != nullptr) {
+void SILFunctionReference::insertIntoCurrent() {
+  assert(owner && "cannot link function ref without owner");
+  if (function) {
+    assert(!prevPtr && "function ref is already linked");
     prevPtr = &function->firstUse;
     next = function->firstUse;
     if (next)

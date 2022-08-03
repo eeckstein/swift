@@ -6230,14 +6230,16 @@ void SILModule::verify() const {
     }
     vt->verify(*this);
     // Check if there is a cache entry for each vtable entry
-    for (auto entry : vt->getEntries()) {
-      if (VTableEntryCache.find({vt, entry.getMethod()}) ==
-          VTableEntryCache.end()) {
+    unsigned entryIdx = 0;
+    for (auto &entry : vt->getEntries()) {
+      auto iter = VTableEntryCache.find({vt, entry.getMethod()});
+      if (iter == VTableEntryCache.end() || iter->second != entryIdx) {
         llvm::errs() << "Vtable entry for function: "
                      << entry.getImplementation()->getName()
-                     << "not in cache!\n";
+                     << "wrong or not in cache!\n";
         assert(false && "triggering standard assertion failure routine");
       }
+      ++entryIdx;
       ++EntriesSZ;
     }
   }

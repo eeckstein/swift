@@ -167,7 +167,7 @@ class DeadFunctionAndGlobalElimination {
       switch (entry.getKind()) {
         case SILWitnessTable::Method: {
 
-          auto methodWitness = entry.getMethodWitness();
+          const auto &methodWitness = entry.getMethodWitness();
           auto *fd = cast<AbstractFunctionDecl>(methodWitness.Requirement.
                                                 getDecl());
           assert(fd == getBaseMethod(fd) &&
@@ -478,7 +478,7 @@ class DeadFunctionAndGlobalElimination {
         if (entry.getKind() != SILWitnessTable::Method)
           continue;
 
-        auto methodWitness = entry.getMethodWitness();
+        const auto &methodWitness = entry.getMethodWitness();
         auto *fd = cast<AbstractFunctionDecl>(methodWitness.Requirement.
                                               getDecl());
         assert(fd == getBaseMethod(fd) &&
@@ -550,7 +550,7 @@ class DeadFunctionAndGlobalElimination {
         if (entry.getKind() != SILWitnessTable::Method)
           continue;
 
-        auto methodWitness = entry.getMethodWitness();
+        const auto &methodWitness = entry.getMethodWitness();
         auto *fd = cast<AbstractFunctionDecl>(methodWitness.Requirement.
                                               getDecl());
         assert(fd == getBaseMethod(fd) &&
@@ -625,7 +625,7 @@ class DeadFunctionAndGlobalElimination {
               return true;
             }
             return false;
-          });
+          }, *Module);
     }
 
     auto &WitnessTables = Module->getWitnessTableList();

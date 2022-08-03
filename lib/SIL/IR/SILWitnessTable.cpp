@@ -106,14 +106,16 @@ SILWitnessTable::SILWitnessTable(
     SILModule &M, SILLinkage Linkage, IsSerialized_t Serialized, StringRef N,
     RootProtocolConformance *Conformance, ArrayRef<Entry> entries,
     ArrayRef<ConditionalConformance> conditionalConformances)
-    : Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
+    : Owner(FunctionOwnerKind::WitnessTable),
+      Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
       ConditionalConformances(), IsDeclaration(true), Serialized(false) {
   convertToDefinition(entries, conditionalConformances, Serialized);
 }
 
 SILWitnessTable::SILWitnessTable(SILModule &M, SILLinkage Linkage, StringRef N,
                                  RootProtocolConformance *Conformance)
-    : Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
+    : Owner(FunctionOwnerKind::WitnessTable),
+      Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
       ConditionalConformances(), IsDeclaration(true), Serialized(false) {}
 
 void SILWitnessTable::convertToDefinition(
@@ -127,7 +129,9 @@ void SILWitnessTable::convertToDefinition(
   Entries = Mod.allocateCopy(entries);
   ConditionalConformances = Mod.allocateCopy(conditionalConformances);
 
-  // TODO: set the owner of methods.
+  for (Entry &entry : Entries) {
+    entry.setOwner(this);
+  }
 }
 
 bool SILWitnessTable::conformanceIsSerialized(

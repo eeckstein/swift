@@ -82,6 +82,7 @@ class ValueDecl;
 class VarDecl;
 class FunctionRefBaseInst;
 class SILPrintContext;
+class SILProperty;
 class SILWitnessTable;
 class SILDefaultWitnessTable;
 class SILVTable;
@@ -92,8 +93,10 @@ class SILFunctionReference {
 public:
   struct Owner {
     enum class FunctionOwnerKind : uint8_t {
-      FunctionRefInst, Function, WitnessTable, DefaultWitnessTable, KeyPathPattern, VTable
+      FunctionRefInst, Function, WitnessTable, DefaultWitnessTable, KeyPathPattern, VTable, Property
     } functionOwnerKind;
+  
+    Owner(FunctionOwnerKind kind) : functionOwnerKind(kind) {}
   
     template <class C> C *getAs() { return nullptr; }
 
@@ -103,6 +106,7 @@ public:
     template <> inline SILWitnessTable *getAs<SILWitnessTable>();
     template <> inline SILDefaultWitnessTable *getAs<SILDefaultWitnessTable>();
     template <> inline SILVTable *getAs<SILVTable>();
+    template <> inline SILProperty *getAs<SILProperty>();
   };
     
 private:
@@ -138,19 +142,27 @@ public:
   };
 
   SILFunctionReference() {}
-  SILFunctionReference(SILFunction *f, Owner *owner = nullptr) : owner(owner) { insertInto(f); }
+  SILFunctionReference(SILFunction *f) : function(f) {}
+  SILFunctionReference(SILFunction *f, Owner *o) : function(f), owner(o) {
+    insertIntoCurrent();
+  }
   ~SILFunctionReference() { removeFromCurrent(); }
 
-  SILFunctionReference(const SILFunctionReference &use) : SILFunctionReference(use.function, use.owner) {}
+  SILFunctionReference(const SILFunctionReference &other)
+      : SILFunctionReference(other.function) {
+    assert(!other.owner && "function ref shouldn't be copied once it has an owner");
+  }
 
   SILFunctionReference &operator=(SILFunction *f) {
     removeFromCurrent();
-    insertInto(f);
+    function = f;
+    if (owner)
+      insertIntoCurrent();
     return *this;
   }
 
-  SILFunctionReference &operator=(const SILFunctionReference &use) {
-    *this = use.function;
+  SILFunctionReference &operator=(const SILFunctionReference &other) {
+    *this = other.function;
     return *this;
   }
 
@@ -158,19 +170,27 @@ public:
   operator SILFunction *() const { return function; }
 
   Owner *getOwner() const { return owner; }
-  void setOwner(Owner *o) { owner = o; }
+  void setOwner(Owner *o) {
+    assert(!owner && "cannot change owner");
+    owner = o;
+    insertIntoCurrent();
+  }
 
 private:
 
   void removeFromCurrent() {
-    if (!prevPtr)
-      return;
-    *prevPtr = next;
-    if (next)
-      next->prevPtr = prevPtr;
+    if (prevPtr) {
+      assert(owner && "function ref can only be linked with an owner");
+      *prevPtr = next;
+      if (next)
+        next->prevPtr = prevPtr;
+      prevPtr = nullptr;
+      function = nullptr;
+    }
   }
 
-  void insertInto(SILFunction *f);
+  // Implemented in SILFunction.cpp.
+  void insertIntoCurrent();
 };
 
 // An enum class for SILInstructions that enables exhaustive switches over
@@ -3343,11 +3363,11 @@ public:
                      SILFunction *indicesHash,
                      AbstractStorageDecl *externalStorage,
                      SubstitutionMap externalSubstitutions)
-     : indices(indices), getter(getter), setter(setter),
+     : idKind(id.getKind()), indices(indices), getter(getter), setter(setter),
        indicesEqual(indicesEqual), indicesHash(indicesHash),
        externalStorage(externalStorage),
        externalSubstitutions(externalSubstitutions) {
-      switch (id.getKind()) {
+      switch (idKind) {
         case ComputedPropertyId::Property:
           idValue.property = id.getProperty();
           break;
@@ -3362,7 +3382,14 @@ public:
     
     ~ComputedProperty() = delete;
 
-    inline void setOwner(KeyPathPattern *pattern);
+    void setOwner(SILFunctionReference::Owner *owner) {
+      if (idKind == ComputedPropertyId::Function)
+        idValue.function.setOwner(owner);
+      getter.setOwner(owner);
+      setter.setOwner(owner);
+      indicesEqual.setOwner(owner);
+      indicesHash.setOwner(owner);
+    }
 
     void dropAllReferences() {
       if (idKind == ComputedPropertyId::Function)
@@ -3442,140 +3469,63 @@ public:
     return ComponentType;
   }
 
-  void setOwner(KeyPathPattern *pattern) const {
+  bool isComputedProperty() const {
     switch (getKind()) {
     case Kind::StoredProperty:
     case Kind::OptionalChain:
     case Kind::OptionalForce:
     case Kind::OptionalWrap:
     case Kind::TupleElement:
-      break;
+      return false;
     case Kind::GettableProperty:
     case Kind::SettableProperty:
-      computedProperty->setOwner(pattern);
-      break;
+      return true;
     }
-    llvm_unreachable("unhandled kind");
+  }
+
+  void setOwner(SILFunctionReference::Owner *owner) const {
+    if (isComputedProperty())
+      computedProperty->setOwner(owner);
   }
 
   void dropAllReferences() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      break;
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
+    if (isComputedProperty())
       computedProperty->dropAllReferences();
-      break;
-    }
-    llvm_unreachable("unhandled kind");
   }
 
   VarDecl *getStoredPropertyDecl() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-      return storedProperty;
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a stored property");
-    }
-    llvm_unreachable("unhandled kind");
+    assert(getKind() == Kind::StoredProperty);
+    return storedProperty;
   }
 
   ComputedPropertyId getComputedPropertyId() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->getId();
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->getId();
   }
 
   SILFunction *getComputedPropertyGetter() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->getter;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->getter;
   }
 
   SILFunction *getComputedPropertySetter() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::GettableProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a settable computed property");
-    case Kind::SettableProperty:
-      return computedProperty->setter;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(getKind() == Kind::SettableProperty);
+    return computedProperty->setter;
   }
 
   ArrayRef<Index> getSubscriptIndices() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      return {};
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
+    if (isComputedProperty())
       return computedProperty->indices;
-    }
-    llvm_unreachable("unhandled kind");
+    return {};
   }
 
   SILFunction *getSubscriptIndexEquals() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->indicesEqual;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->indicesEqual;
   }
   SILFunction *getSubscriptIndexHash() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->indicesHash;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->indicesHash;
   }
 
   bool isComputedSettablePropertyMutating() const;
@@ -3586,48 +3536,18 @@ public:
   }
   
   AbstractStorageDecl *getExternalDecl() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->externalStorage;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->externalStorage;
   }
 
   SubstitutionMap getExternalSubstitutions() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::TupleElement:
-      llvm_unreachable("not a computed property");
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      return computedProperty->externalSubstitutions;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(isComputedProperty());
+    return computedProperty->externalSubstitutions;
   }
     
   unsigned getTupleIndex() const {
-    switch (getKind()) {
-    case Kind::StoredProperty:
-    case Kind::OptionalChain:
-    case Kind::OptionalForce:
-    case Kind::OptionalWrap:
-    case Kind::GettableProperty:
-    case Kind::SettableProperty:
-      llvm_unreachable("not a tuple element");
-    case Kind::TupleElement:
-      return tupleIndex;
-    }
-    llvm_unreachable("unhandled kind");
+    assert(getKind() == Kind::TupleElement);
+    return tupleIndex;
   }
 
   static KeyPathPatternComponent
@@ -3784,15 +3704,6 @@ public:
             getComponents(), getObjCString());
   }
 };
-
-void KeyPathPatternComponent::ComputedProperty::setOwner(KeyPathPattern *pattern) {
-  if (idKind == ComputedPropertyId::Function)
-    idValue.function.setOwner(pattern);
-  getter.setOwner(pattern);
-  setter.setOwner(pattern);
-  indicesEqual.setOwner(pattern);
-  indicesHash.setOwner(pattern);
-}
 
 template <> KeyPathPattern *SILFunctionReference::Owner::getAs<KeyPathPattern>() {
   return functionOwnerKind == FunctionOwnerKind::KeyPathPattern ? static_cast<KeyPathPattern *>(this) : nullptr;

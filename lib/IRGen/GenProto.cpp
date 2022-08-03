@@ -2193,7 +2193,7 @@ static void addWTableTypeMetadata(IRGenModule &IGM,
     if (entry.getKind() != SILWitnessTable::WitnessKind::Method)
       continue;
 
-    auto mw = entry.getMethodWitness();
+    const auto &mw = entry.getMethodWitness();
     auto member = mw.Requirement;
     auto &fnProtoInfo =
         IGM.getProtocolInfo(conf->getProtocol(), ProtocolInfoKind::Full);
