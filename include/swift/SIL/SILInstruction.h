@@ -30,6 +30,7 @@
 #include "swift/Basic/ProfileCounter.h"
 #include "swift/Basic/Range.h"
 #include "swift/SIL/Consumption.h"
+#include "swift/SIL/SILFunctionRef.h"
 #include "swift/SIL/SILAllocated.h"
 #include "swift/SIL/SILArgumentArrayRef.h"
 #include "swift/SIL/SILDebugInfoExpression.h"
@@ -82,122 +83,8 @@ class ValueDecl;
 class VarDecl;
 class FunctionRefBaseInst;
 class SILPrintContext;
-class SILProperty;
-class SILWitnessTable;
-class SILDefaultWitnessTable;
-class SILVTable;
 
 template <typename ImplClass> class SILClonerWithScopes;
-
-class SILFunctionReference {
-public:
-  class Owner {
-  public:
-    enum OwnerKind {
-      FunctionRefInst, Function, WitnessTable, DefaultWitnessTable, KeyPathPattern, VTable, Property
-    };
-  private:
-    OwnerKind functionOwnerKind;
-  protected:
-    Owner(int kind) : functionOwnerKind((OwnerKind)kind) {}
-    Owner(const Owner &other) = delete;
-  public:
-    template <class C> C *getAs() {
-      if (functionOwnerKind == C::FunctionOwnerKind)
-        return static_cast<C *>(this);
-      return nullptr;
-    }
-  };
-
-  template <int Kind> class OwnerOfKind : public Owner {
-  public:
-    OwnerOfKind() : Owner(Kind) {}
-    enum { FunctionOwnerKind = Kind };
-  };
-
-private:
-  SILFunction *function = nullptr;
-
-  SILFunctionReference *next = nullptr;
-  SILFunctionReference **prevPtr = nullptr;
-
-  Owner *owner = nullptr;
-
-public:
-
-  class Iterator {
-    SILFunctionReference *current = nullptr;
-  public:
-    Iterator() = default;
-    explicit Iterator(SILFunctionReference *r) : current(r) {}
-    Owner *operator->() const { return current->getOwner(); }
-    Owner *operator*() const { return current->getOwner(); }
-    
-    Iterator &operator++() {
-      assert(current && "can't increment end-iterator");
-      current = current->next;
-      return *this;
-    }
-    
-    friend bool operator==(Iterator lhs, Iterator rhs) {
-      return lhs.current == rhs.current;
-    }
-    friend bool operator!=(Iterator lhs, Iterator rhs) {
-      return !(lhs == rhs);
-    }
-  };
-
-  SILFunctionReference() {}
-  SILFunctionReference(SILFunction *f) : function(f) {}
-  SILFunctionReference(SILFunction *f, Owner *o) : function(f), owner(o) {
-    insertIntoCurrent();
-  }
-  ~SILFunctionReference() { removeFromCurrent(); }
-
-  SILFunctionReference(const SILFunctionReference &other)
-      : SILFunctionReference(other.function) {
-    assert(!other.owner && "function ref shouldn't be copied once it has an owner");
-  }
-
-  SILFunctionReference &operator=(SILFunction *f) {
-    removeFromCurrent();
-    function = f;
-    if (owner)
-      insertIntoCurrent();
-    return *this;
-  }
-
-  SILFunctionReference &operator=(const SILFunctionReference &other) {
-    *this = other.function;
-    return *this;
-  }
-
-  SILFunction *operator->() const { return function; }
-  operator SILFunction *() const { return function; }
-
-  Owner *getOwner() const { return owner; }
-  void setOwner(Owner *o) {
-    assert(!owner && "cannot change owner");
-    owner = o;
-    insertIntoCurrent();
-  }
-
-private:
-
-  void removeFromCurrent() {
-    if (prevPtr) {
-      assert(owner && "function ref can only be linked with an owner");
-      *prevPtr = next;
-      if (next)
-        next->prevPtr = prevPtr;
-      prevPtr = nullptr;
-      function = nullptr;
-    }
-  }
-
-  // Implemented in SILFunction.cpp.
-  void insertIntoCurrent();
-};
 
 // An enum class for SILInstructions that enables exhaustive switches over
 // instructions.
@@ -3145,9 +3032,9 @@ public:
 };
 
 class FunctionRefBaseInst : public LiteralInst,
-  public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::FunctionRefInst> {
+  public SILFunctionRef::UserWithKind<SILFunctionRef::FunctionRefInst> {
 protected:
-  SILFunctionReference f;
+  SILFunctionRef f;
 
   FunctionRefBaseInst(SILInstructionKind Kind, SILDebugLocation DebugLoc,
                       SILFunction *F, TypeExpansionContext context);
@@ -3339,7 +3226,7 @@ public:
     
     union IdValue {
       VarDecl *property;
-      SILFunctionReference function;
+      SILFunctionRef function;
       SILDeclRef declRef;
       
       IdValue() : function(nullptr) {}
@@ -3350,10 +3237,10 @@ public:
 
     ArrayRef<Index> indices;
     
-    SILFunctionReference getter;
-    SILFunctionReference setter;
-    SILFunctionReference indicesEqual;
-    SILFunctionReference indicesHash;
+    SILFunctionRef getter;
+    SILFunctionRef setter;
+    SILFunctionRef indicesEqual;
+    SILFunctionRef indicesHash;
     
     AbstractStorageDecl *externalStorage;
     SubstitutionMap externalSubstitutions;
@@ -3385,13 +3272,13 @@ public:
     
     ~ComputedProperty() = delete;
 
-    void setOwner(SILFunctionReference::Owner *owner) {
+    void setOwner(SILFunctionRef::User *owner) {
       if (idKind == ComputedPropertyId::Function)
-        idValue.function.setOwner(owner);
-      getter.setOwner(owner);
-      setter.setOwner(owner);
-      indicesEqual.setOwner(owner);
-      indicesHash.setOwner(owner);
+        idValue.function.setUser(owner);
+      getter.setUser(owner);
+      setter.setUser(owner);
+      indicesEqual.setUser(owner);
+      indicesHash.setUser(owner);
     }
 
     void dropAllReferences() {
@@ -3486,7 +3373,7 @@ public:
     }
   }
 
-  void setOwner(SILFunctionReference::Owner *owner) const {
+  void setOwner(SILFunctionRef::User *owner) const {
     if (isComputedProperty())
       computedProperty->setOwner(owner);
   }
@@ -3624,7 +3511,7 @@ class KeyPathPattern final
   : public llvm::FoldingSetNode,
     private llvm::TrailingObjects<KeyPathPattern,
                                   KeyPathPatternComponent>,
-    public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::KeyPathPattern>
+    public SILFunctionRef::UserWithKind<SILFunctionRef::KeyPathPattern>
 {
   friend TrailingObjects;
   friend class KeyPathInst;

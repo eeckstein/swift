@@ -70,6 +70,6 @@ SILVTable::SILVTable(ClassDecl *c, IsSerialized_t serialized,
   std::uninitialized_copy(entries.begin(), entries.end(),
                           getTrailingObjects<Entry>());
   for (auto &entry : getMutableEntries()) {
-    entry.setOwner(this);
+    entry.setUser(this);
   }
 }

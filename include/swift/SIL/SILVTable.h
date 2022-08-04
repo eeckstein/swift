@@ -38,6 +38,7 @@ class ClassDecl;
 enum IsSerialized_t : unsigned char;
 class SILFunction;
 class SILModule;
+class SILVTable;
 
 // TODO: Entry should include substitutions needed to invoke an overridden
 // generic base class method.
@@ -61,7 +62,7 @@ private:
   SILDeclRef Method;
 
   /// The function which implements the method for the class and the entry kind.
-  SILFunctionReference impl;
+  SILFunctionRef impl;
 
   bool IsNonOverridden = false;
   Kind kind = Kind::Normal;
@@ -74,7 +75,7 @@ public:
       : Method(Method), impl(Implementation),
         IsNonOverridden(NonOverridden), kind(TheKind) {}
 
-  inline void setOwner(SILVTable *vtable);
+  inline void setUser(SILVTable *vtable);
 
   SILDeclRef getMethod() const { return Method; }
 
@@ -103,9 +104,10 @@ public:
 /// A mapping from each dynamically-dispatchable method of a class to the
 /// SILFunction that implements the method for that class.
 /// Note that dead methods are completely removed from the vtable.
-class SILVTable final : public SILAllocated<SILVTable>,
-                        llvm::TrailingObjects<SILVTable, SILVTableEntry>,
-                        public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::VTable> {
+class SILVTable final
+  : public SILAllocated<SILVTable>,
+    llvm::TrailingObjects<SILVTable, SILVTableEntry>,
+    public SILFunctionRef::UserWithKind<SILFunctionRef::VTable> {
   friend TrailingObjects;
 
 public:
@@ -205,8 +207,8 @@ private:
   void updateVTableCache(SILModule &module);
 };
 
-void SILVTableEntry::setOwner(SILVTable *vtable) {
-  impl.setOwner(vtable);
+void SILVTableEntry::setUser(SILVTable *vtable) {
+  impl.setUser(vtable);
 }
 
 } // end swift namespace

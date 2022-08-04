@@ -149,8 +149,8 @@ private:
 /// objects making up the function.
 class SILFunction
   : public llvm::ilist_node<SILFunction>, public SILAllocated<SILFunction>,
-    public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::Function>, public SwiftObjectHeader {
-    
+    public SILFunctionRef::UserWithKind<SILFunctionRef::Function>,
+    public SwiftObjectHeader {
 private:
   void *libswiftSpecificData[1];
 
@@ -173,7 +173,7 @@ private:
   template <class, class> friend class SILBitfield;
   friend class BasicBlockBitfield;
   friend class NodeBitfield;
-  friend class SILFunctionReference;
+  friend class SILFunctionRef;
 
   /// Module - The SIL module that the function belongs to.
   SILModule &Module;
@@ -182,7 +182,7 @@ private:
   /// to the binary.  A pointer into the module's lookup table.
   StringRef Name;
 
-  SILFunctionReference *firstUse = nullptr;
+  SILFunctionRef *firstUse = nullptr;
 
   /// A single-linked list of snapshots of the function.
   ///
@@ -226,7 +226,7 @@ private:
 
   /// The function this function is meant to replace. Null if this is not a
   /// @_dynamicReplacement(for:) function.
-  SILFunctionReference ReplacedFunction;
+  SILFunctionRef ReplacedFunction;
 
   /// This SILFunction REFerences an ad-hoc protocol requirement witness in
   /// order to keep it alive, such that it main be obtained in IRGen. Without
@@ -237,7 +237,7 @@ private:
   /// 'decodeNextArgument' which must be retained, as it is only used from IRGen
   /// and such, appears as-if unused in SIL and would get optimized away.
   // TODO: Consider making this a general "references adhoc functions" and make it an array?
-  SILFunctionReference RefAdHocRequirementFunction;
+  SILFunctionRef RefAdHocRequirementFunction;
 
   Identifier ObjCReplacementFor;
 
@@ -471,8 +471,8 @@ public:
   /// Deletes a snapshot with the `ID`.
   void deleteSnapshot(int ID);
 
-  iterator_range<SILFunctionReference::Iterator> getUses() {
-    return {SILFunctionReference::Iterator(firstUse), SILFunctionReference::Iterator()};
+  iterator_range<SILFunctionRef::Iterator> getUses() {
+    return {SILFunctionRef::Iterator(firstUse), SILFunctionRef::Iterator()};
   }
 
   SILType getLoweredType() const {

@@ -38,9 +38,10 @@ enum IsSerialized_t : unsigned char;
 
 /// A mapping from each requirement of a protocol to the SIL-level entity
 /// satisfying the requirement for a concrete type.
-class SILWitnessTable : public llvm::ilist_node<SILWitnessTable>,
-                        public SILAllocated<SILWitnessTable>,
-                        public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::WitnessTable>
+class SILWitnessTable
+  : public llvm::ilist_node<SILWitnessTable>,
+    public SILAllocated<SILWitnessTable>,
+    public SILFunctionRef::UserWithKind<SILFunctionRef::WitnessTable>
 {
 public:
   /// A witness table entry describing the witness for a method.
@@ -50,7 +51,7 @@ public:
     /// The witness for the method.
     /// This can be null in case dead function elimination has removed the method
     /// or if the method was not serialized (for de-serialized witness tables).
-    SILFunctionReference Witness;
+    SILFunctionRef Witness;
   };
   
   /// A witness table entry describing the witness for an associated type.
@@ -175,7 +176,7 @@ public:
       return *this;
     }
     
-    inline void setOwner(SILFunctionReference::Owner *table);
+    inline void setOwner(SILFunctionRef::User *table);
     
     WitnessKind getKind() const { return Kind; }
 
@@ -379,9 +380,9 @@ public:
   void dump() const;
 };
 
-inline void SILWitnessTable::Entry::setOwner(SILFunctionReference::Owner *table) {
+inline void SILWitnessTable::Entry::setOwner(SILFunctionRef::User *table) {
   if (Kind == Method)
-    value.Method.Witness.setOwner(table);
+    value.Method.Witness.setUser(table);
 }
     
 } // end swift namespace

@@ -37,9 +37,10 @@ class SILModule;
 /// A mapping from each requirement of a protocol to the SIL-level entity
 /// satisfying the requirement for conformances which do not explicitly
 /// provide a witness.
-class SILDefaultWitnessTable : public llvm::ilist_node<SILDefaultWitnessTable>,
-                               public SILAllocated<SILDefaultWitnessTable>,
-                               public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::DefaultWitnessTable>
+class SILDefaultWitnessTable
+  : public llvm::ilist_node<SILDefaultWitnessTable>,
+    public SILAllocated<SILDefaultWitnessTable>,
+    public SILFunctionRef::UserWithKind<SILFunctionRef::DefaultWitnessTable>
 {
 public:
   /// A default witness table entry describing the default witness for a

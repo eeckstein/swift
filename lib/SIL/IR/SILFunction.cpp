@@ -526,11 +526,11 @@ void SILFunction::moveBlockBefore(SILBasicBlock *BB, SILFunction::iterator IP) {
 }
 
 //===----------------------------------------------------------------------===//
-//                        SILFunctionReference members
+//                        SILFunctionRef members
 //===----------------------------------------------------------------------===//
 
-void SILFunctionReference::insertIntoCurrent() {
-  assert(owner && "cannot link function ref without owner");
+void SILFunctionRef::insertIntoCurrent() {
+  assert(user && "cannot link function ref without user");
   if (function) {
     assert(!prevPtr && "function ref is already linked");
     prevPtr = &function->firstUse;

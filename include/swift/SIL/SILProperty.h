@@ -33,7 +33,7 @@ class SILPrintContext;
 /// referenced from key paths in external modules.
 class SILProperty : public llvm::ilist_node<SILProperty>,
                     public SILAllocated<SILProperty>,
-                    public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::Property>
+                    public SILFunctionRef::UserWithKind<SILFunctionRef::Property>
 {
 private:
   /// True if serialized.
