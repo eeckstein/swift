@@ -68,8 +68,7 @@ SILDefaultWitnessTable(SILModule &M,
                        SILLinkage Linkage,
                        const ProtocolDecl *Protocol,
                        ArrayRef<Entry> entries)
-  : Owner(FunctionOwnerKind::DefaultWitnessTable),
-    Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
+  : Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
     IsDeclaration(true) {
 
   convertToDefinition(entries);
@@ -78,8 +77,7 @@ SILDefaultWitnessTable(SILModule &M,
 SILDefaultWitnessTable::SILDefaultWitnessTable(SILModule &M,
                                                SILLinkage Linkage,
                                                const ProtocolDecl *Protocol)
-  : Owner(FunctionOwnerKind::DefaultWitnessTable),
-    Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
+  : Mod(M), Linkage(Linkage), Protocol(Protocol), Entries(),
     IsDeclaration(true) {}
 
 void SILDefaultWitnessTable::

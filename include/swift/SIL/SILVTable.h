@@ -105,7 +105,7 @@ public:
 /// Note that dead methods are completely removed from the vtable.
 class SILVTable final : public SILAllocated<SILVTable>,
                         llvm::TrailingObjects<SILVTable, SILVTableEntry>,
-                        public SILFunctionReference::Owner {
+                        public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::VTable> {
   friend TrailingObjects;
 
 public:
@@ -204,10 +204,6 @@ private:
   void removeFromVTableCache(Entry &entry);
   void updateVTableCache(SILModule &module);
 };
-
-template <> SILVTable *SILFunctionReference::Owner::getAs<SILVTable>() {
-  return functionOwnerKind == FunctionOwnerKind::VTable? static_cast<SILVTable *>(this) : nullptr;
-}
 
 void SILVTableEntry::setOwner(SILVTable *vtable) {
   impl.setOwner(vtable);

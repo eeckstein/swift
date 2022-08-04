@@ -39,7 +39,7 @@ class SILModule;
 /// provide a witness.
 class SILDefaultWitnessTable : public llvm::ilist_node<SILDefaultWitnessTable>,
                                public SILAllocated<SILDefaultWitnessTable>,
-                               public SILFunctionReference::Owner
+                               public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::DefaultWitnessTable>
 {
 public:
   /// A default witness table entry describing the default witness for a
@@ -144,10 +144,6 @@ public:
   void dump() const;
 };
   
-template <> SILDefaultWitnessTable *SILFunctionReference::Owner::getAs<SILDefaultWitnessTable>() {
-  return functionOwnerKind == FunctionOwnerKind::DefaultWitnessTable? static_cast<SILDefaultWitnessTable *>(this) : nullptr;
-}
-
 } // end swift namespace
 
 //===----------------------------------------------------------------------===//

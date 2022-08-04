@@ -144,8 +144,7 @@ SILFunction::SILFunction(SILModule &Module, SILLinkage Linkage, StringRef Name,
                          IsDynamicallyReplaceable_t isDynamic,
                          IsExactSelfClass_t isExactSelfClass,
                          IsDistributed_t isDistributed)
-    : Owner(FunctionOwnerKind::Function),
-      SwiftObjectHeader(functionMetatype), Module(Module),
+    : SwiftObjectHeader(functionMetatype), Module(Module),
       index(Module.getNewFunctionIndex()),
       Availability(AvailabilityContext::alwaysAvailable()) {
   init(Linkage, Name, LoweredType, genericEnv, Loc, isBareSILFunction, isTrans,

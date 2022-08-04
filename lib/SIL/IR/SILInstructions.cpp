@@ -868,7 +868,6 @@ FunctionRefBaseInst::FunctionRefBaseInst(SILInstructionKind Kind,
                                          SILFunction *F,
                                          TypeExpansionContext context)
     : LiteralInst(Kind, DebugLoc, F->getLoweredTypeInContext(context)),
-      Owner(FunctionOwnerKind::FunctionRefInst),
       f(F, this) {
 }
 
@@ -2457,8 +2456,7 @@ KeyPathPattern::KeyPathPattern(CanGenericSignature signature,
                                ArrayRef<KeyPathPatternComponent> components,
                                StringRef objcString,
                                unsigned numOperands)
-  : Owner(FunctionOwnerKind::KeyPathPattern),
-    NumOperands(numOperands), NumComponents(components.size()),
+  : NumOperands(numOperands), NumComponents(components.size()),
     Signature(signature), RootType(rootType), ValueType(valueType),
     ObjCString(objcString)
 {

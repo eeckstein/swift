@@ -106,16 +106,14 @@ SILWitnessTable::SILWitnessTable(
     SILModule &M, SILLinkage Linkage, IsSerialized_t Serialized, StringRef N,
     RootProtocolConformance *Conformance, ArrayRef<Entry> entries,
     ArrayRef<ConditionalConformance> conditionalConformances)
-    : Owner(FunctionOwnerKind::WitnessTable),
-      Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
+    : Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
       ConditionalConformances(), IsDeclaration(true), Serialized(false) {
   convertToDefinition(entries, conditionalConformances, Serialized);
 }
 
 SILWitnessTable::SILWitnessTable(SILModule &M, SILLinkage Linkage, StringRef N,
                                  RootProtocolConformance *Conformance)
-    : Owner(FunctionOwnerKind::WitnessTable),
-      Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
+    : Mod(M), Name(N), Linkage(Linkage), Conformance(Conformance), Entries(),
       ConditionalConformances(), IsDeclaration(true), Serialized(false) {}
 
 void SILWitnessTable::convertToDefinition(

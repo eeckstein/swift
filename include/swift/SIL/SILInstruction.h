@@ -91,24 +91,30 @@ template <typename ImplClass> class SILClonerWithScopes;
 
 class SILFunctionReference {
 public:
-  struct Owner {
-    enum class FunctionOwnerKind : uint8_t {
+  class Owner {
+  public:
+    enum OwnerKind {
       FunctionRefInst, Function, WitnessTable, DefaultWitnessTable, KeyPathPattern, VTable, Property
-    } functionOwnerKind;
-  
-    Owner(FunctionOwnerKind kind) : functionOwnerKind(kind) {}
-  
-    template <class C> C *getAs() { return nullptr; }
-
-    template <> inline FunctionRefBaseInst *getAs<FunctionRefBaseInst>();
-    template <> inline KeyPathPattern *getAs<KeyPathPattern>();
-    template <> inline SILFunction *getAs<SILFunction>();
-    template <> inline SILWitnessTable *getAs<SILWitnessTable>();
-    template <> inline SILDefaultWitnessTable *getAs<SILDefaultWitnessTable>();
-    template <> inline SILVTable *getAs<SILVTable>();
-    template <> inline SILProperty *getAs<SILProperty>();
+    };
+  private:
+    OwnerKind functionOwnerKind;
+  protected:
+    Owner(int kind) : functionOwnerKind((OwnerKind)kind) {}
+    Owner(const Owner &other) = delete;
+  public:
+    template <class C> C *getAs() {
+      if (functionOwnerKind == C::FunctionOwnerKind)
+        return static_cast<C *>(this);
+      return nullptr;
+    }
   };
-    
+
+  template <int Kind> class OwnerOfKind : public Owner {
+  public:
+    OwnerOfKind() : Owner(Kind) {}
+    enum { FunctionOwnerKind = Kind };
+  };
+
 private:
   SILFunction *function = nullptr;
 
@@ -3138,7 +3144,8 @@ public:
   DEFINE_ABSTRACT_SINGLE_VALUE_INST_BOILERPLATE(LiteralInst)
 };
 
-class FunctionRefBaseInst : public LiteralInst, public SILFunctionReference::Owner {
+class FunctionRefBaseInst : public LiteralInst,
+  public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::FunctionRefInst> {
 protected:
   SILFunctionReference f;
 
@@ -3186,10 +3193,6 @@ public:
         node->getKind() == SILNodeKind::PreviousDynamicFunctionRefInst);
   }
 };
-
-template <> FunctionRefBaseInst *SILFunctionReference::Owner::getAs<FunctionRefBaseInst>() {
-  return functionOwnerKind == FunctionOwnerKind::FunctionRefInst? static_cast<FunctionRefBaseInst *>(this) : nullptr;
-}
 
 /// FunctionRefInst - Represents a reference to a SIL function.
 class FunctionRefInst : public FunctionRefBaseInst {
@@ -3621,7 +3624,7 @@ class KeyPathPattern final
   : public llvm::FoldingSetNode,
     private llvm::TrailingObjects<KeyPathPattern,
                                   KeyPathPatternComponent>,
-    public SILFunctionReference::Owner
+    public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::KeyPathPattern>
 {
   friend TrailingObjects;
   friend class KeyPathInst;
@@ -3704,10 +3707,6 @@ public:
             getComponents(), getObjCString());
   }
 };
-
-template <> KeyPathPattern *SILFunctionReference::Owner::getAs<KeyPathPattern>() {
-  return functionOwnerKind == FunctionOwnerKind::KeyPathPattern ? static_cast<KeyPathPattern *>(this) : nullptr;
-}
 
 /// Base class for instructions that access the continuation of an async task,
 /// in order to set up a suspension.

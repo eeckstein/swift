@@ -66,8 +66,7 @@ void SILVTable::updateVTableCache(SILModule &module) {
 
 SILVTable::SILVTable(ClassDecl *c, IsSerialized_t serialized,
                      ArrayRef<Entry> entries)
-  : Owner(FunctionOwnerKind::VTable),
-    Class(c), Serialized(serialized), NumEntries(entries.size()) {
+  : Class(c), Serialized(serialized), NumEntries(entries.size()) {
   std::uninitialized_copy(entries.begin(), entries.end(),
                           getTrailingObjects<Entry>());
   for (auto &entry : getMutableEntries()) {

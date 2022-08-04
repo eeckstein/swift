@@ -40,7 +40,7 @@ enum IsSerialized_t : unsigned char;
 /// satisfying the requirement for a concrete type.
 class SILWitnessTable : public llvm::ilist_node<SILWitnessTable>,
                         public SILAllocated<SILWitnessTable>,
-                        public SILFunctionReference::Owner
+                        public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::WitnessTable>
 {
 public:
   /// A witness table entry describing the witness for a method.
@@ -384,11 +384,6 @@ inline void SILWitnessTable::Entry::setOwner(SILFunctionReference::Owner *table)
     value.Method.Witness.setOwner(table);
 }
     
-
-template <> SILWitnessTable *SILFunctionReference::Owner::getAs<SILWitnessTable>() {
-  return functionOwnerKind == FunctionOwnerKind::WitnessTable? static_cast<SILWitnessTable *>(this) : nullptr;
-}
-
 } // end swift namespace
 
 //===----------------------------------------------------------------------===//

@@ -149,7 +149,7 @@ private:
 /// objects making up the function.
 class SILFunction
   : public llvm::ilist_node<SILFunction>, public SILAllocated<SILFunction>,
-    public SILFunctionReference::Owner, public SwiftObjectHeader {
+    public SILFunctionReference::OwnerOfKind<SILFunctionReference::Owner::Function>, public SwiftObjectHeader {
     
 private:
   void *libswiftSpecificData[1];
@@ -1369,10 +1369,6 @@ public:
   void viewCFGOnly() const;
 
 };
-
-template <> SILFunction *SILFunctionReference::Owner::getAs<SILFunction>() {
-  return functionOwnerKind == FunctionOwnerKind::Function ? static_cast<SILFunction *>(this) : nullptr;
-}
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
                                      const SILFunction &F) {
