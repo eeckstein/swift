@@ -6,7 +6,6 @@ target_sources(swiftSILOptimizer PRIVATE
   Analysis.cpp
   ArraySemantic.cpp
   BasicCalleeAnalysis.cpp
-  CallerAnalysis.cpp
   ClassHierarchyAnalysis.cpp
   ClosureScope.cpp
   ColdBlockInfo.cpp

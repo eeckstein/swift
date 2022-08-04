@@ -8,7 +8,6 @@ target_sources(swiftSILOptimizer PRIVATE
   BasicInstructionPropertyDumper.cpp
   BugReducerTester.cpp
   CFGPrinter.cpp
-  CallerAnalysisPrinter.cpp
   ComputeDominanceInfo.cpp
   ComputeLoopInfo.cpp
   ConstantEvaluatorTester.cpp

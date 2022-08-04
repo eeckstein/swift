@@ -13,15 +13,15 @@
 /// Map each non-escaping closure SILFunction to a set of SILFunctions
 /// corresponding to its parent scopes.
 ///
-/// This is a lightweight analysis specific to non-escaping closures. Unlike
-/// CallerAnalysis, this does not reflect the call tree. A closure's scope is a
+/// This is a lightweight analysis specific to non-escaping closures.
+/// This does not reflect the call tree. A closure's scope is a
 /// function that directly references the closure. It may directly invoke the
 /// closure (as a caller) or may simply pass it off as an argument.
 ///
-/// Like CallerAnalysis, ClosureScope is top-down, but unlike CallerAnalysis, it
-/// does not require complex invalidation and recomputation. The underlying
-/// assumption is that no trasformation will add new references to existing
-/// non-escaping closures, with some exceptions like SILCloner.
+/// ClosureScope is top-down, but it does not require complex invalidation and
+/// recomputation. The underlying assumption is that no trasformation will add
+/// new references to existing non-escaping closures, with some exceptions like
+/// SILCloner.
 ///
 /// TODO: When this analysis is used across passes, fix SILCloner to update or
 /// invalidate. In SILVerifier, if this analysis is marked valid, check that no

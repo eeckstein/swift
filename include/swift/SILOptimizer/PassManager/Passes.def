@@ -143,8 +143,6 @@ PASS(COWArrayOpts, "cowarray-opt",
      "COW Array Optimization")
 PASS(CSE, "cse",
      "Common Subexpression Elimination")
-PASS(CallerAnalysisPrinter, "caller-analysis-printer",
-     "Print Caller Analysis for Testing")
 PASS(CapturePromotion, "capture-promotion",
      "Capture Promotion to Eliminate Escaping Boxes")
 PASS(CapturePropagation, "capture-prop",

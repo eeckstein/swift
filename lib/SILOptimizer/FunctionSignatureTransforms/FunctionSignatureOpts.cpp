@@ -36,7 +36,6 @@
 #include "swift/SIL/SILFunction.h"
 #include "swift/SIL/SILValue.h"
 #include "swift/SILOptimizer/Analysis/ARCAnalysis.h"
-#include "swift/SILOptimizer/Analysis/CallerAnalysis.h"
 #include "swift/SILOptimizer/Analysis/EpilogueARCAnalysis.h"
 #include "swift/SILOptimizer/Analysis/RCIdentityAnalysis.h"
 #include "swift/SILOptimizer/PassManager/Passes.h"
@@ -791,8 +790,6 @@ public:
 
     // Check the signature of F to make sure that it is a function that we
     // can specialize. These are conditions independent of the call graph.
-    // No need for CallerAnalysis if we are not optimizing for partial
-    // applies.
     if (!OptForPartialApply &&
         !canSpecializeFunction(F, /*OptForPartialApply*/false)) {
       LLVM_DEBUG(llvm::dbgs() << "  cannot specialize function -> abort\n");
