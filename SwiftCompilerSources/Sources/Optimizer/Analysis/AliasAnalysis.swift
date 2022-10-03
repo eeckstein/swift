@@ -60,4 +60,121 @@ struct AliasAnalysis {
     // Any other non-address value means: all addresses of any referenced class instances within the value.
     return SmallProjectionPath(.anyValueFields).push(.anyClassField).push(.anyValueFields)
   }
+  
+  static func register() {
+    AliasAnalysis_register(
+      // getMemEffectsFn
+      { (bridgedCtxt: BridgedPassContext, bridgedVal: BridgedValue, bridgedInst: BridgedInstruction) -> BridgedMemoryBehavior in
+        let context = PassContext(_bridged: bridgedCtxt)
+        let inst = bridgedInst.instruction
+        let val = bridgedVal.value
+        let path = AliasAnalysis.getPtrOrAddressPath(for: val)
+        if let apply = inst as? ApplySite {
+          let effect = getMemoryEffect(of: apply, for: val, path: path, context)
+          switch (effect.read, effect.write) {
+            case (false, false): return NoneBehavior
+            case (true, false):  return MayReadBehavior
+            case (false, true):  return MayWriteBehavior
+            case (true, true):   return MayReadWriteBehavior
+          }
+        }
+        if val.at(path).isAddressEscaping(using: EscapesToInstructionVisitor(target: inst), context) {
+          return MayReadWriteBehavior
+        }
+        return NoneBehavior
+      },
+
+      // isObjReleasedFn
+      { (bridgedCtxt: BridgedPassContext, bridgedObj: BridgedValue, bridgedInst: BridgedInstruction) -> Bool in
+        let context = PassContext(_bridged: bridgedCtxt)
+        let inst = bridgedInst.instruction
+        let obj = bridgedObj.value
+        let path = SmallProjectionPath(.anyValueFields)
+        if let apply = inst as? ApplySite {
+          let effect = getOwnershipEffect(of: apply, for: obj, path: path, context)
+          return effect.destroy
+        }
+        return obj.at(path).isEscaping(using: EscapesToInstructionVisitor(target: inst), context)
+      },
+
+      // isAddrVisibleFromObj
+      { (bridgedCtxt: BridgedPassContext, bridgedAddr: BridgedValue, bridgedObj: BridgedValue) -> Bool in
+        let context = PassContext(_bridged: bridgedCtxt)
+        let addr = bridgedAddr.value
+        let obj = bridgedObj.value
+        let path = SmallProjectionPath(.anyValueFields)
+      
+        // Is the `addr` within all reachable objects/addresses, when start walking from `obj`?
+        // Try both directions: 1. from addr -> obj
+        return addr.at(path).isAddressEscaping(using: EscapesToValueVisitor(target: obj.at(SmallProjectionPath())), context)
+      },
+
+      // canReferenceSameFieldFn
+      { (bridgedCtxt: BridgedPassContext, bridgedLhs: BridgedValue, bridgedRhs: BridgedValue) -> Bool in
+        let context = PassContext(_bridged: bridgedCtxt)
+        let lhs = bridgedLhs.value.at(AliasAnalysis.getPtrOrAddressPath(for: bridgedLhs.value))
+        let rhs = bridgedRhs.value.at(AliasAnalysis.getPtrOrAddressPath(for: bridgedRhs.value))
+        return lhs.canAddressAlias(with: rhs, context)
+      }
+    )
+  }
+}
+
+private func getMemoryEffect(of apply: ApplySite, for address: Value, path: SmallProjectionPath, _ context: PassContext) -> SideEffects.Memory {
+
+  struct Visitor : EscapeVisitorWithResult {
+    let apply: ApplySite
+    let calleeAnalysis: CalleeAnalysis
+    var result = SideEffects.Memory.worstEffects
+
+    mutating func visitUse(operand: Operand, path: EscapePath) -> UseResult {
+      let user = operand.instruction
+      if user is ReturnInst {
+        // Anything which is returned cannot escape to an instruction inside the function.
+        return .ignore
+      }
+      if user == apply {
+        if let argIdx = apply.argumentIndex(of: operand) {
+          let newEffects = calleeAnalysis.getMemoryEffect(of: apply, for: argIdx, path: path.projectionPath)
+          result.merge(with: newEffects)
+        }
+      }
+      return .continueWalk
+    }
+  }
+
+  let visitor = Visitor(apply: apply, calleeAnalysis: context.calleeAnalysis)
+  if let result = address.at(path).visitAddress(using: visitor, context) {
+    return result
+  }
+  return .worstEffects
+}
+
+private func getOwnershipEffect(of apply: ApplySite, for value: Value, path: SmallProjectionPath, _ context: PassContext) -> SideEffects.Ownership {
+  struct Visitor : EscapeVisitorWithResult {
+    let apply: ApplySite
+    let calleeAnalysis: CalleeAnalysis
+    var result = SideEffects.Ownership.worstEffects
+
+    mutating func visitUse(operand: Operand, path: EscapePath) -> UseResult {
+      let user = operand.instruction
+      if user is ReturnInst {
+        // Anything which is returned cannot escape to an instruction inside the function.
+        return .ignore
+      }
+      if user == apply {
+        if let argIdx = apply.argumentIndex(of: operand) {
+          let newEffects = calleeAnalysis.getOwnershipEffect(of: apply, for: argIdx, path: path.projectionPath)
+          result.merge(with: newEffects)
+        }
+      }
+      return .continueWalk
+    }
+  }
+
+  let visitor = Visitor(apply: apply, calleeAnalysis: context.calleeAnalysis)
+  if let result = value.at(path).visit(using: visitor, context) {
+    return result
+  }
+  return .worstEffects
 }

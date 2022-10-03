@@ -581,7 +581,7 @@ extension StringParser {
     repeat {
       if consume("read")         { globalEffects.memory.read = true }
       else if consume("write")   { globalEffects.memory.write = true }
-      else if consume("copie")   { globalEffects.ownership.copy = true }
+      else if consume("copy")   { globalEffects.ownership.copy = true }
       else if consume("destroy") { globalEffects.ownership.destroy = true }
       else if consume("allocate") { globalEffects.allocates = true }
       else {

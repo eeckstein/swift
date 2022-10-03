@@ -43,6 +43,68 @@ public struct CalleeAnalysis {
     }
     return FunctionArray(bridged: bridgedDtors)
   }
+
+  public func getMemoryEffect(of apply: ApplySite, for argIdx: Int, path: SmallProjectionPath) -> SideEffects.Memory {
+    let calleeArgIdx = apply.calleeArgIndex(callerArgIndex: argIdx)
+    let convention = apply.getArgumentConvention(calleeArgIndex: calleeArgIdx)
+
+    guard let callees = getCallees(callee: apply.callee) else {
+      return SideEffects.Memory(read: true, write: !convention.isIndirectIn)
+    }
+  
+    var effects = SideEffects.Memory(read: false, write: false)
+
+    for callee in callees {
+      if let sideEffects = callee.effects.sideEffects {
+        let argEffect = sideEffects.getArgumentEffects(for: calleeArgIdx)
+        if let effectPath = argEffect.read, effectPath.mayOverlap(with: path) {
+          effects.read = true
+        }
+        if let effectPath = argEffect.write, effectPath.mayOverlap(with: path) {
+          effects.write = true
+        }
+      } else {
+        let calleeEffects = callee.getDefinedSideEffects(forArgument: calleeArgIdx)
+        effects.merge(with: calleeEffects.memory)
+      }
+      if effects == .worstEffects { break }
+    }
+    if convention.isIndirectIn {
+      effects.write = false
+    }
+    return effects
+  }
+
+  public func getOwnershipEffect(of apply: ApplySite, for argIdx: Int, path: SmallProjectionPath) -> SideEffects.Ownership {
+    let calleeArgIdx = apply.calleeArgIndex(callerArgIndex: argIdx)
+    let convention = apply.getArgumentConvention(calleeArgIndex: calleeArgIdx)
+
+    guard let callees = getCallees(callee: apply.callee) else {
+      return SideEffects.Ownership(copy: true, destroy: !convention.isGuaranteed)
+    }
+  
+    var effects = SideEffects.Ownership(copy: false, destroy: false)
+
+    for callee in callees {
+      if let sideEffects = callee.effects.sideEffects {
+        let argEffect = sideEffects.getArgumentEffects(for: calleeArgIdx)
+        if let effectPath = argEffect.copy, effectPath.mayOverlap(with: path) {
+          effects.copy = true
+        }
+        if let effectPath = argEffect.destroy, effectPath.mayOverlap(with: path) {
+          effects.destroy = true
+        }
+      } else {
+        let calleeEffects = callee.getDefinedSideEffects(forArgument: calleeArgIdx)
+        effects.merge(with: calleeEffects.ownership)
+      }
+      if effects == .worstEffects { break }
+    }
+    if convention.isGuaranteed {
+      effects.destroy = false
+    }
+    return effects
+  }
 }
 
 public struct FunctionArray : RandomAccessCollection, FormattedLikeArray {
