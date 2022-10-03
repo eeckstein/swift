@@ -945,8 +945,8 @@ parseEffects(StringRef attrs, bool fromSIL, int argumentIndex, bool isDerived,
              ArrayRef<StringRef> paramNames) {
   if (parseFunction) {
     BridgedParsingError error = parseFunction(
-        {this}, attrs, (SwiftInt)fromSIL,
-        (SwiftInt)argumentIndex, (SwiftInt)isDerived,
+        {this}, attrs, fromSIL,
+        (SwiftInt)argumentIndex, isDerived,
         {(const unsigned char *)paramNames.data(), paramNames.size()});
     return {(const char *)error.message, (int)error.position};
   }
@@ -968,7 +968,7 @@ void SILFunction::copyEffects(SILFunction *from) {
 bool SILFunction::hasArgumentEffects() const {
   if (getEffectInfoFunction) {
     BridgedFunction f = {const_cast<SILFunction *>(this)};
-    return getEffectInfoFunction(f, 0).argumentIndex >= 0;
+    return getEffectInfoFunction(f, 0).isValid;
   }
   return false;
 }
@@ -982,7 +982,7 @@ visitArgEffects(std::function<void(int, int, bool)> c) const {
   BridgedFunction bridgedFn = {const_cast<SILFunction *>(this)};
   while (true) {
     BridgedEffectInfo ei = getEffectInfoFunction(bridgedFn, idx);
-    if (ei.argumentIndex < 0)
+    if (!ei.isValid)
       return;
     c(idx, ei.argumentIndex, ei.isDerived);
     idx++;

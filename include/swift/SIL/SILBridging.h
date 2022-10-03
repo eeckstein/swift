@@ -219,6 +219,7 @@ typedef enum {
 struct BridgedEffectInfo {
   SwiftInt argumentIndex;
   bool isDerived;
+  bool isValid;
 };
 
 void registerBridgedClass(llvm::StringRef className, SwiftMetatype metatype);
@@ -230,7 +231,7 @@ typedef void (* _Nonnull FunctionWriteFn)(BridgedFunction,
                                           BridgedOStream, SwiftInt);
 typedef BridgedParsingError (*_Nonnull FunctionParseFn)(BridgedFunction,
                                                         llvm::StringRef,
-                                                        SwiftInt, SwiftInt, SwiftInt,
+                                                        bool, SwiftInt, bool,
                                                         BridgedArrayRef);
 typedef SwiftInt (* _Nonnull FunctionCopyEffectsFn)(BridgedFunction,
                                                     BridgedFunction);

@@ -743,13 +743,15 @@ SILDeserializer::readSILFunctionChecked(DeclID FID, SILFunction *existingFn,
     if (kind == SIL_ARG_EFFECTS_ATTR) {
       IdentifierID effectID;
       unsigned isDerived;
+      unsigned isGlobalSideEffects;
       unsigned argumentIndex;
-      SILArgEffectsAttrLayout::readRecord(scratch, effectID,
-                                          argumentIndex, isDerived);
+      SILArgEffectsAttrLayout::readRecord(scratch, effectID, argumentIndex,
+                                          isGlobalSideEffects, isDerived);
       if (shouldAddEffectAttrs) {
         StringRef effectStr = MF->getIdentifierText(effectID);
+        int argIdx = (isGlobalSideEffects ? -1 : (int)argumentIndex);
         auto error = fn->parseEffects(effectStr, /*fromSIL*/ true,
-                                      argumentIndex, isDerived, {});
+                                      argIdx, isDerived, {});
         (void)error;
         assert(!error.first && "effects deserialization error");
       }
