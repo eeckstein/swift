@@ -608,6 +608,13 @@ final public class StrongCopyUnmanagedValueInst : SingleValueInstruction, UnaryI
 
 final public class EndCOWMutationInst : SingleValueInstruction, UnaryInstruction {}
 
+final public class CopyBlockInst : SingleValueInstruction, UnaryInstruction {}
+
+final public class CopyBlockWithoutEscapingInst : SingleValueInstruction {
+  public var block: Value { operands[0].value }
+  public var closure: Value { operands[1].value }
+}
+
 final public
 class ClassifyBridgeObjectInst : SingleValueInstruction, UnaryInstruction {}
 
