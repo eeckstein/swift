@@ -118,6 +118,7 @@ extension ProjectedValue {
                                                       _ context: PassContext) -> V.Result? {
     var walker = EscapeWalker(visitor: visitor, analyzeAddresses: false, context)
     if walker.walkDown(addressOrValue: value, path: escapePath(path)) == .abortWalk {
+      walker.visitor.dropResult()
       return nil
     }
     return walker.visitor.result
@@ -162,6 +163,11 @@ extension Value {
   /// The un-projected version of `ProjectedValue.visit()`.
   func visit<V: EscapeVisitorWithResult>(using visitor: V, _ context: PassContext) -> V.Result? {
     return self.at(SmallProjectionPath()).visit(using: visitor, context)
+  }
+
+  /// The un-projected version of `ProjectedValue.visitByWalkingDown()`.
+  func visitByWalkingDown<V: EscapeVisitorWithResult>(using visitor: V, _ context: PassContext) -> V.Result? {
+    return self.at(SmallProjectionPath()).visitByWalkingDown(using: visitor, context)
   }
 }
 
@@ -210,6 +216,13 @@ extension EscapeVisitor {
 protocol EscapeVisitorWithResult : EscapeVisitor {
   associatedtype Result
   var result: Result { get }
+
+  /// Called when the result is _not_ used.
+  mutating func dropResult()
+}
+
+extension EscapeVisitorWithResult {
+  mutating func dropResult() {}
 }
 
 /// Lets `ProjectedValue.isEscaping` return true if the value is "escaping" to the `target` value.
