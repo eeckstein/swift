@@ -445,6 +445,8 @@ BridgedInstruction SILBuilder_createCopyAddr(BridgedBuilder builder,
           SwiftInt takeSource, SwiftInt initializeDest);
 BridgedInstruction SILBuilder_createDestroyValue(BridgedBuilder builder,
           BridgedValue op);
+BridgedInstruction SILBuilder_createStrongRetain(BridgedBuilder b,
+          BridgedValue op);
 BridgedInstruction SILBuilder_createApply(BridgedBuilder builder,
           BridgedValue function, swift::SubstitutionMap subMap,
           BridgedValueArray arguments);

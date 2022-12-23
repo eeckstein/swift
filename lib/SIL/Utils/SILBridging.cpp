@@ -1120,6 +1120,14 @@ BridgedInstruction SILBuilder_createDestroyValue(BridgedBuilder b,
                                      castToSILValue(op))};
 }
 
+BridgedInstruction SILBuilder_createStrongRetain(BridgedBuilder b,
+                                                 BridgedValue op) {
+  SILBuilder builder(castToInst(b.insertBefore), castToBasicBlock(b.insertAtEnd),
+                     b.loc.getScope());
+  return {builder.createStrongRetain(RegularLocation(b.loc.getLocation()),
+                                     castToSILValue(op), builder.getDefaultAtomicity())};
+}
+
 BridgedInstruction SILBuilder_createApply(BridgedBuilder b,
                                           BridgedValue function,
                                           SubstitutionMap subMap,

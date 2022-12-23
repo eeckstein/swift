@@ -144,6 +144,12 @@ public struct Builder {
   }
 
   @discardableResult
+  public func createStrongRetain(operand: Value) -> StrongRetainInst {
+    notifyInstructionsChanged()
+    return SILBuilder_createStrongRetain(bridged, operand.bridged).getAs(StrongRetainInst.self)
+  }
+
+  @discardableResult
   public func createApply(
     function: Value,
     _ substitutionMap: SubstitutionMap,
