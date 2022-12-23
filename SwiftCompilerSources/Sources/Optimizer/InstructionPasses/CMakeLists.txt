@@ -8,5 +8,6 @@
 
 swift_compiler_sources(Optimizer
   SimplifyBeginCOWMutation.swift
+  SimplifyCopyBlock.swift
   SimplifyGlobalValue.swift
   SimplifyStrongRetainRelease.swift)

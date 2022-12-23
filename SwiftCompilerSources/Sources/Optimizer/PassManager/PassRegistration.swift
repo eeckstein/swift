@@ -62,6 +62,7 @@ private func registerSwiftPasses() {
 
   // Instruction passes
   registerPass(simplifyBeginCOWMutationPass, { simplifyBeginCOWMutationPass.run($0) })
+  registerPass(simplifyCopyBlockPass, { simplifyCopyBlockPass.run($0) })
   registerPass(simplifyGlobalValuePass, { simplifyGlobalValuePass.run($0) })
   registerPass(simplifyStrongRetainPass, { simplifyStrongRetainPass.run($0) })
   registerPass(simplifyStrongReleasePass, { simplifyStrongReleasePass.run($0) })

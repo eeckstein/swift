@@ -466,6 +466,7 @@ PASS(PruneVTables, "prune-vtables",
 PASS_RANGE(AllPasses, AADumper, PruneVTables)
 
 SWIFT_INSTRUCTION_PASS(BeginCOWMutationInst, "simplify-begin_cow_mutation")
+SWIFT_INSTRUCTION_PASS(CopyBlockInst, "simplify-copy_block")
 SWIFT_INSTRUCTION_PASS(GlobalValueInst, "simplify-global_value")
 SWIFT_INSTRUCTION_PASS(StrongRetainInst, "simplify-strong_retain")
 SWIFT_INSTRUCTION_PASS(StrongReleaseInst, "simplify-strong_release")

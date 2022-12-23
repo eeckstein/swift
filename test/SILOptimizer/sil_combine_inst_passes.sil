@@ -127,3 +127,121 @@ bb0:
   return %16 : $Int
 }
 
+// CHECK-LABEL: sil @remove_copy_block_simple
+// CHECK-NOT:     copy_block
+// CHECK:         apply {{%[0-9]+}}(%0)
+// CHECK-NOT:     strong_release
+// CHECK:       } // end sil function 'remove_copy_block_simple'
+sil @remove_copy_block_simple : $@convention(c) (@convention(block) () -> ()) -> () {
+bb0(%0 : $@convention(block) () -> ()):
+  %1 = copy_block %0 : $@convention(block) () -> ()
+  %2 = function_ref @non_escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  strong_release %1 : $@convention(block) () -> ()
+  return %3 : $()
+}
+
+// CHECK-LABEL: sil [ossa] @remove_copy_block_ossa
+// CHECK-NOT:     copy_block
+// CHECK:         apply {{%[0-9]+}}(%0)
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'remove_copy_block_ossa'
+sil [ossa] @remove_copy_block_ossa : $@convention(c) (@convention(block) () -> ()) -> () {
+bb0(%0 : @unowned $@convention(block) () -> ()):
+  %1 = copy_block %0 : $@convention(block) () -> ()
+  %2 = function_ref @non_escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  destroy_value %1 : $@convention(block) () -> ()
+  return %3 : $()
+}
+
+// CHECK-LABEL: sil @remove_copy_block_two_releases
+// CHECK-NOT:     copy_block
+// CHECK:         apply {{%[0-9]+}}(%0)
+// CHECK-NOT:     strong_release
+// CHECK:       } // end sil function 'remove_copy_block_two_releases'
+sil @remove_copy_block_two_releases : $@convention(c) (@convention(block) () -> ()) -> () {
+bb0(%0 : $@convention(block) () -> ()):
+  %1 = copy_block %0 : $@convention(block) () -> ()
+  %2 = function_ref @non_escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  cond_br undef, bb1, bb2
+bb1:
+  strong_release %1 : $@convention(block) () -> ()
+  br bb3
+bb2:
+  strong_release %1 : $@convention(block) () -> ()
+  br bb3
+bb3:
+  return %3 : $()
+}
+
+// CHECK-LABEL: sil @dont_remove_escaping_copy_block
+// CHECK:         [[B:%[0-9]+]] = copy_block %0
+// CHECK:         apply {{%[0-9]+}}([[B]])
+// CHECK:         strong_release [[B]]
+// CHECK:       } // end sil function 'dont_remove_escaping_copy_block'
+sil @dont_remove_escaping_copy_block : $@convention(c) (@convention(block) () -> ()) -> () {
+bb0(%0 : $@convention(block) () -> ()):
+  %1 = copy_block %0 : $@convention(block) () -> ()
+  %2 = function_ref @escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  strong_release %1 : $@convention(block) () -> ()
+  return %3 : $()
+}
+
+// CHECK-LABEL: sil @dont_remove_copy_block_with_missing_release
+// CHECK:         [[B:%[0-9]+]] = copy_block %0
+// CHECK:         strong_release [[B]]
+// CHECK:         apply {{%[0-9]+}}([[B]])
+// CHECK:       } // end sil function 'dont_remove_copy_block_with_missing_release'
+sil @dont_remove_copy_block_with_missing_release : $@convention(c) (@convention(block) () -> ()) -> () {
+bb0(%0 : $@convention(block) () -> ()):
+  %1 = copy_block %0 : $@convention(block) () -> ()
+  cond_br undef, bb1, bb2
+bb1:
+  strong_release %1 : $@convention(block) () -> ()
+  br bb3
+bb2:
+  %2 = function_ref @take_block : $@convention(thin) (@owned @convention(block) () -> ()) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@owned @convention(block) () -> ()) -> ()
+  br bb3
+bb3:
+  %r = tuple ()
+  return %r : $()
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_non_argument_copy_block
+// CHECK:         [[B:%[0-9]+]] = copy_block %0
+// CHECK:         apply {{%[0-9]+}}([[B]])
+// CHECK:         destroy_value [[B]]
+// CHECK:       } // end sil function 'dont_remove_non_argument_copy_block'
+sil [ossa] @dont_remove_non_argument_copy_block : $@convention(c) (@owned @callee_guaranteed () -> ()) -> () {
+bb0(%0 : @owned $@callee_guaranteed () -> ()):
+  %1 = alloc_stack $@block_storage @callee_guaranteed () -> ()
+  %2 = project_block_storage %1 : $*@block_storage @callee_guaranteed () -> ()
+  store %0 to [init] %2 : $*@callee_guaranteed () -> ()
+  %t = function_ref @thunkForCalleeGuaranteed : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
+  %4 = init_block_storage_header %1 : $*@block_storage @callee_guaranteed () -> (), invoke %t : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> (), type $@convention(block) () -> ()
+  %5 = copy_block %4 : $@convention(block) () -> ()
+  destroy_addr %2 : $*@callee_guaranteed() -> ()
+  dealloc_stack %1 : $*@block_storage @callee_guaranteed () -> ()
+
+  %8 = function_ref @non_escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  %9 = apply %8(%5) : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+  destroy_value %5 : $@convention(block) () -> ()
+  return %9 : $()
+}
+
+sil @non_escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> () {
+[%0: noescape **]
+}
+
+sil @escaping_block : $@convention(thin) (@guaranteed @convention(block) () -> ()) -> ()
+
+sil @take_block : $@convention(thin) (@owned @convention(block) () -> ()) -> () {
+[%0: noescape **]
+}
+
+sil [reabstraction_thunk] @thunkForCalleeGuaranteed : $@convention(c) (@inout_aliasable @block_storage @callee_guaranteed () -> ()) -> ()
+
