@@ -217,21 +217,21 @@ CONSTANT_OR_NONE_OWNERSHIP_INST(Unowned, UncheckedBitwiseCast)
                ? ValueOwnershipKind(OwnershipKind::None)                       \
                : I->getForwardingOwnershipKind();                              \
   }
-FORWARDING_OWNERSHIP_INST(BridgeObjectToRef)
-FORWARDING_OWNERSHIP_INST(ConvertFunction)
-FORWARDING_OWNERSHIP_INST(OpenExistentialRef)
-FORWARDING_OWNERSHIP_INST(RefToBridgeObject)
+/*-*/ FORWARDING_OWNERSHIP_INST(BridgeObjectToRef)
+/*-*/ FORWARDING_OWNERSHIP_INST(ConvertFunction)
+/*-*/ FORWARDING_OWNERSHIP_INST(OpenExistentialRef)
+/*-*/ FORWARDING_OWNERSHIP_INST(RefToBridgeObject)
 FORWARDING_OWNERSHIP_INST(Object)
 FORWARDING_OWNERSHIP_INST(Struct)
 FORWARDING_OWNERSHIP_INST(Tuple)
-FORWARDING_OWNERSHIP_INST(UncheckedRefCast)
-FORWARDING_OWNERSHIP_INST(UnconditionalCheckedCast)
-FORWARDING_OWNERSHIP_INST(Upcast)
-FORWARDING_OWNERSHIP_INST(UncheckedValueCast)
-FORWARDING_OWNERSHIP_INST(UncheckedEnumData)
-FORWARDING_OWNERSHIP_INST(SelectEnum)
-FORWARDING_OWNERSHIP_INST(Enum)
-FORWARDING_OWNERSHIP_INST(MarkDependence)
+/*-*/ FORWARDING_OWNERSHIP_INST(UncheckedRefCast)
+/*-*/ FORWARDING_OWNERSHIP_INST(UnconditionalCheckedCast)
+/*-*/ FORWARDING_OWNERSHIP_INST(Upcast)
+/*-*/ FORWARDING_OWNERSHIP_INST(UncheckedValueCast)
+/*-*/ FORWARDING_OWNERSHIP_INST(UncheckedEnumData)
+/*-*/ FORWARDING_OWNERSHIP_INST(SelectEnum)
+/*-*/ FORWARDING_OWNERSHIP_INST(Enum)
+/*-*/ FORWARDING_OWNERSHIP_INST(MarkDependence)
 // NOTE: init_existential_ref from a reference counting perspective is not
 // considered to be "owned" since it doesn't affect reference counts. That being
 // said in the past, we wanted to conceptually treat it as an owned value that
@@ -241,9 +241,9 @@ FORWARDING_OWNERSHIP_INST(MarkDependence)
 // value and need to wrap the class in an existential wrapper in an intermediate
 // frame from usage. In such cases, we have been creating unnecessary ref count
 // traffic in code.
-FORWARDING_OWNERSHIP_INST(InitExistentialRef)
-FORWARDING_OWNERSHIP_INST(DifferentiableFunction)
-FORWARDING_OWNERSHIP_INST(LinearFunction)
+/*-*/ FORWARDING_OWNERSHIP_INST(InitExistentialRef)
+/*-*/ FORWARDING_OWNERSHIP_INST(DifferentiableFunction)
+/*-*/ FORWARDING_OWNERSHIP_INST(LinearFunction)
 FORWARDING_OWNERSHIP_INST(MarkMustCheck)
 FORWARDING_OWNERSHIP_INST(MoveOnlyWrapperToCopyableValue)
 FORWARDING_OWNERSHIP_INST(CopyableToMoveOnlyWrapperValue)
