@@ -1683,13 +1683,25 @@ public:
   }
 
   void printForwardingOwnershipKind(OwnershipForwardingMixin *inst,
-                                    SILValue op) {
-    if (!op)
-      return;
-
-    if (inst->getForwardingOwnershipKind() != op->getOwnershipKind()) {
+                                    ValueOwnershipKind kind) {
+    if (inst->getForwardingOwnershipKind() != kind) {
       *this << ", forwarding: @" << inst->getForwardingOwnershipKind();
     }
+  }
+
+  void printForwardingOwnershipKind(OwnershipForwardingMixin *inst,
+                                    SILValue op) {
+    if (op)
+      printForwardingOwnershipKind(inst, op->getOwnershipKind());
+  }
+
+  void printForwardingOwnershipKind(OwnershipForwardingMixin *inst,
+                                    ArrayRef<Operand> operands) {
+    auto range = makeTransformRange(operands,
+                                    [](const Operand &op) {
+                                      return op.get()->getOwnershipKind();
+                                    });
+    printForwardingOwnershipKind(inst, ValueOwnershipKind::merge(range));
   }
 
   void visitStoreInst(StoreInst *SI) {
@@ -2054,6 +2066,7 @@ public:
         SI->getElements(), [&](const SILValue &V) { *this << getIDAndType(V); },
         [&] { *this << ", "; });
     *this << ')';
+    printForwardingOwnershipKind(SI, SI->getAllOperands());
   }
 
   void visitObjectInst(ObjectInst *OI) {
@@ -2100,6 +2113,7 @@ public:
           [&] { *this << ", "; });
       *this << ')';
     }
+    printForwardingOwnershipKind(TI, TI->getAllOperands());
   }
   
   void visitEnumInst(EnumInst *UI) {
