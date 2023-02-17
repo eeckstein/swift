@@ -31,12 +31,6 @@ public:
   ValueOwnershipKindClassifier(const ValueOwnershipKindClassifier &) = delete;
   ValueOwnershipKindClassifier(ValueOwnershipKindClassifier &&) = delete;
 
-  ValueOwnershipKind visitForwardingInst(SILInstruction *I,
-                                         ArrayRef<Operand> Ops);
-  ValueOwnershipKind visitForwardingInst(SILInstruction *I) {
-    return visitForwardingInst(I, I->getAllOperands());
-  }
-
 #define VALUE(Id, Parent) ValueOwnershipKind visit##Id(Id *ID);
 #include "swift/SIL/SILNodes.def"
 };
@@ -215,35 +209,6 @@ CONSTANT_OR_NONE_OWNERSHIP_INST(Owned, MarkUninitialized)
 CONSTANT_OR_NONE_OWNERSHIP_INST(Unowned, UncheckedBitwiseCast)
 
 #undef CONSTANT_OR_NONE_OWNERSHIP_INST
-
-// For a forwarding instruction, we loop over all operands and make sure that
-// all non-trivial values have the same ownership.
-ValueOwnershipKind
-ValueOwnershipKindClassifier::visitForwardingInst(SILInstruction *i,
-                                                  ArrayRef<Operand> ops) {
-  // A forwarding inst without operands must be trivial.
-  if (ops.empty())
-    return OwnershipKind::None;
-
-  auto mergedValue = ValueOwnershipKind::merge(makeOptionalTransformRange(
-      ops, [&i](const Operand &op) -> Optional<ValueOwnershipKind> {
-        if (i->isTypeDependentOperand(op))
-          return None;
-        return op.get()->getOwnershipKind();
-      }));
-
-  if (!mergedValue) {
-    // If we have mismatched SILOwnership and sil ownership is not enabled,
-    // just return None for staging purposes. If SILOwnership is enabled, then
-    // we must assert!
-    if (!i->getModule().getOptions().VerifySILOwnership) {
-      return OwnershipKind::None;
-    }
-    llvm_unreachable("Forwarding inst with mismatching ownership kinds?!");
-  }
-
-  return mergedValue;
-}
 
 #define FORWARDING_OWNERSHIP_INST(INST)                                        \
   ValueOwnershipKind ValueOwnershipKindClassifier::visit##INST##Inst(          \
