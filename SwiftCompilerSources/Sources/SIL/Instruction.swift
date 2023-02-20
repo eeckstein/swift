@@ -641,6 +641,7 @@ extension BeginAccessInst : ScopedInstruction {
 
 final public class BeginBorrowInst : SingleValueInstruction, UnaryInstruction {
   public var borrowedValue: Value { operand.value }
+  public var isLexical: Bool { BeginBorrowInst_isLexical(bridged) }
 }
 
 final public class ProjectBoxInst : SingleValueInstruction, UnaryInstruction {

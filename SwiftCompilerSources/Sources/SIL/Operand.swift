@@ -37,7 +37,9 @@ public struct Operand : CustomStringConvertible, NoReflectionChildren {
   /// True if the operand is used to describe a type dependency, but it's not
   /// used as value.
   public var isTypeDependent: Bool { Operand_isTypeDependent(bridged) != 0 }
-  
+
+  public var ownership: OperandOwnershipKind { Operand_getOwnership(bridged) }
+
   public var description: String { "operand #\(index) of \(instruction)" }
 }
 

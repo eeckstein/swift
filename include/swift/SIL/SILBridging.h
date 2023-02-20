@@ -305,10 +305,28 @@ OptionalBridgedSuccessor SILSuccessor_getNext(BridgedSuccessor succ);
 BridgedBasicBlock SILSuccessor_getTargetBlock(BridgedSuccessor succ);
 BridgedInstruction SILSuccessor_getContainingInst(BridgedSuccessor succ);
 
+enum class OperandOwnershipKind {
+  nonUse,
+  trivialUse,
+  instantaneousUse,
+  unownedInstantaneousUse,
+  forwardingUnowned,
+  pointerEscape,
+  bitwiseEscape,
+  borrow,
+  destroyingConsume,
+  forwardingConsume,
+  interiorPointer,
+  guaranteedForwarding,
+  endBorrow,
+  reborrow
+};
+
 BridgedValue Operand_getValue(BridgedOperand);
 OptionalBridgedOperand Operand_nextUse(BridgedOperand);
 BridgedInstruction Operand_getUser(BridgedOperand);
 SwiftInt Operand_isTypeDependent(BridgedOperand);
+OperandOwnershipKind Operand_getOwnership(BridgedOperand);
 
 std::string SILNode_debugDescription(BridgedNode node);
 OptionalBridgedOperand SILValue_firstUse(BridgedValue value);
@@ -390,6 +408,7 @@ SwiftInt TupleElementAddrInst_fieldIndex(BridgedInstruction teai);
 SwiftInt StructExtractInst_fieldIndex(BridgedInstruction sei);
 OptionalBridgedValue StructInst_getUniqueNonTrivialFieldValue(BridgedInstruction si);
 SwiftInt StructElementAddrInst_fieldIndex(BridgedInstruction seai);
+bool BeginBorrowInst_isLexical(BridgedInstruction bbi);
 SwiftInt ProjectBoxInst_fieldIndex(BridgedInstruction pbi);
 SwiftInt EnumInst_caseIndex(BridgedInstruction ei);
 SwiftInt UncheckedEnumDataInst_caseIndex(BridgedInstruction uedi);
@@ -420,6 +439,7 @@ SwiftInt CopyAddrInst_isTakeOfSrc(BridgedInstruction copyAddr);
 SwiftInt CopyAddrInst_isInitializationOfDest(BridgedInstruction copyAddr);
 void RefCountingInst_setIsAtomic(BridgedInstruction rc, bool isAtomic);
 bool RefCountingInst_getIsAtomic(BridgedInstruction rc);
+void BeginBorrowInst_removeIsLexical(BridgedInstruction bbi);
 SwiftInt CondBranchInst_getNumTrueArgs(BridgedInstruction cbr);
 
 struct KeyPathFunctionResults {
@@ -463,6 +483,8 @@ BridgedInstruction SILBuilder_createCopyValue(BridgedBuilder builder,
 BridgedInstruction SILBuilder_createCopyAddr(BridgedBuilder builder,
           BridgedValue from, BridgedValue to,
           SwiftInt takeSource, SwiftInt initializeDest);
+BridgedInstruction SILBuilder_createMoveValue(BridgedBuilder builder,
+          BridgedValue op, bool isLexical);
 BridgedInstruction SILBuilder_createDestroyValue(BridgedBuilder builder,
           BridgedValue op);
 BridgedInstruction SILBuilder_createDebugStep(BridgedBuilder builder);

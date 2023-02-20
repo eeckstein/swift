@@ -129,6 +129,10 @@ public struct Builder {
                                      takeSource ? 1 : 0, initializeDest ? 1 : 0).getAs(CopyAddrInst.self))
   }
 
+  public func createMoveValue(operand: Value, isLexical: Bool) -> MoveValueInst {
+    return notifyNew(SILBuilder_createMoveValue(bridged, operand.bridged, isLexical).getAs(MoveValueInst.self))
+  }
+
   @discardableResult
   public func createDestroyValue(operand: Value) -> DestroyValueInst {
     return notifyNew(SILBuilder_createDestroyValue(bridged, operand.bridged).getAs(DestroyValueInst.self))

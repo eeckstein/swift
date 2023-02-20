@@ -270,6 +270,12 @@ extension UseList {
       use.instruction.setOperand(at: use.index, to: replacement, context)
     }
   }
+
+  func replaceAll(with replacement: Value, except exceptInstruction: Instruction, _ context: some MutatingContext) {
+    for use in self where use.instruction != exceptInstruction {
+      use.instruction.setOperand(at: use.index, to: replacement, context)
+    }
+  }
 }
 
 extension Instruction {
@@ -287,6 +293,14 @@ extension RefCountingInst {
   func setAtomicity(isAtomic: Bool, _ context: some MutatingContext) {
     context.notifyInstructionsChanged()
     RefCountingInst_setIsAtomic(bridged, isAtomic)
+    context.notifyInstructionChanged(self)
+  }
+}
+
+extension BeginBorrowInst {
+  func removeIsLexical(_ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    BeginBorrowInst_removeIsLexical(bridged)
     context.notifyInstructionChanged(self)
   }
 }

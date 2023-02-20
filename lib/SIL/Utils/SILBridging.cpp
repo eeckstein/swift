@@ -463,6 +463,25 @@ SwiftInt Operand_isTypeDependent(BridgedOperand operand) {
   return castToOperand(operand)->isTypeDependent() ? 1 : 0;
 }
 
+OperandOwnershipKind Operand_getOwnership(BridgedOperand operand) {
+  switch (castToOperand(operand)->getOperandOwnership()) {
+    case OperandOwnership::NonUse: return OperandOwnershipKind::nonUse;
+    case OperandOwnership::TrivialUse: return OperandOwnershipKind::trivialUse;
+    case OperandOwnership::InstantaneousUse: return OperandOwnershipKind::instantaneousUse;
+    case OperandOwnership::UnownedInstantaneousUse: return OperandOwnershipKind::unownedInstantaneousUse;
+    case OperandOwnership::ForwardingUnowned: return OperandOwnershipKind::forwardingUnowned;
+    case OperandOwnership::PointerEscape: return OperandOwnershipKind::pointerEscape;
+    case OperandOwnership::BitwiseEscape: return OperandOwnershipKind::bitwiseEscape;
+    case OperandOwnership::Borrow: return OperandOwnershipKind::borrow;
+    case OperandOwnership::DestroyingConsume: return OperandOwnershipKind::destroyingConsume;
+    case OperandOwnership::ForwardingConsume: return OperandOwnershipKind::forwardingConsume;
+    case OperandOwnership::InteriorPointer: return OperandOwnershipKind::interiorPointer;
+    case OperandOwnership::GuaranteedForwarding: return OperandOwnershipKind::guaranteedForwarding;
+    case OperandOwnership::EndBorrow: return OperandOwnershipKind::endBorrow;
+    case OperandOwnership::Reborrow: return OperandOwnershipKind::reborrow;
+  }
+}
+
 OptionalBridgedOperand SILValue_firstUse(BridgedValue value) {
   return {*castToSILValue(value)->use_begin()};
 }
@@ -936,6 +955,10 @@ SwiftInt StructElementAddrInst_fieldIndex(BridgedInstruction seai) {
   return castToInst<StructElementAddrInst>(seai)->getFieldIndex();
 }
 
+bool BeginBorrowInst_isLexical(BridgedInstruction bbi) {
+  return castToInst<BeginBorrowInst>(bbi)->isLexical();
+}
+
 SwiftInt ProjectBoxInst_fieldIndex(BridgedInstruction pbi) {
   return castToInst<ProjectBoxInst>(pbi)->getFieldIndex();
 }
@@ -1051,6 +1074,10 @@ void RefCountingInst_setIsAtomic(BridgedInstruction rc, bool isAtomic) {
   castToInst<RefCountingInst>(rc)->setAtomicity(
       isAtomic ? RefCountingInst::Atomicity::Atomic
                : RefCountingInst::Atomicity::NonAtomic);
+}
+
+void BeginBorrowInst_removeIsLexical(BridgedInstruction bbi) {
+  castToInst<BeginBorrowInst>(bbi)->removeIsLexical();
 }
 
 bool RefCountingInst_getIsAtomic(BridgedInstruction rc) {
@@ -1208,6 +1235,14 @@ BridgedInstruction SILBuilder_createCopyAddr(BridgedBuilder b,
                                  castToSILValue(from), castToSILValue(to),
                                  IsTake_t(takeSource != 0),
                                  IsInitialization_t(initializeDest != 0))};
+}
+
+BridgedInstruction SILBuilder_createMoveValue(BridgedBuilder b,
+          BridgedValue op, bool isLexical) {
+  SILBuilder builder(castToInst(b.insertBefore), castToBasicBlock(b.insertAtEnd),
+                     b.loc.getScope());
+  return {builder.createMoveValue(RegularLocation(b.loc.getLocation()),
+                                     castToSILValue(op), isLexical)};
 }
 
 BridgedInstruction SILBuilder_createDestroyValue(BridgedBuilder b,
