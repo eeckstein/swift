@@ -389,6 +389,8 @@ PASS(SROA, "sroa",
      "Scalar Replacement of Aggregate Stack Objects")
 PASS(SROABBArgs, "sroa-bb-args",
      "Scalar Replacement of Aggregate SIL Block Arguments")
+SWIFT_FUNCTION_PASS(BorrowElimination, "borrow-elimination",
+     "Eliminate redundant borrow instructions")
 SWIFT_FUNCTION_PASS(Simplification, "simplification",
     "Peephole simplifications")
 SWIFT_FUNCTION_PASS(OnoneSimplification, "onone-simplification",

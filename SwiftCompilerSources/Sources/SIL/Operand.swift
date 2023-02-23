@@ -116,3 +116,28 @@ public struct UseList : CollectionLikeSequence {
     return Iterator(currentOpPtr: firstOpPtr)
   }
 }
+
+public extension OperandOwnershipKind {
+  var isConsuming: Bool {
+    switch self {
+    case .trivialUse,
+         .nonUse,
+         .instantaneousUse,
+         .unownedInstantaneousUse,
+         .forwardingUnowned,
+         .pointerEscape,
+         .bitwiseEscape,
+         .borrow,
+         .interiorPointer,
+         .guaranteedForwarding,
+         .endBorrow,
+         .reborrow:
+      return false
+    case .destroyingConsume,
+         .forwardingConsume:
+      return true
+    default:
+      fatalError()
+    }
+  }
+}

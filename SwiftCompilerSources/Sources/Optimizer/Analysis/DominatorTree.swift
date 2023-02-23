@@ -26,3 +26,37 @@ extension BasicBlock {
     dominates(other, domTree) && self != other
   }
 }
+
+extension Instruction {
+  func dominates(_ other: Instruction, _ domTree: DominatorTree) -> Bool {
+    if self == other {
+      return true
+    }
+    if parentBlock != other.parentBlock {
+      return parentBlock.dominates(other.parentBlock, domTree)
+    }
+    var backwardIter = self
+    var forwardIter = self
+    while true {
+      guard let prev = backwardIter.previous else {
+        return true
+      }
+      guard let next = forwardIter.next else {
+        return false
+      }
+      if prev == other {
+        return false
+      }
+      if next == other {
+        return true
+      }
+      backwardIter = prev
+      forwardIter = next
+    }
+  }
+
+  func strictlyDominates(_ other: Instruction, _ domTree: DominatorTree) -> Bool {
+    dominates(other, domTree) && self != other
+  }
+
+}

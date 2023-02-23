@@ -571,6 +571,7 @@ static void addPrepareOptimizationsPipeline(SILPassPipelinePlan &P) {
 
   P.addForEachLoopUnroll();
   P.addSimplification();
+  P.addBorrowElimination();
   P.addAccessMarkerElimination();
 }
 

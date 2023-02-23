@@ -390,6 +390,27 @@ bool Operand::canAcceptKind(ValueOwnershipKind kind,
     }
     return true;
   }
+  if (kind == OwnershipKind::Owned) {
+    switch (operandOwnership) {
+      case OperandOwnership::NonUse:
+      case OperandOwnership::TrivialUse:
+      case OperandOwnership::InstantaneousUse:
+      case OperandOwnership::UnownedInstantaneousUse:
+      case OperandOwnership::Borrow:
+      case OperandOwnership::EndBorrow:
+      case OperandOwnership::GuaranteedForwarding:
+      case OperandOwnership::InteriorPointer:
+        return true;
+
+      case OperandOwnership::ForwardingUnowned:
+      case OperandOwnership::PointerEscape:
+      case OperandOwnership::BitwiseEscape:
+      case OperandOwnership::DestroyingConsume:
+      case OperandOwnership::ForwardingConsume:
+      case OperandOwnership::Reborrow:
+        return false;
+    }
+  }
 
   return false;
 }
