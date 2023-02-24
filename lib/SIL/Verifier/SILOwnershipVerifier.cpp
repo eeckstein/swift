@@ -274,8 +274,9 @@ bool SILValueOwnershipChecker::gatherUsers(
   // forwarding, we do not create any lifetime ending users/non lifetime ending
   // users since we verify against our base.
   if (value->getOwnershipKind() != OwnershipKind::Guaranteed) {
-    return !gatherNonGuaranteedUsers(lifetimeEndingUsers,
-                                     nonLifetimeEndingUsers);
+    if (gatherNonGuaranteedUsers(lifetimeEndingUsers, nonLifetimeEndingUsers)) {
+      return false;
+    }
   }
 
   // Ok, we have a value with guaranteed ownership. Before we continue, check if
