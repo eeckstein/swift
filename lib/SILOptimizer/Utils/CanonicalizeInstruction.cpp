@@ -506,7 +506,7 @@ eliminateSimpleBorrows(BeginBorrowInst *bbi, CanonicalizeInstruction &pass) {
 
     // Otherwise, if we have a use that is non-lifetime ending and can accept
     // our base ownership, continue.
-    if (!use->isLifetimeEnding() && use->canAcceptKind(baseOwnership))
+    if (!use->isLifetimeEnding() && use->canAcceptKind(baseOwnership) && baseOwnership != OwnershipKind::Owned)
       continue;
 
     return next;

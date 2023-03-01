@@ -17,9 +17,7 @@ let borrowEliminationPass = FunctionPass(name: "borrow-elimination") {
 
   for inst in function.instructions {
     if let bi = inst as? BeginBorrowInst {
-      if bi.isLexical {
-        tryRemove(beginBorrow: bi, context)
-      }
+      tryRemove(beginBorrow: bi, context)
     }
   }
 }
