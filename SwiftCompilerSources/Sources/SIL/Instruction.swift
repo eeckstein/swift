@@ -136,7 +136,7 @@ public class Instruction : CustomStringConvertible, Hashable {
   }
 
   public var bridged: BridgedInstruction {
-    BridgedInstruction(SwiftObject(self))
+    BridgedInstruction(obj: SwiftObject(self))
   }
 }
 

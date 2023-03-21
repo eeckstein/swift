@@ -341,8 +341,6 @@ struct OptionalBridgedInstruction {
 struct BridgedInstruction {
   SwiftObject obj;
 
-  BridgedInstruction(SwiftObject obj) : obj(obj) {}
-
   template <class I> I *_Nonnull getAs() const {
     return llvm::cast<I>(static_cast<swift::SILNode *>(obj)->castToInstruction());
   }
