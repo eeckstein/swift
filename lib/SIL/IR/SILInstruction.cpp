@@ -973,7 +973,7 @@ unsigned Operand::getOperandNumber() const {
   return this - &cast<SILInstruction>(getUser())->getAllOperands()[0];
 }
 
-MemoryBehavior SILInstruction::getMemoryBehavior() const {
+SILInstruction::MemoryBehavior SILInstruction::getMemoryBehavior() const {
 
   if (auto *BI = dyn_cast<BuiltinInst>(this)) {
     // Handle Swift builtin functions.
@@ -1374,17 +1374,17 @@ unsigned SILInstruction::getCachedCaseIndex(EnumElementDecl *enumElement) {
 //===----------------------------------------------------------------------===//
 
 llvm::raw_ostream &swift::operator<<(llvm::raw_ostream &OS,
-                                     MemoryBehavior B) {
+                                     SILInstruction::MemoryBehavior B) {
   switch (B) {
-    case MemoryBehavior::None:
+    case SILInstruction::MemoryBehavior::None:
       return OS << "None";
-    case MemoryBehavior::MayRead:
+    case SILInstruction::MemoryBehavior::MayRead:
       return OS << "MayRead";
-    case MemoryBehavior::MayWrite:
+    case SILInstruction::MemoryBehavior::MayWrite:
       return OS << "MayWrite";
-    case MemoryBehavior::MayReadWrite:
+    case SILInstruction::MemoryBehavior::MayReadWrite:
       return OS << "MayReadWrite";
-    case MemoryBehavior::MayHaveSideEffects:
+    case SILInstruction::MemoryBehavior::MayHaveSideEffects:
       return OS << "MayHaveSideEffects";
   }
 

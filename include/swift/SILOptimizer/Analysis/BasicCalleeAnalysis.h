@@ -252,7 +252,7 @@ public:
     return Cache->getDestructors(type, isExactType);
   }
 
-  MemoryBehavior getMemoryBehavior(ApplySite as, bool observeRetains);
+  SILInstruction::MemoryBehavior getMemoryBehavior(ApplySite as, bool observeRetains);
 };
 
 bool isDeinitBarrier(SILInstruction *const instruction,

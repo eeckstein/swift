@@ -27,11 +27,11 @@ struct BridgedPassContext;
 struct BridgedAliasAnalysis {
   swift::AliasAnalysis * _Nonnull aa;
 
-  swift::MemoryBehavior getMemBehavior(BridgedInstruction inst, BridgedValue addr) const {
+  swift::SILInstruction::MemoryBehavior getMemBehavior(BridgedInstruction inst, BridgedValue addr) const {
     return aa->computeMemoryBehavior(inst.getInst(), addr.getSILValue());
   }
 
-  typedef swift::MemoryBehavior (* _Nonnull GetMemEffectFn)(
+  typedef swift::SILInstruction::MemoryBehavior (* _Nonnull GetMemEffectFn)(
         BridgedPassContext context, BridgedValue, BridgedInstruction);
   typedef bool (* _Nonnull Escaping2InstFn)(
         BridgedPassContext context, BridgedValue, BridgedInstruction);
@@ -61,7 +61,7 @@ struct BridgedCalleeAnalysis {
   }
 
   typedef bool (* _Nonnull IsDeinitBarrierFn)(BridgedInstruction, BridgedCalleeAnalysis bca);
-  typedef swift::MemoryBehavior (* _Nonnull GetMemBehvaiorFn)(
+  typedef swift::SILInstruction::MemoryBehavior (* _Nonnull GetMemBehvaiorFn)(
         BridgedPassContext context, BridgedInstruction apply, bool observeRetains);
 
   static void registerAnalysis(IsDeinitBarrierFn isDeinitBarrierFn,

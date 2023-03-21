@@ -279,7 +279,7 @@ struct BridgedFunction {
                                            BridgedArrayRef);
   typedef SwiftInt (* _Nonnull CopyEffectsFn)(BridgedFunction, BridgedFunction);
   typedef EffectInfo (* _Nonnull GetEffectInfoFn)(BridgedFunction, SwiftInt);
-  typedef swift::MemoryBehavior (* _Nonnull GetMemBehaviorFn)(BridgedFunction, bool);
+  typedef swift::SILInstruction::MemoryBehavior (* _Nonnull GetMemBehaviorFn)(BridgedFunction, bool);
 
   static void registerBridging(SwiftMetatype metatype,
               RegisterFn initFn, RegisterFn destroyFn,
@@ -387,7 +387,7 @@ struct BridgedInstruction {
     return getInst()->getDebugLocation();
   }
 
-  swift::MemoryBehavior getMemBehavior() const {
+  swift::SILInstruction::MemoryBehavior getMemBehavior() const {
     return getInst()->getMemoryBehavior();
   }
 

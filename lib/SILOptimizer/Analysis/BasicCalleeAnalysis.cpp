@@ -349,15 +349,15 @@ void BridgedCalleeAnalysis::registerAnalysis(IsDeinitBarrierFn instructionIsDein
   getMemBehvaiorFunction = getMemBehvaiorFn;
 }
 
-MemoryBehavior BasicCalleeAnalysis::
+SILInstruction::MemoryBehavior BasicCalleeAnalysis::
 getMemoryBehavior(ApplySite as, bool observeRetains) {
   if (getMemBehvaiorFunction) {
     auto b = getMemBehvaiorFunction({pm->getSwiftPassInvocation()},
                                     {as.getInstruction()->asSILNode()},
                                     observeRetains);
-    return (MemoryBehavior)b;
+    return (SILInstruction::MemoryBehavior)b;
   }
-  return MemoryBehavior::MayHaveSideEffects;
+  return SILInstruction::MemoryBehavior::MayHaveSideEffects;
 }
 
 bool swift::isDeinitBarrier(SILInstruction *const instruction,
