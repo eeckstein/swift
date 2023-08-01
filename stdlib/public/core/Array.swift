@@ -919,6 +919,34 @@ extension Array: RangeReplaceableCollection {
     _endMutation()
   }
 
+  @_transparent
+  public init(capacity: Int) {
+
+    if capacity == 0 {
+      _buffer = _ArrayBuffer()
+    }
+    else {
+      let storage = Builtin.allocWithTailElems_1(
+        _ContiguousArrayStorage<Element>.self,
+        capacity._builtinWordValue, Element.self)
+
+#if _runtime(_ObjC)
+      let verbatim = _isBridgedVerbatimToObjectiveC(Element.self)
+#else
+      let verbatim = false
+#endif
+
+      // We can initialize by assignment because _ArrayBody is a trivial type,
+      // i.e. contains no references.
+      storage.countAndCapacity = _ArrayBody(
+        count: 0,
+        capacity: capacity,
+        elementTypeIsBridgedVerbatim: verbatim)
+
+      _buffer = _ArrayBuffer(storage: _ArrayBridgeStorage(native: consume storage))
+    }
+  }
+
   @inline(never)
   @usableFromInline
   internal static func _allocateBufferUninitialized(
@@ -1120,6 +1148,7 @@ extension Array: RangeReplaceableCollection {
     _buffer._arrayOutOfPlaceUpdate(&newBuffer, oldCount, 0)
   }
 
+  @_transparent
   @inlinable
   @_semantics("array.make_mutable")
   @_effects(notEscaping self.**)
@@ -1132,6 +1161,7 @@ extension Array: RangeReplaceableCollection {
   }
 
   @inlinable
+  @_transparent
   @_semantics("array.mutate_unknown")
   @_effects(notEscaping self.**)
   internal mutating func _reserveCapacityAssumingUniqueBuffer(oldCount: Int) {
@@ -1148,6 +1178,8 @@ extension Array: RangeReplaceableCollection {
     _internalInvariant(capacity == 0 || _buffer.isMutableAndUniquelyReferenced())
 
     if _slowPath(oldCount &+ 1 > capacity) {
+      _precondition(!_noAllocation(), "Array capacity exceeded")
+
       _createNewBuffer(bufferIsUnique: capacity > 0,
                        minimumCapacity: oldCount &+ 1,
                        growForAppend: true)
@@ -1189,6 +1221,7 @@ extension Array: RangeReplaceableCollection {
   ///
   /// - Complexity: O(1) on average, over many calls to `append(_:)` on the
   ///   same array.
+  @_transparent
   @inlinable
   @_semantics("array.append_element")
   @_effects(notEscaping self.value**)

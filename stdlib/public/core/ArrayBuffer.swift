@@ -118,6 +118,7 @@ extension _ArrayBuffer {
   ///
   /// - Warning: It's a requirement to call `beginCOWMutation` before the buffer
   ///   is mutated.
+  @_transparent
   @_alwaysEmitIntoClient
   internal mutating func beginCOWMutation() -> Bool {
     let isUnique: Bool
@@ -142,6 +143,7 @@ extension _ArrayBuffer {
   ///
   /// - Warning: After a call to `endCOWMutation` the buffer must not be mutated
   ///   until the next call of `beginCOWMutation`.
+  @_transparent
   @_alwaysEmitIntoClient
   @inline(__always)
   internal mutating func endCOWMutation() {

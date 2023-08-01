@@ -325,6 +325,37 @@ internal struct _ContiguousArrayBuffer<Element>: _ArrayBufferProtocol {
     }
   }
 
+  /*
+  @_transparent
+  @inlinable
+  internal init(
+    capacity: Int
+  ) {
+    if capacity == 0 {
+      self = _ContiguousArrayBuffer<Element>()
+    }
+    else {
+      let storage = Builtin.allocWithTailElems_1(
+        _ContiguousArrayStorage<Element>.self,
+        capacity._builtinWordValue, Element.self)
+
+#if _runtime(_ObjC)
+      let verbatim = _isBridgedVerbatimToObjectiveC(Element.self)
+#else
+      let verbatim = false
+#endif
+
+      // We can initialize by assignment because _ArrayBody is a trivial type,
+      // i.e. contains no references.
+      storage.countAndCapacity = _ArrayBody(
+        count: count,
+        capacity: capacity,
+        elementTypeIsBridgedVerbatim: verbatim)
+
+      _storage = consume storage
+    }
+  }
+*/
   /// Initialize using the given uninitialized `storage`.
   /// The storage is assumed to be uninitialized. The returned buffer has the
   /// body part of the storage initialized, but not the elements.
