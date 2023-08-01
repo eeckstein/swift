@@ -685,6 +685,8 @@ BUILTIN_MISC_OPERATION(StaticReport, "staticReport", "", Special)
 /// Returns the selected assertion configuration.
 BUILTIN_MISC_OPERATION(AssertConf, "assert_configuration", "n", Special)
 
+BUILTIN_MISC_OPERATION(NoAllocation, "noAllocation", "n", Special)
+
 /// Ifdef has type () -> Bool.
 BUILTIN_MISC_OPERATION(Ifdef, "ifdef", "n", Special)
 

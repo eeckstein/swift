@@ -1745,6 +1745,12 @@ static ValueDecl *getAssertConfOperation(ASTContext &C, Identifier Id) {
   return getBuiltinFunction(Id, {}, Int32Ty);
 }
 
+static ValueDecl *getNoAllocationOperation(ASTContext &C, Identifier Id) {
+  // () -> Int1
+  auto Int1Ty = BuiltinIntegerType::get(1, C);
+  return getBuiltinFunction(Id, {}, Int1Ty);
+}
+
 static ValueDecl *getFixLifetimeOperation(ASTContext &C, Identifier Id) {
   // <T> T -> ()
   BuiltinFunctionBuilder builder(C);
@@ -2804,6 +2810,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
   case BuiltinValueKind::AssertConf:
     return getAssertConfOperation(Context, Id);
       
+  case BuiltinValueKind::NoAllocation:
+    return getNoAllocationOperation(Context, Id);
+
   case BuiltinValueKind::FixLifetime:
     return getFixLifetimeOperation(Context, Id);
       

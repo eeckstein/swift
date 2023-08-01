@@ -90,6 +90,9 @@ private func optimize(function: Function, _ context: FunctionPassContext, _ work
           _ = context.specializeClassMethodInst(classMethod)
         }
 
+      case let builtin as BuiltinInst:
+        builtin.mandatorySimplify(simplifyCtxt)
+
       default:
         break
       }
@@ -115,6 +118,21 @@ private func specializeVTableAndAddEntriesToWorklist(for type: Type, in function
   for entry in vtable.entries {
     worklist.pushIfNotVisited(entry.function)
   }
+}
+
+private extension BuiltinInst {
+  func mandatorySimplify(_ simplifyContext : SimplifyContext) {
+    switch id {
+    case .NoAllocation:
+      let builder = Builder(before: self, simplifyContext)
+      let zero = builder.createIntegerLiteral(1,  type: type)
+      uses.replaceAll(with: zero, simplifyContext)
+      simplifyContext.erase(instruction: self)
+    default:
+      break
+    }
+  }
+
 }
 
 private func inlineAndDevirtualize(apply: FullApplySite, alreadyInlinedFunctions: inout Set<PathFunctionTuple>,

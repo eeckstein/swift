@@ -717,6 +717,11 @@ internal func _isUnique<T>(_ object: inout T) -> Bool {
   return Bool(Builtin.isUnique(&object))
 }
 
+@usableFromInline @_transparent
+internal func _noAllocation() -> Bool {
+  return Bool(Builtin.noAllocation())
+}
+
 /// Returns `true` if `object` is uniquely referenced.
 /// This provides sanity checks on top of the Builtin.
 @_transparent

@@ -1094,7 +1094,12 @@ void irgen::emitBuiltinCall(IRGenFunction &IGF, const BuiltinInfo &Builtin,
     out.add(DebugAssert);
     return;
   }
-  
+
+  if (Builtin.ID == BuiltinValueKind::NoAllocation) {
+    out.add(llvm::ConstantInt::get(IGF.IGM.Int1Ty, 0));
+    return;
+  }
+
   if (Builtin.ID == BuiltinValueKind::DestroyArray) {
     // The input type is (T.Type, Builtin.RawPointer, Builtin.Word).
     /* metatype (which may be thin) */
