@@ -23,6 +23,14 @@ protocol IntrusiveSet : CustomStringConvertible, NoReflectionChildren {
   mutating func deinitialize()
 }
 
+extension IntrusiveSet {
+  mutating func insert(contentsOf elements: some Sequence<Element>) {
+    for element in elements {
+      _ = insert(element)
+    }
+  }
+}
+
 /// A set of basic blocks.
 ///
 /// This is an extremely efficient implementation which does not need memory

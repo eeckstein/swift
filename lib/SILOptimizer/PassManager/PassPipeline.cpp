@@ -241,6 +241,8 @@ static void addMandatoryDiagnosticOptPipeline(SILPassPipelinePlan &P) {
   P.addMandatoryPerformanceOptimizations();
   P.addOnoneSimplification();
   P.addInitializeStaticGlobals();
+  P.addComputeEscapeEffects();
+  P.addStackPromotion();
   P.addPerformanceDiagnostics();
 }
 

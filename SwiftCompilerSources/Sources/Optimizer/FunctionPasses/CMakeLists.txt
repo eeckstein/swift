@@ -12,6 +12,7 @@ swift_compiler_sources(Optimizer
   CleanupDebugSteps.swift
   ComputeEscapeEffects.swift
   ComputeSideEffects.swift
+  CopyOnWriteOptimization.swift
   DeadStoreElimination.swift
   InitializeStaticGlobals.swift
   LetPropertyLowering.swift

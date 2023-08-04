@@ -360,6 +360,7 @@ extension Array {
   /// After a call to `_endMutation` the buffer must not be mutated until a call
   /// to `_makeMutableAndUnique`.
   @_alwaysEmitIntoClient
+  @_transparent
   @_semantics("array.end_mutation")
   @_effects(notEscaping self.**)
   internal mutating func _endMutation() {
@@ -945,6 +946,7 @@ extension Array: RangeReplaceableCollection {
 
       _buffer = _ArrayBuffer(storage: _ArrayBridgeStorage(native: consume storage))
     }
+    _endMutation()
   }
 
   @inline(never)
