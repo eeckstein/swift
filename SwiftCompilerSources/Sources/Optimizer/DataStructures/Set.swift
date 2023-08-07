@@ -24,11 +24,6 @@ protocol IntrusiveSet : CustomStringConvertible, NoReflectionChildren {
 }
 
 extension IntrusiveSet {
-  mutating func insert(contentsOf elements: some Sequence<Element>) {
-    for element in elements {
-      _ = insert(element)
-    }
-  }
 }
 
 /// A set of basic blocks.
@@ -165,6 +160,12 @@ struct InstructionSet : IntrusiveSet {
 
   mutating func erase(_ inst: Instruction) {
     bridged.eraseInstruction(inst.bridged)
+  }
+
+  mutating func insert<S: Sequence>(contentsOf elements: S) where S.Element: Instruction {
+    for element in elements {
+      _ = insert(element)
+    }
   }
 
   var description: String {

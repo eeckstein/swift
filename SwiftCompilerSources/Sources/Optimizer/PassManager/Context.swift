@@ -513,6 +513,14 @@ extension LoadInst {
   }
 }
 
+extension EndCOWMutationInst {
+  func set(keepUnique: Bool, _ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    bridged.EndCOWMutationInst_keepUnique(keepUnique)
+    context.notifyInstructionChanged(self)
+  }
+}
+
 extension TermInst {
   func replaceBranchTarget(from fromBlock: BasicBlock, to toBlock: BasicBlock, _ context: some MutatingContext) {
     context.notifyBranchesChanged()

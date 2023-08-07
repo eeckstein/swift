@@ -39,12 +39,109 @@ private func optimizeBeginCOW(_ beginCOW: BeginCOWMutationInst, _ context: Funct
 
   liferange.insertAll(from: findEndCOWWalker.endCOWMutations, to: beginCOW, context)
 
-  
+  var findCopyWalker = FindCopies(within: liferange, context)
+  for endCowInst in findEndCOWWalker.endCOWMutations {
+    if findCopyWalker.isCopied(value: endCowInst, mustBeDestroyedWithinLiferange: false) {
+      return
+    }
+  }
 
+  while let copy = findCopyWalker.copies.pop() {
+    if findCopyWalker.isCopied(value: copy, mustBeDestroyedWithinLiferange: true) {
+      return
+    }
+  }
+
+  let builder = Builder(after: beginCOW, context)
+  let one = builder.createIntegerLiteral(1, type: beginCOW.uniquenessResult.type)
+  beginCOW.uniquenessResult.uses.replaceAll(with: one, context)
+  for endCOW in findEndCOWWalker.endCOWMutations {
+    endCOW.set(keepUnique: true, context)
+  }
+}
+
+private struct FindCopies : ValueDefUseWalker {
+  var copies: ValueWorklist
+  let liferange: InstructionSet
+
+  private let context: FunctionPassContext
+  private let aliasAnalysis: AliasAnalysis
+  private var mustBeDestroyedWithinLiferange = false
+  var walkDownCache = WalkerCache<SmallProjectionPath>()
+
+  init(within liferange: InstructionSet, _ context: FunctionPassContext) {
+    self.copies = ValueWorklist(context)
+    self.liferange = liferange
+    self.context = context
+    self.aliasAnalysis = context.aliasAnalysis
+  }
+
+  mutating func deinitialize() {
+    copies.deinitialize()
+  }
+
+  mutating func isCopied(value: Value, mustBeDestroyedWithinLiferange: Bool) -> Bool {
+    self.mustBeDestroyedWithinLiferange = mustBeDestroyedWithinLiferange
+    return walkDownUses(ofValue: value, path: SmallProjectionPath()) == .abortWalk
+  }
+
+  mutating func walkDown(value operand: Operand, path: SmallProjectionPath) -> WalkResult {
+    if let copy = operand.instruction as? CopyValueInst {
+      copies.pushIfNotVisited(copy)
+      return .continueWalk
+    }
+    return walkDownDefault(value: operand, path: path)
+  }
+
+  mutating func leafUse(value: Operand, path: SmallProjectionPath) -> WalkResult {
+    // TODO: handle applies
+    switch value.instruction {
+    case is BeginCOWMutationInst,
+         is RefElementAddrInst,
+         is RefTailAddrInst,
+         is DebugValueInst:
+      return .continueWalk
+    case let store as StoreInst:
+      return findLoads(of: store, path: path)
+    case is DestroyValueInst:
+      return mustBeDestroyedWithinLiferange == liferange.contains(value.instruction) ? .continueWalk : .abortWalk
+    default:
+      return .abortWalk
+    }
+  }
+
+  mutating func findLoads(of store: StoreInst, path: SmallProjectionPath) -> WalkResult {
+
+    let storeAccessPath = store.destination.getAccessPath(fromInitialPath: path)
+
+    var worklist = InstructionWorklist(context)
+    defer { worklist.deinitialize() }
+
+    worklist.pushIfNotVisited(store)
+    while let startInst = worklist.pop() {
+      for inst in InstructionList(first: startInst) {
+        if let load = inst as? LoadInst,
+           let loadedValuePath = storeAccessPath.getProjection(to: load.address.accessPath)
+        {
+          return walkDownUses(ofValue: load, path: loadedValuePath)
+        }
+        if inst.mayRead(fromAddress: store.destination, aliasAnalysis) {
+          return .abortWalk
+        }
+      }
+      for succ in startInst.parentBlock.successors {
+        let firstSuccInst = succ.instructions.first!
+        if liferange.contains(firstSuccInst) {
+          worklist.pushIfNotVisited(firstSuccInst)
+        }
+      }
+    }
+    return .continueWalk
+  }
 }
 
 private struct FindEndCOWMutations : ValueUseDefWalker {
-  var endCOWMutations: Stack<Instruction>
+  var endCOWMutations: Stack<EndCOWMutationInst>
 
   let context: FunctionPassContext
   let aliasAnalysis: AliasAnalysis
@@ -102,7 +199,7 @@ private struct FindEndCOWMutations : ValueUseDefWalker {
 }
 
 private extension InstructionSet {
-  mutating func insertAll(from beginInstructions: Stack<Instruction>, to endInstruction: Instruction,
+  mutating func insertAll(from beginInstructions: Stack<EndCOWMutationInst>, to endInstruction: Instruction,
                           _ context: FunctionPassContext) {
     var worklist = InstructionWorklist(context)
     defer { worklist.deinitialize() }

@@ -846,6 +846,10 @@ struct BridgedInstruction {
     getAs<swift::LoadInst>()->setOwnershipQualifier((swift::LoadOwnershipQualifier)ownership);
   }
 
+  void EndCOWMutationInst_keepUnique(bool keepUnique) const {
+    getAs<swift::EndCOWMutationInst>()->setKeepUnique(keepUnique);
+  }
+
   SWIFT_IMPORT_UNSAFE
   inline BridgedBasicBlock CheckedCastBranch_getSuccessBlock() const;
 
