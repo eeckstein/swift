@@ -40,6 +40,8 @@ private func optimizeBeginCOW(_ beginCOW: BeginCOWMutationInst, _ context: Funct
   liferange.insertAll(from: findEndCOWWalker.endCOWMutations, to: beginCOW, context)
 
   var findCopyWalker = FindCopies(within: liferange, context)
+  defer { findCopyWalker.deinitialize() }
+
   for endCowInst in findEndCOWWalker.endCOWMutations {
     if findCopyWalker.isCopied(value: endCowInst, mustBeDestroyedWithinLiferange: false) {
       return
@@ -52,7 +54,7 @@ private func optimizeBeginCOW(_ beginCOW: BeginCOWMutationInst, _ context: Funct
     }
   }
 
-  let builder = Builder(after: beginCOW, context)
+  let builder = Builder(before: beginCOW, context)
   let one = builder.createIntegerLiteral(1, type: beginCOW.uniquenessResult.type)
   beginCOW.uniquenessResult.uses.replaceAll(with: one, context)
   for endCOW in findEndCOWWalker.endCOWMutations {
@@ -86,28 +88,31 @@ private struct FindCopies : ValueDefUseWalker {
   }
 
   mutating func walkDown(value operand: Operand, path: SmallProjectionPath) -> WalkResult {
-    if let copy = operand.instruction as? CopyValueInst {
-      copies.pushIfNotVisited(copy)
+    if !liferange.contains(operand.instruction) {
       return .continueWalk
     }
-    return walkDownDefault(value: operand, path: path)
-  }
 
-  mutating func leafUse(value: Operand, path: SmallProjectionPath) -> WalkResult {
     // TODO: handle applies
-    switch value.instruction {
+    switch operand.instruction {
     case is BeginCOWMutationInst,
          is RefElementAddrInst,
          is RefTailAddrInst,
          is DebugValueInst:
       return .continueWalk
+    case let copy as CopyValueInst:
+      copies.pushIfNotVisited(copy)
+      return .continueWalk
     case let store as StoreInst:
       return findLoads(of: store, path: path)
     case is DestroyValueInst:
-      return mustBeDestroyedWithinLiferange == liferange.contains(value.instruction) ? .continueWalk : .abortWalk
+      return mustBeDestroyedWithinLiferange == liferange.contains(operand.instruction) ? .continueWalk : .abortWalk
     default:
-      return .abortWalk
+      return walkDownDefault(value: operand, path: path)
     }
+  }
+
+  mutating func leafUse(value: Operand, path: SmallProjectionPath) -> WalkResult {
+    return .abortWalk
   }
 
   mutating func findLoads(of store: StoreInst, path: SmallProjectionPath) -> WalkResult {
@@ -118,8 +123,11 @@ private struct FindCopies : ValueDefUseWalker {
     defer { worklist.deinitialize() }
 
     worklist.pushIfNotVisited(store)
-    while let startInst = worklist.pop() {
+    worklistLoop: while let startInst = worklist.pop() {
       for inst in InstructionList(first: startInst) {
+        if !liferange.contains(inst) {
+          continue worklistLoop
+        }
         if let load = inst as? LoadInst,
            let loadedValuePath = storeAccessPath.getProjection(to: load.address.accessPath)
         {
@@ -157,7 +165,7 @@ private struct FindEndCOWMutations : ValueUseDefWalker {
     endCOWMutations.deinitialize()
   }
 
-  mutating func rootDef(value: Value, path: SmallProjectionPath) -> WalkResult {
+  mutating func walkUp(value: Value, path: SmallProjectionPath) -> WalkResult {
     switch value {
     case let endCOW as EndCOWMutationInst:
       endCOWMutations.append(endCOW)
@@ -165,8 +173,12 @@ private struct FindEndCOWMutations : ValueUseDefWalker {
     case let load as LoadInst:
       return findStores(of: load, path: path)
     default:
-      return .abortWalk
+      return walkUpDefault(value: value, path: path)
     }
+  }
+
+  mutating func rootDef(value: Value, path: SmallProjectionPath) -> WalkResult {
+    return .abortWalk
   }
 
   mutating func findStores(of load: LoadInst, path: SmallProjectionPath) -> WalkResult {

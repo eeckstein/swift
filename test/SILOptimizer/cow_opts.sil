@@ -1,4 +1,4 @@
-// RUN: %target-sil-opt %s -cow-opts | %FileCheck %s
+// RUN: %target-sil-opt %s -copy-on-write-optimization | %FileCheck %s
 
 sil_stage canonical
 
