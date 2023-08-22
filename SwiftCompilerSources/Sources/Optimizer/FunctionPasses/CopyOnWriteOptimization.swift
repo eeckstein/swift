@@ -128,13 +128,18 @@ private struct FindCopies : ValueDefUseWalker {
         if !liferange.contains(inst) {
           continue worklistLoop
         }
-        if let load = inst as? LoadInst,
-           let loadedValuePath = storeAccessPath.getProjection(to: load.address.accessPath)
-        {
-          return walkDownUses(ofValue: load, path: loadedValuePath)
-        }
-        if inst.mayRead(fromAddress: store.destination, aliasAnalysis) {
-          return .abortWalk
+        switch inst {
+        case is BeginAccessInst:
+          break
+        case let load as LoadInst:
+          if let loadedValuePath = storeAccessPath.getProjection(to: load.address.accessPath) {
+            return walkDownUses(ofValue: load, path: loadedValuePath)
+          }
+          fallthrough
+        default:
+          if inst.mayRead(fromAddress: store.destination, aliasAnalysis) {
+            return .abortWalk
+          }
         }
       }
       for succ in startInst.parentBlock.successors {
@@ -191,13 +196,18 @@ private struct FindEndCOWMutations : ValueUseDefWalker {
     worklist.pushIfNotVisited(load)
     while let startInst = worklist.pop() {
       for inst in ReverseInstructionList(first: startInst) {
-        if let store = inst as? StoreInst,
-           let storedValuePath = store.destination.accessPath.getProjection(to: loadAccessPath)
-        {
-          return walkUp(value: store.source, path: storedValuePath)
-        }
-        if inst.mayWrite(toAddress: load.address, aliasAnalysis) {
-          return .abortWalk
+        switch inst {
+        case is BeginAccessInst:
+          break
+        case let store as StoreInst:
+          if let storedValuePath = store.destination.accessPath.getProjection(to: loadAccessPath) {
+            return walkUp(value: store.source, path: storedValuePath)
+          }
+          fallthrough
+        default:
+          if inst != load && inst.mayWrite(toAddress: load.address, aliasAnalysis) {
+            return .abortWalk
+          }
         }
       }
       let block = startInst.parentBlock
