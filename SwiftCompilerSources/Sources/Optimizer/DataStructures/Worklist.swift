@@ -53,6 +53,10 @@ struct Worklist<Set: IntrusiveSet> : CustomStringConvertible, NoReflectionChildr
     }
   }
 
+  mutating func markAsPushed(_ element: Element) {
+    _ = pushedElements.insert(element)
+  }
+
   /// Returns true if \p element was pushed to the worklist, regardless if it's already popped or not.
   func hasBeenPushed(_ element: Element) -> Bool { pushedElements.contains(element) }
 

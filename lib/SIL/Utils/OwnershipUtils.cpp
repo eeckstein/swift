@@ -254,8 +254,11 @@ bool swift::findInnerTransitiveGuaranteedUses(
   while (Operand *use = worklist.pop()) {
     switch (use->getOperandOwnership()) {
     case OperandOwnership::NonUse:
+        llvm_unreachable("this operand cannot handle an inner guaranteed use");
     case OperandOwnership::TrivialUse:
+        llvm_unreachable("this operand cannot handle an inner guaranteed use");
     case OperandOwnership::ForwardingConsume:
+        llvm_unreachable("this operand cannot handle an inner guaranteed use");
     case OperandOwnership::DestroyingConsume:
       llvm_unreachable("this operand cannot handle an inner guaranteed use");
 

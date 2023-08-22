@@ -128,6 +128,17 @@ public struct Builder {
     return notifyNew(endInit.getAs(EndInitLetRefInst.self))
   }
 
+  public func createLoadBorrow(fromAddress: Value) -> LoadBorrowInst {
+    let load = bridged.createLoadBorrow(fromAddress.bridged)
+    return notifyNew(load.getAs(LoadBorrowInst.self))
+  }
+
+  @discardableResult
+  public func createSetDeallocating(operand: Value, isAtomic: Bool) -> SetDeallocatingInst {
+    let setDeallocating = bridged.createSetDeallocating(operand.bridged, isAtomic)
+    return notifyNew(setDeallocating.getAs(SetDeallocatingInst.self))
+  }
+
   @discardableResult
   public func createStrongRetain(operand: Value) -> StrongRetainInst {
     let retain = bridged.createStrongRetain(operand.bridged)

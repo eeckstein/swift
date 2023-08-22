@@ -36,6 +36,10 @@ public struct Operand : CustomStringConvertible, NoReflectionChildren {
   /// used as value.
   public var isTypeDependent: Bool { bridged.isTypeDependent() }
   
+  public var isLifetimeEnding: Bool { bridged.isLifetimeEnding() }
+
+  public var isConsuming: Bool { bridged.isConsuming() }
+
   public var description: String { "operand #\(index) of \(instruction)" }
 }
 

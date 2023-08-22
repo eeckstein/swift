@@ -124,6 +124,10 @@ struct BridgedOperand {
 
   bool isTypeDependent() const { return op->isTypeDependent(); }
 
+  bool isLifetimeEnding() const { return op->isLifetimeEnding(); }
+
+  bool isConsuming() const { return op->isConsuming(); }
+
   SWIFT_IMPORT_UNSAFE
   inline OptionalBridgedOperand getNextUse() const;
 
@@ -1185,6 +1189,18 @@ struct BridgedBuilder{
   SWIFT_IMPORT_UNSAFE
   BridgedInstruction createEndInitLetRef(BridgedValue op) const {
     return {builder().createEndInitLetRef(regularLoc(), op.getSILValue())};
+  }
+
+  BridgedInstruction createLoadBorrow(BridgedValue op) const {
+    return {builder().createLoadBorrow(regularLoc(), op.getSILValue())};
+  }
+
+  SWIFT_IMPORT_UNSAFE
+  BridgedInstruction createSetDeallocating(BridgedValue op, bool isAtomic) const {
+    return {builder().createSetDeallocating(regularLoc(),
+                                            op.getSILValue(),
+                                            isAtomic ? swift::RefCountingInst::Atomicity::Atomic
+                                            : swift::RefCountingInst::Atomicity::NonAtomic)};
   }
 
   SWIFT_IMPORT_UNSAFE

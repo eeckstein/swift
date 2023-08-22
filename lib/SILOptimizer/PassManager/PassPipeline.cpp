@@ -239,10 +239,12 @@ static void addMandatoryDiagnosticOptPipeline(SILPassPipelinePlan &P) {
   P.addVTableSpecializer();
 
   P.addMandatoryPerformanceOptimizations();
+  P.addCopyOnWriteOptimization();
   P.addOnoneSimplification();
   P.addInitializeStaticGlobals();
   P.addComputeEscapeEffects();
   P.addStackPromotion();
+  P.addCopyPropagation();
   P.addPerformanceDiagnostics();
 }
 
