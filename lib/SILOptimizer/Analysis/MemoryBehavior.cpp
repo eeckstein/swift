@@ -161,6 +161,7 @@ public:
     return visitBeginAccessInst(endAccess->getBeginAccess());
   }
 
+  MemBehavior visitDebugStepInst(DebugStepInst *debugStep);
   MemBehavior visitLoadInst(LoadInst *LI);
   MemBehavior visitStoreInst(StoreInst *SI);
   MemBehavior visitCopyAddrInst(CopyAddrInst *CAI);
@@ -230,6 +231,10 @@ public:
 };
 
 } // end anonymous namespace
+
+MemBehavior MemoryBehaviorVisitor::visitDebugStepInst(DebugStepInst *debugStep) {
+  return MemBehavior::None;
+}
 
 MemBehavior MemoryBehaviorVisitor::visitLoadInst(LoadInst *LI) {
   if (!mayAlias(LI->getOperand()))
