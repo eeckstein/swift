@@ -856,6 +856,10 @@ struct BridgedInstruction {
   SWIFT_IMPORT_UNSAFE
   inline BridgedBasicBlock CheckedCastBranch_getFailureBlock() const;
 
+  bool CheckedCastBranch_preservesOwnership() const {
+    return getAs<swift::CheckedCastBranchInst>()->preservesOwnership();
+  }
+
   SWIFT_IMPORT_UNSAFE
   swift::SubstitutionMap ApplySite_getSubstitutionMap() const {
     auto as = swift::ApplySite(getInst());

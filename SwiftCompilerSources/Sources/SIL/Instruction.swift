@@ -218,6 +218,16 @@ extension UnaryInstruction {
   public var operand: Operand { operands[0] }
 }
 
+public protocol OwnershipForwardingInstruction : Instruction {
+  var canForwardGuaranteedValues: Bool { get }
+  var preservesOwnership: Bool { get }
+}
+
+extension OwnershipForwardingInstruction {
+  public var canForwardGuaranteedValues: Bool { true }
+  public var preservesOwnership: Bool { true }
+}
+
 //===----------------------------------------------------------------------===//
 //                             no-value instructions
 //===----------------------------------------------------------------------===//
@@ -333,6 +343,22 @@ final public class MarkUninitializedInst : SingleValueInstruction, UnaryInstruct
   public var kind: Kind { Kind(rawValue: bridged.MarkUninitializedInst_getKind())! }
 
   public var canForwardGuaranteedValues: Bool { false }
+}
+
+final public class MarkUnresolvedReferenceBindingInst : SingleValueInstruction, UnaryInstruction,
+                                                        OwnershipForwardingInstruction {
+}
+
+final public class CopyableToMoveOnlyWrapperValueInst : SingleValueInstruction, UnaryInstruction,
+                                                        OwnershipForwardingInstruction {
+}
+
+final public class MoveOnlyWrapperToCopyableValueInst : SingleValueInstruction, UnaryInstruction,
+                                                        OwnershipForwardingInstruction {
+}
+
+final public class MoveOnlyWrapperToCopyableBoxInst : SingleValueInstruction, UnaryInstruction,
+                                                      OwnershipForwardingInstruction {
 }
 
 final public class CondFailInst : Instruction, UnaryInstruction {
@@ -485,12 +511,12 @@ final public class BuiltinInst : SingleValueInstruction {
   }
 }
 
-final public class UpcastInst : SingleValueInstruction, UnaryInstruction {
+final public class UpcastInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var fromInstance: Value { operand.value }
 }
 
 final public
-class UncheckedRefCastInst : SingleValueInstruction, UnaryInstruction {
+class UncheckedRefCastInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var fromInstance: Value { operand.value }
 }
 
@@ -499,6 +525,10 @@ final public class UncheckedAddrCastInst : SingleValueInstruction, UnaryInstruct
 }
 
 final public class UncheckedTrivialBitCastInst : SingleValueInstruction, UnaryInstruction {
+  public var fromValue: Value { operand.value }
+}
+
+final public class UncheckedValueCastInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var fromValue: Value { operand.value }
 }
 
@@ -533,12 +563,12 @@ class IndexAddrInst : SingleValueInstruction {
 }
 
 final public
-class InitExistentialRefInst : SingleValueInstruction, UnaryInstruction {
+class InitExistentialRefInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var instance: Value { operand.value }
 }
 
 final public
-class OpenExistentialRefInst : SingleValueInstruction, UnaryInstruction {
+class OpenExistentialRefInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var existential: Value { operand.value }
 }
 
@@ -546,7 +576,7 @@ final public
 class InitExistentialValueInst : SingleValueInstruction, UnaryInstruction {}
 
 final public
-class OpenExistentialValueInst : SingleValueInstruction, UnaryInstruction {}
+class OpenExistentialValueInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {}
 
 final public
 class InitExistentialAddrInst : SingleValueInstruction, UnaryInstruction {}
@@ -558,7 +588,7 @@ final public
 class OpenExistentialBoxInst : SingleValueInstruction, UnaryInstruction {}
 
 final public
-class OpenExistentialBoxValueInst : SingleValueInstruction, UnaryInstruction {}
+class OpenExistentialBoxValueInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {}
 
 final public
 class InitExistentialMetatypeInst : SingleValueInstruction, UnaryInstruction {
@@ -641,10 +671,10 @@ final public class StringLiteralInst : SingleValueInstruction {
   }
 }
 
-final public class TupleInst : SingleValueInstruction {
+final public class TupleInst : SingleValueInstruction, OwnershipForwardingInstruction {
 }
 
-final public class TupleExtractInst : SingleValueInstruction, UnaryInstruction {
+final public class TupleExtractInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var `tuple`: Value { operand.value }
   public var fieldIndex: Int { bridged.TupleExtractInst_fieldIndex() }
 }
@@ -655,10 +685,15 @@ class TupleElementAddrInst : SingleValueInstruction, UnaryInstruction {
   public var fieldIndex: Int { bridged.TupleElementAddrInst_fieldIndex() }
 }
 
-final public class StructInst : SingleValueInstruction {
+final public class TuplePackExtractInst : SingleValueInstruction, OwnershipForwardingInstruction {
+  public var index: Value { operands[0].value }
+  public var `tuple`: Value { operands[1].value }
 }
 
-final public class StructExtractInst : SingleValueInstruction, UnaryInstruction {
+final public class StructInst : SingleValueInstruction, OwnershipForwardingInstruction {
+}
+
+final public class StructExtractInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var `struct`: Value { operand.value }
   public var fieldIndex: Int { bridged.StructExtractInst_fieldIndex() }
 }
@@ -673,14 +708,15 @@ public protocol EnumInstruction : AnyObject {
   var caseIndex: Int { get }
 }
 
-final public class EnumInst : SingleValueInstruction, EnumInstruction {
+final public class EnumInst : SingleValueInstruction, EnumInstruction, OwnershipForwardingInstruction {
   public var caseIndex: Int { bridged.EnumInst_caseIndex() }
 
   public var operand: Operand? { operands.first }
   public var payload: Value? { operand?.value }
 }
 
-final public class UncheckedEnumDataInst : SingleValueInstruction, UnaryInstruction, EnumInstruction {
+final public class UncheckedEnumDataInst : SingleValueInstruction, UnaryInstruction,
+                                           EnumInstruction, OwnershipForwardingInstruction {
   public var `enum`: Value { operand.value }
   public var caseIndex: Int { bridged.UncheckedEnumDataInst_caseIndex() }
 }
@@ -693,6 +729,12 @@ final public class InitEnumDataAddrInst : SingleValueInstruction, UnaryInstructi
 final public class UncheckedTakeEnumDataAddrInst : SingleValueInstruction, UnaryInstruction, EnumInstruction {
   public var `enum`: Value { operand.value }
   public var caseIndex: Int { bridged.UncheckedTakeEnumDataAddrInst_caseIndex() }
+}
+
+final public class SelectEnumInst: SingleValueInstruction, OwnershipForwardingInstruction {
+}
+
+final public class SelectEnumAddrInst: SingleValueInstruction {
 }
 
 final public class RefElementAddrInst : SingleValueInstruction, UnaryInstruction {
@@ -727,17 +769,17 @@ final public class KeyPathInst : SingleValueInstruction {
 }
 
 final public
-class UnconditionalCheckedCastInst : SingleValueInstruction, UnaryInstruction {
+class UnconditionalCheckedCastInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public override var mayTrap: Bool { true }
 }
 
 final public
-class ConvertFunctionInst : SingleValueInstruction, UnaryInstruction {
+class ConvertFunctionInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var fromFunction: Value { operand.value }
 }
 
 final public
-class ThinToThickFunctionInst : SingleValueInstruction, UnaryInstruction {}
+class ThinToThickFunctionInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {}
 
 final public
 class ObjCExistentialMetatypeToObjectInst : SingleValueInstruction,
@@ -759,16 +801,16 @@ class GetAsyncContinuationAddrInst : SingleValueInstruction, UnaryInstruction {}
 
 
 final public
-class MarkDependenceInst : SingleValueInstruction {
+class MarkDependenceInst : SingleValueInstruction, OwnershipForwardingInstruction {
   public var value: Value { return operands[0].value }
   public var base: Value { return operands[1].value }
 }
 
-final public class RefToBridgeObjectInst : SingleValueInstruction,
-                                           UnaryInstruction {}
+final public class RefToBridgeObjectInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
+}
 
-final public class BridgeObjectToRefInst : SingleValueInstruction,
-                                           UnaryInstruction {}
+final public class BridgeObjectToRefInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
+}
 
 final public class BridgeObjectToWordInst : SingleValueInstruction,
                                            UnaryInstruction {}
@@ -896,6 +938,8 @@ final public class IsEscapingClosureInst : SingleValueInstruction, UnaryInstruct
 final public
 class MarkUnresolvedNonCopyableValueInst : SingleValueInstruction, UnaryInstruction {}
 
+class MarkMustCheckInst : SingleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {}
+
 final public class ObjectInst : SingleValueInstruction {
   public var baseOperands: OperandArray {
     operands[0..<bridged.ObjectInst_getNumBaseElements()]
@@ -961,11 +1005,11 @@ final public class BeginCOWMutationInst : MultipleValueInstruction,
   public var instanceResult: Value { return getResult(index: 1) }
 }
 
-final public class DestructureStructInst : MultipleValueInstruction, UnaryInstruction {
+final public class DestructureStructInst : MultipleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var `struct`: Value { operand.value }
 }
 
-final public class DestructureTupleInst : MultipleValueInstruction, UnaryInstruction {
+final public class DestructureTupleInst : MultipleValueInstruction, UnaryInstruction, OwnershipForwardingInstruction {
   public var `tuple`: Value { operand.value }
 }
 
@@ -1059,7 +1103,7 @@ final public class CondBranchInst : TermInst {
 final public class SwitchValueInst : TermInst {
 }
 
-final public class SwitchEnumInst : TermInst {
+final public class SwitchEnumInst : TermInst, OwnershipForwardingInstruction {
 
   public var enumOp: Value { operands[0].value }
 
@@ -1102,10 +1146,12 @@ final public class DynamicMethodBranchInst : TermInst {
 final public class AwaitAsyncContinuationInst : TermInst, UnaryInstruction {
 }
 
-final public class CheckedCastBranchInst : TermInst, UnaryInstruction {
+final public class CheckedCastBranchInst : TermInst, UnaryInstruction, OwnershipForwardingInstruction {
   public var source: Value { operand.value }
   public var successBlock: BasicBlock { bridged.CheckedCastBranch_getSuccessBlock().block }
   public var failureBlock: BasicBlock { bridged.CheckedCastBranch_getFailureBlock().block }
+
+  public var preservesOwnership: Bool { bridged.CheckedCastBranch_preservesOwnership() }
 }
 
 final public class CheckedCastAddrBranchInst : TermInst, UnaryInstruction {
