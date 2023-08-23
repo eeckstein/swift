@@ -14,31 +14,31 @@ import SILBridging
 
 /// An operand of an instruction.
 public struct Operand : CustomStringConvertible, NoReflectionChildren {
-  fileprivate let bridged: BridgedOperand
+  public let _bridged: BridgedOperand
 
   init(bridged: BridgedOperand) {
-    self.bridged = bridged
+    self._bridged = bridged
   }
 
-  public var value: Value { bridged.getValue().value }
+  public var value: Value { _bridged.getValue().value }
 
   public static func ==(lhs: Operand, rhs: Operand) -> Bool {
-    return lhs.bridged.op == rhs.bridged.op
+    return lhs._bridged.op == rhs._bridged.op
   }
 
   public var instruction: Instruction {
-    return bridged.getUser().instruction
+    return _bridged.getUser().instruction
   }
   
   public var index: Int { instruction.operands.getIndex(of: self) }
   
   /// True if the operand is used to describe a type dependency, but it's not
   /// used as value.
-  public var isTypeDependent: Bool { bridged.isTypeDependent() }
-  
-  public var isLifetimeEnding: Bool { bridged.isLifetimeEnding() }
+  public var isTypeDependent: Bool { _bridged.isTypeDependent() }
 
-  public var isConsuming: Bool { bridged.isConsuming() }
+  public var isLifetimeEnding: Bool { _bridged.isLifetimeEnding() }
+
+  public var isConsuming: Bool { _bridged.isConsuming() }
 
   public var description: String { "operand #\(index) of \(instruction)" }
 }
@@ -61,8 +61,8 @@ public struct OperandArray : RandomAccessCollection, CustomReflectable {
   }
   
   public func getIndex(of operand: Operand) -> Int {
-    let idx = base.distanceTo(operand.bridged)
-    assert(self[idx].bridged.op == operand.bridged.op)
+    let idx = base.distanceTo(operand._bridged)
+    assert(self[idx]._bridged.op == operand._bridged.op)
     return idx
   }
   

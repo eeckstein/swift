@@ -136,6 +136,8 @@ struct BridgedOperand {
 
   SWIFT_IMPORT_UNSAFE
   inline BridgedInstruction getUser() const;
+
+  void changeOwnership(BridgedValue::Ownership from, BridgedValue::Ownership to) const;
 };
 
 struct OptionalBridgedOperand {

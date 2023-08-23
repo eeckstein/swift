@@ -14,6 +14,7 @@
 #include "swift/AST/Attr.h"
 #include "swift/AST/SemanticAttrs.h"
 #include "swift/SIL/SILNode.h"
+#include "swift/SIL/OwnershipUtils.h"
 #include "swift/SIL/ApplySite.h"
 #include "swift/SIL/SILBridging.h"
 #include "swift/SIL/SILGlobalVariable.h"
@@ -182,6 +183,15 @@ ArrayRef<SILValue> BridgedValueArray::getValues(SmallVectorImpl<SILValue> &stora
     storage.push_back(base[idx].value.getSILValue());
   }
   return storage;
+}
+
+//===----------------------------------------------------------------------===//
+//                                Operand
+//===----------------------------------------------------------------------===//
+
+void BridgedOperand::changeOwnership(BridgedValue::Ownership from, BridgedValue::Ownership to) const {
+  swift::ForwardingOperand forwardingOp(op);
+  forwardingOp.replaceOwnershipKind(castToOwnership(from), castToOwnership(to));
 }
 
 //===----------------------------------------------------------------------===//
