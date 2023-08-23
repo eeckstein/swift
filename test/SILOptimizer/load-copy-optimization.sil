@@ -164,7 +164,9 @@ bb3:
 // CHECK-LABEL: sil [ossa] @dont_copy_let_properties_with_guaranteed_base :
 // CHECK:         ref_element_addr
 // CHECK-NEXT:    load_borrow
+// CHECK-NEXT:    begin_borrow
 // CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    return
 // CHECK: } // end sil function 'dont_copy_let_properties_with_guaranteed_base'
@@ -186,7 +188,9 @@ bb0(%x : @guaranteed $ClassLet):
 // CHECK:         ref_element_addr
 // CHECK-NEXT:    load_borrow
 // CHECK-NEXT:    unchecked_ref_cast
+// CHECK-NEXT:    begin_borrow
 // CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    return
 // CHECK: } // end sil function 'dont_copy_let_properties_with_guaranteed_base_and_forwarding_uses'
@@ -207,7 +211,9 @@ bb0(%x : @guaranteed $ClassLet):
 // CHECK-LABEL: sil [ossa] @dont_copy_let_properties_with_guaranteed_upcast_base :
 // CHECK:         ref_element_addr
 // CHECK-NEXT:    load_borrow
+// CHECK-NEXT:    begin_borrow
 // CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    return
 // CHECK: } // end sil function 'dont_copy_let_properties_with_guaranteed_upcast_base'
@@ -229,7 +235,9 @@ bb0(%x : @guaranteed $SubclassLet):
 // CHECK-LABEL: sil [ossa] @dont_copy_let_global :
 // CHECK:         global_addr
 // CHECK-NEXT:    load_borrow
+// CHECK-NEXT:    begin_borrow
 // CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    return
 // CHECK-NEXT: } // end sil function 'dont_copy_let_global'
@@ -251,7 +259,9 @@ bb0:
 // CHECK:         ref_element_addr
 // CHECK-NEXT:    tuple_element_addr
 // CHECK-NEXT:    load_borrow
+// CHECK-NEXT:    begin_borrow
 // CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    end_borrow
 // CHECK-NEXT:    return
 sil [ossa] @dont_copy_let_properties_with_guaranteed_base_structural : $@convention(thin) (@guaranteed ClassLet) -> () {

@@ -27,9 +27,10 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) {
     return
   }
 
-  guard let destroys = getFinalDestroys(of: load, context) else {
+  guard var ownershipUses = OwnershipUses(of: load, context) else {
     return
   }
+  defer { ownershipUses.deinitialize() }
 
   let aliasAnalysis = context.aliasAnalysis
   var liferange = InstructionWorklist(context)
@@ -37,7 +38,7 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) {
 
   liferange.markAsPushed(load)
 
-  for destroy in destroys {
+  for destroy in ownershipUses.finalDestroys {
     if liferange.mayWrite(to: load.address, before: destroy, aliasAnalysis) {
       return
     }
@@ -48,56 +49,95 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) {
   load.uses.replaceAll(with: loadBorrow, context)
   context.erase(instruction: load)
 
-  for destroy in destroys {
+  for destroy in ownershipUses.finalDestroys {
     if !liferange.hasBeenPushed(destroy) {
       let builder = Builder(before: destroy, context)
       builder.createEndBorrow(of: loadBorrow)
     }
     context.erase(instruction: destroy)
   }
+
+  for forwardingUse in ownershipUses.forwardingUses {
+    forwardingUse.changeOwnership(from: .owned, to: .guaranteed, context)
+  }
+
+  for liferangeExitBlock in ownershipUses.nonDestroyingLiferangeExits {
+    let builder = Builder(atBeginOf: liferangeExitBlock, context)
+    builder.createEndBorrow(of: loadBorrow)
+  }
 }
 
-private func getFinalDestroys(of ownedValue: Value, _ context: FunctionPassContext) -> [DestroyValueInst]? {
-  var worklist = ValueWorklist(context)
-  defer { worklist.deinitialize() }
+private struct OwnershipUses {
+  private(set) var forwardingUses: Stack<Operand>
+  private(set) var finalDestroys: Stack<DestroyValueInst>
+  private(set) var nonDestroyingLiferangeExits: Stack<BasicBlock>
 
-  worklist.pushIfNotVisited(ownedValue)
+  init?(of ownedValue: Value, _ context: FunctionPassContext) {
+    self.forwardingUses = Stack(context)
+    self.finalDestroys = Stack(context)
+    self.nonDestroyingLiferangeExits = Stack(context)
 
-  var destroys = [DestroyValueInst]()
+    var worklist = ValueWorklist(context)
+    defer { worklist.deinitialize() }
 
-  while let value = worklist.pop() {
-    for use in value.uses {
-      if !use.isLifetimeEnding {
-        continue
-      }
+    worklist.pushIfNotVisited(ownedValue)
 
-      switch use.instruction {
-      case let destroy as DestroyValueInst:
-        destroys.append(destroy)
-      case let forwarding as OwnershipForwardingInstruction:
-        if !forwarding.preservesOwnership {
-          return nil
+    while let value = worklist.pop() {
+
+      var lifetimeEndUseFound = false
+
+      for use in value.uses {
+        if !use.isLifetimeEnding {
+          continue
         }
-        if !forwarding.canForwardGuaranteedValues {
-          return nil
-        }
-        let numOwnedOperands = forwarding.operands.lazy.filter({ $0.value.ownership == .owned }).count
-        if numOwnedOperands > 1 {
-          return nil
-        }
-        if let termInst = forwarding as? TermInst {
-          for succ in termInst.successors where succ.arguments.isEmpty {
-            worklist.pushIfNotVisited(succ.arguments.first!)
+        lifetimeEndUseFound = true
+
+        switch use.instruction {
+        case let destroy as DestroyValueInst:
+          finalDestroys.append(destroy)
+        case let forwarding as OwnershipForwardingInstruction:
+          if !forwarding.preservesOwnership {
+            deinitialize()
+            return nil
           }
-        } else {
-          worklist.pushIfNotVisited(contentsOf: forwarding.results)
+          if !forwarding.canForwardGuaranteedValues {
+            deinitialize()
+            return nil
+          }
+          let numOwnedOperands = forwarding.operands.lazy.filter({ $0.value.ownership == .owned }).count
+          if numOwnedOperands > 1 {
+            deinitialize()
+            return nil
+          }
+          if let termInst = forwarding as? TermInst {
+            for succ in termInst.successors {
+              if let forwardedArg = succ.arguments.first {
+                worklist.pushIfNotVisited(forwardedArg)
+              } else {
+                nonDestroyingLiferangeExits.append(succ)
+              }
+            }
+          } else {
+            worklist.pushIfNotVisited(contentsOf: forwarding.results)
+          }
+          forwardingUses.append(use)
+        default:
+          deinitialize()
+          return nil
         }
-      default:
+      }
+      if !lifetimeEndUseFound {
+        deinitialize()
         return nil
       }
     }
   }
-  return destroys
+
+  mutating func deinitialize() {
+    forwardingUses.deinitialize()
+    finalDestroys.deinitialize()
+    nonDestroyingLiferangeExits.deinitialize()
+  }
 }
 
 private extension InstructionWorklist {
@@ -105,8 +145,13 @@ private extension InstructionWorklist {
     pushPredecessors(of: toInst)
 
     while let inst = pop() {
-      if inst.mayWrite(toAddress: address, aliasAnalysis) {
-        return true
+      switch inst {
+      case is BeginBorrowInst, is EndBorrowInst:
+        break
+      default:
+        if inst.mayWrite(toAddress: address, aliasAnalysis) {
+          return true
+        }
       }
       pushPredecessors(of: inst)
     }
