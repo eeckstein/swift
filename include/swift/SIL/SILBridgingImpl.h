@@ -919,6 +919,10 @@ bool BridgedInstruction::EndCOWMutationInst_doKeepUnique() const {
   return getAs<swift::EndCOWMutationInst>()->doKeepUnique();
 }
 
+void BridgedInstruction::EndCOWMutationInst_setKeepUnique(bool keepUnique) const {
+  getAs<swift::EndCOWMutationInst>()->setKeepUnique(keepUnique);
+}
+
 SwiftInt BridgedInstruction::EnumInst_caseIndex() const {
   return getAs<swift::EnumInst>()->getCaseIndex();
 }

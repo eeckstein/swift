@@ -166,6 +166,8 @@ PASS(MandatoryCopyPropagation, "mandatory-copy-propagation",
      "Copy propagation to Remove Redundant SSA Copies, preserving debug info")
 PASS(COWOpts, "cow-opts",
      "Optimize COW operations")
+SWIFT_FUNCTION_PASS(CopyOnWriteOptimization, "copy-on-write-optimization",
+     "Optimize copy-on-write operations")
 PASS(Differentiation, "differentiation",
      "Automatic Differentiation")
 PASS(EpilogueARCMatcherDumper, "sil-epilogue-arc-dumper",

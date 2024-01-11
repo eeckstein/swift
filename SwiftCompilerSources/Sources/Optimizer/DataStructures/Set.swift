@@ -159,6 +159,12 @@ struct InstructionSet : IntrusiveSet {
     bridged.eraseInstruction(inst.bridged)
   }
 
+  mutating func insert<S: Sequence>(contentsOf elements: S) where S.Element: Instruction {
+    for element in elements {
+      _ = insert(element)
+    }
+  }
+
   var description: String {
     let function = bridged.getFunction().function
     var d = "{\n"

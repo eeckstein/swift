@@ -764,6 +764,7 @@ struct BridgedInstruction {
   BRIDGED_INLINE bool BeginBorrow_isLexical() const;
   BRIDGED_INLINE SwiftInt ProjectBoxInst_fieldIndex() const;
   BRIDGED_INLINE bool EndCOWMutationInst_doKeepUnique() const;
+  BRIDGED_INLINE void EndCOWMutationInst_setKeepUnique(bool keepUnique) const;
   BRIDGED_INLINE SwiftInt EnumInst_caseIndex() const;
   BRIDGED_INLINE SwiftInt UncheckedEnumDataInst_caseIndex() const;
   BRIDGED_INLINE SwiftInt InitEnumDataAddrInst_caseIndex() const;

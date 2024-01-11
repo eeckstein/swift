@@ -1,4 +1,6 @@
-// RUN: %target-sil-opt %s -cow-opts | %FileCheck %s
+// RUN: %target-sil-opt %s -copy-on-write-optimization | %FileCheck %s
+
+// REQUIRES: swift_in_compiler
 
 sil_stage canonical
 
