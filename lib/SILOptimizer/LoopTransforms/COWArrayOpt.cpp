@@ -896,8 +896,8 @@ void COWArrayOpt::hoistAddressProjections(Operand &ArrayOp) {
 ///
 /// The original make_mutable/end_mutation calls remain in the loop, because
 /// removing them would violate the COW representation rules.
-/// Having those calls in the pre-header will then enable COWOpts (after
-/// inlining) to constant fold the uniqueness check of the begin_cow_mutation
+/// Having those calls in the pre-header will then enable CopyOnWriteOptimization
+/// after inlining) to constant fold the uniqueness check of the begin_cow_mutation
 /// in the loop.
 bool COWArrayOpt::hoistMakeMutable(ArraySemanticsCall MakeMutable,
                                    bool dominatesExits) {
