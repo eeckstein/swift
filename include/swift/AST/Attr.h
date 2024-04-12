@@ -2527,12 +2527,18 @@ public:
 class RawLayoutAttr final : public DeclAttribute {
   /// The element type to share size and alignment with, if any.
   TypeRepr *LikeType;
+
+  TypeRepr *CountProvider = nullptr;
+
   /// The number of elements in an array to share stride and alignment with,
   /// or zero if no such size was specified. If `LikeType` is null, this is
   /// the size in bytes of the raw storage.
   unsigned SizeOrCount;
   /// If `LikeType` is null, the alignment in bytes to use for the raw storage.
   unsigned Alignment;
+
+  bool allowCopyable = false;
+
   /// The resolved like type.
   mutable Type CachedResolvedLikeType = Type();
 
@@ -2551,6 +2557,14 @@ public:
       : DeclAttribute(DeclAttrKind::RawLayout, AtLoc, Range,
                       /*implicit*/ false),
         LikeType(LikeType), SizeOrCount(Count), Alignment(0) {}
+
+  /// Construct a `@_rawLayout(likeArrayOf: T, countDefinedBy: C)` attribute.
+  RawLayoutAttr(TypeRepr *LikeType, TypeRepr *countProvider, bool allowCopyable,
+                SourceLoc AtLoc, SourceRange Range)
+      : DeclAttribute(DeclAttrKind::RawLayout, AtLoc, Range,
+                      /*implicit*/ false),
+        LikeType(LikeType), CountProvider(countProvider),
+        SizeOrCount(0), Alignment(0), allowCopyable(allowCopyable) {}
 
   /// Construct a `@_rawLayout(size: N, alignment: M)` attribute.
   RawLayoutAttr(unsigned Size, unsigned Alignment, SourceLoc AtLoc,
@@ -2591,6 +2605,8 @@ public:
   }
 
   Type getResolvedLikeType(StructDecl *sd) const;
+
+  bool doAllowCopyable() const { return allowCopyable; }
 
   /// Return the type whose single-element layout the attribute type should get
   /// its layout from. Returns None if the attribute specifies an array or manual

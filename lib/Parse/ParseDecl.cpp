@@ -4020,30 +4020,48 @@ ParserStatus Parser::parseNewDeclAttribute(DeclAttributes &Attributes,
       Identifier countLabel;
       consumeArgumentLabel(countLabel, true);
       if (!consumeIf(tok::colon)) {
-        diagnose(Loc, diag::attr_expected_colon_after_label, "count");
+        diagnose(Loc, diag::attr_expected_colon_after_label, countLabel.str());
         return makeParserSuccess();
       }
-       if (!countLabel.is("count")) {
-        diagnose(Loc, diag::attr_rawlayout_expected_label, "'count'");
-        return makeParserSuccess();
+
+      if (countLabel.is("countDefinedBy")) {
+        // @_rawLayout(likeArrayOf: T, countDefinedBy: C)
+        auto countType = parseType(diag::expected_type);
+        if (countType.isNull()) {
+          return makeParserSuccess();
+        }
+
+        SourceLoc rParenLoc;
+        if (!consumeIf(tok::r_paren, rParenLoc)) {
+          diagnose(Tok.getLoc(), diag::attr_expected_rparen,
+                   AttrName, /*isModifier*/false);
+          return makeParserSuccess();
+        }
+        attr = new (Context) RawLayoutAttr(likeType.get(),
+                                           countType.get(),
+                                           /*allowCopyable*/ true,
+                                           AtLoc, SourceRange(Loc, rParenLoc));
+      } else {
+        if (!countLabel.is("count")) {
+          diagnose(Loc, diag::attr_rawlayout_expected_label, "'count'");
+          return makeParserSuccess();
+        }
+
+        unsigned count;
+        SourceLoc countLoc;
+        if (parseUnsignedInteger(count, countLoc,
+                                 diag::attr_rawlayout_expected_integer_count)) {
+          return makeParserSuccess();
+        }
+        SourceLoc rParenLoc;
+        if (!consumeIf(tok::r_paren, rParenLoc)) {
+          diagnose(Tok.getLoc(), diag::attr_expected_rparen,
+                   AttrName, /*isModifier*/false);
+          return makeParserSuccess();
+        }
+        attr = new (Context) RawLayoutAttr(likeType.get(), count,
+                                           AtLoc, SourceRange(Loc, rParenLoc));
       }
-     
-      unsigned count;
-      SourceLoc countLoc;
-      if (parseUnsignedInteger(count, countLoc,
-                               diag::attr_rawlayout_expected_integer_count)) {
-        return makeParserSuccess();
-      }
-      
-      SourceLoc rParenLoc;
-      if (!consumeIf(tok::r_paren, rParenLoc)) {
-        diagnose(Tok.getLoc(), diag::attr_expected_rparen,
-                 AttrName, /*isModifier*/false);
-        return makeParserSuccess();
-      }
-      
-      attr = new (Context) RawLayoutAttr(likeType.get(), count,
-                                         AtLoc, SourceRange(Loc, rParenLoc));
     } else {
       diagnose(Loc, diag::attr_rawlayout_expected_label,
                "'size', 'like', or 'likeArrayOf'");
