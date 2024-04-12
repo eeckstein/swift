@@ -2685,6 +2685,8 @@ static void visitBuiltinAddress(BuiltinInst *builtin,
       // visitor(&builtin->getAllOperands()[1]);
       // visitor(&builtin->getAllOperands()[2]);
       return;
+    case BuiltinValueKind::InitRawStorageSize:
+      return;
     }
   }
   if (auto ID = builtin->getIntrinsicID()) {

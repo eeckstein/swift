@@ -216,6 +216,11 @@ private func shouldInline(apply: FullApplySite, callee: Function, alreadyInlined
     return true
   }
 
+  if let val = apply.singleDirectResult,
+     val.isUsedAsRawStorageSize {
+    return true
+  }
+
   return false
 }
 
@@ -343,6 +348,31 @@ private extension Value {
 
       singleUseValue = nextInstruction
     }
+  }
+
+  var isUsedAsRawStorageSize: Bool {
+    for use in uses {
+      switch use.instruction {
+      case let bi as BuiltinInst:
+        switch bi.id {
+        case .InitRawStorageSize:
+          return true
+        case .TruncOrBitCast:
+          if bi.isUsedAsRawStorageSize {
+            return true
+          }
+        default:
+          break
+        }
+      case let se as StructExtractInst:
+        if se.isUsedAsRawStorageSize {
+          return true
+        }
+      default:
+        break
+      }
+    }
+    return false
   }
 }
 

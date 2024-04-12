@@ -1109,3 +1109,18 @@ func _allocateVector<Element>(elementType: Element.Type, capacity: Int) -> Unsaf
   fatalError("unsupported compiler")
 #endif
 }
+
+public protocol ConstantInt {
+  static var value: Int { get }
+}
+
+@_transparent
+@_alwaysEmitIntoClient
+public
+func initRawStorageSize<Size: ConstantInt>(_ type: Size.Type) {
+#if $BuiltinInitRawStorageSize
+  Builtin.initRawStorageSize(type, type.value._builtinWordValue)
+#else
+  fatalError("unsupported compiler")
+#endif
+}

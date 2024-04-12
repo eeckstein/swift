@@ -639,6 +639,9 @@ BUILTIN_MISC_OPERATION(StackDealloc, "stackDealloc", "", Special)
 /// allocVector<Element>(Element.Type, Builtin.Word) -> Builtin.RawPointer
 BUILTIN_MISC_OPERATION(AllocVector, "allocVector", "", Special)
 
+/// initRawStorageSize(Builtin.RawPointer, Builtin.Word)
+BUILTIN_MISC_OPERATION(InitRawStorageSize, "initRawStorageSize", "", Special)
+
 /// Fence has type () -> ().
 BUILTIN_MISC_OPERATION(Fence, "fence", "", None)
 

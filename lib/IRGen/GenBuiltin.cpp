@@ -1499,5 +1499,11 @@ void irgen::emitBuiltinCall(IRGenFunction &IGF, const BuiltinInfo &Builtin,
     return;
   }
 
+  if (Builtin.ID == BuiltinValueKind::InitRawStorageSize) {
+    // This is a no-op.
+    (void)args.claimAll();
+    return;
+  }
+
   llvm_unreachable("IRGen unimplemented for this builtin!");
 }

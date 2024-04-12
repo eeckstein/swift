@@ -360,6 +360,7 @@ static bool usesFeatureExpressionMacroDefaultArguments(Decl *decl) {
 
 UNINTERESTING_FEATURE(BuiltinStoreRaw)
 UNINTERESTING_FEATURE(BuiltinAddressOfRawLayout)
+UNINTERESTING_FEATURE(BuiltinInitRawStorageSize)
 
 // ----------------------------------------------------------------------------
 // MARK: - Upcoming Features

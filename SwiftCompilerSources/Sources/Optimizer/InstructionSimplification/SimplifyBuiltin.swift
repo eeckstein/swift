@@ -42,7 +42,8 @@ extension BuiltinInst : OnoneSimplifyable {
            .AssignCopyArrayBackToFront,
            .AssignTakeArray,
            .AllocVector,
-           .IsPOD:
+           .IsPOD,
+           .InitRawStorageSize:
         optimizeArgumentToThinMetatype(argument: 0, context)
       case .ICMP_EQ:
         constantFoldIntegerEquality(isEqual: true, context)

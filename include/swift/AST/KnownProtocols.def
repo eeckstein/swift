@@ -135,6 +135,7 @@ PROTOCOL(AsyncSequence)
 PROTOCOL(AsyncIteratorProtocol)
 
 PROTOCOL(FloatingPoint)
+PROTOCOL(ConstantInt)
 
 #define INVERTIBLE_PROTOCOL(Name, Bit) \
     INVERTIBLE_PROTOCOL_WITH_NAME(Name, #Name)

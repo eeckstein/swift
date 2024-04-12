@@ -2150,6 +2150,18 @@ static ValueDecl *getAddressOfRawLayout(ASTContext &ctx, Identifier id) {
   return builder.build(id);
 }
 
+static ValueDecl *getInitRawStorageSize(ASTContext &ctx, Identifier id) {
+  // <T : Constant>(T.Type, Builtin.Word) -> ()
+  //
+  BuiltinFunctionBuilder builder(ctx, 1);
+  auto T = makeGenericParam();
+  builder.addConformanceRequirement(T, KnownProtocolKind::ConstantInt);
+  builder.addParameter(makeMetatype(T));
+  builder.addParameter(makeConcrete(BuiltinIntegerType::getWordType(ctx)));
+  builder.setResult(makeConcrete(TupleType::getEmpty(ctx)));
+  return builder.build(id);
+}
+
 /// An array of the overloaded builtin kinds.
 static const OverloadedBuiltinKind OverloadedBuiltinKinds[] = {
   OverloadedBuiltinKind::None,
@@ -3226,6 +3238,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
 
   case BuiltinValueKind::AddressOfRawLayout:
     return getAddressOfRawLayout(Context, Id);
+
+  case BuiltinValueKind::InitRawStorageSize:
+    return getInitRawStorageSize(Context, Id);
   }
 
   llvm_unreachable("bad builtin value!");
