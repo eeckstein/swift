@@ -244,6 +244,8 @@ private:
   /// Lookup table for specialized SIL vtables from types.
   llvm::DenseMap<SILType, SILVTable *> SpecializedVTableMap;
 
+  llvm::DenseMap<CanType, unsigned> constRawStorageSizes;
+
   /// The list of SILVTables in the module.
   std::vector<SILVTable*> vtables;
 
@@ -630,6 +632,18 @@ public:
   vtable_iterator vtable_end() { return getVTables().end(); }
   vtable_const_iterator vtable_begin() const { return getVTables().begin(); }
   vtable_const_iterator vtable_end() const { return getVTables().end(); }
+
+  void setConstRawStorageSize(CanType type, unsigned value) {
+    // TODO: check for inconsistencies
+    constRawStorageSizes[type] = value;
+  }
+
+  std::optional<unsigned> getConstRawStorageSize(CanType type) {
+    auto iter = constRawStorageSizes.find(type);
+    if (iter == constRawStorageSizes.end())
+      return std::nullopt;
+    return iter->second;
+  }
 
   ArrayRef<SILMoveOnlyDeinit *> getMoveOnlyDeinits() const {
     return ArrayRef<SILMoveOnlyDeinit *>(moveOnlyDeinits);
