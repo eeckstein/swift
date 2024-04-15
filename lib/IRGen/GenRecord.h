@@ -219,6 +219,17 @@ public:
     }
   }
 
+  static bool isRawLayoutArray(SILType t) {
+    if (auto *sd = t.getStructOrBoundGenericStruct()) {
+      if (auto *rawLayout = sd->getAttrs().getAttribute<RawLayoutAttr>()) {
+        if (rawLayout->getResolvedArrayLikeAndCountType(sd).has_value()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   void initializeWithCopy(IRGenFunction &IGF, Address dest, Address src,
                           SILType T, bool isOutlined) const override {
     // If we're POD, use the generic routine.
@@ -234,6 +245,15 @@ public:
     }
 
     if (isOutlined || T.hasParameterizedExistential()) {
+      if (isRawLayoutArray(T)) {
+        // TODO: handle non-trivial elements
+        IGF.Builder.CreateMemCpy(
+            dest.getAddress(), llvm::MaybeAlign(dest.getAlignment().getValue()),
+            src.getAddress(), llvm::MaybeAlign(src.getAlignment().getValue()),
+            asImpl().Impl::getSize(IGF, T));
+        return;
+      }
+
       auto offsets = asImpl().getNonFixedOffsets(IGF, T);
       for (auto &field : getFields()) {
         if (field.isEmpty())
