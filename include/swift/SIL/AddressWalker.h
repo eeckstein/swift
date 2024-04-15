@@ -277,6 +277,7 @@ TransitiveAddressWalker<Impl>::walk(SILValue projectedAddress) && {
         case BuiltinValueKind::GetEnumTag:
         case BuiltinValueKind::InjectEnumTag:
         case BuiltinValueKind::AddressOfRawLayout:
+        case BuiltinValueKind::MutableAddressOfRawLayout:
           callVisitUse(op);
           continue;
         default:

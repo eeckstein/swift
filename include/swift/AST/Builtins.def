@@ -1123,6 +1123,8 @@ BUILTIN_MISC_OPERATION_WITH_SILGEN(DistributedActorAsAnyActor, "distributedActor
 /// lowered away at IRGen, no sooner.
 BUILTIN_MISC_OPERATION_WITH_SILGEN(AddressOfRawLayout, "addressOfRawLayout", "n", Special)
 
+BUILTIN_MISC_OPERATION_WITH_SILGEN(MutableAddressOfRawLayout, "mutableAddressOfRawLayout", "n", Special)
+
 /// Builtins for instrumentation added by sanitizers during SILGen.
 #ifndef BUILTIN_SANITIZER_OPERATION
 #define BUILTIN_SANITIZER_OPERATION(Id, Name, Attrs) BUILTIN(Id, Name, Attrs)

@@ -2150,6 +2150,15 @@ static ValueDecl *getAddressOfRawLayout(ASTContext &ctx, Identifier id) {
   return builder.build(id);
 }
 
+static ValueDecl *getMutableAddressOfRawLayout(ASTContext &ctx, Identifier id) {
+  BuiltinFunctionBuilder builder(ctx, /* genericParamCount */ 1);
+
+  builder.addParameter(makeGenericParam(), ParamSpecifier::InOut);
+  builder.setResult(makeConcrete(ctx.TheRawPointerType));
+
+  return builder.build(id);
+}
+
 static ValueDecl *getInitRawStorageSize(ASTContext &ctx, Identifier id) {
   // <T : Constant>(T.Type, Builtin.Word) -> ()
   //
@@ -3238,6 +3247,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
 
   case BuiltinValueKind::AddressOfRawLayout:
     return getAddressOfRawLayout(Context, Id);
+
+  case BuiltinValueKind::MutableAddressOfRawLayout:
+    return getMutableAddressOfRawLayout(Context, Id);
 
   case BuiltinValueKind::InitRawStorageSize:
     return getInitRawStorageSize(Context, Id);

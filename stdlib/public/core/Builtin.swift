@@ -1124,3 +1124,31 @@ func initRawStorageSize<Size: ConstantInt>(_ type: Size.Type) {
   fatalError("unsupported compiler")
 #endif
 }
+
+@_transparent
+@_alwaysEmitIntoClient
+public
+func withAddressOfRawStorage<T, R>(_ r: borrowing T, _ body: (UnsafeRawPointer) -> R) -> R {
+#if $BuiltinInitRawStorageSize
+  let p = Builtin.addressOfRawLayout(r)
+  let result = body(UnsafeRawPointer(p))
+  _fixLifetime(r)
+  return result
+#else
+  fatalError("unsupported compiler")
+#endif
+}
+
+@_transparent
+@_alwaysEmitIntoClient
+public
+func withMutableAddressOfRawStorage<T, R>(_ r: inout T, _ body: (UnsafeMutableRawPointer) -> R) -> R {
+#if $BuiltinInitRawStorageSize
+  let p = Builtin.mutableAddressOfRawLayout(&r)
+  let result = body(UnsafeMutableRawPointer(p))
+  _fixLifetime(r)
+  return result
+#else
+  fatalError("unsupported compiler")
+#endif
+}

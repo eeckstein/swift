@@ -1492,7 +1492,8 @@ void irgen::emitBuiltinCall(IRGenFunction &IGF, const BuiltinInfo &Builtin,
   // LLVM must not see the address generated here as 'invariant' or immutable
   // ever. A raw layout's address defies all formal access, so immutable looking
   // uses may actually mutate the underlying value!
-  if (Builtin.ID == BuiltinValueKind::AddressOfRawLayout) {
+  if (Builtin.ID == BuiltinValueKind::AddressOfRawLayout ||
+      Builtin.ID == BuiltinValueKind::MutableAddressOfRawLayout) {
     auto addr = args.claimNext();
     auto value = IGF.Builder.CreateBitCast(addr, IGF.IGM.Int8PtrTy);
     out.add(value);
