@@ -306,6 +306,8 @@ public:
     return &swiftPassInvocation;
   }
 
+  void clearIRGenTypeInfoCache();
+
   /// Restart the function pass pipeline on the same function
   /// that is currently being processed.
   void restartWithCurrentFunction(SILTransform *T);

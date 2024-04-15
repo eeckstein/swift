@@ -78,6 +78,13 @@ TypeConverter::Types_t::getTypeLayoutCacheFor(bool isDependent,
                       : IndependentTypeLayoutCache[unsigned(mode)]);
 }
 
+void TypeConverter::Types_t::clear(TypeConverter::Mode mode) {
+  IndependentCache[unsigned(mode)].clear();
+  DependentCache[unsigned(mode)].clear();
+  IndependentTypeLayoutCache[unsigned(mode)].clear();
+  DependentTypeLayoutCache[unsigned(mode)].clear();
+}
+
 void TypeInfo::assign(IRGenFunction &IGF, Address dest, Address src,
                       IsTake_t isTake, SILType T, bool isOutlined) const {
   if (isTake) {
@@ -2452,6 +2459,9 @@ namespace {
           return visit((*likeType)->getCanonicalType());
         } else if (auto likeArray = rawLayout->getResolvedArrayLikeTypeAndCount(decl)) {
           return visit(likeArray->first->getCanonicalType());
+        } else if (auto likeArray = rawLayout->getResolvedArrayLikeAndCountType(decl)) {
+          return visit(likeArray->first->getCanonicalType()) ||
+                 visit(likeArray->second->getCanonicalType());
         }
       }
 

@@ -152,6 +152,31 @@ StructLayout::StructLayout(IRGenModule &IGM, std::optional<CanType> type,
         IsFixedLayout = false;
         IsKnownAlwaysFixedSize = IsNotFixedSize;
       }
+    } else if (auto likeArray = rawLayout->getResolvedArrayLikeAndCountType(sd)) {
+      auto elementType = likeArray->first;
+      auto countType = likeArray->second;
+
+      auto subs = (*type)->getContextSubstitutionMap(IGM.getSwiftModule(), decl);
+      auto loweredElementType = IGM.getLoweredType(elementType.subst(subs));
+      auto loweredCountType = IGM.getLoweredType(countType.subst(subs));
+      const TypeInfo &likeTypeInfo = IGM.getTypeInfo(loweredElementType);
+      const FixedTypeInfo *likeFixedType = dyn_cast<FixedTypeInfo>(&likeTypeInfo);
+      std::optional<unsigned> count = IGM.getSILModule().getConstRawStorageSize(
+                                        loweredCountType.getASTType());
+
+      // Take layout attributes from the like type.
+      if (likeFixedType && count.has_value()) {
+        MinimumSize = likeFixedType->getFixedStride() * count.value();
+        SpareBits.extendWithClearBits(MinimumSize.getValueInBits());
+        MinimumAlign = likeFixedType->getFixedAlignment();
+        IsFixedLayout = true;
+        IsKnownAlwaysFixedSize = IsFixedSize;
+      } else {
+        MinimumSize = Size(0);
+        MinimumAlign = Alignment(1);
+        IsFixedLayout = false;
+        IsKnownAlwaysFixedSize = IsNotFixedSize;
+      }
     } else {
       llvm_unreachable("unhandled raw layout variant?");
     }

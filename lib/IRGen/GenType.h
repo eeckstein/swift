@@ -236,6 +236,10 @@ public:
   /// Fails if there is no generic context.
   GenericEnvironment *getGenericEnvironment();
 
+  void clearCaches() {
+    Types.clear(LoweringMode);
+  }
+
 private:
   friend class LoweringModeScope;
 
@@ -272,6 +276,8 @@ private:
                                                               Mode mode);
     llvm::DenseMap<TypeBase *, const TypeLayoutEntry *> &
     getTypeLayoutCacheFor(bool isDependent, Mode mode);
+
+    void clear(TypeConverter::Mode mode);
   };
   Types_t Types;
 };

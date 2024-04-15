@@ -995,6 +995,12 @@ irgen::IRGenModule *SILPassManager::getIRGenModule() {
   return IRMod;
 }
 
+void SILPassManager::clearIRGenTypeInfoCache() {
+  if (IRMod) {
+    IRMod->clearTypeInfoCache();
+  }
+}
+
 /// D'tor.
 SILPassManager::~SILPassManager() {
 

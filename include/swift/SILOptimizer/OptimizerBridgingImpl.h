@@ -260,6 +260,12 @@ bool BridgedPassContext::eliminateDeadAllocations(BridgedFunction f) const {
                                          this->getDomTree().di);
 }
 
+void BridgedPassContext::setRawStorageSize(SwiftInt size, BridgedType forType) const {
+  invocation->getPassManager()->clearIRGenTypeInfoCache();
+  swift::SILModule *mod = invocation->getPassManager()->getModule();
+  mod->setConstRawStorageSize(forType.unbridged().getASTType(), size);
+}
+
 BridgedBasicBlockSet BridgedPassContext::allocBasicBlockSet() const {
   return {invocation->allocBlockSet()};
 }

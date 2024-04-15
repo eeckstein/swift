@@ -1344,6 +1344,10 @@ llvm::Module *IRGenModule::getModule() const {
   return ClangCodeGen->GetModule();
 }
 
+void IRGenModule::clearTypeInfoCache() {
+  Types.clearCaches();
+}
+
 GeneratedModule IRGenModule::intoGeneratedModule() && {
   return GeneratedModule{
     std::move(LLVMContext),

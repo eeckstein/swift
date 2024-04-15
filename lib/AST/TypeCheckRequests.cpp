@@ -1444,6 +1444,24 @@ void ResolveRawLayoutLikeTypeRequest::cacheResult(Type value) const {
 }
 
 //----------------------------------------------------------------------------//
+// ResolveRawLayoutCountTypeRequest computation.
+//----------------------------------------------------------------------------//
+
+std::optional<Type> ResolveRawLayoutCountTypeRequest::getCachedResult() const {
+  auto Ty = std::get<1>(getStorage())->CachedResolvedCountType;
+  if (!Ty) {
+    return std::nullopt;
+  }
+  return Ty;
+}
+
+void ResolveRawLayoutCountTypeRequest::cacheResult(Type value) const {
+  assert(value && "Resolved type erasure type to null type!");
+  auto *attr = std::get<1>(getStorage());
+  attr->CachedResolvedCountType = value;
+}
+
+//----------------------------------------------------------------------------//
 // TypeCheckSourceFileRequest computation.
 //----------------------------------------------------------------------------//
 

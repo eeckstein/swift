@@ -3303,6 +3303,20 @@ static void emitInitializeValueMetadata(IRGenFunction &IGF,
                                              likeType);
 
         count = likeArray->second;
+      } else if (auto likeArray = rawLayout->getResolvedArrayLikeAndCountType(sd)) {
+        auto likeType = likeArray->first;
+        auto countType = likeArray->second;
+        loweredLikeType = IGM.getLoweredType(AbstractionPattern::getOpaque(),
+                                             likeType);
+        SILType loweredCountType = IGM.getLoweredType(AbstractionPattern::getOpaque(),
+                                                      countType);
+        std::optional<unsigned> c = IGM.getSILModule().getConstRawStorageSize(
+                                          loweredCountType.getASTType());
+        if (c.has_value()) {
+          count = c.value();
+        } else {
+          llvm_unreachable("non-constant folded rawStorage counts not supported, yet");
+        }
       }
 
       emitInitializeRawLayout(IGF, loweredLikeType, count, loweredTy, metadata,

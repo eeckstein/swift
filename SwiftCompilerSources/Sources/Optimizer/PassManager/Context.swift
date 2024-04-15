@@ -198,6 +198,10 @@ extension MutatingContext {
     }
   }
 
+  func setRawStorageSize(to value: Int, forType type: Type) {
+    _bridged.setRawStorageSize(value, type.bridged)
+  }
+
   private func notifyNewInstructions(from: Instruction, to: Instruction) {
     var inst = from
     while inst != to {

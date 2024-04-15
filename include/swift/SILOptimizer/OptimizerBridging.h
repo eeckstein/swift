@@ -246,6 +246,7 @@ struct BridgedPassContext {
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedValue getSILUndef(BridgedType type) const;
   BRIDGED_INLINE bool optimizeMemoryAccesses(BridgedFunction f) const;
   BRIDGED_INLINE bool eliminateDeadAllocations(BridgedFunction f) const;
+  BRIDGED_INLINE void setRawStorageSize(SwiftInt size, BridgedType forType) const;
 
   // IRGen
 

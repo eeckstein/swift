@@ -2528,7 +2528,7 @@ class RawLayoutAttr final : public DeclAttribute {
   /// The element type to share size and alignment with, if any.
   TypeRepr *LikeType;
 
-  TypeRepr *CountProvider = nullptr;
+  TypeRepr *CountType = nullptr;
 
   /// The number of elements in an array to share stride and alignment with,
   /// or zero if no such size was specified. If `LikeType` is null, this is
@@ -2541,8 +2541,10 @@ class RawLayoutAttr final : public DeclAttribute {
 
   /// The resolved like type.
   mutable Type CachedResolvedLikeType = Type();
+  mutable Type CachedResolvedCountType = Type();
 
   friend class ResolveRawLayoutLikeTypeRequest;
+  friend class ResolveRawLayoutCountTypeRequest;
 
 public:
   /// Construct a `@_rawLayout(like: T)` attribute.
@@ -2559,11 +2561,11 @@ public:
         LikeType(LikeType), SizeOrCount(Count), Alignment(0) {}
 
   /// Construct a `@_rawLayout(likeArrayOf: T, countDefinedBy: C)` attribute.
-  RawLayoutAttr(TypeRepr *LikeType, TypeRepr *countProvider, bool allowCopyable,
+  RawLayoutAttr(TypeRepr *LikeType, TypeRepr *countType, bool allowCopyable,
                 SourceLoc AtLoc, SourceRange Range)
       : DeclAttribute(DeclAttrKind::RawLayout, AtLoc, Range,
                       /*implicit*/ false),
-        LikeType(LikeType), CountProvider(countProvider),
+        LikeType(LikeType), CountType(countType),
         SizeOrCount(0), Alignment(0), allowCopyable(allowCopyable) {}
 
   /// Construct a `@_rawLayout(size: N, alignment: M)` attribute.
@@ -2605,6 +2607,7 @@ public:
   }
 
   Type getResolvedLikeType(StructDecl *sd) const;
+  Type getResolvedCountType(StructDecl *sd) const;
 
   bool doAllowCopyable() const { return allowCopyable; }
 
@@ -2624,11 +2627,20 @@ public:
   /// attribute specifies scalar or manual layout.
   std::optional<std::pair<Type, unsigned>>
   getResolvedArrayLikeTypeAndCount(StructDecl *sd) const {
-    if (!LikeType)
+    if (!LikeType || CountType)
       return std::nullopt;
     if (Alignment == ~0u)
       return std::nullopt;
     return std::make_pair(getResolvedLikeType(sd), SizeOrCount);
+  }
+
+  std::optional<std::pair<Type, Type>>
+  getResolvedArrayLikeAndCountType(StructDecl *sd) const {
+    if (!LikeType || !CountType)
+      return std::nullopt;
+    if (Alignment == ~0u)
+      return std::nullopt;
+    return std::make_pair(getResolvedLikeType(sd), getResolvedCountType(sd));
   }
 
   static bool classof(const DeclAttribute *DA) {

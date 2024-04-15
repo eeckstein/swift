@@ -3696,6 +3696,28 @@ ResolveRawLayoutLikeTypeRequest::evaluate(Evaluator &evaluator,
                                                /*packElementOpener*/ nullptr);
 }
 
+Type
+ResolveRawLayoutCountTypeRequest::evaluate(Evaluator &evaluator,
+                                           StructDecl *sd,
+                                           RawLayoutAttr *attr) const {
+  assert(attr->CountType);
+
+  // If the attribute has a fixed type representation, then it was likely
+  // deserialized and the type has already been computed.
+  if (auto fixedTy = dyn_cast<FixedTypeRepr>(attr->CountType)) {
+    return fixedTy->getType();
+  }
+
+  // Resolve the like type in the struct's context.
+  return TypeResolution::resolveContextualType(attr->CountType, sd, std::nullopt,
+                                               // Unbound generics and
+                                               // placeholders are not allowed
+                                               // within this attribute.
+                                               /*unboundTyOpener*/ nullptr,
+                                               /*placeholderHandler*/ nullptr,
+                                               /*packElementOpener*/ nullptr);
+}
+
 bool
 TypeEraserHasViableInitRequest::evaluate(Evaluator &evaluator,
                                          TypeEraserAttr *attr,

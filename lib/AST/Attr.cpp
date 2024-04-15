@@ -2179,6 +2179,14 @@ Type RawLayoutAttr::getResolvedLikeType(StructDecl *sd) const {
                            ErrorType::get(ctx));
 }
 
+Type RawLayoutAttr::getResolvedCountType(StructDecl *sd) const {
+  auto &ctx = sd->getASTContext();
+  return evaluateOrDefault(ctx.evaluator,
+                           ResolveRawLayoutCountTypeRequest{sd,
+                               const_cast<RawLayoutAttr *>(this)},
+                           ErrorType::get(ctx));
+}
+
 AvailableAttr *
 AvailableAttr::createPlatformAgnostic(ASTContext &C,
                                    StringRef Message,

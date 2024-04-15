@@ -42,13 +42,15 @@ extension BuiltinInst : OnoneSimplifyable {
            .AssignCopyArrayBackToFront,
            .AssignTakeArray,
            .AllocVector,
-           .IsPOD,
-           .InitRawStorageSize:
+           .IsPOD:
         optimizeArgumentToThinMetatype(argument: 0, context)
       case .ICMP_EQ:
         constantFoldIntegerEquality(isEqual: true, context)
       case .ICMP_NE:
         constantFoldIntegerEquality(isEqual: false, context)
+      case .InitRawStorageSize:
+        optimizeArgumentToThinMetatype(argument: 0, context)
+        constantFoldRawStorageSize(context)
       default:
         if let literal = constantFold(context) {
           uses.replaceAll(with: literal, context)
@@ -227,6 +229,18 @@ private extension BuiltinInst {
       return true
     }
     return false
+  }
+
+  func constantFoldRawStorageSize(_ context: SimplifyContext) {
+    if let literal = operands[1].value as? IntegerLiteralInst,
+       let constSize = literal.value,
+       let sizeType = substitutionMap.replacementTypes[0]
+    {
+      context.setRawStorageSize(to: constSize, forType: sizeType)
+      if context.moduleIsSerialized {
+        context.erase(instruction: self)
+      }
+    }
   }
 }
 

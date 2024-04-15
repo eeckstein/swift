@@ -1498,6 +1498,7 @@ public:
   ClassDecl *getObjCRuntimeBaseClass(Identifier name, Identifier objcName);
   ClassDecl *getSwiftNativeNSObjectDecl();
   llvm::Module *getModule() const;
+  void clearTypeInfoCache();
   llvm::AttributeList getAllocAttrs();
   llvm::Constant *getDeletedAsyncMethodErrorAsyncFunctionPointer();
   bool isStandardLibrary() const;
