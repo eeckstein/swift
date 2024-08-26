@@ -30,6 +30,7 @@ class IRGenModule;
 
 class SILModule;
 class SILPassPipelinePlan;
+enum class PassPipelineKind;
 
 struct SILPipelineExecutionDescriptor {
   SILModule *SM;
@@ -37,7 +38,7 @@ struct SILPipelineExecutionDescriptor {
   // Note that we currently store a reference to the pipeline plan on the stack.
   // If ExecuteSILPipelineRequest ever becomes cached, we will need to adjust
   // this.
-  const SILPassPipelinePlan &Plan;
+  PassPipelineKind planKind;
   bool IsMandatory;
   irgen::IRGenModule *IRMod;
 

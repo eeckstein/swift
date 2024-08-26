@@ -159,6 +159,5 @@ SILTransform *swift::createInstCount() {
 void swift::performSILInstCountIfNeeded(SILModule *M) {
   if (!M->getOptions().PrintInstCounts)
     return;
-  executePassPipelinePlan(
-      M, SILPassPipelinePlan::getInstCountPassPipeline(M->getOptions()));
+  executePassPipelinePlan(M, PassPipelineKind::InstCount);
 }

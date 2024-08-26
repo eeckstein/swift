@@ -33,22 +33,18 @@ namespace swift {
 
 bool SILPipelineExecutionDescriptor::
 operator==(const SILPipelineExecutionDescriptor &other) const {
-  return SM == other.SM && Plan == other.Plan &&
+  return SM == other.SM && planKind == other.planKind &&
          IsMandatory == other.IsMandatory && IRMod == other.IRMod;
 }
 
 llvm::hash_code swift::hash_value(const SILPipelineExecutionDescriptor &desc) {
-  return llvm::hash_combine(desc.SM, desc.Plan, desc.IsMandatory, desc.IRMod);
+  return llvm::hash_combine(desc.SM, desc.planKind, desc.IsMandatory, desc.IRMod);
 }
 
 void swift::simple_display(llvm::raw_ostream &out,
                            const SILPipelineExecutionDescriptor &desc) {
-  out << "Run pipelines { ";
-  interleave(
-      desc.Plan.getPipelines(),
-      [&](SILPassPipeline stage) { out << stage.Name; },
-      [&]() { out << ", "; });
-  out << " } on ";
+  out << "Run pipeline " << SILPassPipelinePlan::getPlanDescription(desc.planKind);
+  out << " on ";
   simple_display(out, desc.SM);
 }
 

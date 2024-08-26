@@ -47,9 +47,14 @@ class IRGenerator;
 }
 
 /// The main entrypoint for executing a pipeline pass on a SIL module.
-void executePassPipelinePlan(SILModule *SM, const SILPassPipelinePlan &plan,
+void executePassPipelinePlan(SILModule *SM, PassPipelineKind kind,
                              bool isMandatory = false,
                              irgen::IRGenModule *IRMod = nullptr);
+
+/// Only to be used for testing (sil-opt) and non-compiler utilities.
+void executePasses(ArrayRef<PassKind> passKinds,
+                   SILModule *mod, irgen::IRGenModule *IRMod = nullptr,
+                   bool isMandatory = false);
 
 /// Utility class to invoke Swift passes.
 class SwiftPassInvocation {
@@ -437,6 +442,8 @@ public:
   /// this. If no override is provided the SILAnalysis should just call the
   /// normal verify method.
   void verifyAnalyses(SILFunction *F) const;
+
+  void executePassPipelinePlan(PassPipelineKind kind);
 
   void executePassPipelinePlan(const SILPassPipelinePlan &Plan);
 

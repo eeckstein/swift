@@ -55,14 +55,14 @@ bool swift::runSILDiagnosticPasses(SILModule &Module) {
     return false;
 
   executePassPipelinePlan(&Module,
-                          SILPassPipelinePlan::getSILGenPassPipeline(opts),
+                          PassPipelineKind::SILGen,
                           /*isMandatory*/ true);
 
   if (opts.VerifyAll && opts.OSSAVerifyComplete)
     Module.verifyOwnership();
 
   executePassPipelinePlan(&Module,
-                          SILPassPipelinePlan::getDiagnosticPassPipeline(opts),
+                          PassPipelineKind::Diagnostic,
                           /*isMandatory*/ true);
 
   // If we were asked to debug serialization, exit now.
@@ -87,9 +87,7 @@ bool swift::runSILDiagnosticPasses(SILModule &Module) {
 bool swift::runSILOwnershipEliminatorPass(SILModule &Module) {
   auto &Ctx = Module.getASTContext();
 
-  auto &opts = Module.getOptions();
-  executePassPipelinePlan(
-      &Module, SILPassPipelinePlan::getOwnershipEliminatorPassPipeline(opts));
+  executePassPipelinePlan(&Module, PassPipelineKind::OwnershipEliminator);
 
   return Ctx.hadError();
 }
@@ -105,18 +103,18 @@ void swift::runSILOptimizationPasses(SILModule &Module) {
     // If we are not supposed to run SIL perf optzns, we may still need to
     // serialize. So serialize now.
     executePassPipelinePlan(
-        &Module, SILPassPipelinePlan::getSerializeSILPassPipeline(opts),
+        &Module, PassPipelineKind::SerializeSIL,
         /*isMandatory*/ true);
     return;
   }
 
   executePassPipelinePlan(
-      &Module, SILPassPipelinePlan::getPerformancePassPipeline(opts));
+      &Module, PassPipelineKind::Performance);
 
   // Check if we actually serialized our module. If we did not, serialize now.
   if (!Module.isSerialized()) {
     executePassPipelinePlan(
-        &Module, SILPassPipelinePlan::getSerializeSILPassPipeline(opts),
+        &Module, PassPipelineKind::SerializeSIL,
         /*isMandatory*/ true);
   }
 
@@ -140,7 +138,7 @@ void swift::runSILPassesForOnone(SILModule &Module) {
   // We want to run the Onone passes also for function which have an explicit
   // Onone attribute.
   executePassPipelinePlan(
-      &Module, SILPassPipelinePlan::getOnonePassPipeline(Module.getOptions()),
+      &Module, PassPipelineKind::Onone,
       /*isMandatory*/ true);
 
   // Verify the module, if required.
@@ -151,11 +149,8 @@ void swift::runSILPassesForOnone(SILModule &Module) {
   }
 }
 
-void swift::runSILOptimizationPassesWithFileSpecification(SILModule &M,
-                                                          StringRef Filename) {
-  auto &opts = M.getOptions();
-  executePassPipelinePlan(
-      &M, SILPassPipelinePlan::getPassPipelineFromFile(opts, Filename));
+void swift::runSILOptimizationPassesWithFileSpecification(SILModule &M) {
+  executePassPipelinePlan(&M, PassPipelineKind::FromFile);
 }
 
 /// Get the Pass ID enum value from an ID string.
@@ -205,9 +200,8 @@ StringRef swift::PassKindTag(PassKind Kind) {
 // convert it to a module pass to ensure that the SIL input is always at the
 // same stage of lowering.
 void swift::runSILLoweringPasses(SILModule &Module) {
-  auto &opts = Module.getOptions();
   executePassPipelinePlan(&Module,
-                          SILPassPipelinePlan::getLoweringPassPipeline(opts),
+                          PassPipelineKind::Lowering,
                           /*isMandatory*/ true);
 
   Module.setStage(SILStage::Lowered);

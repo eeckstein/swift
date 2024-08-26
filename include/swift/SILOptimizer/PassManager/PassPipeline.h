@@ -73,6 +73,22 @@ public:
   ~SILPassPipelinePlan() = default;
   SILPassPipelinePlan(const SILPassPipelinePlan &) = default;
 
+  static SILPassPipelinePlan getPlan(PassPipelineKind kind, SILModule *mod) {
+    switch (kind) {
+#define PASSPIPELINE(NAME, DESCRIPTION)                                        \
+      case PassPipelineKind::NAME: return get##NAME##PassPipeline(mod->getOptions());
+#include "swift/SILOptimizer/PassManager/PassPipeline.def"
+    }
+  };
+
+  static StringRef getPlanDescription(PassPipelineKind kind) {
+    switch (kind) {
+#define PASSPIPELINE(NAME, DESCRIPTION)                                        \
+      case PassPipelineKind::NAME: return #DESCRIPTION;
+#include "swift/SILOptimizer/PassManager/PassPipeline.def"
+    }
+  };
+
   const SILOptions &getOptions() const { return Options; }
 
 // Each pass gets its own add-function.
@@ -88,11 +104,6 @@ public:
 #define PASSPIPELINE(NAME, DESCRIPTION)                                        \
   static SILPassPipelinePlan get##NAME##PassPipeline(const SILOptions &Options);
 #include "swift/SILOptimizer/PassManager/PassPipeline.def"
-
-  static SILPassPipelinePlan getPassPipelineForKinds(const SILOptions &Options,
-                                                     ArrayRef<PassKind> Kinds);
-  static SILPassPipelinePlan getPassPipelineFromFile(const SILOptions &Options,
-                                                     StringRef Filename);
 
   /// Our general format is as follows:
   ///

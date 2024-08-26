@@ -1100,9 +1100,8 @@ void swift::irgen::deleteIRGenModule(
 /// IRGenModule.
 static void runIRGenPreparePasses(SILModule &Module,
                                   irgen::IRGenModule &IRModule) {
-  auto &opts = Module.getOptions();
-  auto plan = SILPassPipelinePlan::getIRGenPreparePassPipeline(opts);
-  executePassPipelinePlan(&Module, plan, /*isMandatory*/ true, &IRModule);
+  executePassPipelinePlan(&Module, PassPipelineKind::IRGenPrepare,
+                          /*isMandatory*/ true, &IRModule);
 }
 
 namespace {

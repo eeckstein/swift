@@ -814,11 +814,3 @@ SILTransform *swift::createDeadFunctionAndGlobalElimination() {
 SILTransform *swift::createLateDeadFunctionAndGlobalElimination() {
   return new DeadFunctionAndGlobalEliminationPass(/*isLateDFE*/ true);
 }
-
-void swift::performSILDeadFunctionElimination(SILModule *M) {
-  llvm::SmallVector<PassKind, 1> Pass =
-    {PassKind::DeadFunctionAndGlobalElimination};
-  auto &opts = M->getOptions();
-  auto plan = SILPassPipelinePlan::getPassPipelineForKinds(opts, Pass);
-  executePassPipelinePlan(M, plan);
-}

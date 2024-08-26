@@ -1791,10 +1791,8 @@ static void performSILOptimizations(CompilerInvocation &Invocation,
     runSILPassesForOnone(*SM);
     return;
   }
-  StringRef CustomPipelinePath =
-  Invocation.getSILOptions().ExternalPassPipelineFilename;
-  if (!CustomPipelinePath.empty()) {
-    runSILOptimizationPassesWithFileSpecification(*SM, CustomPipelinePath);
+  if (!Invocation.getSILOptions().ExternalPassPipelineFilename.empty()) {
+    runSILOptimizationPassesWithFileSpecification(*SM);
   } else {
     runSILOptimizationPasses(*SM);
   }

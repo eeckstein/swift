@@ -227,7 +227,7 @@ void removeUnwantedFunctions(SILModule *M, ArrayRef<std::string> MangledNames,
   }
 
   // Remove dead functions.
-  performSILDeadFunctionElimination(M);
+  executePasses({PassKind::DeadFunctionAndGlobalElimination}, M);
 }
 
 int sil_func_extractor_main(ArrayRef<const char *> argv, void *MainAddr) {

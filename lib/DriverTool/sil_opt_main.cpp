@@ -604,10 +604,7 @@ static void runCommandLineSelectedPasses(SILModule *Module,
   // If a specific pass was requested with -opt-mode=None, run the pass as a
   // mandatory pass.
   bool isMandatory = opts.OptMode == OptimizationMode::NoOptimization;
-  executePassPipelinePlan(
-      Module, SILPassPipelinePlan::getPassPipelineForKinds(opts, options.Passes),
-      isMandatory, IRGenMod);
-
+  executePasses(options.Passes, Module, IRGenMod, isMandatory);
   if (Module->getOptions().VerifyAll) {
     Module->verify();
     SILPassManager pm(Module, isMandatory, IRGenMod);

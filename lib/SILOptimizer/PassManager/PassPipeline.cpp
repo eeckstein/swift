@@ -1150,15 +1150,6 @@ void SILPassPipelinePlan::addPasses(ArrayRef<PassKind> PassKinds) {
   }
 }
 
-SILPassPipelinePlan
-SILPassPipelinePlan::getPassPipelineForKinds(const SILOptions &Options,
-                                             ArrayRef<PassKind> PassKinds) {
-  SILPassPipelinePlan P(Options);
-  P.startPipeline("Pass List Pipeline");
-  P.addPasses(PassKinds);
-  return P;
-}
-
 //===----------------------------------------------------------------------===//
 //                Dumping And Loading Pass Pipelines from Yaml
 //===----------------------------------------------------------------------===//
@@ -1218,13 +1209,12 @@ void SILPassPipelinePlan::print(llvm::raw_ostream &os) {
 }
 
 SILPassPipelinePlan
-SILPassPipelinePlan::getPassPipelineFromFile(const SILOptions &options,
-                                             StringRef filename) {
+SILPassPipelinePlan::getFromFilePassPipeline(const SILOptions &options) {
   std::vector<YAMLPassPipeline> yamlPipelines;
   {
     // Load the input file.
     llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileBufOrErr =
-        llvm::MemoryBuffer::getFileOrSTDIN(filename);
+        llvm::MemoryBuffer::getFileOrSTDIN(options.ExternalPassPipelineFilename);
     if (!fileBufOrErr) {
       llvm_unreachable("Failed to read yaml file");
     }

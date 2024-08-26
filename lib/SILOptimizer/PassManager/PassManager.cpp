@@ -396,16 +396,26 @@ public:
 evaluator::SideEffect ExecuteSILPipelineRequest::evaluate(
     Evaluator &evaluator, SILPipelineExecutionDescriptor desc) const {
   SILPassManager PM(desc.SM, desc.IsMandatory, desc.IRMod);
-  PM.executePassPipelinePlan(desc.Plan);
+  PM.executePassPipelinePlan(desc.planKind);
   return std::make_tuple<>();
 }
 
+void swift::executePasses(ArrayRef<PassKind> passKinds,
+                          SILModule *mod, irgen::IRGenModule *IRMod,
+                          bool isMandatory) {
+  SILPassPipelinePlan p(mod->getOptions());
+  p.startPipeline("Pass List Pipeline");
+  p.addPasses(passKinds);
+  SILPassManager pm(mod, isMandatory, IRMod);
+  pm.executePassPipelinePlan(p);
+}
+
 void swift::executePassPipelinePlan(SILModule *SM,
-                                    const SILPassPipelinePlan &plan,
+                                    PassPipelineKind kind,
                                     bool isMandatory,
                                     irgen::IRGenModule *IRMod) {
   auto &evaluator = SM->getASTContext().evaluator;
-  SILPipelineExecutionDescriptor desc{SM, plan, isMandatory, IRMod};
+  SILPipelineExecutionDescriptor desc{SM, kind, isMandatory, IRMod};
   (void)evaluateOrFatal(evaluator, ExecuteSILPipelineRequest{desc});
 }
 
@@ -941,6 +951,12 @@ void SILPassManager::verifyAnalyses(SILFunction *F) const {
     A->verify(F);
   }
 }
+
+void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
+  SILPassPipelinePlan plan = SILPassPipelinePlan::getPlan(kind, getModule());
+  executePassPipelinePlan(plan);
+}
+
 
 void SILPassManager::executePassPipelinePlan(const SILPassPipelinePlan &Plan) {
   for (const SILPassPipeline &Pipeline : Plan.getPipelines()) {

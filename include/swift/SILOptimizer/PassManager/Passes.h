@@ -42,15 +42,11 @@ namespace swift {
   /// Run the SIL ownership eliminator pass on \p M.
   bool runSILOwnershipEliminatorPass(SILModule &M);
 
-  void runSILOptimizationPassesWithFileSpecification(SILModule &Module,
-                                                     StringRef FileName);
+  void runSILOptimizationPassesWithFileSpecification(SILModule &Module);
 
   /// Detect and remove unreachable code. Diagnose provably unreachable
   /// user code.
   void performSILDiagnoseUnreachable(SILModule *M);
-
-  /// Remove dead functions from \p M.
-  void performSILDeadFunctionElimination(SILModule *M);
 
   /// Convert SIL to a lowered form suitable for IRGen.
   void runSILLoweringPasses(SILModule &M);
