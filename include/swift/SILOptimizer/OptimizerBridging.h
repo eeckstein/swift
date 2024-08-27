@@ -58,6 +58,8 @@ class FixedSizeSlab;
 class SILVTable;
 class ClosureSpecializationCloner;
 class SILPassManager;
+class SILFunctionTransform;
+class SILModuleTransform;
 }
 
 struct BridgedPassContext;
@@ -380,6 +382,14 @@ struct BridgedPassContext {
                                                         bool isSerialized) const;
 };
 
+struct BridgedFunctionPass {
+  swift::SILFunctionTransform * _Nonnull transform;
+};
+
+struct BridgedModulePass {
+  swift::SILModuleTransform * _Nonnull transform;
+};
+
 struct BridgedPassManager {
 
   swift::SILPassManager * _Nonnull pm;
@@ -389,7 +399,24 @@ struct BridgedPassManager {
 #include "swift/SILOptimizer/PassManager/PassPipeline.def"
   };
 
+  enum class FunctionPassKind {
+#define PASS(ID, TAG, NAME) ID,
+#define MODULE_PASS(ID, TAG, NAME)
+#define IRGEN_MODULE_PASS(ID, TAG, NAME)
+#include "swift/SILOptimizer/PassManager/Passes.def"
+  };
+
+  enum class ModulePassKind {
+#define PASS(ID, TAG, NAME)
+#define MODULE_PASS(ID, TAG, NAME) ID,
+#define IRGEN_MODULE_PASS MODULE_PASS
+#include "swift/SILOptimizer/PassManager/Passes.def"
+  };
+
   BRIDGED_INLINE BridgedPassContext getContext() const;
+
+  SWIFT_IMPORT_UNSAFE BridgedFunctionPass getFunctionPass(FunctionPassKind kind) const;
+  SWIFT_IMPORT_UNSAFE BridgedModulePass getFunctionPass(ModulePassKind kind) const;
 
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
 

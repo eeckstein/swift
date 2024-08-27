@@ -1183,7 +1183,11 @@ enum class IRGenPasses : uint8_t {
 };
 } // end anonymous namespace
 
-void SILPassManager::addPass(PassKind Kind) {
+void SILPassManager::addPass(PassKind kind) {
+  Transformations.push_back(getPass(kind));
+}
+
+SILTransform *SILPassManager::getPass(PassKind Kind) {
   assert(unsigned(PassKind::AllPasses_Last) >= unsigned(Kind) &&
          "Invalid pass kind");
   switch (Kind) {
@@ -1191,8 +1195,7 @@ void SILPassManager::addPass(PassKind Kind) {
   case PassKind::ID: {                                                         \
     SILTransform *T = swift::create##ID();                                     \
     T->setPassKind(PassKind::ID);                                              \
-    Transformations.push_back(T);                                              \
-    break;                                                                     \
+    return T;                                                                  \
   }
 #define IRGEN_PASS(ID, TAG, NAME)                                              \
   case PassKind::ID: {                                                         \
@@ -1201,8 +1204,7 @@ void SILPassManager::addPass(PassKind Kind) {
     SILTransform *T = irPasses[static_cast<unsigned>(IRGenPasses::ID)]();      \
     assert(T && "Missing IRGen pass?");                                        \
     T->setPassKind(PassKind::ID);                                              \
-    Transformations.push_back(T);                                              \
-    break;                                                                     \
+    return T;                                                                  \
   }
 #include "swift/SILOptimizer/PassManager/Passes.def"
   case PassKind::invalidPassKind:
@@ -1633,6 +1635,28 @@ SwiftInt BridgedFunction::specializationLevel() const {
 //===----------------------------------------------------------------------===//
 //                           OptimizerBridging
 //===----------------------------------------------------------------------===//
+
+BridgedFunctionPass BridgedPassManager::getFunctionPass(FunctionPassKind kind) const {
+  switch (kind) {
+#define PASS(ID, TAG, NAME) \
+    case FunctionPassKind::ID: \
+      return {cast<SILFunctionTransform>(pm->getPass(PassKind::ID))};
+#define MODULE_PASS(ID, TAG, NAME)
+#define IRGEN_MODULE_PASS(ID, TAG, NAME)
+#include "swift/SILOptimizer/PassManager/Passes.def"
+  }
+}
+
+BridgedModulePass BridgedPassManager::getFunctionPass(ModulePassKind kind) const {
+  switch (kind) {
+#define PASS(ID, TAG, NAME)
+#define MODULE_PASS(ID, TAG, NAME) \
+    case ModulePassKind::ID: \
+      return {cast<SILModuleTransform>(pm->getPass(PassKind::ID))};
+#define IRGEN_MODULE_PASS MODULE_PASS
+#include "swift/SILOptimizer/PassManager/Passes.def"
+  }
+}
 
 llvm::cl::list<std::string>
     SimplifyInstructionTest("simplify-instruction", llvm::cl::CommaSeparated,

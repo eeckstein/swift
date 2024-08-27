@@ -295,6 +295,8 @@ public:
 
   const SILOptions &getOptions() const;
 
+  SILTransform *getPass(PassKind Kind);
+
   /// Searches for an analysis of type T in the list of registered
   /// analysis. If the analysis is not found, the program terminates.
   template<typename T>
