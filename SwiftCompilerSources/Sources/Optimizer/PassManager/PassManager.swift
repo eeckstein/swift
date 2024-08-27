@@ -14,24 +14,24 @@ import OptimizerBridging
 
 final class PassManager {
 
-  private let bridged: BridgedPassManager
+  let _bridged: BridgedPassManager
 
   private init(bridged: BridgedPassManager) {
-    self.bridged = bridged
+    self._bridged = bridged
   }
 
   func run(pipeline: [ModulePass], _ context: ModulePassContext) {
     // TODO
   }
 
-  var bridgedContext: BridgedPassContext { bridged.getContext() }
+  var bridgedContext: BridgedPassContext { _bridged.getContext() }
 
   static func register() {
     BridgedPassManager.registerBridging(
       // executePassesFn
       { (bridgedPM: BridgedPassManager, bridgedPipelineKind: BridgedPassManager.PassPipelineKind) in
         let pm = PassManager(bridged: bridgedPM)
-        let context = ModulePassContext(_bridged: pm.bridgedContext)
+        let context = ModulePassContext(passManager: pm)
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: context.options)
         pm.run(pipeline: pipeline, context)
       }

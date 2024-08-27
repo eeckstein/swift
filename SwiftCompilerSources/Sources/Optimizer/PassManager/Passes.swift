@@ -42,7 +42,6 @@ struct ModulePass {
   }
 
   func run(_ bridgedCtxt: BridgedPassContext) {
-    let context = ModulePassContext(_bridged: bridgedCtxt)
-    runFunction(context)
+    fatalError("cannot run swift module pass from legacy SILPassManager")
   }
 }

@@ -19,7 +19,9 @@ import OptimizerBridging
 /// but it doesn't provide any APIs to modify functions.
 /// In order to modify a function, a module pass must use `transform(function:)`.
 struct ModulePassContext : Context, CustomStringConvertible {
-  let _bridged: BridgedPassContext
+  let passManager: PassManager
+
+  var _bridged: BridgedPassContext { passManager._bridged.getContext() }
 
   public var description: String {
     return String(taking: _bridged.getModuleDescription())
