@@ -11,5 +11,7 @@ swift_compiler_sources(Optimizer
   ModulePassContext.swift
   Options.swift
   Passes.swift
+  PassPipelines.swift
+  PassManager.swift
   PassRegistration.swift)
 
