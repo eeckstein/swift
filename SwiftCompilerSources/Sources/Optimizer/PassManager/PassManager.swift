@@ -12,6 +12,50 @@
 
 import OptimizerBridging
 
+final class PassManager {
+
+  private let bridged: BridgedPassManager
+
+  private init(bridged: BridgedPassManager) {
+    self.bridged = bridged
+  }
+
+  func run(pipeline: [ModulePass], _ context: ModulePassContext) {
+    // TODO
+  }
+
+  var bridgedContext: BridgedPassContext { bridged.getContext() }
+
+  static func register() {
+    BridgedPassManager.registerBridging(
+      // executePassesFn
+      { (bridgedPM: BridgedPassManager, bridgedPipelineKind: BridgedPassManager.PassPipelineKind) in
+        let pm = PassManager(bridged: bridgedPM)
+        let context = ModulePassContext(_bridged: pm.bridgedContext)
+        let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: context.options)
+        pm.run(pipeline: pipeline, context)
+      }
+    )
+  }
+}
+
+private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
+  switch kind {
+    case .SILGen:              return getSILGenPassPipeline(options: options)
+    case .Diagnostic:          return getDiagnosticPassPipeline(options: options)
+    case .OwnershipEliminator: return getOwnershipEliminatorPassPipeline(options: options)
+    case .Performance:         return getPerformancePassPipeline(options: options)
+    case .Onone:               return getOnonePassPipeline(options: options)
+    case .InstCount:           return getInstCountPassPipeline(options: options)
+    case .Lowering:            return getLoweringPassPipeline(options: options)
+    case .IRGenPrepare:        return getIRGenPreparePassPipeline(options: options)
+    case .SerializeSIL:        return getSerializeSILPassPipeline(options: options)
+    case .FromFile:            return getFromFilePassPipeline(options: options)
+    default:
+      fatalError("unknown pass pipeline kind")
+  }
+}
+
 @resultBuilder
 struct FunctionPassPipelineBuilder {
   typealias Component = [FunctionPass]

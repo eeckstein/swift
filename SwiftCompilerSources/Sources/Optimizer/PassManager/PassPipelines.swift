@@ -20,7 +20,23 @@ func getOnoneFunctionPipeline(_ b: Bool) -> [FunctionPass] {
   }
 }
 
-func getOnonePipeline() -> [ModulePass] {
+func getSILGenPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getDiagnosticPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getOwnershipEliminatorPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getPerformancePassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getOnonePassPipeline(options: Options) -> [ModulePass] {
   passPipeline {
     getOnoneFunctionPipeline(false)
     passPipeline {
@@ -30,4 +46,24 @@ func getOnonePipeline() -> [ModulePass] {
     mandatoryPerformanceOptimizations
   }
 
+}
+
+func getInstCountPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getLoweringPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getIRGenPreparePassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getSerializeSILPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getFromFilePassPipeline(options: Options) -> [ModulePass] {
+  return []
 }

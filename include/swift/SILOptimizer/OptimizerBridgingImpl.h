@@ -500,6 +500,14 @@ static_assert((int)BridgedPassContext::AssertConfiguration::Debug == (int)swift:
 static_assert((int)BridgedPassContext::AssertConfiguration::Release == (int)swift::SILOptions::Release);
 static_assert((int)BridgedPassContext::AssertConfiguration::Unchecked == (int)swift::SILOptions::Unchecked);
 
+//===----------------------------------------------------------------------===//
+//                            BridgedPassManager
+//===----------------------------------------------------------------------===//
+
+BridgedPassContext BridgedPassManager::getContext() const {
+  return {pm->getSwiftPassInvocation()};
+}
+
 SWIFT_END_NULLABILITY_ANNOTATIONS
 
 #endif

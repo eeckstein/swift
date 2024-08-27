@@ -952,11 +952,20 @@ void SILPassManager::verifyAnalyses(SILFunction *F) const {
   }
 }
 
-void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
-  SILPassPipelinePlan plan = SILPassPipelinePlan::getPlan(kind, getModule());
-  executePassPipelinePlan(plan);
+static BridgedPassManager::ExecutePassesFn executePassesFunction = nullptr;
+
+void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn) {
+  executePassesFunction = executePassesFn;
 }
 
+void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
+  if (executePassesFunction) {
+    executePassesFunction({this}, (BridgedPassManager::PassPipelineKind)kind);
+  } else {
+    SILPassPipelinePlan plan = SILPassPipelinePlan::getPlan(kind, getModule());
+    executePassPipelinePlan(plan);
+  }
+}
 
 void SILPassManager::executePassPipelinePlan(const SILPassPipelinePlan &Plan) {
   for (const SILPassPipeline &Pipeline : Plan.getPipelines()) {

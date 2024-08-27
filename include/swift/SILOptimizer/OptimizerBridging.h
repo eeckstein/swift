@@ -57,6 +57,7 @@ class FixedSizeSlabPayload;
 class FixedSizeSlab;
 class SILVTable;
 class ClosureSpecializationCloner;
+class SILPassManager;
 }
 
 struct BridgedPassContext;
@@ -377,6 +378,22 @@ struct BridgedPassContext {
                                                         SwiftInt paramCount,
                                                         BridgedFunction bridgedApplySiteCallee,
                                                         bool isSerialized) const;
+};
+
+struct BridgedPassManager {
+
+  swift::SILPassManager * _Nonnull pm;
+
+  enum class PassPipelineKind {
+#define PASSPIPELINE(NAME, DESCRIPTION) NAME,
+#include "swift/SILOptimizer/PassManager/PassPipeline.def"
+  };
+
+  BRIDGED_INLINE BridgedPassContext getContext() const;
+
+  typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
+
+  static void registerBridging(ExecutePassesFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);
