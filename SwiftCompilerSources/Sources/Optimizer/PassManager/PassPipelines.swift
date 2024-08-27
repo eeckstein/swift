@@ -10,10 +10,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import OptimizerBridging
+
 func getOnoneFunctionPipeline(_ b: Bool) -> [FunctionPass] {
-  passPipeline {
+  functionPassPipeline {
     allocVectorLowering
     booleanLiteralFolding
+    BridgedPass.ReleaseHoisting
     if b {
       deadStoreElimination
     }
@@ -37,9 +40,10 @@ func getPerformancePassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getOnonePassPipeline(options: Options) -> [ModulePass] {
-  passPipeline {
+  modulePassPipeline {
     getOnoneFunctionPipeline(false)
-    passPipeline {
+    BridgedModulePass.PerformanceDiagnostics
+    functionPassPipeline {
       allocVectorLowering
       booleanLiteralFolding
     }

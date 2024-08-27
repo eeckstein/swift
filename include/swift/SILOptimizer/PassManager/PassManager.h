@@ -214,6 +214,8 @@ class SILPassManager {
   irgen::IRGenModule *IRMod;
   irgen::IRGenerator *irgen;
 
+  std::vector<SILTransform *> allTransformations;
+
   /// The list of transformations to run.
   llvm::SmallVector<SILTransform *, 16> Transformations;
 
@@ -449,6 +451,10 @@ public:
 
   void executePassPipelinePlan(const SILPassPipelinePlan &Plan);
 
+  void runBridgedFunctionPass(PassKind passKind, SILFunction *f);
+
+  void runBridgedModulePass(PassKind passKind);
+
   bool continueWithNextSubpassRun(SILInstruction *forInst, SILFunction *function,
                                   SILTransform *trans);
 
@@ -480,13 +486,15 @@ private:
 
   /// Run the \p TransIdx'th SIL module transform over all the functions in
   /// the module.
-  void runModulePass(unsigned TransIdx);
+  void runModulePass(SILModuleTransform *SMT, unsigned TransIdx);
 
   /// Run the \p TransIdx'th pass on the function \p F.
-  void runPassOnFunction(unsigned TransIdx, SILFunction *F);
+  void runPassOnFunction(SILFunctionTransform *SFT, unsigned TransIdx, SILFunction *F);
 
   /// Run the passes in Transform from \p FromTransIdx to \p ToTransIdx.
   void runFunctionPasses(unsigned FromTransIdx, unsigned ToTransIdx);
+
+  SILTransform *getCachedPass(PassKind passKind);
 
   /// Helper function to check if the function pass should be run mandatorily
   /// All passes in mandatory pass pipeline and ownership model elimination are

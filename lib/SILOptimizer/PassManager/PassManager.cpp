@@ -621,11 +621,9 @@ bool SILPassManager::disablePassesForFunction(SILFunction *function) {
                    function->getName()) != SILDisablePassOnlyFun.end();
 }
 
-void SILPassManager::runPassOnFunction(unsigned TransIdx, SILFunction *F) {
+void SILPassManager::runPassOnFunction(SILFunctionTransform *SFT, unsigned TransIdx, SILFunction *F) {
 
   assert(analysesUnlocked() && "Expected all analyses to be unlocked!");
-
-  auto *SFT = cast<SILFunctionTransform>(Transformations[TransIdx]);
 
   if (!F->shouldOptimize() && !isMandatoryFunctionPass(SFT)) {
     return;
@@ -831,7 +829,9 @@ runFunctionPasses(unsigned FromTransIdx, unsigned ToTransIdx) {
     assert(!shouldRestartPipeline() &&
         "Did not expect function pipeline set up to restart from beginning!");
 
-    runPassOnFunction(FromTransIdx + PipelineIdx, F);
+    unsigned transIdx = FromTransIdx + PipelineIdx;
+    auto *sft = cast<SILFunctionTransform>(Transformations[transIdx]);
+    runPassOnFunction(sft, transIdx, F);
 
     // Note: Don't get entry reference prior to runPassOnFunction().
     // A pass can push a new function to the worklist which may cause a
@@ -847,8 +847,7 @@ runFunctionPasses(unsigned FromTransIdx, unsigned ToTransIdx) {
   }
 }
 
-void SILPassManager::runModulePass(unsigned TransIdx) {
-  auto *SMT = cast<SILModuleTransform>(Transformations[TransIdx]);
+void SILPassManager::runModulePass(SILModuleTransform *SMT, unsigned TransIdx) {
   if (isDisabled(SMT))
     return;
 
@@ -980,6 +979,27 @@ void SILPassManager::executePassPipelinePlan(const SILPassPipelinePlan &Plan) {
   }
 }
 
+SILTransform *SILPassManager::getCachedPass(PassKind passKind) {
+  unsigned passIdx = (unsigned)passKind;
+  if (allTransformations.empty()) {
+    allTransformations.resize((unsigned)PassKind::AllPasses_Last + 1);
+  }
+  if (!allTransformations[passIdx]) {
+    allTransformations[passIdx] = getPass(passKind);
+  }
+  return allTransformations[passIdx];
+}
+
+void SILPassManager::runBridgedFunctionPass(PassKind passKind, SILFunction *f) {
+  auto *sft = cast<SILFunctionTransform>(getCachedPass(passKind));
+  runPassOnFunction(sft, /*TransIdx=*/ 0, f);
+}
+
+void SILPassManager::runBridgedModulePass(PassKind passKind) {
+  auto *smt = cast<SILModuleTransform>(getCachedPass(passKind));
+  runModulePass(smt, /*TransIdx=*/ 0);
+}
+
 void SILPassManager::execute() {
   const SILOptions &Options = getOptions();
 
@@ -1011,7 +1031,8 @@ void SILPassManager::execute() {
 
     while (Idx < NumTransforms && isa<SILModuleTransform>(Transformations[Idx])
            && continueTransforming()) {
-      runModulePass(Idx);
+      auto *smt = cast<SILModuleTransform>(Transformations[Idx]);
+      runModulePass(smt, Idx);
 
       ++Idx;
       ++NumPassesRun;
@@ -1636,26 +1657,30 @@ SwiftInt BridgedFunction::specializationLevel() const {
 //                           OptimizerBridging
 //===----------------------------------------------------------------------===//
 
-BridgedFunctionPass BridgedPassManager::getFunctionPass(FunctionPassKind kind) const {
+static swift::PassKind getFunctionPassKind(BridgedPass kind) {
   switch (kind) {
-#define PASS(ID, TAG, NAME) \
-    case FunctionPassKind::ID: \
-      return {cast<SILFunctionTransform>(pm->getPass(PassKind::ID))};
+#define PASS(ID, TAG, NAME) case BridgedPass::ID: return swift::PassKind::ID;
 #define MODULE_PASS(ID, TAG, NAME)
 #define IRGEN_MODULE_PASS(ID, TAG, NAME)
 #include "swift/SILOptimizer/PassManager/Passes.def"
   }
 }
 
-BridgedModulePass BridgedPassManager::getFunctionPass(ModulePassKind kind) const {
+static swift::PassKind getModulePassKind(BridgedModulePass kind) {
   switch (kind) {
 #define PASS(ID, TAG, NAME)
-#define MODULE_PASS(ID, TAG, NAME) \
-    case ModulePassKind::ID: \
-      return {cast<SILModuleTransform>(pm->getPass(PassKind::ID))};
+#define MODULE_PASS(ID, TAG, NAME) case BridgedModulePass::ID: return swift::PassKind::ID;
 #define IRGEN_MODULE_PASS MODULE_PASS
 #include "swift/SILOptimizer/PassManager/Passes.def"
   }
+}
+
+void BridgedPassManager::runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const {
+  pm->runBridgedFunctionPass(getFunctionPassKind(passKind), f.getFunction());
+}
+
+void BridgedPassManager::runBridgedModulePass(BridgedModulePass passKind) const {
+  pm->runBridgedModulePass(getModulePassKind(passKind));
 }
 
 llvm::cl::list<std::string>

@@ -63,6 +63,7 @@ class SILModuleTransform;
 }
 
 struct BridgedPassContext;
+struct BridgedPassManager;
 
 struct BridgedAliasAnalysis {
   swift::AliasAnalysis * _Nonnull aa;
@@ -216,6 +217,7 @@ struct BridgedPassContext {
   BRIDGED_INLINE bool hadError() const;
   BRIDGED_INLINE bool moduleIsSerialized() const;
   BRIDGED_INLINE bool isTransforming(BridgedFunction function) const;
+  BRIDGED_INLINE BridgedPassManager getPassManager() const;
 
   // Analysis
 
@@ -382,12 +384,18 @@ struct BridgedPassContext {
                                                         bool isSerialized) const;
 };
 
-struct BridgedFunctionPass {
-  swift::SILFunctionTransform * _Nonnull transform;
+enum class BridgedPass {
+#define PASS(ID, TAG, NAME) ID,
+#define MODULE_PASS(ID, TAG, NAME)
+#define IRGEN_MODULE_PASS(ID, TAG, NAME)
+#include "swift/SILOptimizer/PassManager/Passes.def"
 };
 
-struct BridgedModulePass {
-  swift::SILModuleTransform * _Nonnull transform;
+enum class BridgedModulePass {
+#define PASS(ID, TAG, NAME)
+#define MODULE_PASS(ID, TAG, NAME) ID,
+#define IRGEN_MODULE_PASS MODULE_PASS
+#include "swift/SILOptimizer/PassManager/Passes.def"
 };
 
 struct BridgedPassManager {
@@ -399,24 +407,10 @@ struct BridgedPassManager {
 #include "swift/SILOptimizer/PassManager/PassPipeline.def"
   };
 
-  enum class FunctionPassKind {
-#define PASS(ID, TAG, NAME) ID,
-#define MODULE_PASS(ID, TAG, NAME)
-#define IRGEN_MODULE_PASS(ID, TAG, NAME)
-#include "swift/SILOptimizer/PassManager/Passes.def"
-  };
-
-  enum class ModulePassKind {
-#define PASS(ID, TAG, NAME)
-#define MODULE_PASS(ID, TAG, NAME) ID,
-#define IRGEN_MODULE_PASS MODULE_PASS
-#include "swift/SILOptimizer/PassManager/Passes.def"
-  };
-
   BRIDGED_INLINE BridgedPassContext getContext() const;
 
-  SWIFT_IMPORT_UNSAFE BridgedFunctionPass getFunctionPass(FunctionPassKind kind) const;
-  SWIFT_IMPORT_UNSAFE BridgedModulePass getFunctionPass(ModulePassKind kind) const;
+  void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
+  void runBridgedModulePass(BridgedModulePass passKind) const;
 
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
 

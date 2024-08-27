@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SIL
 import OptimizerBridging
 
 final class PassManager {
@@ -64,9 +65,16 @@ struct FunctionPassPipelineBuilder {
   static func buildExpression(_ element: Expression) -> Component {
     return [element]
   }
-  static func buildExpression(_ element: Int) -> Component {
-    return []
+
+  static func buildExpression(_ passKind: BridgedPass) -> Component {
+    let pass = FunctionPass(name: "TODO") {
+      (function: Function, context: FunctionPassContext) in
+
+      context._bridged.getPassManager().runBridgedFunctionPass(passKind, function.bridged)
+    }
+    return [pass]
   }
+
   static func buildOptional(_ component: Component?) -> Component {
     guard let component = component else { return [] }
     return component
@@ -93,6 +101,16 @@ struct ModulePassPipelineBuilder {
   static func buildExpression(_ element: ModulePass) -> Component {
     return [element]
   }
+
+  static func buildExpression(_ passKind: BridgedModulePass) -> Component {
+    let pass = ModulePass(name: "TODO") {
+      (context: ModulePassContext) in
+
+      context._bridged.getPassManager().runBridgedModulePass(passKind)
+    }
+    return [pass]
+  }
+
   static func buildExpression(_ element: [FunctionPass]) -> Component {
     let pass = ModulePass(name: "function passes") {
       runFunctionPasses(passes: element, $0)
@@ -117,11 +135,11 @@ struct ModulePassPipelineBuilder {
   }
 }
 
-func passPipeline(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass]) -> [FunctionPass] {
+func functionPassPipeline(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass]) -> [FunctionPass] {
   passes()
 }
 
-func passPipeline(@ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> [ModulePass] {
+func modulePassPipeline(@ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> [ModulePass] {
   passes()
 }
 
