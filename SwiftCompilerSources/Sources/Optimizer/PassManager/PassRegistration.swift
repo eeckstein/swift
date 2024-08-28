@@ -18,6 +18,7 @@ public func initializeSwiftModules() {
   registerSILClasses()
   registerSwiftAnalyses()
   registerUtilities()
+  PassManager.register()
   registerSwiftPasses()
   registerOptimizerTests()
 }

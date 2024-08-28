@@ -937,6 +937,9 @@ void DestroyAddrHoisting::run() {
   if (!getFunction()->hasOwnership())
     return;
 
+  if (getFunction()->getModule().getOptions().DestroyHoisting != DestroyHoistingOption::On)
+    return;
+
   InstructionDeleter deleter;
   bool changed = false;
 

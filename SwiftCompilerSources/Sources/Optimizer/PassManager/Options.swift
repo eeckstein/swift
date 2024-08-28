@@ -24,12 +24,46 @@ struct Options {
     _bridged.enableMoveInoutStackProtection()
   }
 
+  var enableLifetimeDependenceDiagnostics: Bool {
+    _bridged.enableLifetimeDependenceDiagnostics()
+  }
+
+  var enableLexicalLifetimes: Bool {
+    _bridged.enableLexicalLifetimes()
+  }
+
+  enum CopyPropagationOption {
+    // Do not add any copy propagation passes.
+    case off
+
+    // Only add the copy propagation passes requested by other flags, currently
+    // just -enable-ossa-modules.
+    case requestedPassesOnly
+
+    // Add all relevant copy propagation passes.  If a setting, e.g.
+    // -enable-ossa-modules, requests to add copy propagation to the pipeline, do so.
+    case on
+  }
+
+  var copyPropagation: CopyPropagationOption {
+    switch _bridged.copyPropagationOption() {
+      case .Off:                 return .off
+      case .RequestedPassesOnly: return .requestedPassesOnly
+      case .On:                  return .on
+      default: fatalError()
+    }
+  }
+
   func enableSimplification(for inst: Instruction) -> Bool {
     _bridged.enableSimplificationFor(inst.bridged)
   }
 
   var enableEmbeddedSwift: Bool {
     _bridged.hasFeature(.Embedded)
+  }
+
+  var shouldOptimize: Bool {
+    _bridged.shouldOptimize()
   }
 
   func hasFeature(_ feature: BridgedFeature) -> Bool {

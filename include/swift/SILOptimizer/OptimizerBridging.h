@@ -204,6 +204,11 @@ struct BridgedSpecializationCloner {
 struct BridgedPassContext {
   swift::SwiftPassInvocation * _Nonnull invocation;
 
+#ifdef USED_IN_CPP_SOURCE
+  BRIDGED_INLINE swift::SILModule * _Nonnull getModule() const;
+  BRIDGED_INLINE const swift::SILOptions &getOptions() const;
+#endif
+
   enum class SILStage {
     Raw,
     Canonical,
@@ -370,9 +375,19 @@ struct BridgedPassContext {
     Unchecked = 2
   };
 
+  enum class CopyPropagationOption {
+    Off,
+    RequestedPassesOnly,
+    On
+  };
+
   BRIDGED_INLINE bool enableStackProtection() const;
   BRIDGED_INLINE bool hasFeature(BridgedFeature feature) const;
   BRIDGED_INLINE bool enableMoveInoutStackProtection() const;
+  BRIDGED_INLINE bool enableLifetimeDependenceDiagnostics() const;
+  BRIDGED_INLINE bool enableLexicalLifetimes() const;
+  BRIDGED_INLINE CopyPropagationOption copyPropagationOption() const;
+  BRIDGED_INLINE bool shouldOptimize() const;
   BRIDGED_INLINE AssertConfiguration getAssertConfiguration() const;
   bool enableSimplificationFor(BridgedInstruction inst) const;
 

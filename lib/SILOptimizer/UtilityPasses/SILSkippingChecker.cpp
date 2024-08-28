@@ -100,6 +100,10 @@ namespace {
 /// that aren't serialized also have no generated SIL.
 class SILSkippingChecker : public SILModuleTransform {
   void run() override {
+#ifdef NDEBUG
+    return;
+#endif
+
     auto &M = *getModule();
 
     // Skip this verification for SwiftOnoneSupport

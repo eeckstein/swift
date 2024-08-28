@@ -46,14 +46,6 @@ static llvm::cl::opt<bool>
     SILViewCFG("sil-view-cfg", llvm::cl::init(false),
                llvm::cl::desc("Enable the sil cfg viewer pass"));
 
-static llvm::cl::opt<bool> SILViewCanonicalCFG(
-    "sil-view-canonical-cfg", llvm::cl::init(false),
-    llvm::cl::desc("Enable the sil cfg viewer pass after diagnostics"));
-
-static llvm::cl::opt<bool> SILPrintCanonicalModule(
-    "sil-print-canonical-module", llvm::cl::init(false),
-    llvm::cl::desc("Print the textual SIL module after diagnostics"));
-
 static llvm::cl::opt<bool> SILPrintFinalOSSAModule(
     "sil-print-final-ossa-module", llvm::cl::init(false),
     llvm::cl::desc("Print the textual SIL module before lowering from OSSA"));
@@ -298,15 +290,7 @@ SILPassPipelinePlan::getMandatoryDebugSerializationPassPipeline(const SILOptions
 SILPassPipelinePlan
 SILPassPipelinePlan::getMandatoryPassPipeline(const SILOptions &Options) {
   SILPassPipelinePlan P(Options);
-
   addMandatoryDiagnosticOptPipeline(P);
-
-  if (SILViewCanonicalCFG) {
-    addCFGPrinterPipeline(P, "SIL View Canonical CFG");
-  }
-  if (SILPrintCanonicalModule) {
-    addModulePrinterPipeline(P, "SIL Print Canonical Module");
-  }
   return P;
 }
 

@@ -141,7 +141,10 @@ func functionPassPipeline(@FunctionPassPipelineBuilder _ passes: () -> [Function
   passes()
 }
 
-func modulePassPipeline(@ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> [ModulePass] {
+func modulePassPipeline(
+  _ name: String = "module passes",
+  @ModulePassPipelineBuilder _ passes: () -> [ModulePass]
+) -> [ModulePass] {
   passes()
 }
 
