@@ -61,14 +61,11 @@ private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, o
 
 @resultBuilder
 struct FunctionPassPipelineBuilder {
-  typealias Component = [FunctionPass]
-  typealias Expression = FunctionPass
-
-  static func buildExpression(_ element: Expression) -> Component {
-    return [element]
+  static func buildExpression(_ pass: FunctionPass) -> [FunctionPass] {
+    return [pass]
   }
 
-  static func buildExpression(_ passKind: BridgedPass) -> Component {
+  static func buildExpression(_ passKind: BridgedPass) -> [FunctionPass] {
     let pass = FunctionPass(name: "TODO") {
       (function: Function, context: FunctionPassContext) in
 
@@ -77,38 +74,34 @@ struct FunctionPassPipelineBuilder {
     return [pass]
   }
 
-  static func buildExpression(_ element: [FunctionPass]) -> Component {
-    return element
+  static func buildExpression(_ passes: [FunctionPass]) -> [FunctionPass] {
+    return passes
   }
 
-  static func buildOptional(_ component: Component?) -> Component {
-    guard let component = component else { return [] }
-    return component
+  static func buildOptional(_ passes: [FunctionPass]?) -> [FunctionPass] {
+    return passes ?? []
   }
-  static func buildEither(first component: Component) -> Component {
-    return component
+
+  static func buildEither(first passes: [FunctionPass]) -> [FunctionPass] {
+    return passes
   }
-  static func buildEither(second component: Component) -> Component {
-    return component
+
+  static func buildEither(second passes: [FunctionPass]) -> [FunctionPass] {
+    return passes
   }
-  static func buildArray(_ components: [Component]) -> Component {
-    return Array(components.joined())
-  }
-  static func buildBlock(_ components: Component...) -> Component {
-    return Array(components.joined())
+
+  static func buildBlock(_ passes: [FunctionPass]...) -> [FunctionPass] {
+    return Array(passes.joined())
   }
 }
 
 @resultBuilder
 struct ModulePassPipelineBuilder {
-  typealias Component = [ModulePass]
-  typealias Expression = ModulePass
-
-  static func buildExpression(_ element: ModulePass) -> Component {
-    return [element]
+  static func buildExpression(_ pass: ModulePass) -> [ModulePass] {
+    return [pass]
   }
 
-  static func buildExpression(_ passKind: BridgedModulePass) -> Component {
+  static func buildExpression(_ passKind: BridgedModulePass) -> [ModulePass] {
     let pass = ModulePass(name: "TODO") {
       (context: ModulePassContext) in
 
@@ -117,35 +110,34 @@ struct ModulePassPipelineBuilder {
     return [pass]
   }
 
-  static func buildExpression(_ element: [FunctionPass]) -> Component {
+  static func buildExpression(_ functionPasses: [FunctionPass]) -> [ModulePass] {
     let pass = ModulePass(name: "function passes") {
-      runFunctionPasses(passes: element, $0)
+      runFunctionPasses(passes: functionPasses, $0)
     }
     return [pass]
   }
 
-  static func buildExpression(_ element: [ModulePass]) -> Component {
+  static func buildExpression(_ modulePasses: [ModulePass]) -> [ModulePass] {
     let pass = ModulePass(name: "function passes") {
-      runModulePasses(passes: element, $0)
+      runModulePasses(passes: modulePasses, $0)
     }
     return [pass]
   }
 
-  static func buildOptional(_ component: Component?) -> Component {
-    guard let component = component else { return [] }
-    return component
+  static func buildOptional(_ passes: [ModulePass]?) -> [ModulePass] {
+    return passes ?? []
   }
-  static func buildEither(first component: Component) -> Component {
-    return component
+
+  static func buildEither(first passes: [ModulePass]) -> [ModulePass] {
+    return passes
   }
-  static func buildEither(second component: Component) -> Component {
-    return component
+
+  static func buildEither(second passes: [ModulePass]) -> [ModulePass] {
+    return passes
   }
-  static func buildArray(_ components: [Component]) -> Component {
-    return Array(components.joined())
-  }
-  static func buildBlock(_ components: Component...) -> Component {
-    return Array(components.joined())
+
+  static func buildBlock(_ passes: [ModulePass]...) -> [ModulePass] {
+    return Array(passes.joined())
   }
 }
 
