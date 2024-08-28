@@ -388,6 +388,7 @@ struct BridgedPassContext {
   BRIDGED_INLINE bool enableLexicalLifetimes() const;
   BRIDGED_INLINE CopyPropagationOption copyPropagationOption() const;
   BRIDGED_INLINE bool shouldOptimize() const;
+  BRIDGED_INLINE bool assumeSingleThreaded() const;
   BRIDGED_INLINE AssertConfiguration getAssertConfiguration() const;
   bool enableSimplificationFor(BridgedInstruction inst) const;
 

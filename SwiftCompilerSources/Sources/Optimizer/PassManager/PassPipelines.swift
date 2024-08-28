@@ -198,14 +198,60 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
   }
 }
 
-func getOnoneFunctionPipeline(_ b: Bool) -> [FunctionPass] {
-  functionPasses {
-    allocVectorLowering
-    booleanLiteralFolding
-    BridgedPass.ReleaseHoisting
-    if b {
-      deadStoreElimination
+func getOnonePassPipeline(options: Options) -> [ModulePass] {
+  // These are optimizations that we do not need to enable diagnostics (or
+  // depend on other passes needed for diagnostics). Thus we can run them later
+  // and avoid having SourceKit run these passes when just emitting diagnostics
+  // in the editor.
+  modulePasses("Onone passes") {
+    functionPasses {
+      BridgedPass.ForEachLoopUnroll
+
+      // TODO: MandatoryARCOpts should be subsumed by CopyPropagation. There should
+      // be no need to run another analysis of copies at -Onone.
+      BridgedPass.MandatoryARCOpts
+
+      // Create pre-specializations.
+      // This needs to run pre-serialization because it needs to identify native
+      // inlinable functions from imported ones.
+      BridgedPass.OnonePrespecializations
     }
+    // For embedded Swift: CMO is used to serialize libraries.
+    BridgedModulePass.CrossModuleOptimization
+
+    // First serialize the SIL if we are asked to.
+    BridgedModulePass.SerializeSILPass
+
+    functionPasses {
+      // Now that we have serialized, propagate debug info.
+      BridgedPass.MovedAsyncVarDebugInfoPropagator
+
+      // Now strip any transparent functions that still have ownership.
+      BridgedPass.OwnershipModelEliminator
+
+      // Has only an effect if the -assume-single-thread option is specified.
+      assumeSingleThreadedPass
+
+      // In Onone builds, do a function-local analysis in a function pass.
+      functionStackProtection
+
+      // This is mainly there to optimize `Builtin.isConcrete`, which must not be
+      // constant folded before any generic specialization.
+      lateOnoneSimplificationPass
+
+      BridgedPass.CleanupDebugSteps
+    }
+    BridgedModulePass.UsePrespecialized
+
+    if options.enableEmbeddedSwift {
+      // For embedded Swift: Remove all unspecialized functions. This is important
+      // to avoid having debuginfo references to these functions that we don't
+      // want to emit in IRGen.
+      BridgedModulePass.LateDeadFunctionAndGlobalElimination
+    }
+
+    // Has only an effect if the -sil-based-debuginfo option is specified.
+    BridgedModulePass.SILDebugInfoGenerator
   }
 }
 
@@ -215,19 +261,6 @@ func getOwnershipEliminatorPassPipeline(options: Options) -> [ModulePass] {
 
 func getPerformancePassPipeline(options: Options) -> [ModulePass] {
   return []
-}
-
-func getOnonePassPipeline(options: Options) -> [ModulePass] {
-  modulePasses {
-    getOnoneFunctionPipeline(false)
-    BridgedModulePass.PerformanceDiagnostics
-    functionPasses {
-      allocVectorLowering
-      booleanLiteralFolding
-    }
-    mandatoryPerformanceOptimizations
-  }
-
 }
 
 func getInstCountPassPipeline(options: Options) -> [ModulePass] {

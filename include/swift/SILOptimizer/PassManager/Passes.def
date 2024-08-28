@@ -297,7 +297,7 @@ PASS(LICM, "licm",
      "Loop Invariant Code Motion")
 PASS(LateCodeMotion, "late-codemotion",
      "Late Code Motion with Release Hoisting")
-PASS(LateDeadFunctionAndGlobalElimination, "late-deadfuncelim",
+MODULE_PASS(LateDeadFunctionAndGlobalElimination, "late-deadfuncelim",
      "Late Dead Function and Global Elimination")
 SWIFT_FUNCTION_PASS(LifetimeDependenceDiagnostics,
       "lifetime-dependence-diagnostics",

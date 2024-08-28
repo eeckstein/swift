@@ -66,6 +66,10 @@ struct Options {
     _bridged.shouldOptimize()
   }
 
+  var assumeSingleThreaded: Bool {
+    _bridged.assumeSingleThreaded()
+  }
+
   func hasFeature(_ feature: BridgedFeature) -> Bool {
     _bridged.hasFeature(feature)
   }

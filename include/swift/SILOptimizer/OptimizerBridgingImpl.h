@@ -511,6 +511,10 @@ bool BridgedPassContext::shouldOptimize() const {
   return getOptions().shouldOptimize();
 }
 
+bool BridgedPassContext::assumeSingleThreaded() const {
+  return getOptions().AssumeSingleThreaded;
+}
+
 BridgedPassContext::AssertConfiguration BridgedPassContext::getAssertConfiguration() const {
   swift::SILModule *mod = invocation->getPassManager()->getModule();
   return (AssertConfiguration)mod->getOptions().AssertConfig;

@@ -30,6 +30,10 @@ import SIL
 let assumeSingleThreadedPass = FunctionPass(name: "sil-assume-single-threaded") {
   (function: Function, context: FunctionPassContext) in
 
+  guard context.options.assumeSingleThreaded else {
+    return
+  }
+
   for inst in function.instructions {
     guard let rcInst = inst as? RefCountingInst else { continue }
 
