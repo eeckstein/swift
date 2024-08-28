@@ -77,6 +77,10 @@ struct FunctionPassPipelineBuilder {
     return [pass]
   }
 
+  static func buildExpression(_ element: [FunctionPass]) -> Component {
+    return element
+  }
+
   static func buildOptional(_ component: Component?) -> Component {
     guard let component = component else { return [] }
     return component
@@ -119,6 +123,14 @@ struct ModulePassPipelineBuilder {
     }
     return [pass]
   }
+
+  static func buildExpression(_ element: [ModulePass]) -> Component {
+    let pass = ModulePass(name: "function passes") {
+      runModulePasses(passes: element, $0)
+    }
+    return [pass]
+  }
+
   static func buildOptional(_ component: Component?) -> Component {
     guard let component = component else { return [] }
     return component
@@ -149,5 +161,9 @@ func modulePasses(
 }
 
 func runFunctionPasses(passes: [FunctionPass], _ context: ModulePassContext) {
+  fatalError("TODO")
+}
 
+func runModulePasses(passes: [ModulePass], _ context: ModulePassContext) {
+  fatalError("TODO")
 }

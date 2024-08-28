@@ -498,6 +498,26 @@ bool BridgedPassContext::enableLexicalLifetimes() const {
   return getOptions().LexicalLifetimes == LexicalLifetimesOption::On;
 }
 
+bool BridgedPassContext::enableAsyncDemotion() const {
+  return getOptions().EnableAsyncDemotion;
+}
+
+bool BridgedPassContext::enableDestroyHoisting() const {
+  return getOptions().DestroyHoisting == DestroyHoistingOption::On;
+}
+
+bool BridgedPassContext::enableSpeculativeDevirtualization() const {
+  return getOptions().EnableSpeculativeDevirtualization;
+}
+
+bool BridgedPassContext::enableExperimentalSwiftBasedClosureSpecialization() const {
+  return getOptions().EnableExperimentalSwiftBasedClosureSpecialization;
+}
+
+bool BridgedPassContext::enableOSSAModules() const {
+  return getOptions().EnableOSSAModules;
+}
+
 BridgedPassContext::CopyPropagationOption BridgedPassContext::copyPropagationOption() const {
   switch (getOptions().CopyPropagation) {
     case swift::CopyPropagationOption::Off:                 return CopyPropagationOption::Off;

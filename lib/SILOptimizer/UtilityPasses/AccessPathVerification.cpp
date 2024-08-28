@@ -101,6 +101,7 @@ public:
   }
 
   void run() override {
+#ifndef NDEBUG
     for (auto &fn : *getModule()) {
       if (fn.empty())
         continue;
@@ -116,6 +117,7 @@ public:
       }
       useToPathMap.clear();
     }
+#endif
   }
 };
 

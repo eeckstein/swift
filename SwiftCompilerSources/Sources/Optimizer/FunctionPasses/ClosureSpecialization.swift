@@ -110,7 +110,7 @@ private func log(_ message: @autoclosure () -> String) {
 }
 
 // =========== Entry point =========== //
-let generalClosureSpecialization = FunctionPass(name: "experimental-swift-based-closure-specialization") {
+let experimentalSwiftBasedClosureSpecialization = FunctionPass(name: "experimental-swift-based-closure-specialization") {
   (function: Function, context: FunctionPassContext) in
   // TODO: Implement general closure specialization optimization
   print("NOT IMPLEMENTED")

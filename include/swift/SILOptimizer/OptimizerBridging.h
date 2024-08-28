@@ -386,6 +386,11 @@ struct BridgedPassContext {
   BRIDGED_INLINE bool enableMoveInoutStackProtection() const;
   BRIDGED_INLINE bool enableLifetimeDependenceDiagnostics() const;
   BRIDGED_INLINE bool enableLexicalLifetimes() const;
+  BRIDGED_INLINE bool enableAsyncDemotion() const;
+  BRIDGED_INLINE bool enableDestroyHoisting() const;
+  BRIDGED_INLINE bool enableSpeculativeDevirtualization() const;
+  BRIDGED_INLINE bool enableExperimentalSwiftBasedClosureSpecialization() const;
+  BRIDGED_INLINE bool enableOSSAModules() const;
   BRIDGED_INLINE CopyPropagationOption copyPropagationOption() const;
   BRIDGED_INLINE bool shouldOptimize() const;
   BRIDGED_INLINE bool assumeSingleThreaded() const;

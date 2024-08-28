@@ -32,6 +32,26 @@ struct Options {
     _bridged.enableLexicalLifetimes()
   }
 
+  var enableAsyncDemotion: Bool {
+    _bridged.enableAsyncDemotion()
+  }
+
+  var enableDestroyHoisting: Bool {
+    _bridged.enableDestroyHoisting()
+  }
+
+  var enableSpeculativeDevirtualization: Bool {
+    _bridged.enableSpeculativeDevirtualization()
+  }
+
+  var enableExperimentalSwiftBasedClosureSpecialization: Bool {
+    _bridged.enableExperimentalSwiftBasedClosureSpecialization()
+  }
+
+  var enableOSSAModules: Bool {
+    _bridged.enableOSSAModules()
+  }
+
   enum CopyPropagationOption {
     // Do not add any copy propagation passes.
     case off
