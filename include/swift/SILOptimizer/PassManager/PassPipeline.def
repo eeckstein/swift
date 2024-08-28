@@ -32,6 +32,8 @@ PASSPIPELINE(Lowering, "SIL Address Lowering")
 PASSPIPELINE(IRGenPrepare, "Pipeline to run during IRGen")
 PASSPIPELINE(SerializeSIL, "Utility pipeline that just runs SerializeSILPass")
 PASSPIPELINE(FromFile, "Passes from configuration file")
+PASSPIPELINE(MandatoryDebugSerialization, "Mandatory passes for debug serialization")
+PASSPIPELINE(PerformanceDebugSerialization, "Performance passes for debug serialization")
 
 #undef PASSPIPELINE_WITH_OPTIONS
 #undef PASSPIPELINE

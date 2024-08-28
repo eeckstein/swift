@@ -77,13 +77,6 @@ static void addModulePrinterPipeline(SILPassPipelinePlan &plan,
   plan.addModulePrinter();
 }
 
-static void addMandatoryDebugSerialization(SILPassPipelinePlan &P) {
-  P.startPipeline("Mandatory Debug Serialization");
-  P.addAddressLowering();
-  P.addOwnershipModelEliminator();
-  P.addMandatoryInlining();
-}
-
 static void addOwnershipModelEliminatorPipeline(SILPassPipelinePlan &P) {
   P.startPipeline("Ownership Model Eliminator");
   P.addAddressLowering();
@@ -293,18 +286,19 @@ SILPassPipelinePlan::getSILGenPassPipeline(const SILOptions &Options) {
 }
 
 SILPassPipelinePlan
+SILPassPipelinePlan::getMandatoryDebugSerializationPassPipeline(const SILOptions &Options) {
+  SILPassPipelinePlan P(Options);
+  P.startPipeline("Mandatory Debug Serialization");
+  P.addAddressLowering();
+  P.addOwnershipModelEliminator();
+  P.addMandatoryInlining();
+  return P;
+}
+
+SILPassPipelinePlan
 SILPassPipelinePlan::getDiagnosticPassPipeline(const SILOptions &Options) {
   SILPassPipelinePlan P(Options);
 
-  // If we are asked do debug serialization, instead of running all diagnostic
-  // passes, just run mandatory inlining with dead transparent function cleanup
-  // disabled.
-  if (Options.DebugSerialization) {
-    addMandatoryDebugSerialization(P);
-    return P;
-  }
-
-  // Otherwise run the rest of diagnostics.
   addMandatoryDiagnosticOptPipeline(P);
 
   if (SILViewCanonicalCFG) {
@@ -602,12 +596,6 @@ void addFunctionPasses(SILPassPipelinePlan &P,
     P.addSemanticARCOpts();
   }
 }
-
-static void addPerfDebugSerializationPipeline(SILPassPipelinePlan &P) {
-  P.startPipeline("Performance Debug Serialization");
-  P.addPerformanceSILLinker();
-}
-
 
 static void addPrepareOptimizationsPipeline(SILPassPipelinePlan &P) {
   P.startPipeline("PrepareOptimizationPasses");
@@ -943,14 +931,17 @@ SILPassPipelinePlan::getIRGenPreparePassPipeline(const SILOptions &Options) {
 }
 
 SILPassPipelinePlan
+SILPassPipelinePlan::getPerformanceDebugSerializationPassPipeline(const SILOptions &Options) {
+  SILPassPipelinePlan P(Options);
+  P.startPipeline("Performance Debug Serialization");
+  P.addPerformanceSILLinker();
+  return P;
+}
+
+SILPassPipelinePlan
 SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   SILPassPipelinePlan P(Options);
 
-  if (Options.DebugSerialization) {
-    addPerfDebugSerializationPipeline(P);
-    return P;
-  }
-  
   // Passes which run once before all other optimizations run. Those passes are
   // _not_ intended to run later again.
   addPrepareOptimizationsPipeline(P);

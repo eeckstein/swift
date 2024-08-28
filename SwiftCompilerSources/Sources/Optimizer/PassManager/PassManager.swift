@@ -42,16 +42,18 @@ final class PassManager {
 
 private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
   switch kind {
-    case .SILGen:              return getSILGenPassPipeline(options: options)
-    case .Diagnostic:          return getDiagnosticPassPipeline(options: options)
-    case .OwnershipEliminator: return getOwnershipEliminatorPassPipeline(options: options)
-    case .Performance:         return getPerformancePassPipeline(options: options)
-    case .Onone:               return getOnonePassPipeline(options: options)
-    case .InstCount:           return getInstCountPassPipeline(options: options)
-    case .Lowering:            return getLoweringPassPipeline(options: options)
-    case .IRGenPrepare:        return getIRGenPreparePassPipeline(options: options)
-    case .SerializeSIL:        return getSerializeSILPassPipeline(options: options)
-    case .FromFile:            return getFromFilePassPipeline(options: options)
+    case .SILGen:                        return getSILGenPassPipeline(options: options)
+    case .Diagnostic:                    return getDiagnosticPassPipeline(options: options)
+    case .OwnershipEliminator:           return getOwnershipEliminatorPassPipeline(options: options)
+    case .Performance:                   return getPerformancePassPipeline(options: options)
+    case .Onone:                         return getOnonePassPipeline(options: options)
+    case .InstCount:                     return getInstCountPassPipeline(options: options)
+    case .Lowering:                      return getLoweringPassPipeline(options: options)
+    case .IRGenPrepare:                  return getIRGenPreparePassPipeline(options: options)
+    case .SerializeSIL:                  return getSerializeSILPassPipeline(options: options)
+    case .FromFile:                      return getFromFilePassPipeline(options: options)
+    case .MandatoryDebugSerialization:   return getMandatoryDebugSerializationPassPipeline(options: options)
+    case .PerformanceDebugSerialization: return getPerformanceDebugSerializationPassPipeline(options: options)
     default:
       fatalError("unknown pass pipeline kind")
   }

@@ -61,9 +61,11 @@ bool swift::runSILDiagnosticPasses(SILModule &Module) {
   if (opts.VerifyAll && opts.OSSAVerifyComplete)
     Module.verifyOwnership();
 
-  executePassPipelinePlan(&Module,
-                          PassPipelineKind::Diagnostic,
-                          /*isMandatory*/ true);
+  auto kind = opts.DebugSerialization ?
+    PassPipelineKind::MandatoryDebugSerialization :
+    PassPipelineKind::Diagnostic;
+
+  executePassPipelinePlan(&Module, kind, /*isMandatory*/ true);
 
   // If we were asked to debug serialization, exit now.
   auto &Ctx = Module.getASTContext();
@@ -108,8 +110,11 @@ void swift::runSILOptimizationPasses(SILModule &Module) {
     return;
   }
 
-  executePassPipelinePlan(
-      &Module, PassPipelineKind::Performance);
+  auto kind = opts.DebugSerialization ?
+    PassPipelineKind::PerformanceDebugSerialization :
+    PassPipelineKind::Performance;
+
+  executePassPipelinePlan(&Module, kind);
 
   // Check if we actually serialized our module. If we did not, serialize now.
   if (!Module.isSerialized()) {

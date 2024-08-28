@@ -71,3 +71,11 @@ func getSerializeSILPassPipeline(options: Options) -> [ModulePass] {
 func getFromFilePassPipeline(options: Options) -> [ModulePass] {
   return []
 }
+
+func getMandatoryDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
+
+func getPerformanceDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
+  return []
+}
