@@ -13,10 +13,10 @@
 import OptimizerBridging
 
 func getSILGenPassPipeline(options: Options) -> [ModulePass] {
-  modulePassPipeline("SILGen Passes") {
+  modulePasses("SILGen Passes") {
     BridgedModulePass.SILGenCleanup
     if options.enableLifetimeDependenceDiagnostics {
-      functionPassPipeline {
+      functionPasses {
         lifetimeDependenceInsertionPass
         lifetimeDependenceScopeFixupPass
       }
@@ -25,13 +25,13 @@ func getSILGenPassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
-  modulePassPipeline("Mandatory Passes") {
-    functionPassPipeline {
+  modulePasses("Mandatory Passes") {
+    functionPasses {
       BridgedPass.DiagnoseInvalidEscapingCaptures
       BridgedPass.ReferenceBindingTransform
     }
     BridgedModulePass.DiagnoseStaticExclusivity
-    functionPassPipeline {
+    functionPasses {
       BridgedPass.NestedSemanticFunctionCheck
     }
     BridgedModulePass.CapturePromotion
@@ -40,7 +40,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     // This guarantees that stack-promotable boxes have [static] enforcement.
     BridgedModulePass.AccessEnforcementSelection
 
-    functionPassPipeline {
+    functionPasses {
       BridgedPass.AllocBoxToStack
       BridgedPass.NoReturnFolding
       booleanLiteralFolding
@@ -50,7 +50,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     }
     BridgedModulePass.AddressLowering
 
-    functionPassPipeline {
+    functionPasses {
       // Before we run later semantic optimizations, eliminate simple functions that
       // we specialized to ensure that we do not emit diagnostics twice.
       BridgedPass.DiagnosticDeadFunctionElimination
@@ -70,7 +70,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     }
     BridgedModulePass.DiagnoseUnnecessaryPreconcurrencyImports
 
-    functionPassPipeline {
+    functionPasses {
       // Lower tuple addr constructor. Eventually this can be merged into later
       // passes. This ensures we do not need to update later passes for something
       // that is only needed by TransferNonSendable().
@@ -80,7 +80,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     // and `differentiable_function` instructions.
     BridgedModulePass.Differentiation
 
-    functionPassPipeline {
+    functionPasses {
       BridgedPass.ClosureLifetimeFixup
 
       //===---
@@ -128,7 +128,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     BridgedModulePass.MandatoryInlining
     BridgedModulePass.MandatorySILLinker
 
-    functionPassPipeline {
+    functionPasses {
       // Promote loads as necessary to ensure we have enough SSA formation to emit
       // SSA based diagnostics.
       BridgedPass.PredictableMemoryAccessOptimizations
@@ -178,7 +178,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
 
     mandatoryPerformanceOptimizations
 
-    functionPassPipeline {
+    functionPasses {
       ononeSimplificationPass
       allocVectorLowering
       initializeStaticGlobalsPass
@@ -199,7 +199,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getOnoneFunctionPipeline(_ b: Bool) -> [FunctionPass] {
-  functionPassPipeline {
+  functionPasses {
     allocVectorLowering
     booleanLiteralFolding
     BridgedPass.ReleaseHoisting
@@ -218,10 +218,10 @@ func getPerformancePassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getOnonePassPipeline(options: Options) -> [ModulePass] {
-  modulePassPipeline {
+  modulePasses {
     getOnoneFunctionPipeline(false)
     BridgedModulePass.PerformanceDiagnostics
-    functionPassPipeline {
+    functionPasses {
       allocVectorLowering
       booleanLiteralFolding
     }

@@ -137,11 +137,11 @@ struct ModulePassPipelineBuilder {
   }
 }
 
-func functionPassPipeline(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass]) -> [FunctionPass] {
+func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass]) -> [FunctionPass] {
   passes()
 }
 
-func modulePassPipeline(
+func modulePasses(
   _ name: String = "module passes",
   @ModulePassPipelineBuilder _ passes: () -> [ModulePass]
 ) -> [ModulePass] {
