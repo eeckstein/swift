@@ -1776,7 +1776,7 @@ static bool performMandatorySILPasses(CompilerInvocation &Invocation,
     // to run the ownership evaluator.
     return runSILOwnershipEliminatorPass(*SM);
   }
-  return runSILDiagnosticPasses(*SM);
+  return runSILMandatoryPasses(*SM);
 }
 
 /// Perform SIL optimization passes if optimizations haven't been disabled.

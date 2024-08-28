@@ -43,7 +43,7 @@ final class PassManager {
 private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
   switch kind {
     case .SILGen:                        return getSILGenPassPipeline(options: options)
-    case .Diagnostic:                    return getDiagnosticPassPipeline(options: options)
+    case .Mandatory:                     return getMandatoryPassPipeline(options: options)
     case .OwnershipEliminator:           return getOwnershipEliminatorPassPipeline(options: options)
     case .Performance:                   return getPerformancePassPipeline(options: options)
     case .Onone:                         return getOnonePassPipeline(options: options)

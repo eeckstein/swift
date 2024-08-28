@@ -28,10 +28,15 @@ namespace swift {
     class IRGenModule;
   }
 
-  /// Run all the SIL diagnostic passes on \p M.
+  /// Run all the SIL mandatory passes on \p M.
   ///
-  /// \returns true if the diagnostic passes produced an error
-  bool runSILDiagnosticPasses(SILModule &M);
+  /// \returns true if the mandatory passes produced an error
+  bool runSILMandatoryPasses(SILModule &M);
+
+  /// An alias to runSILMandatoryPasses.
+  inline bool runSILDiagnosticPasses(SILModule &M) {
+    return runSILMandatoryPasses(M);
+  }
 
   /// Run all the SIL performance optimization passes on \p M.
   void runSILOptimizationPasses(SILModule &M);

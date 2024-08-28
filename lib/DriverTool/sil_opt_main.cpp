@@ -991,7 +991,7 @@ int sil_opt_main(ArrayRef<const char *> argv, void *MainAddr) {
 
   switch (options.OptimizationGroup) {
   case OptGroup::Diagnostics:
-    runSILDiagnosticPasses(*SILMod.get());
+    runSILMandatoryPasses(*SILMod.get());
     break;
   case OptGroup::Performance:
     runSILOptimizationPasses(*SILMod.get());

@@ -1227,7 +1227,7 @@ ASTUnitRef ASTBuildOperation::buildASTUnit(std::string &Error) {
       if (CancellationFlag->load(std::memory_order_relaxed)) {
         return nullptr;
       }
-      runSILDiagnosticPasses(*SILMod);
+      runSILMandatoryPasses(*SILMod);
     }
   }
 

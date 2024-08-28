@@ -41,7 +41,7 @@
 
 using namespace swift;
 
-bool swift::runSILDiagnosticPasses(SILModule &Module) {
+bool swift::runSILMandatoryPasses(SILModule &Module) {
   auto &opts = Module.getOptions();
 
   // Verify the module, if required.
@@ -63,7 +63,7 @@ bool swift::runSILDiagnosticPasses(SILModule &Module) {
 
   auto kind = opts.DebugSerialization ?
     PassPipelineKind::MandatoryDebugSerialization :
-    PassPipelineKind::Diagnostic;
+    PassPipelineKind::Mandatory;
 
   executePassPipelinePlan(&Module, kind, /*isMandatory*/ true);
 

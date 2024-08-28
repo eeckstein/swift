@@ -27,7 +27,7 @@ func getSILGenPassPipeline(options: Options) -> [ModulePass] {
   return []
 }
 
-func getDiagnosticPassPipeline(options: Options) -> [ModulePass] {
+func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
   return []
 }
 

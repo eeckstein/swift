@@ -64,7 +64,7 @@ LoweredSILRequest::evaluate(Evaluator &evaluator,
   silMod->installSILRemarkStreamer();
   silMod->setSerializeSILAction([]() {});
 
-  runSILDiagnosticPasses(*silMod);
+  runSILMandatoryPasses(*silMod);
 
   {
     FrontendStatsTracer tracer(silMod->getASTContext().Stats,

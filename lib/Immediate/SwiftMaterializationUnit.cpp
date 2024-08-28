@@ -351,7 +351,7 @@ void LazySwiftMaterializationUnit::materialize(
   // emitted during IRGen.
   SM->promoteLinkages();
 
-  runSILDiagnosticPasses(*SM);
+  runSILMandatoryPasses(*SM);
   runSILLoweringPasses(*SM);
   auto GM = generateModule(CI, std::move(SM));
   if (!GM) {

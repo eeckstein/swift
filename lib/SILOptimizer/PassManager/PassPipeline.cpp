@@ -296,7 +296,7 @@ SILPassPipelinePlan::getMandatoryDebugSerializationPassPipeline(const SILOptions
 }
 
 SILPassPipelinePlan
-SILPassPipelinePlan::getDiagnosticPassPipeline(const SILOptions &Options) {
+SILPassPipelinePlan::getMandatoryPassPipeline(const SILOptions &Options) {
   SILPassPipelinePlan P(Options);
 
   addMandatoryDiagnosticOptPipeline(P);
