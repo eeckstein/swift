@@ -560,6 +560,14 @@ BridgedPassContext BridgedPassManager::getContext() const {
   return {pm->getSwiftPassInvocation()};
 }
 
+void BridgedPassManager::setSwiftPassManager(OptionalSwiftObject passManager) const {
+  pm->setSwiftPassManager(passManager);
+}
+
+OptionalSwiftObject BridgedPassManager::getSwiftPassManager() const {
+  return pm->getSwiftPassManager();
+}
+
 SWIFT_END_NULLABILITY_ANNOTATIONS
 
 #endif

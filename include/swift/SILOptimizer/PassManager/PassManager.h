@@ -252,6 +252,9 @@ class SILPassManager {
   /// For invoking Swift passes.
   SwiftPassInvocation swiftPassInvocation;
 
+  // Backlink to the swift PassManager.
+  OptionalSwiftObject swiftPassManager = nullptr;
+
   /// A mask which has one bit for each pass. A one for a pass-bit means that
   /// the pass doesn't need to run, because nothing has changed since the
   /// previous run of that pass.
@@ -294,6 +297,12 @@ public:
   /// C'tor. It creates and registers all analysis passes, which are defined
   /// in Analysis.def.
   SILPassManager(SILModule *M, bool isMandatory, irgen::IRGenModule *IRMod);
+
+  void setSwiftPassManager(OptionalSwiftObject swiftPM) {
+    swiftPassManager = swiftPM;
+  }
+
+  OptionalSwiftObject getSwiftPassManager() const { return swiftPassManager; }
 
   const SILOptions &getOptions() const;
 

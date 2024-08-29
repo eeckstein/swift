@@ -60,10 +60,6 @@ extension Context {
       _bridged.lookupFunction($0).function
     }
   }
-
-  func notifyNewFunction(function: Function, derivedFrom: Function) {
-    _bridged.addFunctionToPassManagerWorklist(function.bridged, derivedFrom.bridged)
-  }
 }
 
 /// A context which allows mutation of a function's SIL.
@@ -256,6 +252,11 @@ struct FunctionPassContext : MutatingContext {
 
   func createSimplifyContext(preserveDebugInfo: Bool, notifyInstructionChanged: @escaping (Instruction) -> ()) -> SimplifyContext {
     SimplifyContext(_bridged: _bridged, notifyInstructionChanged: notifyInstructionChanged, preserveDebugInfo: preserveDebugInfo)
+  }
+
+  func notifyNewFunction(function: Function, derivedFrom: Function) {
+    let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
+    pm.notifyNewFunction(function: function, derivedFrom: derivedFrom)
   }
 
   var deadEndBlocks: DeadEndBlocksAnalysis {

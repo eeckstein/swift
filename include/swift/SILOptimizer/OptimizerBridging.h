@@ -431,6 +431,9 @@ struct BridgedPassManager {
 
   BRIDGED_INLINE BridgedPassContext getContext() const;
 
+  BRIDGED_INLINE void setSwiftPassManager(OptionalSwiftObject passManager) const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE OptionalSwiftObject getSwiftPassManager() const;
+
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
@@ -438,8 +441,10 @@ struct BridgedPassManager {
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
 
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
+  typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
+                                                BridgedFunction derivedFrom);
 
-  static void registerBridging(ExecutePassesFn);
+  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);

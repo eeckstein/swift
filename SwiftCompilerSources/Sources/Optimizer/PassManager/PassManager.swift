@@ -44,6 +44,11 @@ final class PassManager {
     self._bridged = bridged
     self.scheduledModulePasses = passPipeline
     self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
+    bridged.setSwiftPassManager(SwiftObject(self))
+  }
+
+  deinit {
+    _bridged.setSwiftPassManager(nil)
   }
 
   func run() {
@@ -136,8 +141,18 @@ final class PassManager {
       { (bridgedPM: BridgedPassManager, bridgedPipelineKind: BridgedPassManager.PassPipelineKind) in
         let options = Options(_bridged: bridgedPM.getContext())
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
-        let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
-        pm.run()
+        do {
+          let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
+          pm.run()
+          assert(bridgedPM.getSwiftPassManager() != nil)
+        }
+        assert(bridgedPM.getSwiftPassManager() == nil)
+      },
+      // notifyNewFunctionFn
+      {
+        (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction) in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        pm.notifyNewFunction(function: function.function, derivedFrom: derivedFrom.function)
       }
     )
   }
@@ -331,5 +346,11 @@ private struct CompletedPasses {
 
   private func bitMask(for passIndex: Int) -> UInt64 {
     UInt64(1) << (passIndex % 64)
+  }
+}
+
+extension BridgedPassManager {
+  var passManager: PassManager {
+    getSwiftPassManager().getAs(PassManager.self)!
   }
 }
