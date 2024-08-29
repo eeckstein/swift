@@ -17,10 +17,14 @@ struct FunctionPass {
   let name: String
   let runFunction: (Function, FunctionPassContext) -> ()
 
+  /// Unique identifier for vector indexing and deterministic sorting.
+  let uniqueIndex: Int
+
   public init(name: String,
               _ runFunction: @escaping (Function, FunctionPassContext) -> ()) {
     self.name = name
     self.runFunction = runFunction
+    self.uniqueIndex = PassManager.allocatePassIndex(passName: name)
   }
 
   func run(_ bridgedCtxt: BridgedFunctionPassCtxt) {
@@ -35,10 +39,14 @@ struct ModulePass {
   let name: String
   let runFunction: (ModulePassContext) -> ()
 
+  /// Unique identifier for vector indexing and deterministic sorting.
+  let uniqueIndex: Int
+
   public init(name: String,
               _ runFunction: @escaping (ModulePassContext) -> ()) {
     self.name = name
     self.runFunction = runFunction
+    self.uniqueIndex = PassManager.allocatePassIndex(passName: name)
   }
 
   func run(_ bridgedCtxt: BridgedPassContext) {

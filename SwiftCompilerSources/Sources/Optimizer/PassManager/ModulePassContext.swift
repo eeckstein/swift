@@ -193,7 +193,7 @@ struct ModulePassPipelineBuilder {
   }
 
   static func buildExpression(_ passKind: BridgedModulePass) -> [ModulePass] {
-    let pass = ModulePass(name: "TODO") {
+    let pass = ModulePass(name: StringRef(bridged: BridgedPassManager.getPassName(passKind)).string) {
       (context: ModulePassContext) in
 
       context._bridged.getPassManager().runBridgedModulePass(passKind)

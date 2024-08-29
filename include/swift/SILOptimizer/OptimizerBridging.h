@@ -434,6 +434,9 @@ struct BridgedPassManager {
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
+  SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedPass);
+  SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
+
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
 
   static void registerBridging(ExecutePassesFn);

@@ -1683,6 +1683,14 @@ void BridgedPassManager::runBridgedModulePass(BridgedModulePass passKind) const 
   pm->runBridgedModulePass(getModulePassKind(passKind));
 }
 
+BridgedStringRef BridgedPassManager::getPassName(BridgedPass passKind) {
+  return PassKindTag(getFunctionPassKind(passKind));
+}
+
+BridgedStringRef BridgedPassManager::getPassName(BridgedModulePass passKind) {
+  return PassKindTag(getModulePassKind(passKind));
+}
+
 llvm::cl::list<std::string>
     SimplifyInstructionTest("simplify-instruction", llvm::cl::CommaSeparated,
                      llvm::cl::desc("Simplify instruction of specified kind(s)"));

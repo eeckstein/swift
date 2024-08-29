@@ -19,19 +19,28 @@ final class PassManager {
 
   private var pipelineStages: [String] = []
 
+  private let scheduledModulePasses: [ModulePass]
+
   private var scheduledFunctionPasses: [FunctionPass] = []
 
   private var worklist = FunctionWorklist()
 
+  private var completedPasses: CompletedPasses
+
   private var currentPassIndex = 0
 
-  private init(bridged: BridgedPassManager) {
+  static var passIndices = Dictionary<String, Int>()
+
+  private init(bridged: BridgedPassManager, passPipeline: [ModulePass]) {
     self._bridged = bridged
+    self.scheduledModulePasses = passPipeline
+    self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
   }
 
-  func runModulePasses(passes: [ModulePass]) {
+  func run() {
     let context = createModulePassContext()
-    for pass in passes {
+
+    for pass in scheduledModulePasses {
       pass.runFunction(context)
     }
     if !scheduledFunctionPasses.isEmpty {
@@ -59,11 +68,13 @@ final class PassManager {
 
     for passIdx in initialPassIndex..<numPasses {
       let pass = scheduledFunctionPasses[passIdx]
-      context.transform(function: function) {
-        pass.runFunction(function, $0)
-      }
-      if worklist.readyList.count > readyListSize {
-        return passIdx + 1
+      if completedPasses.needToRunPass(passIndex: pass.uniqueIndex, on: function) {
+        context.transform(function: function) {
+          pass.runFunction(function, $0)
+        }
+        if worklist.readyList.count > readyListSize {
+          return passIdx + 1
+        }
       }
     }
     return numPasses
@@ -90,14 +101,24 @@ final class PassManager {
     precondition(current == name)
   }
 
+  static func allocatePassIndex(passName: String) -> Int {
+    if let idx = passIndices[passName] {
+      return idx
+    }
+    let idx = passIndices.count
+    passIndices[passName] = idx
+    assert(passIndices.count == idx + 1)
+    return idx
+  }
+
   static func register() {
     BridgedPassManager.registerBridging(
       // executePassesFn
       { (bridgedPM: BridgedPassManager, bridgedPipelineKind: BridgedPassManager.PassPipelineKind) in
-        let pm = PassManager(bridged: bridgedPM)
         let options = Options(_bridged: bridgedPM.getContext())
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
-        pm.runModulePasses(passes: pipeline)
+        let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
+        pm.run()
       }
     )
   }
@@ -129,7 +150,7 @@ struct FunctionPassPipelineBuilder {
   }
 
   static func buildExpression(_ passKind: BridgedPass) -> [FunctionPass] {
-    let pass = FunctionPass(name: "TODO") {
+    let pass = FunctionPass(name: StringRef(bridged: BridgedPassManager.getPassName(passKind)).string) {
       (function: Function, context: FunctionPassContext) in
 
       context._bridged.getPassManager().runBridgedFunctionPass(passKind, function.bridged)
@@ -165,6 +186,7 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
 private struct FunctionWorklist {
 
   var functionUses = FunctionUses()
+  // TODO: make this an array, indexed by Function.uniqueIndex
   var unhandledCallees = Dictionary<Function, Int>()
   var readyList: [(Function, passIndex: Int)] = []
 
@@ -235,5 +257,56 @@ private extension Int {
     assert(self > 0)
     self -= 1
     return self == 0
+  }
+}
+
+private struct CompletedPasses {
+  private var completedPasses: [UInt64] = []
+  private let numPasses: Int
+  private let numIntsPerFunction: Int
+
+  init(numPasses: Int) {
+    self.numPasses = numPasses
+    self.numIntsPerFunction = (numPasses + 63) / 64
+  }
+
+  mutating func passDidNotModify(passIndex: Int, function: Function) {
+    let idx = arrayIndex(passIndex: passIndex, functionIndex: function.uniqueIndex)
+    if idx > completedPasses.count {
+      completedPasses += Array(repeating: 0, count: idx - completedPasses.count + 1)
+    }
+    completedPasses[idx] |= bitMask(for: passIndex)
+  }
+
+  mutating func needToRunPass(passIndex: Int, on function: Function) -> Bool {
+    let idx = arrayIndex(passIndex: passIndex, functionIndex: function.uniqueIndex)
+    if idx >= completedPasses.count {
+      return true
+    }
+    return completedPasses[idx] & bitMask(for: passIndex) == 0
+  }
+
+  mutating func notifyFunctionModified(function: Function) {
+    let startIdx = arrayIndex(passIndex: 0, functionIndex: function.uniqueIndex)
+    if startIdx < completedPasses.count {
+      for idx in startIdx..<startIdx + numIntsPerFunction {
+        completedPasses[idx] = 0
+      }
+    }
+  }
+
+  mutating func notifyAllFunctionsModified() {
+    for idx in 0..<completedPasses.count {
+      completedPasses[idx] = 0
+    }
+  }
+
+  private func arrayIndex(passIndex: Int, functionIndex: Int) -> Int {
+    assert(passIndex < numPasses, "pass created during pass-manager run")
+    return passIndex / 64 + functionIndex * numIntsPerFunction
+  }
+
+  private func bitMask(for passIndex: Int) -> UInt64 {
+    UInt64(1) << (passIndex % 64)
   }
 }

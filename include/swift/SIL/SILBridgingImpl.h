@@ -641,6 +641,10 @@ BridgedStringRef BridgedFunction::getName() const {
   return getFunction()->getName();
 }
 
+SwiftInt BridgedFunction::getIndex() const {
+  return (SwiftInt)getFunction()->getIndex();
+}
+
 BridgedLocation BridgedFunction::getLocation() const {
   return {swift::SILDebugLocation(getFunction()->getLocation(), getFunction()->getDebugScope())}; 
 }

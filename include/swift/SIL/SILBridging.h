@@ -638,6 +638,7 @@ struct BridgedFunction {
   SWIFT_IMPORT_UNSAFE BridgedFunction() {}
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE swift::SILFunction * _Nonnull getFunction() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedStringRef getName() const;
+  BRIDGED_INLINE SwiftInt getIndex() const;
   SWIFT_IMPORT_UNSAFE BridgedOwnedString getDebugDescription() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedLocation getLocation() const;
   BRIDGED_INLINE bool hasOwnership() const;

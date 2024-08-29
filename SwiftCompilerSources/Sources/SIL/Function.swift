@@ -21,6 +21,9 @@ final public class Function : CustomStringConvertible, HasShortDescription, Hash
     return StringRef(bridged: bridged.getName())
   }
 
+  /// Unique identifier for vector indexing and deterministic sorting.
+  public var uniqueIndex: Int { bridged.getIndex() }
+
   public var location: Location {
     return Location(bridged: bridged.getLocation())
   }
