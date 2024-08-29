@@ -12,7 +12,7 @@
 
 import OptimizerBridging
 
-func getSILGenPassPipeline(options: Options) -> ModulePassPipeline {
+func getSILGenPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("SILGen Passes") {
     BridgedModulePass.SILGenCleanup
     if options.enableLifetimeDependenceDiagnostics {
@@ -24,7 +24,7 @@ func getSILGenPassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getMandatoryPassPipeline(options: Options) -> ModulePassPipeline {
+func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Mandatory Passes") {
     functionPasses {
       BridgedPass.DiagnoseInvalidEscapingCaptures
@@ -198,7 +198,7 @@ func getMandatoryPassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getOnonePassPipeline(options: Options) -> ModulePassPipeline {
+func getOnonePassPipeline(options: Options) -> [ModulePass] {
   // These are optimizations that we do not need to enable diagnostics (or
   // depend on other passes needed for diagnostics). Thus we can run them later
   // and avoid having SourceKit run these passes when just emitting diagnostics
@@ -255,7 +255,7 @@ func getOnonePassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getPerformancePassPipeline(options: Options) -> ModulePassPipeline {
+func getPerformancePassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Optimization passes") {
 
     prepareOptimizationsPasses()
@@ -300,7 +300,7 @@ func getPerformancePassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-private func prepareOptimizationsPasses() -> ModulePassPipeline {
+private func prepareOptimizationsPasses() -> [ModulePass] {
   modulePasses("Prepare optimizations passes") {
     // Verify AccessStorage once in OSSA before optimizing.
     BridgedModulePass.AccessPathVerification
@@ -313,7 +313,7 @@ private func prepareOptimizationsPasses() -> ModulePassPipeline {
   }
 }
 
-private func highLevelOptimizations(_ options: Options) -> ModulePassPipeline {
+private func highLevelOptimizations(_ options: Options) -> [ModulePass] {
   modulePasses("High-level optimizations") {
     // Get rid of apparently dead functions as soon as possible so that
     // we do not spend time optimizing them.
@@ -446,7 +446,7 @@ private func highLevelOptimizations(_ options: Options) -> ModulePassPipeline {
   }
 }
 
-private func midLevelOptimizations(_ options: Options) -> ModulePassPipeline {
+private func midLevelOptimizations(_ options: Options) -> [ModulePass] {
   modulePasses("Mid-level optimizations") {
     functionPasses {
       autodiffClosureSpecialization
@@ -468,7 +468,7 @@ private func midLevelOptimizations(_ options: Options) -> ModulePassPipeline {
   }
 }
 
-private func closureSpecializationPasses(_ options: Options) -> ModulePassPipeline {
+private func closureSpecializationPasses(_ options: Options) -> [ModulePass] {
   modulePasses("Closure specialization passes") {
     BridgedModulePass.DeadFunctionAndGlobalElimination
     readOnlyGlobalVariablesPass
@@ -530,7 +530,7 @@ private func closureSpecializationPasses(_ options: Options) -> ModulePassPipeli
   }
 }
 
-private func lowLevelOptimizations(_ options: Options) -> ModulePassPipeline {
+private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
   modulePasses("Low-level optimizations") {
     functionPasses {
       // Should be after FunctionSignatureOpts and before the last inliner.
@@ -831,7 +831,7 @@ private func simplifyCFGSILCombinePasses() -> [FunctionPass] {
   }
 }
 
-func getOwnershipEliminatorPassPipeline(options: Options) -> ModulePassPipeline {
+func getOwnershipEliminatorPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("OwnershipModelEliminator") {
     BridgedModulePass.AddressLowering
     functionPasses {
@@ -840,7 +840,7 @@ func getOwnershipEliminatorPassPipeline(options: Options) -> ModulePassPipeline 
   }
 }
 
-func getInstCountPassPipeline(options: Options) -> ModulePassPipeline {
+func getInstCountPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("InstCount") {
     functionPasses {
       BridgedPass.InstCount
@@ -848,7 +848,7 @@ func getInstCountPassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getLoweringPassPipeline(options: Options) -> ModulePassPipeline {
+func getLoweringPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Lowering") {
     functionPasses {
       BridgedPass.LowerHopToActor
@@ -861,7 +861,7 @@ func getLoweringPassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getIRGenPreparePassPipeline(options: Options) -> ModulePassPipeline {
+func getIRGenPreparePassPipeline(options: Options) -> [ModulePass] {
   modulePasses("IRGen prepare") {
     functionPasses {
       /*
@@ -889,17 +889,17 @@ func getIRGenPreparePassPipeline(options: Options) -> ModulePassPipeline {
   }
 }
 
-func getSerializeSILPassPipeline(options: Options) -> ModulePassPipeline {
+func getSerializeSILPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Serialize SIL") {
     BridgedModulePass.SerializeSILPass
   }
 }
 
-func getFromFilePassPipeline(options: Options) -> ModulePassPipeline {
+func getFromFilePassPipeline(options: Options) -> [ModulePass] {
   fatalError("TODO")
 }
 
-func getMandatoryDebugSerializationPassPipeline(options: Options) -> ModulePassPipeline {
+func getMandatoryDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Mandatory Debug Serialization") {
     BridgedModulePass.AddressLowering
     functionPasses {
@@ -909,7 +909,7 @@ func getMandatoryDebugSerializationPassPipeline(options: Options) -> ModulePassP
   }
 }
 
-func getPerformanceDebugSerializationPassPipeline(options: Options) -> ModulePassPipeline {
+func getPerformanceDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
   modulePasses("Performance Debug Serialization") {
     BridgedModulePass.PerformanceSILLinker
   }

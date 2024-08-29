@@ -19,7 +19,7 @@ import OptimizerBridging
 /// but it doesn't provide any APIs to modify functions.
 /// In order to modify a function, a module pass must use `transform(function:)`.
 struct ModulePassContext : Context, CustomStringConvertible {
-  let passManager: PassManager
+  fileprivate let passManager: PassManager
 
   var _bridged: BridgedPassContext { passManager._bridged.getContext() }
 
@@ -29,7 +29,7 @@ struct ModulePassContext : Context, CustomStringConvertible {
 
   struct FunctionList : CollectionLikeSequence, IteratorProtocol {
     private var currentFunction: Function?
-    
+
     fileprivate init(first: Function?) { currentFunction = first }
 
     mutating func next() -> Function? {
@@ -69,7 +69,7 @@ struct ModulePassContext : Context, CustomStringConvertible {
 
   struct WitnessTableList : CollectionLikeSequence, IteratorProtocol {
     private var currentTable: WitnessTable?
-    
+
     fileprivate init(first: WitnessTable?) { currentTable = first }
 
     mutating func next() -> WitnessTable? {
@@ -83,7 +83,7 @@ struct ModulePassContext : Context, CustomStringConvertible {
 
   struct DefaultWitnessTableList : CollectionLikeSequence, IteratorProtocol {
     private var currentTable: DefaultWitnessTable?
-    
+
     fileprivate init(first: DefaultWitnessTable?) { currentTable = first }
 
     mutating func next() -> DefaultWitnessTable? {
@@ -98,7 +98,7 @@ struct ModulePassContext : Context, CustomStringConvertible {
   var functions: FunctionList {
     FunctionList(first: _bridged.getFirstFunctionInModule().function)
   }
-  
+
   var globalVariables: GlobalVariableList {
     GlobalVariableList(first: _bridged.getFirstGlobalInModule().globalVar)
   }
@@ -106,7 +106,7 @@ struct ModulePassContext : Context, CustomStringConvertible {
   var vTables: VTableArray {
     VTableArray(bridged: _bridged.getVTables())
   }
-  
+
   var witnessTables: WitnessTableList {
     WitnessTableList(first: _bridged.getFirstWitnessTableInModule().witnessTable)
   }
@@ -178,4 +178,63 @@ extension Function {
   func set(linkage: Linkage, _ context: ModulePassContext) {
     bridged.setLinkage(linkage.bridged)
   }
+}
+
+extension PassManager {
+  func createModulePassContext() -> ModulePassContext {
+    return ModulePassContext(passManager: self)
+  }
+}
+
+@resultBuilder
+struct ModulePassPipelineBuilder {
+  static func buildExpression(_ pass: ModulePass) -> [ModulePass] {
+    return [pass]
+  }
+
+  static func buildExpression(_ passKind: BridgedModulePass) -> [ModulePass] {
+    let pass = ModulePass(name: "TODO") {
+      (context: ModulePassContext) in
+
+      context._bridged.getPassManager().runBridgedModulePass(passKind)
+    }
+    return [pass]
+  }
+
+  static func buildExpression(_ functionPasses: [FunctionPass]) -> [ModulePass] {
+    let pass = ModulePass(name: "function passes") {
+      $0.passManager.scheduleFunctionPassesForRunning(passes: functionPasses)
+    }
+    return [pass]
+  }
+
+  static func buildExpression(_ modulePasses: [ModulePass]) -> [ModulePass] {
+    return modulePasses
+  }
+
+  static func buildOptional(_ passes: [ModulePass]?) -> [ModulePass] {
+    return passes ?? []
+  }
+
+  static func buildEither(first passes: [ModulePass]) -> [ModulePass] {
+    return passes
+  }
+
+  static func buildEither(second passes: [ModulePass]) -> [ModulePass] {
+    return passes
+  }
+
+  static func buildBlock(_ passes: [ModulePass]...) -> [ModulePass] {
+    return Array(passes.joined())
+  }
+}
+
+func modulePasses(_ name: String, @ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> [ModulePass] {
+  let beginPass = ModulePass(name: "begin \(name)") {
+    $0.passManager.beginPipelineStage(name: name)
+  }
+  let endPass = ModulePass(name: "end \(name)") {
+    $0.passManager.endPipelineStage(name: name)
+  }
+  return [beginPass] + passes() + [endPass]
 }

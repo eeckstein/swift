@@ -17,30 +17,61 @@ final class PassManager {
 
   let _bridged: BridgedPassManager
 
+  private var pipelineStages: [String] = []
+
+  private var scheduledFunctionPasses: [FunctionPass] = []
+
+  private var currentPassIndex = 0
+
   private init(bridged: BridgedPassManager) {
     self._bridged = bridged
   }
 
-  func run(pipeline: ModulePassPipeline, _ context: ModulePassContext) {
-    // TODO
+  func runModulePasses(passes: [ModulePass]) {
+    let context = createModulePassContext()
+    for pass in passes {
+      pass.runFunction(context)
+    }
+    if !scheduledFunctionPasses.isEmpty {
+      runScheduledFunctionPasses(context)
+      scheduledFunctionPasses = []
+    }
+  }
+
+  func runScheduledFunctionPasses(_ context: ModulePassContext) {
+    
+  }
+
+  func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
+    precondition(scheduledFunctionPasses.isEmpty, "function passes not cleared")
+    scheduledFunctionPasses = passes
   }
 
   var bridgedContext: BridgedPassContext { _bridged.getContext() }
+
+  func beginPipelineStage(name: String) {
+    pipelineStages.append(name)
+  }
+
+  func endPipelineStage(name: String) {
+    let current = pipelineStages.removeLast()
+    precondition(current == name)
+  }
 
   static func register() {
     BridgedPassManager.registerBridging(
       // executePassesFn
       { (bridgedPM: BridgedPassManager, bridgedPipelineKind: BridgedPassManager.PassPipelineKind) in
         let pm = PassManager(bridged: bridgedPM)
-        let context = ModulePassContext(passManager: pm)
-        let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: context.options)
-        pm.run(pipeline: pipeline, context)
+        let options = Options(_bridged: bridgedPM.getContext())
+        let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
+        pm.runModulePasses(passes: pipeline)
       }
     )
   }
 }
 
-private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> ModulePassPipeline {
+private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
   switch kind {
     case .SILGen:                        return getSILGenPassPipeline(options: options)
     case .Mandatory:                     return getMandatoryPassPipeline(options: options)
@@ -95,66 +126,6 @@ struct FunctionPassPipelineBuilder {
   }
 }
 
-typealias ModulePassPipeline = (passes: [ModulePass], name: String)
-
-@resultBuilder
-struct ModulePassPipelineBuilder {
-  static func buildExpression(_ pass: ModulePass) -> [ModulePass] {
-    return [pass]
-  }
-
-  static func buildExpression(_ passKind: BridgedModulePass) -> [ModulePass] {
-    let pass = ModulePass(name: "TODO") {
-      (context: ModulePassContext) in
-
-      context._bridged.getPassManager().runBridgedModulePass(passKind)
-    }
-    return [pass]
-  }
-
-  static func buildExpression(_ functionPasses: [FunctionPass]) -> [ModulePass] {
-    let pass = ModulePass(name: "function passes") {
-      runFunctionPasses(passes: functionPasses, $0)
-    }
-    return [pass]
-  }
-
-  static func buildExpression(_ modulePasses: ModulePassPipeline) -> [ModulePass] {
-    let pass = ModulePass(name: modulePasses.name) {
-      runModulePasses(passes: modulePasses.passes, $0)
-    }
-    return [pass]
-  }
-
-  static func buildOptional(_ passes: [ModulePass]?) -> [ModulePass] {
-    return passes ?? []
-  }
-
-  static func buildEither(first passes: [ModulePass]) -> [ModulePass] {
-    return passes
-  }
-
-  static func buildEither(second passes: [ModulePass]) -> [ModulePass] {
-    return passes
-  }
-
-  static func buildBlock(_ passes: [ModulePass]...) -> [ModulePass] {
-    return Array(passes.joined())
-  }
-}
-
 func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass]) -> [FunctionPass] {
   passes()
-}
-
-func modulePasses(_ name: String, @ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> ModulePassPipeline {
-  ModulePassPipeline(passes: passes(), name: name)
-}
-
-func runFunctionPasses(passes: [FunctionPass], _ context: ModulePassContext) {
-  fatalError("TODO")
-}
-
-func runModulePasses(passes: [ModulePass], _ context: ModulePassContext) {
-  fatalError("TODO")
 }
