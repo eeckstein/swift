@@ -27,6 +27,15 @@ final class PassManager {
 
   private var completedPasses: CompletedPasses
 
+  /// Stores for each function the number of levels of specializations it is
+  /// derived from an original function. E.g. if a function is a signature
+  /// optimized specialization of a generic specialization, it has level 2.
+  /// This is used to avoid an infinite amount of functions pushed on the
+  /// worklist (e.g. caused by a bug in a specializing optimization).
+  private var derivationLevels = Dictionary<Function, Int>()
+
+  static let maxDeriveLevels = 10
+
   private var currentPassIndex = 0
 
   static var passIndices = Dictionary<String, Int>()
@@ -49,7 +58,8 @@ final class PassManager {
     }
   }
 
-  func runScheduledFunctionPasses(_ context: ModulePassContext) {
+  private func runScheduledFunctionPasses(_ context: ModulePassContext) {
+    derivationLevels.removeAll(keepingCapacity: true)
     worklist.initialize(context)
     defer { worklist.clear() }
 
@@ -62,7 +72,7 @@ final class PassManager {
     }
   }
 
-  func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) -> Int {
+  private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) -> Int {
     let readyListSize = worklist.readyList.count
     let numPasses = scheduledFunctionPasses.count
 
@@ -80,9 +90,18 @@ final class PassManager {
     return numPasses
   }
 
-  func notifyNewFunction(function: Function, referencedFrom: Function) {
-    assert(worklist.unhandledCallees[function] == nil, "not a new function")
-    worklist.readyList.append((function, 0))
+  func notifyNewFunction(function: Function, derivedFrom: Function?) {
+    let newLevel: Int
+    if let derivedFrom = derivedFrom {
+      newLevel = derivationLevels[derivedFrom, default: 0] + 1
+      if newLevel > Self.maxDeriveLevels {
+        return
+      }
+    } else {
+      newLevel = 1
+    }
+    derivationLevels[function] = newLevel
+    worklist.pushNewFunctionToReadyList(function)
   }
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
@@ -250,6 +269,10 @@ private struct FunctionWorklist {
     }
   }
 
+  mutating func pushNewFunctionToReadyList(_ function: Function) {
+    assert(unhandledCallees[function] == nil, "not a new function")
+    readyList.append((function, 0))
+  }
 }
 
 private extension Int {
