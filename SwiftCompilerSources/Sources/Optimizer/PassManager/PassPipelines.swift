@@ -12,7 +12,7 @@
 
 import OptimizerBridging
 
-func getSILGenPassPipeline(options: Options) -> [ModulePass] {
+func getSILGenPassPipeline(options: Options) -> ModulePassPipeline {
   modulePasses("SILGen Passes") {
     BridgedModulePass.SILGenCleanup
     if options.enableLifetimeDependenceDiagnostics {
@@ -24,7 +24,7 @@ func getSILGenPassPipeline(options: Options) -> [ModulePass] {
   }
 }
 
-func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
+func getMandatoryPassPipeline(options: Options) -> ModulePassPipeline {
   modulePasses("Mandatory Passes") {
     functionPasses {
       BridgedPass.DiagnoseInvalidEscapingCaptures
@@ -179,9 +179,9 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
     mandatoryPerformanceOptimizations
 
     functionPasses {
-      ononeSimplificationPass
+      ononeSimplification
       allocVectorLowering
-      initializeStaticGlobalsPass
+      initializeStaticGlobals
     }
 
     // MandatoryPerformanceOptimizations might create specializations that are not
@@ -198,7 +198,7 @@ func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
   }
 }
 
-func getOnonePassPipeline(options: Options) -> [ModulePass] {
+func getOnonePassPipeline(options: Options) -> ModulePassPipeline {
   // These are optimizations that we do not need to enable diagnostics (or
   // depend on other passes needed for diagnostics). Thus we can run them later
   // and avoid having SourceKit run these passes when just emitting diagnostics
@@ -230,14 +230,14 @@ func getOnonePassPipeline(options: Options) -> [ModulePass] {
       BridgedPass.OwnershipModelEliminator
 
       // Has only an effect if the -assume-single-thread option is specified.
-      assumeSingleThreadedPass
+      assumeSingleThreaded
 
       // In Onone builds, do a function-local analysis in a function pass.
       functionStackProtection
 
       // This is mainly there to optimize `Builtin.isConcrete`, which must not be
       // constant folded before any generic specialization.
-      lateOnoneSimplificationPass
+      lateOnoneSimplification
 
       BridgedPass.CleanupDebugSteps
     }
@@ -255,7 +255,7 @@ func getOnonePassPipeline(options: Options) -> [ModulePass] {
   }
 }
 
-func getPerformancePassPipeline(options: Options) -> [ModulePass] {
+func getPerformancePassPipeline(options: Options) -> ModulePassPipeline {
   modulePasses("Optimization passes") {
 
     prepareOptimizationsPasses()
@@ -300,7 +300,7 @@ func getPerformancePassPipeline(options: Options) -> [ModulePass] {
   }
 }
 
-private func prepareOptimizationsPasses() -> [ModulePass] {
+private func prepareOptimizationsPasses() -> ModulePassPipeline {
   modulePasses("Prepare optimizations passes") {
     // Verify AccessStorage once in OSSA before optimizing.
     BridgedModulePass.AccessPathVerification
@@ -313,7 +313,7 @@ private func prepareOptimizationsPasses() -> [ModulePass] {
   }
 }
 
-private func highLevelOptimizations(_ options: Options) -> [ModulePass] {
+private func highLevelOptimizations(_ options: Options) -> ModulePassPipeline {
   modulePasses("High-level optimizations") {
     // Get rid of apparently dead functions as soon as possible so that
     // we do not spend time optimizing them.
@@ -446,7 +446,7 @@ private func highLevelOptimizations(_ options: Options) -> [ModulePass] {
   }
 }
 
-private func midLevelOptimizations(_ options: Options) -> [ModulePass] {
+private func midLevelOptimizations(_ options: Options) -> ModulePassPipeline {
   modulePasses("Mid-level optimizations") {
     functionPasses {
       autodiffClosureSpecialization
@@ -468,7 +468,7 @@ private func midLevelOptimizations(_ options: Options) -> [ModulePass] {
   }
 }
 
-private func closureSpecializationPasses(_ options: Options) -> [ModulePass] {
+private func closureSpecializationPasses(_ options: Options) -> ModulePassPipeline {
   modulePasses("Closure specialization passes") {
     BridgedModulePass.DeadFunctionAndGlobalElimination
     readOnlyGlobalVariablesPass
@@ -486,7 +486,7 @@ private func closureSpecializationPasses(_ options: Options) -> [ModulePass] {
       BridgedPass.SimplifyCFG
       BridgedPass.Simplification
 
-      initializeStaticGlobalsPass
+      initializeStaticGlobals
 
       // ComputeEffects should be done at the end of a function-pipeline. The next
       // pass (LetPropertiesOpt) is a module pass, so this is the end of a function-pipeline.
@@ -530,11 +530,11 @@ private func closureSpecializationPasses(_ options: Options) -> [ModulePass] {
   }
 }
 
-private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
+private func lowLevelOptimizations(_ options: Options) -> ModulePassPipeline {
   modulePasses("Low-level optimizations") {
     functionPasses {
       // Should be after FunctionSignatureOpts and before the last inliner.
-      releaseDevirtualizerPass
+      releaseDevirtualizer
 
       commonFunctionPasses(options, .lowLevel)
 
@@ -546,8 +546,8 @@ private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
       BridgedPass.ObjectOutliner
       deadStoreElimination
       BridgedPass.DCE
-      simplificationPass
-      initializeStaticGlobalsPass
+      simplification
+      initializeStaticGlobals
 
       // dead-store-elimination can expose opportunities for dead object elimination.
       BridgedPass.DeadObjectElimination
@@ -587,13 +587,13 @@ private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
 
       // Optimize overflow checks.
       BridgedPass.RedundantOverflowCheckRemoval
-      mergeCondFailsPass
+      mergeCondFails
 
       // Remove dead code.
       BridgedPass.DCE
       BridgedPass.SILCombine
       BridgedPass.SimplifyCFG
-      stripObjectHeadersPass
+      stripObjectHeaders
 
       // Try to hoist all releases, including epilogue releases. This should be
       // after FSO.
@@ -613,7 +613,7 @@ private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
       BridgedPass.LICM
 
       // Only has an effect if the -assume-single-thread option is specified.
-      assumeSingleThreadedPass
+      assumeSingleThreaded
 
       // Emits remarks on all functions with @_assemblyVision attribute.
       BridgedPass.AssemblyVisionRemarkGenerator
@@ -831,34 +831,86 @@ private func simplifyCFGSILCombinePasses() -> [FunctionPass] {
   }
 }
 
-func getOwnershipEliminatorPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getOwnershipEliminatorPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("OwnershipModelEliminator") {
+    BridgedModulePass.AddressLowering
+    functionPasses {
+      BridgedPass.OwnershipModelEliminator
+    }
+  }
 }
 
-func getInstCountPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getInstCountPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("InstCount") {
+    functionPasses {
+      BridgedPass.InstCount
+    }
+  }
 }
 
-func getLoweringPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getLoweringPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("Lowering") {
+    functionPasses {
+      BridgedPass.LowerHopToActor
+      BridgedPass.OwnershipModelEliminator
+    }
+    BridgedModulePass.AlwaysEmitConformanceMetadataPreservation
+    functionPasses {
+      BridgedPass.IRGenPrepare
+    }
+  }
 }
 
-func getIRGenPreparePassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getIRGenPreparePassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("IRGen prepare") {
+    functionPasses {
+      /*
+      // Simplify partial_apply instructions by expanding box construction into
+      // component operations.
+      BridgedPass.PartialApplySimplification
+       */
+      // Hoist generic alloc_stack instructions to the entry block to enable better
+      // llvm-ir generation for dynamic alloca instructions.
+      BridgedPass.AllocStackHoisting
+
+      if options.enablePackMetadataStackPromotion {
+        // Insert marker instructions indicating where on-stack pack metadata
+        // deallocation must occur.
+        //
+        // No code motion may occur after this pass: alloc_pack_metadata must
+        // directly precede the instruction on behalf of which metadata will
+        // actually be emitted (e.g. apply).
+        BridgedPass.PackMetadataMarkerInserter
+      }
+    }
+    // Change large loadable types to be passed indirectly across function
+    // boundaries as required by the ABI.
+    BridgedModulePass.LoadableByAddress
+  }
 }
 
-func getSerializeSILPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getSerializeSILPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("Serialize SIL") {
+    BridgedModulePass.SerializeSILPass
+  }
 }
 
-func getFromFilePassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getFromFilePassPipeline(options: Options) -> ModulePassPipeline {
+  fatalError("TODO")
 }
 
-func getMandatoryDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getMandatoryDebugSerializationPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("Mandatory Debug Serialization") {
+    BridgedModulePass.AddressLowering
+    functionPasses {
+      BridgedPass.OwnershipModelEliminator
+    }
+    BridgedModulePass.MandatoryInlining
+  }
 }
 
-func getPerformanceDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
-  return []
+func getPerformanceDebugSerializationPassPipeline(options: Options) -> ModulePassPipeline {
+  modulePasses("Performance Debug Serialization") {
+    BridgedModulePass.PerformanceSILLinker
+  }
 }

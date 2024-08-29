@@ -16,7 +16,7 @@ import SIL
 /// if their header (reference count and metatype) is not used throughout the
 /// lifetime of the object.
 ///
-let stripObjectHeadersPass = FunctionPass(name: "strip-object-headers") {
+let stripObjectHeaders = FunctionPass(name: "strip-object-headers") {
   (function: Function, context: FunctionPassContext) in
 
   for inst in function.instructions {

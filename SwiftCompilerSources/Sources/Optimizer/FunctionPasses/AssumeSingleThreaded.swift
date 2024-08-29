@@ -27,7 +27,7 @@
 
 import SIL
 
-let assumeSingleThreadedPass = FunctionPass(name: "sil-assume-single-threaded") {
+let assumeSingleThreaded = FunctionPass(name: "sil-assume-single-threaded") {
   (function: Function, context: FunctionPassContext) in
 
   guard context.options.assumeSingleThreaded else {

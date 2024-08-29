@@ -41,7 +41,7 @@ import SIL
 /// The initializer then becomes a side-effect free function which let's the builtin-
 /// simplification remove the `builtin "once"` which calls the initializer.
 ///
-let initializeStaticGlobalsPass = FunctionPass(name: "initialize-static-globals") {
+let initializeStaticGlobals = FunctionPass(name: "initialize-static-globals") {
   (function: Function, context: FunctionPassContext) in
 
   if context.hadError {

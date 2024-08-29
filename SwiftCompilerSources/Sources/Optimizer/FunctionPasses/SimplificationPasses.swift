@@ -34,7 +34,7 @@ protocol LateOnoneSimplifyable : Instruction {
 //                        Simplification passes
 //===--------------------------------------------------------------------===//
 
-let ononeSimplificationPass = FunctionPass(name: "onone-simplification") {
+let ononeSimplification = FunctionPass(name: "onone-simplification") {
   (function: Function, context: FunctionPassContext) in
 
   runSimplification(on: function, context, preserveDebugInfo: true) {
@@ -44,7 +44,7 @@ let ononeSimplificationPass = FunctionPass(name: "onone-simplification") {
   }
 }
 
-let simplificationPass = FunctionPass(name: "simplification") {
+let simplification = FunctionPass(name: "simplification") {
   (function: Function, context: FunctionPassContext) in
 
   runSimplification(on: function, context, preserveDebugInfo: false) {
@@ -54,7 +54,7 @@ let simplificationPass = FunctionPass(name: "simplification") {
   }
 }
 
-let lateOnoneSimplificationPass = FunctionPass(name: "late-onone-simplification") {
+let lateOnoneSimplification = FunctionPass(name: "late-onone-simplification") {
   (function: Function, context: FunctionPassContext) in
 
   runSimplification(on: function, context, preserveDebugInfo: true) {

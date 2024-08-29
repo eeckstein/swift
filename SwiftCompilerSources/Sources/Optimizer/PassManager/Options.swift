@@ -48,6 +48,10 @@ struct Options {
     _bridged.enableExperimentalSwiftBasedClosureSpecialization()
   }
 
+  var enablePackMetadataStackPromotion: Bool {
+    _bridged.enablePackMetadataStackPromotion()
+  }
+
   var enableOSSAModules: Bool {
     _bridged.enableOSSAModules()
   }

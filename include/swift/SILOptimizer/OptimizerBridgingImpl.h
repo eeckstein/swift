@@ -514,6 +514,10 @@ bool BridgedPassContext::enableExperimentalSwiftBasedClosureSpecialization() con
   return getOptions().EnableExperimentalSwiftBasedClosureSpecialization;
 }
 
+bool BridgedPassContext::enablePackMetadataStackPromotion() const {
+  return getOptions().EnablePackMetadataStackPromotion;
+}
+
 bool BridgedPassContext::enableOSSAModules() const {
   return getOptions().EnableOSSAModules;
 }

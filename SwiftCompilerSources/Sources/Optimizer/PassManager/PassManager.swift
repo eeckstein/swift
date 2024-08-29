@@ -21,7 +21,7 @@ final class PassManager {
     self._bridged = bridged
   }
 
-  func run(pipeline: [ModulePass], _ context: ModulePassContext) {
+  func run(pipeline: ModulePassPipeline, _ context: ModulePassContext) {
     // TODO
   }
 
@@ -40,7 +40,7 @@ final class PassManager {
   }
 }
 
-private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
+private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> ModulePassPipeline {
   switch kind {
     case .SILGen:                        return getSILGenPassPipeline(options: options)
     case .Mandatory:                     return getMandatoryPassPipeline(options: options)
@@ -95,6 +95,8 @@ struct FunctionPassPipelineBuilder {
   }
 }
 
+typealias ModulePassPipeline = (passes: [ModulePass], name: String)
+
 @resultBuilder
 struct ModulePassPipelineBuilder {
   static func buildExpression(_ pass: ModulePass) -> [ModulePass] {
@@ -117,9 +119,9 @@ struct ModulePassPipelineBuilder {
     return [pass]
   }
 
-  static func buildExpression(_ modulePasses: [ModulePass]) -> [ModulePass] {
-    let pass = ModulePass(name: "function passes") {
-      runModulePasses(passes: modulePasses, $0)
+  static func buildExpression(_ modulePasses: ModulePassPipeline) -> [ModulePass] {
+    let pass = ModulePass(name: modulePasses.name) {
+      runModulePasses(passes: modulePasses.passes, $0)
     }
     return [pass]
   }
@@ -145,11 +147,8 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
   passes()
 }
 
-func modulePasses(
-  _ name: String = "module passes",
-  @ModulePassPipelineBuilder _ passes: () -> [ModulePass]
-) -> [ModulePass] {
-  passes()
+func modulePasses(_ name: String, @ModulePassPipelineBuilder _ passes: () -> [ModulePass]) -> ModulePassPipeline {
+  ModulePassPipeline(passes: passes(), name: name)
 }
 
 func runFunctionPasses(passes: [FunctionPass], _ context: ModulePassContext) {

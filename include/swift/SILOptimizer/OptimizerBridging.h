@@ -390,6 +390,7 @@ struct BridgedPassContext {
   BRIDGED_INLINE bool enableDestroyHoisting() const;
   BRIDGED_INLINE bool enableSpeculativeDevirtualization() const;
   BRIDGED_INLINE bool enableExperimentalSwiftBasedClosureSpecialization() const;
+  BRIDGED_INLINE bool enablePackMetadataStackPromotion() const;
   BRIDGED_INLINE bool enableOSSAModules() const;
   BRIDGED_INLINE CopyPropagationOption copyPropagationOption() const;
   BRIDGED_INLINE bool shouldOptimize() const;

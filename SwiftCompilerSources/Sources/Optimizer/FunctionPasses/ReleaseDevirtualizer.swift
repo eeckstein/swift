@@ -30,7 +30,7 @@ import SIL
 /// The optimization is only done for stack promoted objects because they are
 /// known to have no associated objects (which are not explicitly released
 /// in the deinit method).
-let releaseDevirtualizerPass = FunctionPass(name: "release-devirtualizer") {
+let releaseDevirtualizer = FunctionPass(name: "release-devirtualizer") {
   (function: Function, context: FunctionPassContext) in
 
   for block in function.blocks {

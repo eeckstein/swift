@@ -12,7 +12,7 @@
 
 import SIL
 
-let mergeCondFailsPass = FunctionPass(name: "merge-cond_fails", runMergeCondFails)
+let mergeCondFails = FunctionPass(name: "merge-cond_fails", runMergeCondFails)
 
 /// Return true if the operand of the cond_fail instruction looks like
 /// the overflow bit of an arithmetic instruction.
