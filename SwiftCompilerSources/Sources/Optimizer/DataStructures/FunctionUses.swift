@@ -109,11 +109,20 @@ struct FunctionUses {
   // The use-list head for each function.
   private var uses: [Function: FirstUse] = [:]
   
+  mutating func clear() {
+    useStorage.removeAll(keepingCapacity: true)
+    uses.removeAll(keepingCapacity: true)
+  }
+
   /// Returns the use-list of `function`.
   ///
   /// Note that `collect` must be called before `getUses` can be used.
   func getUses(of function: Function) -> UseList {
     UseList(useStorage: useStorage, firstUse: uses[function, default: FirstUse(of: function)])
+  }
+
+  mutating func addUse(of function: Function, by instruction: Instruction) {
+    uses[function, default: FirstUse(of: function)].insert(instruction, &useStorage)
   }
 
   /// Collects all uses of all function in the module.
@@ -152,7 +161,7 @@ struct FunctionUses {
     for function in context.functions {
       for inst in function.instructions {
         inst.visitReferencedFunctions { referencedFunc in
-          uses[referencedFunc, default: FirstUse(of: referencedFunc)].insert(inst, &useStorage)
+          addUse(of: referencedFunc, by: inst)
         }
       }
     }
