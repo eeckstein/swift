@@ -18,6 +18,7 @@
 #include "swift/SILOptimizer/Analysis/Analysis.h"
 #include "swift/SILOptimizer/PassManager/PassPipeline.h"
 #include "swift/SILOptimizer/PassManager/Passes.h"
+#include "swift/SILOptimizer/PassManager/PrettyStackTrace.h"
 #include "swift/SILOptimizer/Utils/SILSSAUpdater.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
@@ -203,6 +204,15 @@ public:
   }
 };
 
+class DebugPrintEnabler {
+#ifndef NDEBUG
+  bool OldDebugFlag;
+#endif
+public:
+  DebugPrintEnabler(unsigned PassNumber);
+  ~DebugPrintEnabler();
+};
+
 /// The SIL pass manager.
 class SILPassManager {
   friend class ExecuteSILPipelineRequest;
@@ -254,6 +264,10 @@ class SILPassManager {
 
   // Backlink to the swift PassManager.
   OptionalSwiftObject swiftPassManager = nullptr;
+
+  std::optional<PrettyStackTraceSILModuleTransform> modulePassStackTracer;
+  std::optional<PrettyStackTraceSILFunctionTransform> functionPassStackTracer;
+  std::optional<DebugPrintEnabler> debugPrintEnabler;
 
   /// A mask which has one bit for each pass. A one for a pass-bit means that
   /// the pass doesn't need to run, because nothing has changed since the
@@ -463,9 +477,13 @@ public:
 
   void executePassPipelinePlan(const SILPassPipelinePlan &Plan);
 
+  // Called from the swift pass manager.
   void runBridgedFunctionPass(PassKind passKind, SILFunction *f);
-
   void runBridgedModulePass(PassKind passKind);
+  void preFunctionPassRun(SILFunction *function, StringRef passName, unsigned passIdx);
+  void postFunctionPassRun();
+  void preModulePassRun(StringRef passName, unsigned passIdx);
+  void postModulePassRun();
 
   bool continueWithNextSubpassRun(SILInstruction *forInst, SILFunction *function,
                                   SILTransform *trans);

@@ -437,6 +437,11 @@ struct BridgedPassManager {
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
+  BRIDGED_INLINE void preFunctionPassRun(BridgedFunction function, BridgedStringRef passName, SwiftInt passIdx) const;
+  BRIDGED_INLINE void postFunctionPassRun() const;
+  BRIDGED_INLINE void preModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const;
+  BRIDGED_INLINE void postModulePassRun() const;
+
   BRIDGED_INLINE SwiftInt getMaxNumPassesToRun() const;
   BRIDGED_INLINE SwiftInt getMaxNumSubpassesToRun() const;
 

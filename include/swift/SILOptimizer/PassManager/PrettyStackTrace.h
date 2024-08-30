@@ -23,24 +23,25 @@ class SILModuleTransform;
 
 class PrettyStackTraceSILFunctionTransform
     : public PrettyStackTraceSILFunction {
-  SILFunctionTransform *SFT;
+  StringRef passName;
   unsigned PassNumber;
 
 public:
-  PrettyStackTraceSILFunctionTransform(SILFunctionTransform *SFT,
+  PrettyStackTraceSILFunctionTransform(SILFunction *function,
+                                       StringRef passName,
                                        unsigned PassNumber);
 
   virtual void print(llvm::raw_ostream &OS) const override;
 };
 
 class PrettyStackTraceSILModuleTransform : public llvm::PrettyStackTraceEntry {
-  SILModuleTransform *SMT;
+  StringRef passName;
   unsigned PassNumber;
 
 public:
-  PrettyStackTraceSILModuleTransform(SILModuleTransform *SMT,
+  PrettyStackTraceSILModuleTransform(StringRef passName,
                                      unsigned PassNumber)
-      : SMT(SMT), PassNumber(PassNumber) {}
+      : passName(passName), PassNumber(PassNumber) {}
   virtual void print(llvm::raw_ostream &OS) const override;
 };
 

@@ -18,23 +18,19 @@
 using namespace swift;
 
 PrettyStackTraceSILFunctionTransform::PrettyStackTraceSILFunctionTransform(
-  SILFunctionTransform *SFT, unsigned PassNumber):
+  SILFunction *function, StringRef passName, unsigned PassNumber):
   PrettyStackTraceSILFunction("Running SIL Function Transform",
-                              SFT->getFunction()),
-  SFT(SFT), PassNumber(PassNumber) {}
+                              function),
+  passName(passName), PassNumber(PassNumber) {}
 
 void PrettyStackTraceSILFunctionTransform::print(llvm::raw_ostream &out) const {
   out << "While running pass #" << PassNumber
-      << " SILFunctionTransform \"" << SFT->getID()
+      << " SILFunctionTransform \"" << passName
       << "\" on SILFunction ";
-  if (!SFT->getFunction()) {
-    out << " <<null>>";
-    return;
-  }
   printFunctionInfo(out);
 }
 
 void PrettyStackTraceSILModuleTransform::print(llvm::raw_ostream &out) const {
   out << "While running pass #" << PassNumber
-      << " SILModuleTransform \"" << SMT->getID() << "\".\n";
+      << " SILModuleTransform \"" << passName << "\".\n";
 }

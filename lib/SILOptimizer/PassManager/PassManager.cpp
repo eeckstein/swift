@@ -29,7 +29,6 @@
 #include "swift/SILOptimizer/Analysis/FunctionOrder.h"
 #include "swift/SILOptimizer/IPO/ClosureSpecializer.h"
 #include "swift/SILOptimizer/OptimizerBridging.h"
-#include "swift/SILOptimizer/PassManager/PrettyStackTrace.h"
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/ConstantFolding.h"
@@ -349,35 +348,29 @@ static void printModule(SILModule *Mod, bool EmitVerboseSIL) {
   }
 }
 
-class DebugPrintEnabler {
+DebugPrintEnabler::DebugPrintEnabler(unsigned PassNumber) {
 #ifndef NDEBUG
-  bool OldDebugFlag;
-#endif
-public:
-  DebugPrintEnabler(unsigned PassNumber) {
-#ifndef NDEBUG
-    OldDebugFlag = llvm::DebugFlag;
-    if (llvm::DebugFlag)
+  OldDebugFlag = llvm::DebugFlag;
+  if (llvm::DebugFlag)
+    return;
+  if (DebugPassNumbers->empty())
+    return;
+  // Enable debug printing if the pass number matches
+  // one of the pass numbers provided as a command line option.
+  for (auto DebugPassNumber : *DebugPassNumbers) {
+    if (DebugPassNumber == PassNumber) {
+      llvm::DebugFlag = true;
       return;
-    if (DebugPassNumbers->empty())
-      return;
-    // Enable debug printing if the pass number matches
-    // one of the pass numbers provided as a command line option.
-    for (auto DebugPassNumber : *DebugPassNumbers) {
-      if (DebugPassNumber == PassNumber) {
-        llvm::DebugFlag = true;
-        return;
-      }
     }
-#endif
   }
+#endif
+}
 
-  ~DebugPrintEnabler() {
+DebugPrintEnabler::~DebugPrintEnabler() {
 #ifndef NDEBUG
-    llvm::DebugFlag = OldDebugFlag;
+  llvm::DebugFlag = OldDebugFlag;
 #endif
-  }
-};
+}
 
 //===----------------------------------------------------------------------===//
 //                 Serialization Notification Implementation
@@ -651,8 +644,10 @@ void SILPassManager::runPassOnFunction(SILFunctionTransform *SFT, unsigned Trans
   SFT->injectPassManager(this);
   SFT->injectFunction(F);
 
+  /*
   PrettyStackTraceSILFunctionTransform X(SFT, NumPassesRun);
   DebugPrintEnabler DebugPrint(NumPassesRun);
+*/
 
   // If nothing changed since the last run of this pass, we can skip this
   // pass if it is not mandatory
@@ -875,7 +870,7 @@ void SILPassManager::runModulePass(SILModuleTransform *SMT, unsigned TransIdx) {
   SMT->injectPassManager(this);
   SMT->injectModule(Mod);
 
-  PrettyStackTraceSILModuleTransform X(SMT, NumPassesRun);
+  PrettyStackTraceSILModuleTransform X(SMT->getID(), NumPassesRun);
   DebugPrintEnabler DebugPrint(NumPassesRun);
 
   updateSILModuleStatsBeforeTransform(*Mod, SMT, *this, NumPassesRun);
@@ -1005,12 +1000,39 @@ SILTransform *SILPassManager::getCachedPass(PassKind passKind) {
 
 void SILPassManager::runBridgedFunctionPass(PassKind passKind, SILFunction *f) {
   auto *sft = cast<SILFunctionTransform>(getCachedPass(passKind));
+  sft->injectPassManager(this);
+  sft->injectFunction(f);
+
   runPassOnFunction(sft, /*TransIdx=*/ 0, f);
 }
 
 void SILPassManager::runBridgedModulePass(PassKind passKind) {
   auto *smt = cast<SILModuleTransform>(getCachedPass(passKind));
   runModulePass(smt, /*TransIdx=*/ 0);
+}
+
+void SILPassManager::preFunctionPassRun(SILFunction *function, StringRef passName, unsigned passIdx) {
+  ASSERT(!functionPassStackTracer.has_value());
+  ASSERT(!debugPrintEnabler.has_value());
+  functionPassStackTracer.emplace(function, passName, passIdx);
+  debugPrintEnabler.emplace(passIdx);
+}
+
+void SILPassManager::postFunctionPassRun() {
+  functionPassStackTracer.reset();
+  debugPrintEnabler.reset();
+}
+
+void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
+  ASSERT(!modulePassStackTracer.has_value());
+  ASSERT(!debugPrintEnabler.has_value());
+  modulePassStackTracer.emplace(passName, passIdx);
+  debugPrintEnabler.emplace(passIdx);
+}
+
+void SILPassManager::postModulePassRun() {
+  modulePassStackTracer.reset();
+  debugPrintEnabler.reset();
 }
 
 void SILPassManager::execute() {

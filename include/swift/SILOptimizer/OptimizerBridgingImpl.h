@@ -568,6 +568,24 @@ OptionalSwiftObject BridgedPassManager::getSwiftPassManager() const {
   return pm->getSwiftPassManager();
 }
 
+void BridgedPassManager::preFunctionPassRun(BridgedFunction function, BridgedStringRef passName,
+                                            SwiftInt passIdx) const {
+  pm->preFunctionPassRun(function.getFunction(), passName.unbridged(), (unsigned)passIdx);
+}
+
+void BridgedPassManager::postFunctionPassRun() const {
+  pm->postFunctionPassRun();
+}
+
+void BridgedPassManager::preModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const {
+  pm->preModulePassRun(passName.unbridged(), (unsigned)passIdx);
+}
+
+void BridgedPassManager::postModulePassRun() const {
+  pm->postModulePassRun();
+}
+
+
 SwiftInt BridgedPassManager::getMaxNumPassesToRun() const {
   unsigned n = pm->getMaxNumPassesToRun();
   if (n == UINT_MAX)

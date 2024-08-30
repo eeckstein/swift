@@ -72,8 +72,14 @@ final class PassManager {
         return
       }
       currentSubPassIndex = 0
+
+      pass.name._withBridgedStringRef() {
+        _bridged.preModulePassRun($0, currentPassIndex)
+      }
+
       pass.runFunction(context)
 
+      _bridged.postModulePassRun()
       currentPassIndex += 1
 
       if !scheduledFunctionPasses.isEmpty {
@@ -130,7 +136,13 @@ final class PassManager {
     printPassInfo("Run", pass.name, passIndex, function)
     currentSubPassIndex = 0
 
+    pass.name._withBridgedStringRef() {
+      _bridged.preFunctionPassRun(function.bridged, $0, currentPassIndex)
+    }
+
     pass.runFunction(function, context)
+
+    _bridged.postFunctionPassRun()
   }
 
   private var continueTransforming: Bool {
