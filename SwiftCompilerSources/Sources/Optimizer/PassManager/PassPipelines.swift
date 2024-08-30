@@ -13,7 +13,7 @@
 import OptimizerBridging
 
 func getSILGenPassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("SILGen Passes") {
+  modulePasses("SILGen Passes", isMandatory: true) {
     BridgedModulePass.SILGenCleanup
     if options.enableLifetimeDependenceDiagnostics {
       functionPasses {
@@ -25,7 +25,7 @@ func getSILGenPassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getMandatoryPassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("Mandatory Passes") {
+  modulePasses("Mandatory Passes", isMandatory: true) {
     functionPasses {
       BridgedPass.DiagnoseInvalidEscapingCaptures
       BridgedPass.ReferenceBindingTransform
@@ -203,7 +203,7 @@ func getOnonePassPipeline(options: Options) -> [ModulePass] {
   // depend on other passes needed for diagnostics). Thus we can run them later
   // and avoid having SourceKit run these passes when just emitting diagnostics
   // in the editor.
-  modulePasses("Onone passes") {
+  modulePasses("Onone passes", isMandatory: true) {
     functionPasses {
       BridgedPass.ForEachLoopUnroll
 
@@ -226,7 +226,6 @@ func getOnonePassPipeline(options: Options) -> [ModulePass] {
       // Now that we have serialized, propagate debug info.
       BridgedPass.MovedAsyncVarDebugInfoPropagator
 
-      // Now strip any transparent functions that still have ownership.
       BridgedPass.OwnershipModelEliminator
 
       // Has only an effect if the -assume-single-thread option is specified.
@@ -279,7 +278,6 @@ func getPerformancePassPipeline(options: Options) -> [ModulePass] {
     BridgedModulePass.SerializeSILPass
 
     functionPasses {
-      // Strip any transparent functions that still have ownership.
       BridgedPass.OwnershipModelEliminator
     }
 
@@ -849,9 +847,10 @@ func getInstCountPassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getLoweringPassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("Lowering") {
+  modulePasses("Lowering", isMandatory: true) {
     functionPasses {
       BridgedPass.LowerHopToActor
+      // Re-run the OwnershipModelEliminator for functions with `@_optimize(none)` or if -sil-opt-pass-count is used.
       BridgedPass.OwnershipModelEliminator
     }
     BridgedModulePass.AlwaysEmitConformanceMetadataPreservation
@@ -862,7 +861,7 @@ func getLoweringPassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getIRGenPreparePassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("IRGen prepare") {
+  modulePasses("IRGen prepare", isMandatory: true) {
     functionPasses {
       /*
       // Simplify partial_apply instructions by expanding box construction into
@@ -890,7 +889,7 @@ func getIRGenPreparePassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getSerializeSILPassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("Serialize SIL") {
+  modulePasses("Serialize SIL", isMandatory: true) {
     BridgedModulePass.SerializeSILPass
   }
 }
@@ -900,7 +899,7 @@ func getFromFilePassPipeline(options: Options) -> [ModulePass] {
 }
 
 func getMandatoryDebugSerializationPassPipeline(options: Options) -> [ModulePass] {
-  modulePasses("Mandatory Debug Serialization") {
+  modulePasses("Mandatory Debug Serialization", isMandatory: true) {
     BridgedModulePass.AddressLowering
     functionPasses {
       BridgedPass.OwnershipModelEliminator

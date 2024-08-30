@@ -38,6 +38,8 @@ final class PassManager {
 
   private var currentPassIndex = 0
 
+  private var isMandatory = false
+
   private var printPassNames: Bool
   private var anyPassOptionSet: Bool
 
@@ -61,10 +63,11 @@ final class PassManager {
 
     for pass in scheduledModulePasses {
       pass.runFunction(context)
-    }
-    if !scheduledFunctionPasses.isEmpty {
-      runScheduledFunctionPasses(context)
-      scheduledFunctionPasses = []
+
+      if !scheduledFunctionPasses.isEmpty {
+        runScheduledFunctionPasses(context)
+        scheduledFunctionPasses = []
+      }
     }
   }
 
@@ -162,6 +165,10 @@ final class PassManager {
   func endPipelineStage(name: String) {
     let current = pipelineStages.removeLast()
     precondition(current == name)
+  }
+
+  func setMandatory() {
+    isMandatory = true
   }
 
   static func allocatePassIndex(passName: String) -> Int {
