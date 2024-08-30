@@ -369,7 +369,7 @@ public:
       if (!AP->isLocked())
         AP->invalidate();
 
-    CurrentPassHasInvalidated = true;
+    notifyPassHasInvalidated();
 
     // Assume that all functions have changed. Clear all masks of all functions.
     CompletedPassesMap.clear();
@@ -403,7 +403,7 @@ public:
       if (!AP->isLocked())
         AP->invalidate(F, K);
     
-    CurrentPassHasInvalidated = true;
+    notifyPassHasInvalidated();
     // Any change let all passes run again.
     CompletedPassesMap[F].reset();
   }
@@ -416,7 +416,7 @@ public:
       if (!AP->isLocked())
         AP->invalidateFunctionTables();
 
-    CurrentPassHasInvalidated = true;
+    notifyPassHasInvalidated();
 
     // Assume that all functions have changed. Clear all masks of all functions.
     CompletedPassesMap.clear();
@@ -429,14 +429,12 @@ public:
       if (!AP->isLocked())
         AP->notifyWillDeleteFunction(F);
 
-    CurrentPassHasInvalidated = true;
+    notifyPassHasInvalidated();
     // Any change let all passes run again.
     CompletedPassesMap[F].reset();
   }
 
-  void setDependingOnCalleeBodies() {
-    currentPassDependsOnCalleeBodies = true;
-  }
+  void setDependingOnCalleeBodies();
 
   /// Reset the state of the pass manager and remove all transformation
   /// owned by the pass manager. Analysis passes will be kept.
@@ -530,6 +528,8 @@ private:
   /// All passes in mandatory pass pipeline and ownership model elimination are
   /// mandatory function passes.
   bool isMandatoryFunctionPass(SILFunctionTransform *);
+
+  void notifyPassHasInvalidated();
 
   /// A helper function that returns (based on SIL stage and debug
   /// options) whether we should continue running passes.

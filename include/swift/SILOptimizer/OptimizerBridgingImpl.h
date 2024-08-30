@@ -165,12 +165,6 @@ BridgedChangeNotificationHandler BridgedPassContext::asNotificationHandler() con
   return {invocation};
 }
 
-void BridgedPassContext::notifyDependencyOnBodyOf(BridgedFunction otherFunction) const {
-  // Currently `otherFunction` is ignored. We could design a more accurate dependency system
-  // in the pass manager, which considers the actual function. But it's probaboly not worth the effort.
-  invocation->getPassManager()->setDependingOnCalleeBodies();
-}
-
 BridgedPassContext::SILStage BridgedPassContext::getSILStage() const {
   return (SILStage)getModule()->getStage();
 }

@@ -217,7 +217,6 @@ struct BridgedPassContext {
 
   SWIFT_IMPORT_UNSAFE BridgedOwnedString getModuleDescription() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedChangeNotificationHandler asNotificationHandler() const;
-  BRIDGED_INLINE void notifyDependencyOnBodyOf(BridgedFunction otherFunction) const;
   BRIDGED_INLINE SILStage getSILStage() const;
   BRIDGED_INLINE bool hadError() const;
   BRIDGED_INLINE bool moduleIsSerialized() const;
@@ -445,9 +444,13 @@ struct BridgedPassManager {
   BRIDGED_INLINE SwiftInt getMaxNumPassesToRun() const;
   BRIDGED_INLINE SwiftInt getMaxNumSubpassesToRun() const;
 
-  bool printPassNames() const;
+  bool shouldPrintPassNames() const;
   bool anyPassOptionSet() const;
   bool isPassDisabled(BridgedStringRef passName) const;
+  bool shouldPrintBefore(BridgedStringRef passName) const;
+  bool shouldPrintAfter(BridgedStringRef passName) const;
+  bool shouldPrintAnyFunction() const;
+  bool shouldPrintFunction(BridgedFunction function) const;
 
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedPass);
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
@@ -455,9 +458,11 @@ struct BridgedPassManager {
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
   typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
                                                 BridgedFunction derivedFrom);
-  typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, OptionalBridgedInstruction inst);
+  typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, BridgedFunction function,
+                                                  OptionalBridgedInstruction inst);
+  typedef void (* _Nonnull NotifyFn)(BridgedPassManager pm);
 
-  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn, ContinueWithSubpassFn);
+  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);

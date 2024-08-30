@@ -222,20 +222,24 @@ extension MutatingContext {
 
   func notifyInstructionsChanged() {
     _bridged.asNotificationHandler().notifyChanges(.instructionsChanged)
+    // No need to call PassManager.notifyPassMadeChanges() because it's called from the C++ SILPassManager
   }
 
   func notifyCallsChanged() {
     _bridged.asNotificationHandler().notifyChanges(.callsChanged)
+    // No need to call PassManager.notifyPassMadeChanges() because it's called from the C++ SILPassManager
   }
 
   func notifyBranchesChanged() {
     _bridged.asNotificationHandler().notifyChanges(.branchesChanged)
+    // No need to call PassManager.notifyPassMadeChanges() because it's called from the C++ SILPassManager
   }
 
   /// Notifies the pass manager that the optimization result of the current pass depends
   /// on the body (i.e. SIL instructions) of another function than the currently optimized one.
   func notifyDependency(onBodyOf otherFunction: Function) {
-    _bridged.notifyDependencyOnBodyOf(otherFunction.bridged)
+    let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
+    pm.notifyPassDependsOnOtherFunction()
   }
 }
 
@@ -246,9 +250,14 @@ struct FunctionPassContext : MutatingContext {
   // A no-op.
   var notifyInstructionChanged: (Instruction) -> () { return { inst in } }
 
-  func continueWithNextSubpassRun(for inst: Instruction? = nil) -> Bool {
+  func continueWithNextSubpassRun(for inst: Instruction) -> Bool {
     let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
-    return pm.continueWithNextSubpassRun(for: inst)
+    return pm.continueWithNextSubpassRun(on: inst.parentFunction, for: inst)
+  }
+
+  func continueWithNextSubpassRun(on function: Function) -> Bool {
+    let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
+    return pm.continueWithNextSubpassRun(on: function)
   }
 
   func createSimplifyContext(preserveDebugInfo: Bool, notifyInstructionChanged: @escaping (Instruction) -> ()) -> SimplifyContext {

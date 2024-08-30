@@ -39,12 +39,15 @@ final class PassManager {
   private var currentPassIndex = 0
   private var currentSubPassIndex = 0
 
+  private var currentPassMadeChanges = false
+  private var currentPassDepdendsOnOtherFunction = false
+
   private let maxNumPassesToRun: Int
   private let maxNumSubpassesToRun: Int
 
   private var isMandatory = false
 
-  private var printPassNames: Bool
+  private var shouldPrintPassNames: Bool
   private var anyPassOptionSet: Bool
 
   static var passIndices = Dictionary<String, Int>()
@@ -55,7 +58,7 @@ final class PassManager {
     self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
     self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
-    self.printPassNames =  _bridged.printPassNames()
+    self.shouldPrintPassNames =  _bridged.shouldPrintPassNames()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
     bridged.setSwiftPassManager(SwiftObject(self))
   }
@@ -68,10 +71,14 @@ final class PassManager {
     let context = createModulePassContext()
 
     for pass in scheduledModulePasses {
-      if !continueTransforming {
+      if !shouldContinueTransforming {
         return
       }
       currentSubPassIndex = 0
+
+      if shouldPrintBefore(pass: pass) {
+        print(context)
+      }
 
       pass.name._withBridgedStringRef() {
         _bridged.preModulePassRun($0, currentPassIndex)
@@ -80,6 +87,17 @@ final class PassManager {
       pass.runFunction(context)
 
       _bridged.postModulePassRun()
+
+      if shouldPrintAfter(pass: pass) {
+        print(context)
+      } else if currentPassMadeChanges && shouldPrintAnyFunction {
+        for f in context.functions {
+          if shouldPrint(function: f) {
+            print(f)
+          }
+        }
+      }
+
       currentPassIndex += 1
 
       if !scheduledFunctionPasses.isEmpty {
@@ -108,7 +126,7 @@ final class PassManager {
     let numPasses = scheduledFunctionPasses.count
 
     for passIdx in initialPassIndex..<numPasses {
-      if !continueTransforming {
+      if !shouldContinueTransforming {
         return numPasses
       }
       context.transform(function: function) {
@@ -136,6 +154,10 @@ final class PassManager {
     printPassInfo("Run", pass.name, passIndex, function)
     currentSubPassIndex = 0
 
+    if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
+      print(function)
+    }
+
     pass.name._withBridgedStringRef() {
       _bridged.preFunctionPassRun(function.bridged, $0, currentPassIndex)
     }
@@ -143,9 +165,16 @@ final class PassManager {
     pass.runFunction(function, context)
 
     _bridged.postFunctionPassRun()
+
+    if shouldPrintAfter(pass: pass) ||
+       isLastPass(passIndex) ||
+       (currentPassMadeChanges && shouldPrint(function: function))
+    {
+      print(function)
+    }
   }
 
-  private var continueTransforming: Bool {
+  private var shouldContinueTransforming: Bool {
     if isMandatory {
       return true
     }
@@ -153,7 +182,7 @@ final class PassManager {
   }
 
   private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function?) {
-    if !printPassNames {
+    if !shouldPrintPassNames {
       return
     }
     let pipelineInfo = pipelineStages.last ?? "?"
@@ -180,7 +209,15 @@ final class PassManager {
     worklist.pushNewFunctionToReadyList(function)
   }
 
-  func continueWithNextSubpassRun(for inst: Instruction?) -> Bool {
+  func notifyPassMadeChanges() {
+    currentPassMadeChanges = true
+  }
+
+  func notifyPassDependsOnOtherFunction() {
+    currentPassDepdendsOnOtherFunction = true
+  }
+
+  func continueWithNextSubpassRun(on function: Function, for inst: Instruction? = nil) -> Bool {
     let subPassIdx = currentSubPassIndex
     currentPassIndex += 1
 
@@ -190,7 +227,20 @@ final class PassManager {
     if (currentPassIndex != maxNumPassesToRun - 1) {
       return true
     }
+
+    if isLastSubpass(subPassIdx) {
+      print(function)
+    }
+
     return subPassIdx < maxNumSubpassesToRun
+  }
+
+  private func isLastPass(_ passIndex: Int) -> Bool {
+    return passIndex == maxNumPassesToRun - 1
+  }
+
+  private func isLastSubpass(_ subPassIndex: Int) -> Bool {
+    return subPassIndex == maxNumSubpassesToRun - 1
   }
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
@@ -199,12 +249,44 @@ final class PassManager {
   }
 
   private func isPassDisabled<P: Pass>(_ pass: P) -> Bool {
-    if anyPassOptionSet {
-      return pass.name._withBridgedStringRef {
-        _bridged.isPassDisabled($0)
-      }
+    guard anyPassOptionSet else {
+      return false
     }
-    return false
+    return pass.name._withBridgedStringRef {
+      _bridged.isPassDisabled($0)
+    }
+  }
+
+  private func shouldPrintBefore<P: Pass>(pass: P) -> Bool {
+    guard anyPassOptionSet else {
+      return false
+    }
+    return pass.name._withBridgedStringRef {
+      _bridged.shouldPrintBefore($0)
+    }
+  }
+
+  private func shouldPrintAfter<P: Pass>(pass: P) -> Bool {
+    guard anyPassOptionSet else {
+      return false
+    }
+    return pass.name._withBridgedStringRef {
+      _bridged.shouldPrintAfter($0)
+    }
+  }
+
+  private var shouldPrintAnyFunction: Bool {
+    guard anyPassOptionSet else {
+      return false
+    }
+    return _bridged.shouldPrintAnyFunction()
+  }
+
+  private func shouldPrint(function: Function) -> Bool {
+    guard anyPassOptionSet else {
+      return false
+    }
+    return _bridged.shouldPrintFunction(function.bridged)
   }
 
   var bridgedContext: BridgedPassContext { _bridged.getContext() }
@@ -253,9 +335,21 @@ final class PassManager {
       },
       // continueWithSubpassFn
       {
-        (bridgedPM: BridgedPassManager, inst: OptionalBridgedInstruction) -> Bool in
+        (bridgedPM: BridgedPassManager, function: BridgedFunction, inst: OptionalBridgedInstruction) -> Bool in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
-        return pm.continueWithNextSubpassRun(for: inst.instruction)
+        return pm.continueWithNextSubpassRun(on: function.function, for: inst.instruction)
+      },
+      // notifyPassHasInvalidatedFn
+      {
+        (bridgedPM: BridgedPassManager) in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        pm.notifyPassMadeChanges()
+      },
+      // notifyDepdendencyFn
+      {
+        (bridgedPM: BridgedPassManager) in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        pm.notifyPassDependsOnOtherFunction()
       }
     )
   }

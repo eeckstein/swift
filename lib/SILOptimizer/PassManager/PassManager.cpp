@@ -271,13 +271,19 @@ void printInliningDetailsCallerAfter(StringRef passName, SILFunction *caller,
 static BridgedPassManager::ExecutePassesFn executePassesFunction = nullptr;
 static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullptr;
 static BridgedPassManager::ContinueWithSubpassFn continueWithSubpassFunction = nullptr;
+static BridgedPassManager::NotifyFn notifyPassHasInvalidatedFunction = nullptr;
+static BridgedPassManager::NotifyFn notifyDepdendencyFunction = nullptr;
 
 void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
                                           NotifyNewFunctionFn notifyNewFunctionFn,
-                                          ContinueWithSubpassFn continueWithSubpassFn) {
+                                          ContinueWithSubpassFn continueWithSubpassFn,
+                                          NotifyFn notifyPassHasInvalidatedFn,
+                                          NotifyFn notifyDepdendencyFn) {
   executePassesFunction = executePassesFn;
   notifyNewFunctionFunction = notifyNewFunctionFn;
   continueWithSubpassFunction = continueWithSubpassFn;
+  notifyPassHasInvalidatedFunction = notifyPassHasInvalidatedFn;
+  notifyDepdendencyFunction = notifyDepdendencyFn;
 }
 
 static bool functionSelectionEmpty() {
@@ -505,7 +511,7 @@ bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
                                                 SILFunction *function,
                                                 SILTransform *trans) {
   if (continueWithSubpassFunction) {
-    return continueWithSubpassFunction({this}, {forInst->asSILNode()});
+    return continueWithSubpassFunction({this}, {function}, {forInst->asSILNode()});
   }
   return true;
 
@@ -1147,6 +1153,18 @@ SILPassManager::~SILPassManager() {
   }
 }
 
+void SILPassManager::notifyPassHasInvalidated() {
+  CurrentPassHasInvalidated = true;
+  if (notifyPassHasInvalidatedFunction)
+    notifyPassHasInvalidatedFunction({this});
+}
+
+void SILPassManager::setDependingOnCalleeBodies() {
+  currentPassDependsOnCalleeBodies = true;
+  if (notifyDepdendencyFunction)
+    notifyDepdendencyFunction({this});
+}
+
 void SILPassManager::notifyOfNewFunction(SILFunction *F, SILTransform *T) {
   if (doPrintAfter(T, F, /*PassChangedSIL*/ true)) {
     dumpPassInfo("*** New SIL function in ", T, F);
@@ -1675,7 +1693,7 @@ void BridgedPassManager::runBridgedModulePass(BridgedModulePass passKind) const 
   pm->runBridgedModulePass(getModulePassKind(passKind));
 }
 
-bool BridgedPassManager::printPassNames() const {
+bool BridgedPassManager::shouldPrintPassNames() const {
   return SILPrintPassName;
 }
 
@@ -1688,6 +1706,32 @@ bool BridgedPassManager::anyPassOptionSet() const {
 
 bool BridgedPassManager::isPassDisabled(BridgedStringRef passName) const {
   return SILPassManager::isPassDisabled(passName.unbridged());
+}
+
+static bool isContainedIn(StringRef passName, const llvm::cl::list<std::string> &option) {
+  for (const std::string &s : option) {
+    if (passName.contains(s))
+      return true;
+  }
+  return false;
+}
+
+bool BridgedPassManager::shouldPrintBefore(BridgedStringRef passName) const {
+  StringRef name = passName.unbridged();
+  return isContainedIn(name, SILPrintBefore) || isContainedIn(name, SILPrintAround);
+}
+
+bool BridgedPassManager::shouldPrintAfter(BridgedStringRef passName) const {
+  StringRef name = passName.unbridged();
+  return isContainedIn(name, SILPrintAfter) || isContainedIn(name, SILPrintAround);
+}
+
+bool BridgedPassManager::shouldPrintAnyFunction() const {
+  return !functionSelectionEmpty();
+}
+
+bool BridgedPassManager::shouldPrintFunction(BridgedFunction function) const {
+  return isFunctionSelectedForPrinting(function.getFunction());
 }
 
 BridgedStringRef BridgedPassManager::getPassName(BridgedPass passKind) {
