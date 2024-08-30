@@ -37,6 +37,10 @@ final class PassManager {
   static let maxDeriveLevels = 10
 
   private var currentPassIndex = 0
+  private var currentSubPassIndex = 0
+
+  private let maxNumPassesToRun: Int
+  private let maxNumSubpassesToRun: Int
 
   private var isMandatory = false
 
@@ -49,6 +53,8 @@ final class PassManager {
     self._bridged = bridged
     self.scheduledModulePasses = passPipeline
     self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
+    self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
+    self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
     self.printPassNames =  _bridged.printPassNames()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
     bridged.setSwiftPassManager(SwiftObject(self))
@@ -62,7 +68,13 @@ final class PassManager {
     let context = createModulePassContext()
 
     for pass in scheduledModulePasses {
+      if !continueTransforming {
+        return
+      }
+      currentSubPassIndex = 0
       pass.runFunction(context)
+
+      currentPassIndex += 1
 
       if !scheduledFunctionPasses.isEmpty {
         runScheduledFunctionPasses(context)
@@ -90,9 +102,14 @@ final class PassManager {
     let numPasses = scheduledFunctionPasses.count
 
     for passIdx in initialPassIndex..<numPasses {
+      if !continueTransforming {
+        return numPasses
+      }
       context.transform(function: function) {
         runFunctionPass(on: function, passIndex: passIdx, $0)
       }
+      currentPassIndex += 1
+
       if worklist.readyList.count > readyListSize {
         return passIdx + 1
       }
@@ -111,7 +128,16 @@ final class PassManager {
       return
     }
     printPassInfo("Run", pass.name, passIndex, function)
+    currentSubPassIndex = 0
+
     pass.runFunction(function, context)
+  }
+
+  private var continueTransforming: Bool {
+    if isMandatory {
+      return true
+    }
+    return currentPassIndex < maxNumPassesToRun
   }
 
   private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function?) {
@@ -140,6 +166,19 @@ final class PassManager {
     }
     derivationLevels[function] = newLevel
     worklist.pushNewFunctionToReadyList(function)
+  }
+
+  func continueWithNextSubpassRun(for inst: Instruction?) -> Bool {
+    let subPassIdx = currentSubPassIndex
+    currentPassIndex += 1
+
+    if isMandatory {
+      return true
+    }
+    if (currentPassIndex != maxNumPassesToRun - 1) {
+      return true
+    }
+    return subPassIdx < maxNumSubpassesToRun
   }
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
@@ -199,6 +238,12 @@ final class PassManager {
         (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction) in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
         pm.notifyNewFunction(function: function.function, derivedFrom: derivedFrom.function)
+      },
+      // continueWithSubpassFn
+      {
+        (bridgedPM: BridgedPassManager, inst: OptionalBridgedInstruction) -> Bool in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        return pm.continueWithNextSubpassRun(for: inst.instruction)
       }
     )
   }

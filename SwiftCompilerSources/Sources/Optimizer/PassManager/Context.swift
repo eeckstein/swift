@@ -247,7 +247,8 @@ struct FunctionPassContext : MutatingContext {
   var notifyInstructionChanged: (Instruction) -> () { return { inst in } }
 
   func continueWithNextSubpassRun(for inst: Instruction? = nil) -> Bool {
-    return _bridged.continueWithNextSubpassRun(inst.bridged)
+    let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
+    return pm.continueWithNextSubpassRun(for: inst)
   }
 
   func createSimplifyContext(preserveDebugInfo: Bool, notifyInstructionChanged: @escaping (Instruction) -> ()) -> SimplifyContext {

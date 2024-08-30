@@ -437,6 +437,9 @@ struct BridgedPassManager {
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
+  BRIDGED_INLINE SwiftInt getMaxNumPassesToRun() const;
+  BRIDGED_INLINE SwiftInt getMaxNumSubpassesToRun() const;
+
   bool printPassNames() const;
   bool anyPassOptionSet() const;
   bool isPassDisabled(BridgedStringRef passName) const;
@@ -447,8 +450,9 @@ struct BridgedPassManager {
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
   typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
                                                 BridgedFunction derivedFrom);
+  typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, OptionalBridgedInstruction inst);
 
-  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn);
+  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn, ContinueWithSubpassFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);

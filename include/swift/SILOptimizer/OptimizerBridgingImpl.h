@@ -568,6 +568,20 @@ OptionalSwiftObject BridgedPassManager::getSwiftPassManager() const {
   return pm->getSwiftPassManager();
 }
 
+SwiftInt BridgedPassManager::getMaxNumPassesToRun() const {
+  unsigned n = pm->getMaxNumPassesToRun();
+  if (n == UINT_MAX)
+    return INT_MAX;
+  return (SwiftInt)n;
+}
+
+SwiftInt BridgedPassManager::getMaxNumSubpassesToRun() const {
+  unsigned n = pm->getMaxNumSubpassesToRun();
+  if (n == UINT_MAX)
+    return INT_MAX;
+  return (SwiftInt)n;
+}
+
 SWIFT_END_NULLABILITY_ANNOTATIONS
 
 #endif

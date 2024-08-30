@@ -339,6 +339,9 @@ public:
     return &swiftPassInvocation;
   }
 
+  unsigned getMaxNumPassesToRun() const { return maxNumPassesToRun; }
+  unsigned getMaxNumSubpassesToRun() const { return maxNumSubpassesToRun; }
+
   /// Restart the function pass pipeline on the same function
   /// that is currently being processed.
   void restartWithCurrentFunction(SILTransform *T);

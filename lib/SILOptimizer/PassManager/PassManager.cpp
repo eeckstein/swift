@@ -269,6 +269,18 @@ void printInliningDetailsCallerAfter(StringRef passName, SILFunction *caller,
                        /*alreadyInlined=*/true);
 }
 
+static BridgedPassManager::ExecutePassesFn executePassesFunction = nullptr;
+static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullptr;
+static BridgedPassManager::ContinueWithSubpassFn continueWithSubpassFunction = nullptr;
+
+void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
+                                          NotifyNewFunctionFn notifyNewFunctionFn,
+                                          ContinueWithSubpassFn continueWithSubpassFn) {
+  executePassesFunction = executePassesFn;
+  notifyNewFunctionFunction = notifyNewFunctionFn;
+  continueWithSubpassFunction = continueWithSubpassFn;
+}
+
 static bool functionSelectionEmpty() {
   return SILPrintFunction.empty() && SILPrintFunctions.empty();
 }
@@ -499,6 +511,12 @@ bool SILPassManager::continueTransforming() {
 bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
                                                 SILFunction *function,
                                                 SILTransform *trans) {
+  if (continueWithSubpassFunction) {
+    return continueWithSubpassFunction({this}, {forInst->asSILNode()});
+  }
+  return true;
+
+/*
   unsigned subPass = numSubpassesRun++;
 
   if (forInst && isFunctionSelectedForPrinting(function) &&
@@ -523,6 +541,7 @@ bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
     function->dump(getOptions().EmitVerboseSIL);
   }
   return subPass < maxNumSubpassesToRun;
+*/
 }
 
 bool SILPassManager::analysesUnlocked() {
@@ -949,15 +968,6 @@ void SILPassManager::verifyAnalyses(SILFunction *F) const {
   for (auto *A : Analyses) {
     A->verify(F);
   }
-}
-
-static BridgedPassManager::ExecutePassesFn executePassesFunction = nullptr;
-static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullptr;
-
-void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
-                                          NotifyNewFunctionFn notifyNewFunctionFn) {
-  executePassesFunction = executePassesFn;
-  notifyNewFunctionFunction = notifyNewFunctionFn;
 }
 
 void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
