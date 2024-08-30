@@ -59,6 +59,10 @@ public struct CalleeAnalysis {
     return FunctionArray(bridged: bridgedDtors)
   }
 
+  public func getIncompleteDestructors(of type: Type) -> FunctionArray {
+    return FunctionArray(bridged: bridged.getDestructors(type.bridged, /*isExactType*/ false))
+  }
+
   /// Returns the global (i.e. not argument specific) side effects of an apply.
   public func getSideEffects(ofApply apply: FullApplySite) -> SideEffects.GlobalEffects {
     return getSideEffects(ofCallee: apply.callee)

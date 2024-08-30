@@ -253,18 +253,28 @@ private struct FunctionWorklist {
 
     var numCallees = 0
     for inst in f.instructions {
+      let callees: FunctionArray
       switch inst {
       case let fas as FullApplySite:
-        for callee in calleeAnalysis.getIncompleteCallees(callee: fas.callee) {
-          if !onStack.contains(callee) {
-            functionUses.addUse(of: callee, by: inst)
-            numCallees += 1
-            visit(callee, &onStack, calleeAnalysis)
-          }
+        callees = calleeAnalysis.getIncompleteCallees(callee: fas.callee)
+      case let bi as BuiltinInst:
+        switch bi.id {
+        case .Once, .OnceWithContext:
+          callees = calleeAnalysis.getIncompleteCallees(callee: bi.operands[0].value)
+        default:
+          continue
         }
+      case is StrongReleaseInst, is ReleaseValueInst, is DestroyValueInst:
+        callees = calleeAnalysis.getIncompleteDestructors(of: inst.operands[0].value.type)
       default:
-        // TODO: handle builtin.once and destructors
-        break
+        continue
+      }
+      for callee in callees {
+        if !onStack.contains(callee) {
+          functionUses.addUse(of: callee, by: inst)
+          numCallees += 1
+          visit(callee, &onStack, calleeAnalysis)
+        }
       }
     }
     unhandledCallees[f] = numCallees
