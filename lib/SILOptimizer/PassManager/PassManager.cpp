@@ -1643,6 +1643,21 @@ void BridgedPassManager::runBridgedModulePass(BridgedModulePass passKind) const 
   pm->runBridgedModulePass(getModulePassKind(passKind));
 }
 
+bool BridgedPassManager::printPassNames() const {
+  return SILPrintPassName;
+}
+
+bool BridgedPassManager::anyPassOptionSet() const {
+  return !SILDisablePass.empty() ||
+         !SILPrintFunction.empty() ||
+         !SILPrintBefore.empty() ||
+         !SILPrintAfter.empty();
+}
+
+bool BridgedPassManager::isPassDisabled(BridgedStringRef passName) const {
+  return SILPassManager::isPassDisabled(passName.unbridged());
+}
+
 BridgedStringRef BridgedPassManager::getPassName(BridgedPass passKind) {
   return PassKindTag(getFunctionPassKind(passKind));
 }

@@ -12,7 +12,11 @@
 import SIL
 import OptimizerBridging
 
-struct FunctionPass {
+protocol Pass {
+  var name: String { get }
+}
+
+struct FunctionPass: Pass {
 
   let name: String
   let runFunction: (Function, FunctionPassContext) -> ()
@@ -34,7 +38,7 @@ struct FunctionPass {
   }
 }
 
-struct ModulePass {
+struct ModulePass: Pass {
 
   let name: String
   let runFunction: (ModulePassContext) -> ()

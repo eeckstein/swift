@@ -437,6 +437,10 @@ struct BridgedPassManager {
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
+  bool printPassNames() const;
+  bool anyPassOptionSet() const;
+  bool isPassDisabled(BridgedStringRef passName) const;
+
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedPass);
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
 

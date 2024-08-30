@@ -38,12 +38,17 @@ final class PassManager {
 
   private var currentPassIndex = 0
 
+  private var printPassNames: Bool
+  private var anyPassOptionSet: Bool
+
   static var passIndices = Dictionary<String, Int>()
 
   private init(bridged: BridgedPassManager, passPipeline: [ModulePass]) {
     self._bridged = bridged
     self.scheduledModulePasses = passPipeline
     self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
+    self.printPassNames =  _bridged.printPassNames()
+    self.anyPassOptionSet = _bridged.anyPassOptionSet()
     bridged.setSwiftPassManager(SwiftObject(self))
   }
 
@@ -82,17 +87,42 @@ final class PassManager {
     let numPasses = scheduledFunctionPasses.count
 
     for passIdx in initialPassIndex..<numPasses {
-      let pass = scheduledFunctionPasses[passIdx]
-      if completedPasses.needToRunPass(passIndex: pass.uniqueIndex, on: function) {
-        context.transform(function: function) {
-          pass.runFunction(function, $0)
-        }
-        if worklist.readyList.count > readyListSize {
-          return passIdx + 1
-        }
+      context.transform(function: function) {
+        runFunctionPass(on: function, passIndex: passIdx, $0)
+      }
+      if worklist.readyList.count > readyListSize {
+        return passIdx + 1
       }
     }
     return numPasses
+  }
+
+  private func runFunctionPass(on function: Function, passIndex: Int, _ context: FunctionPassContext) {
+    let pass = scheduledFunctionPasses[passIndex]
+    if !completedPasses.needToRunPass(passIndex: pass.uniqueIndex, on: function) {
+      printPassInfo("(Skipping)", pass.name, passIndex, function)
+      return
+    }
+    if isPassDisabled(pass) {
+      printPassInfo("(Disabled)", pass.name, passIndex, function)
+      return
+    }
+    printPassInfo("Run", pass.name, passIndex, function)
+    pass.runFunction(function, context)
+  }
+
+  private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function?) {
+    if !printPassNames {
+      return
+    }
+    let pipelineInfo = pipelineStages.last ?? "?"
+    let fnInfo: String
+    if let function = function {
+      fnInfo = ", Function: \(function.name)"
+    } else {
+      fnInfo = ""
+    }
+    print("  \(title) #\(currentPassIndex), stage \(pipelineInfo), pass \(passIndex): \(passName)\(fnInfo)")
   }
 
   func notifyNewFunction(function: Function, derivedFrom: Function?) {
@@ -112,6 +142,15 @@ final class PassManager {
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
     precondition(scheduledFunctionPasses.isEmpty, "function passes not cleared")
     scheduledFunctionPasses = passes
+  }
+
+  private func isPassDisabled<P: Pass>(_ pass: P) -> Bool {
+    if anyPassOptionSet {
+      return pass.name._withBridgedStringRef {
+        _bridged.isPassDisabled($0)
+      }
+    }
+    return false
   }
 
   var bridgedContext: BridgedPassContext { _bridged.getContext() }
