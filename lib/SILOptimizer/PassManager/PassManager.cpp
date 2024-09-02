@@ -269,17 +269,26 @@ void printInliningDetailsCallerAfter(StringRef passName, SILFunction *caller,
 }
 
 static BridgedPassManager::ExecutePassesFn executePassesFunction = nullptr;
+static BridgedPassManager::ExecutePassesFromNameFn executePassesFromNameFunction = nullptr;
+static BridgedPassManager::RegisterBridgedModulePassFn registerBridgedModulePassFunction = nullptr;
+static BridgedPassManager::RegisterBridgedFunctionPassFn registerBridgedFunctionPassFunction = nullptr;
 static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullptr;
 static BridgedPassManager::ContinueWithSubpassFn continueWithSubpassFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyPassHasInvalidatedFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyDepdendencyFunction = nullptr;
 
 void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
+                                          ExecutePassesFromNameFn executePassesFromNameFn,
+                                          RegisterBridgedModulePassFn registerBridgedModulePassFn,
+                                          RegisterBridgedFunctionPassFn registerBridgedFunctionPassFn,
                                           NotifyNewFunctionFn notifyNewFunctionFn,
                                           ContinueWithSubpassFn continueWithSubpassFn,
                                           NotifyFn notifyPassHasInvalidatedFn,
                                           NotifyFn notifyDepdendencyFn) {
   executePassesFunction = executePassesFn;
+  executePassesFromNameFunction = executePassesFromNameFn;
+  registerBridgedModulePassFunction = registerBridgedModulePassFn;
+  registerBridgedFunctionPassFunction = registerBridgedFunctionPassFn;
   notifyNewFunctionFunction = notifyNewFunctionFn;
   continueWithSubpassFunction = continueWithSubpassFn;
   notifyPassHasInvalidatedFunction = notifyPassHasInvalidatedFn;
@@ -414,11 +423,8 @@ evaluator::SideEffect ExecuteSILPipelineRequest::evaluate(
 void swift::executePasses(ArrayRef<PassKind> passKinds,
                           SILModule *mod, irgen::IRGenModule *IRMod,
                           bool isMandatory) {
-  SILPassPipelinePlan p(mod->getOptions());
-  p.startPipeline("Pass List Pipeline");
-  p.addPasses(passKinds);
   SILPassManager pm(mod, isMandatory, IRMod);
-  pm.executePassPipelinePlan(p);
+  pm.executeCustomPassPipeline(passKinds);
 }
 
 void swift::executePassPipelinePlan(SILModule *SM,
@@ -980,6 +986,15 @@ void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
   }
 }
 
+void SILPassManager::executeCustomPassPipeline(ArrayRef<PassKind> passKinds) {
+  llvm::SmallVector<BridgedStringRef, 8> passNames;
+  for (PassKind kind : passKinds) {
+    passNames.push_back(PassKindID(kind));
+  }
+  ASSERT(executePassesFromNameFunction != nullptr && "executing custom passes requires SwiftCompilerSources");
+  executePassesFromNameFunction({this}, BridgedArrayRef(ArrayRef(passNames)));
+}
+
 void SILPassManager::executePassPipelinePlan(const SILPassPipelinePlan &Plan) {
   for (const SILPassPipeline &Pipeline : Plan.getPipelines()) {
     setStageName(Pipeline.Name);
@@ -1238,7 +1253,7 @@ SILTransform *SILPassManager::getPass(PassKind Kind) {
     return T;                                                                  \
   }
 #include "swift/SILOptimizer/PassManager/Passes.def"
-  case PassKind::invalidPassKind:
+  default:
     llvm_unreachable("invalid pass kind");
   }
 }
@@ -1673,6 +1688,8 @@ static swift::PassKind getFunctionPassKind(BridgedPass kind) {
 #define MODULE_PASS(ID, TAG, NAME)
 #define IRGEN_MODULE_PASS(ID, TAG, NAME)
 #include "swift/SILOptimizer/PassManager/Passes.def"
+    default:
+      ASSERT(false && "invalid BridgedPass kind");
   }
 }
 
@@ -1682,6 +1699,23 @@ static swift::PassKind getModulePassKind(BridgedModulePass kind) {
 #define MODULE_PASS(ID, TAG, NAME) case BridgedModulePass::ID: return swift::PassKind::ID;
 #define IRGEN_MODULE_PASS MODULE_PASS
 #include "swift/SILOptimizer/PassManager/Passes.def"
+    default:
+      ASSERT(false && "invalid BridgedModulePass kind");
+  }
+}
+
+void BridgedPassManager::registerBridgedPasses() {
+  for (int i = 0; i < (int)BridgedModulePass::lastKind; i++) {
+    auto bridgedKind = (BridgedModulePass)i;
+    PassKind kind = getModulePassKind(bridgedKind);
+    StringRef passName = PassKindID(kind);
+    registerBridgedModulePassFunction(BridgedStringRef(passName), bridgedKind);
+  }
+  for (int i = 0; i < (int)BridgedPass::lastKind; i++) {
+    auto bridgedKind = (BridgedPass)i;
+    PassKind kind = getFunctionPassKind(bridgedKind);
+    StringRef passName = PassKindID(kind);
+    registerBridgedFunctionPassFunction(BridgedStringRef(passName), bridgedKind);
   }
 }
 

@@ -472,6 +472,7 @@ public:
   void verifyAnalyses(SILFunction *F) const;
 
   void executePassPipelinePlan(PassPipelineKind kind);
+  void executeCustomPassPipeline(ArrayRef<PassKind> passKinds);
 
   void executePassPipelinePlan(const SILPassPipelinePlan &Plan);
 

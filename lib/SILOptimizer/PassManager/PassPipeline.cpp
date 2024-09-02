@@ -1007,7 +1007,7 @@ void SILPassPipelinePlan::addPasses(ArrayRef<PassKind> PassKinds) {
     break;                                                                     \
   }
 #include "swift/SILOptimizer/PassManager/Passes.def"
-    case PassKind::invalidPassKind:
+    default:
       llvm_unreachable("Unhandled pass kind?!");
     }
   }

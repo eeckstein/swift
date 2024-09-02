@@ -158,14 +158,6 @@ void swift::runSILOptimizationPassesWithFileSpecification(SILModule &M) {
   executePassPipelinePlan(&M, PassPipelineKind::FromFile);
 }
 
-/// Get the Pass ID enum value from an ID string.
-PassKind swift::PassKindFromString(StringRef IDString) {
-  return llvm::StringSwitch<PassKind>(IDString)
-#define PASS(ID, TAG, DESCRIPTION) .Case(#ID, PassKind::ID)
-#include "swift/SILOptimizer/PassManager/Passes.def"
-      .Default(PassKind::invalidPassKind);
-}
-
 /// Get an ID string for the given pass Kind.
 /// This is useful for tools that identify a pass
 /// by its type name.
@@ -175,7 +167,7 @@ StringRef swift::PassKindID(PassKind Kind) {
   case PassKind::ID:                                                           \
     return #ID;
 #include "swift/SILOptimizer/PassManager/Passes.def"
-  case PassKind::invalidPassKind:
+  default:
     llvm_unreachable("Invalid pass kind?!");
   }
 
@@ -187,6 +179,9 @@ StringRef swift::PassKindID(PassKind Kind) {
 StringRef swift::PassKindTag(PassKind Kind) {
   switch (Kind) {
 #define PASS(ID, TAG, DESCRIPTION)                                             \
+  case PassKind::ID:                                                           \
+    return TAG;
+#define SWIFT_PASS(ID, TAG, DESCRIPTION)                                       \
   case PassKind::ID:                                                           \
     return TAG;
 #include "swift/SILOptimizer/PassManager/Passes.def"

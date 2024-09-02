@@ -62,13 +62,13 @@ namespace swift {
   /// Identifiers for all passes. Used to procedurally create passes from
   /// lists of passes.
   enum class PassKind {
+#define SWIFT_PASS(ID, TAG, NAME) ID,
 #define PASS(ID, TAG, NAME) ID,
 #define PASS_RANGE(ID, START, END) ID##_First = START, ID##_Last = END,
 #include "Passes.def"
     invalidPassKind
   };
 
-  PassKind PassKindFromString(StringRef ID);
   StringRef PassKindID(PassKind Kind);
   StringRef PassKindTag(PassKind Kind);
 

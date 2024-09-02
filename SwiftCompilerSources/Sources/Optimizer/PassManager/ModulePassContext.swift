@@ -19,7 +19,7 @@ import OptimizerBridging
 /// but it doesn't provide any APIs to modify functions.
 /// In order to modify a function, a module pass must use `transform(function:)`.
 struct ModulePassContext : Context, CustomStringConvertible {
-  fileprivate let passManager: PassManager
+  let passManager: PassManager
 
   var _bridged: BridgedPassContext { passManager._bridged.getContext() }
 
@@ -193,16 +193,12 @@ struct ModulePassPipelineBuilder {
   }
 
   static func buildExpression(_ passKind: BridgedModulePass) -> [ModulePass] {
-    let pass = ModulePass(name: StringRef(bridged: BridgedPassManager.getPassName(passKind)).string) {
-      (context: ModulePassContext) in
-
-      context._bridged.getPassManager().runBridgedModulePass(passKind)
-    }
-    return [pass]
+    let passName = StringRef(bridged: BridgedPassManager.getPassName(passKind)).string
+    return [PassManager.lookupModulePass(withName: passName)]
   }
 
   static func buildExpression(_ functionPasses: [FunctionPass]) -> [ModulePass] {
-    let pass = ModulePass(name: "function passes") {
+    let pass =  ModulePass(name: "function passes") {
       $0.passManager.scheduleFunctionPassesForRunning(passes: functionPasses)
     }
     return [pass]

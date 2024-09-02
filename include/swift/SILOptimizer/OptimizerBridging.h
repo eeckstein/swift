@@ -410,6 +410,7 @@ enum class BridgedPass {
 #define MODULE_PASS(ID, TAG, NAME)
 #define IRGEN_MODULE_PASS(ID, TAG, NAME)
 #include "swift/SILOptimizer/PassManager/Passes.def"
+  lastKind
 };
 
 enum class BridgedModulePass {
@@ -417,6 +418,7 @@ enum class BridgedModulePass {
 #define MODULE_PASS(ID, TAG, NAME) ID,
 #define IRGEN_MODULE_PASS MODULE_PASS
 #include "swift/SILOptimizer/PassManager/Passes.def"
+  lastKind
 };
 
 struct BridgedPassManager {
@@ -427,6 +429,8 @@ struct BridgedPassManager {
 #define PASSPIPELINE(NAME, DESCRIPTION) NAME,
 #include "swift/SILOptimizer/PassManager/PassPipeline.def"
   };
+
+  static void registerBridgedPasses();
 
   BRIDGED_INLINE BridgedPassContext getContext() const;
 
@@ -460,13 +464,18 @@ struct BridgedPassManager {
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
 
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
+  typedef void (* _Nonnull ExecutePassesFromNameFn)(BridgedPassManager pm, BridgedArrayRef passNames);
+  typedef void (* _Nonnull RegisterBridgedModulePassFn)(BridgedStringRef name, BridgedModulePass kind);
+  typedef void (* _Nonnull RegisterBridgedFunctionPassFn)(BridgedStringRef name, BridgedPass kind);
   typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
                                                 BridgedFunction derivedFrom);
   typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, BridgedFunction function,
                                                   OptionalBridgedInstruction inst);
   typedef void (* _Nonnull NotifyFn)(BridgedPassManager pm);
 
-  static void registerBridging(ExecutePassesFn, NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn);
+  static void registerBridging(ExecutePassesFn, ExecutePassesFromNameFn,
+                               RegisterBridgedModulePassFn, RegisterBridgedFunctionPassFn,
+                               NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);

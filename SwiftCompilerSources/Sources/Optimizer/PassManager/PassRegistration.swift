@@ -20,6 +20,7 @@ public func initializeSwiftModules() {
   registerUtilities()
   PassManager.register()
   registerSwiftPasses()
+  BridgedPassManager.registerBridgedPasses()
   registerOptimizerTests()
 }
 

@@ -51,8 +51,8 @@ final class PassManager {
   private var anyPassOptionSet: Bool
   private var shouldVerifyAfterAllChanges: Bool
 
-  static var registeredFunctionPasses = Dictionary<String, (FunctionPass, uniqueID: Int)>()
-  static var registeredModulePasses = Dictionary<String, ModulePass>()
+  private static var registeredFunctionPasses = Dictionary<String, (FunctionPass, uniqueID: Int)>()
+  private static var registeredModulePasses = Dictionary<String, ModulePass>()
 
   private init(bridged: BridgedPassManager, passPipeline: [ModulePass]) {
     self._bridged = bridged
@@ -81,8 +81,37 @@ final class PassManager {
     registeredModulePasses[modulePass.name] = modulePass
   }
 
-  static var numRegisteredPasses: Int {
-    registeredFunctionPasses.count + registeredModulePasses.count
+  static func lookupFunctionPass(withName name: String) -> FunctionPass {
+    return registeredFunctionPasses[name]!.0
+  }
+
+  static func lookupModulePass(withName name: String) -> ModulePass {
+    return registeredModulePasses[name]!
+  }
+
+  static func buildPassPipeline(fromPassNames passNames: [String]) -> [ModulePass] {
+    var pipeline: [ModulePass] = []
+    var i = 0
+    while i < passNames.count {
+      if let modulePass = registeredModulePasses[passNames[i]] {
+        pipeline.append(modulePass)
+        i += 1
+        continue
+      }
+      var functionPasses: [FunctionPass] = []
+      while i < passNames.count,
+            let (functionPass, _) = registeredFunctionPasses[passNames[i]]
+      {
+        functionPasses.append(functionPass)
+        i += 1
+      }
+      assert(!functionPasses.isEmpty, "unknown pass")
+      let pass = ModulePass(name: "function passes") {
+        $0.passManager.scheduleFunctionPassesForRunning(passes: functionPasses)
+      }
+      pipeline.append(pass)
+    }
+    return pipeline
   }
 
   func run() {
@@ -377,6 +406,34 @@ final class PassManager {
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
       },
+      // executePassesFromNameFn
+      { (bridgedPM: BridgedPassManager, bridgedPassNames: BridgedArrayRef) in
+        var passNames: [String] = bridgedPassNames.withElements(ofType: BridgedStringRef.self) {
+            (buffer: UnsafeBufferPointer<BridgedStringRef>) -> [String] in
+          buffer.map { String($0) }
+        }
+        let pipeline = PassManager.buildPassPipeline(fromPassNames: passNames)
+        do {
+          let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
+          pm.run()
+          assert(bridgedPM.getSwiftPassManager() != nil)
+        }
+        assert(bridgedPM.getSwiftPassManager() == nil)
+      },
+      // registerBridgedModulePassFn
+      { (bridgedPassName: BridgedStringRef, passKind: BridgedModulePass) in
+        PassManager.register(modulePass: ModulePass(name: String(bridgedPassName)) {
+          (context: ModulePassContext) in
+          context._bridged.getPassManager().runBridgedModulePass(passKind)
+        })
+      },
+      // registerBridgedFunctionPassFn
+      { (bridgedPassName: BridgedStringRef, passKind: BridgedPass) in
+        PassManager.register(functionPass: FunctionPass(name: String(bridgedPassName)) {
+          (function: Function, context: FunctionPassContext) in
+          context._bridged.getPassManager().runBridgedFunctionPass(passKind, function.bridged)
+        })
+      },
       // notifyNewFunctionFn
       {
         (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction) in
@@ -431,12 +488,8 @@ struct FunctionPassPipelineBuilder {
   }
 
   static func buildExpression(_ passKind: BridgedPass) -> [FunctionPass] {
-    let pass = FunctionPass(name: StringRef(bridged: BridgedPassManager.getPassName(passKind)).string) {
-      (function: Function, context: FunctionPassContext) in
-
-      context._bridged.getPassManager().runBridgedFunctionPass(passKind, function.bridged)
-    }
-    return [pass]
+    let passName = StringRef(bridged: BridgedPassManager.getPassName(passKind)).string
+    return [PassManager.lookupFunctionPass(withName: passName)]
   }
 
   static func buildExpression(_ passes: [FunctionPass]) -> [FunctionPass] {
