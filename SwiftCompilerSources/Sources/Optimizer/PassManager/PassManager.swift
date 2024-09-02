@@ -49,6 +49,7 @@ final class PassManager {
 
   private var shouldPrintPassNames: Bool
   private var anyPassOptionSet: Bool
+  private var shouldVerifyAfterAllChanges: Bool
 
   static var passIndices = Dictionary<String, Int>()
 
@@ -60,6 +61,7 @@ final class PassManager {
     self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
     self.shouldPrintPassNames =  _bridged.shouldPrintPassNames()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
+    self.shouldVerifyAfterAllChanges = _bridged.shouldVerifyAfterAllChanges()
     bridged.setSwiftPassManager(SwiftObject(self))
   }
 
@@ -70,13 +72,18 @@ final class PassManager {
   func run() {
     let context = createModulePassContext()
 
-    for pass in scheduledModulePasses {
+    for (passIdx, pass) in scheduledModulePasses.enumerated() {
       if !shouldContinueTransforming {
         return
       }
       currentSubPassIndex = 0
 
+      if shouldPrintPassNames {
+        printPassInfo("Run module pass", pass.name, passIdx)
+      }
+
       if shouldPrintBefore(pass: pass) {
+        printPassInfo("*** SIL module before", pass.name, passIdx)
         print(context)
       }
 
@@ -89,12 +96,20 @@ final class PassManager {
       _bridged.postModulePassRun()
 
       if shouldPrintAfter(pass: pass) {
+        printPassInfo("*** module after", pass.name, passIdx)
         print(context)
-      } else if currentPassMadeChanges && shouldPrintAnyFunction {
-        for f in context.functions {
-          if shouldPrint(function: f) {
-            print(f)
+      }
+      if currentPassMadeChanges {
+        if shouldPrintAnyFunction {
+          printPassInfo("*** functions after", pass.name, passIdx)
+          for f in context.functions {
+            if shouldPrint(function: f) {
+              print(f)
+            }
           }
+        }
+        if shouldVerifyAfterAllChanges {
+          verifyModule(context)
         }
       }
 
@@ -144,17 +159,24 @@ final class PassManager {
   private func runFunctionPass(on function: Function, passIndex: Int, _ context: FunctionPassContext) {
     let pass = scheduledFunctionPasses[passIndex]
     if !completedPasses.needToRunPass(passIndex: pass.uniqueIndex, on: function) {
-      printPassInfo("(Skipping)", pass.name, passIndex, function)
+      if shouldPrintPassNames {
+        printPassInfo("(Skipping)", pass.name, passIndex, function)
+      }
       return
     }
     if isPassDisabled(pass) {
-      printPassInfo("(Disabled)", pass.name, passIndex, function)
+      if shouldPrintPassNames {
+        printPassInfo("(Disabled)", pass.name, passIndex, function)
+      }
       return
     }
-    printPassInfo("Run", pass.name, passIndex, function)
+    if shouldPrintPassNames {
+      printPassInfo("Run", pass.name, passIndex, function)
+    }
     currentSubPassIndex = 0
 
     if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
+      printPassInfo("*** function before", pass.name, passIndex, function)
       print(function)
     }
 
@@ -170,7 +192,11 @@ final class PassManager {
        isLastPass(passIndex) ||
        (currentPassMadeChanges && shouldPrint(function: function))
     {
+      printPassInfo("*** function after", pass.name, passIndex, function)
       print(function)
+    }
+    if currentPassMadeChanges && shouldVerifyAfterAllChanges {
+      verify(function: function, context)
     }
   }
 
@@ -181,10 +207,7 @@ final class PassManager {
     return currentPassIndex < maxNumPassesToRun
   }
 
-  private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function?) {
-    if !shouldPrintPassNames {
-      return
-    }
+  private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function? = nil) {
     let pipelineInfo = pipelineStages.last ?? "?"
     let fnInfo: String
     if let function = function {
@@ -193,6 +216,20 @@ final class PassManager {
       fnInfo = ""
     }
     print("  \(title) #\(currentPassIndex), stage \(pipelineInfo), pass \(passIndex): \(passName)\(fnInfo)")
+  }
+
+  private func verifyModule(_ context: ModulePassContext) {
+    _bridged.verifyModule();
+    for f in context.functions {
+      context.transform(function: f) {
+        f.verify($0)
+      }
+    }
+  }
+
+  private func verify(function: Function, _ context: FunctionPassContext) {
+    _bridged.verifyFunction(function.bridged)
+    function.verify(context)
   }
 
   func notifyNewFunction(function: Function, derivedFrom: Function?) {
@@ -229,6 +266,13 @@ final class PassManager {
     }
 
     if isLastSubpass(subPassIdx) {
+      let instInfo: String
+      if let inst = inst {
+        instInfo = " for \(inst)"
+      } else {
+        instInfo = ""
+      }
+      print("*** function before sub-pass \(subPassIdx)\(instInfo)")
       print(function)
     }
 

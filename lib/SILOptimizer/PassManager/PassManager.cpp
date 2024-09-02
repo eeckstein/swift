@@ -1704,6 +1704,10 @@ bool BridgedPassManager::anyPassOptionSet() const {
          !SILPrintAfter.empty();
 }
 
+bool BridgedPassManager::shouldVerifyAfterAllChanges() const {
+  return pm->getOptions().VerifyAll;
+}
+
 bool BridgedPassManager::isPassDisabled(BridgedStringRef passName) const {
   return SILPassManager::isPassDisabled(passName.unbridged());
 }
@@ -1732,6 +1736,14 @@ bool BridgedPassManager::shouldPrintAnyFunction() const {
 
 bool BridgedPassManager::shouldPrintFunction(BridgedFunction function) const {
   return isFunctionSelectedForPrinting(function.getFunction());
+}
+
+void BridgedPassManager::verifyModule() const {
+  pm->getModule()->verify(pm->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
+}
+
+void BridgedPassManager::verifyFunction(BridgedFunction function) const {
+  function.getFunction()->verify(pm->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
 }
 
 BridgedStringRef BridgedPassManager::getPassName(BridgedPass passKind) {
