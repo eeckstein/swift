@@ -19,8 +19,6 @@ final class PassManager {
 
   private var pipelineStages: [String] = []
 
-  private let scheduledModulePasses: [ModulePass]
-
   private var scheduledFunctionPasses: [(FunctionPass, uniqueID: Int)] = []
 
   private var worklist = FunctionWorklist()
@@ -54,9 +52,8 @@ final class PassManager {
   private static var registeredFunctionPasses = Dictionary<String, (FunctionPass, uniqueID: Int)>()
   private static var registeredModulePasses = Dictionary<String, ModulePass>()
 
-  private init(bridged: BridgedPassManager, passPipeline: [ModulePass]) {
+  private init(bridged: BridgedPassManager) {
     self._bridged = bridged
-    self.scheduledModulePasses = passPipeline
     let numRegisteredPasses = Self.registeredFunctionPasses.count + Self.registeredModulePasses.count
     self.completedPasses = CompletedPasses(numPasses: numRegisteredPasses)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
@@ -82,11 +79,17 @@ final class PassManager {
   }
 
   static func lookupFunctionPass(withName name: String) -> FunctionPass {
-    return registeredFunctionPasses[name]!.0
+    guard let (pass, _) = registeredFunctionPasses[name] else {
+      fatalError("bridged pass \(name) is not registered")
+    }
+    return pass
   }
 
   static func lookupModulePass(withName name: String) -> ModulePass {
-    return registeredModulePasses[name]!
+    guard let pass = registeredModulePasses[name] else {
+      fatalError("bridged pass \(name) is not registered")
+    }
+    return pass
   }
 
   static func buildPassPipeline(fromPassNames passNames: [String]) -> [ModulePass] {
@@ -114,10 +117,10 @@ final class PassManager {
     return pipeline
   }
 
-  func run() {
+  func runPipeline(_ modulePasses: [ModulePass]) {
     let context = createModulePassContext()
 
-    for (passIdx, pass) in scheduledModulePasses.enumerated() {
+    for (passIdx, pass) in modulePasses.enumerated() {
       if !shouldContinueTransforming {
         return
       }
@@ -334,7 +337,12 @@ final class PassManager {
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
     precondition(scheduledFunctionPasses.isEmpty, "function passes not cleared")
-    scheduledFunctionPasses = passes.map { ($0, Self.registeredFunctionPasses[$0.name]!.uniqueID) }
+    scheduledFunctionPasses = passes.map {
+      guard let passAndUniqueID = Self.registeredFunctionPasses[$0.name] else {
+        fatalError("pass \($0.name) is not registered")
+      }
+      return passAndUniqueID
+    }
   }
 
   private func isPassDisabled<P: Pass>(_ pass: P) -> Bool {
@@ -400,22 +408,22 @@ final class PassManager {
         let options = Options(_bridged: bridgedPM.getContext())
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
         do {
-          let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
-          pm.run()
+          let pm = PassManager(bridged: bridgedPM)
+          pm.runPipeline(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
       },
       // executePassesFromNameFn
       { (bridgedPM: BridgedPassManager, bridgedPassNames: BridgedArrayRef) in
-        var passNames: [String] = bridgedPassNames.withElements(ofType: BridgedStringRef.self) {
+        let passNames: [String] = bridgedPassNames.withElements(ofType: BridgedStringRef.self) {
             (buffer: UnsafeBufferPointer<BridgedStringRef>) -> [String] in
           buffer.map { String($0) }
         }
         let pipeline = PassManager.buildPassPipeline(fromPassNames: passNames)
         do {
-          let pm = PassManager(bridged: bridgedPM, passPipeline: pipeline)
-          pm.run()
+          let pm = PassManager(bridged: bridgedPM)
+          pm.runPipeline(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
