@@ -307,7 +307,6 @@ public:
   SILInstruction *legacyVisitGlobalValueInst(GlobalValueInst *globalValue);
 
 #define PASS(ID, TAG, DESCRIPTION)
-#define SWIFT_FUNCTION_PASS(ID, TAG, DESCRIPTION)
 #define SWIFT_SILCOMBINE_PASS(INST) \
   SILInstruction *visit##INST(INST *);
 #include "swift/SILOptimizer/PassManager/Passes.def"

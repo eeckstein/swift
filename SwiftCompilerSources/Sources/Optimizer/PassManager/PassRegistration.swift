@@ -23,22 +23,6 @@ public func initializeSwiftModules() {
   registerOptimizerTests()
 }
 
-private func registerPass(
-      _ pass: ModulePass,
-      _ runFn: @escaping (@convention(c) (BridgedPassContext) -> ())) {
-  pass.name._withBridgedStringRef { nameStr in
-    SILPassManager_registerModulePass(nameStr, runFn)
-  }
-}
-
-private func registerPass(
-      _ pass: FunctionPass,
-      _ runFn: @escaping (@convention(c) (BridgedFunctionPassCtxt) -> ())) {
-  pass.name._withBridgedStringRef { nameStr in
-    SILPassManager_registerFunctionPass(nameStr, runFn)
-  }
-}
-
 protocol SILCombineSimplifyable : Instruction {
   func simplify(_ context: SimplifyContext)
 }
@@ -62,40 +46,40 @@ private func registerForSILCombine<InstType: SILCombineSimplifyable>(
 
 private func registerSwiftPasses() {
   // Module passes
-  registerPass(mandatoryPerformanceOptimizations, { mandatoryPerformanceOptimizations.run($0) })
-  registerPass(readOnlyGlobalVariablesPass, { readOnlyGlobalVariablesPass.run($0) })
-  registerPass(stackProtection, { stackProtection.run($0) })
+  PassManager.register(modulePass: mandatoryPerformanceOptimizations)
+  PassManager.register(modulePass: readOnlyGlobalVariablesPass)
+  PassManager.register(modulePass: stackProtection)
+  PassManager.register(modulePass: asyncDemotion)
 
   // Function passes
-  registerPass(allocVectorLowering, { allocVectorLowering.run($0) })
-  registerPass(asyncDemotion, { asyncDemotion.run($0) })
-  registerPass(booleanLiteralFolding, { booleanLiteralFolding.run($0) })
-  registerPass(letPropertyLowering, { letPropertyLowering.run($0) })
-  registerPass(mergeCondFails, { mergeCondFails.run($0) })
-  registerPass(computeEscapeEffects, { computeEscapeEffects.run($0) })
-  registerPass(computeSideEffects, { computeSideEffects.run($0) })
-  registerPass(initializeStaticGlobals, { initializeStaticGlobals.run($0) })
-  registerPass(objCBridgingOptimization, { objCBridgingOptimization.run($0) })
-  registerPass(objectOutliner, { objectOutliner.run($0) })
-  registerPass(stackPromotion, { stackPromotion.run($0) })
-  registerPass(functionStackProtection, { functionStackProtection.run($0) })
-  registerPass(simplification, { simplification.run($0) })
-  registerPass(ononeSimplification, { ononeSimplification.run($0) })
-  registerPass(lateOnoneSimplification, { lateOnoneSimplification.run($0) })
-  registerPass(assumeSingleThreaded, { assumeSingleThreaded.run($0) })
-  registerPass(releaseDevirtualizer, { releaseDevirtualizer.run($0) })
-  registerPass(cleanUpDebugSteps, { cleanUpDebugSteps.run($0) })
-  registerPass(namedReturnValueOptimization, { namedReturnValueOptimization.run($0) })
-  registerPass(stripObjectHeaders, { stripObjectHeaders.run($0) })
-  registerPass(deadStoreElimination, { deadStoreElimination.run($0) })
-  registerPass(redundantLoadElimination, { redundantLoadElimination.run($0) })
-  registerPass(earlyRedundantLoadElimination, { earlyRedundantLoadElimination.run($0) })
-  registerPass(deinitDevirtualizer, { deinitDevirtualizer.run($0) })
-  registerPass(lifetimeDependenceDiagnosticsPass, { lifetimeDependenceDiagnosticsPass.run($0) })
-  registerPass(lifetimeDependenceInsertionPass, { lifetimeDependenceInsertionPass.run($0) })
-  registerPass(lifetimeDependenceScopeFixupPass, { lifetimeDependenceScopeFixupPass.run($0) })
-  registerPass(experimentalSwiftBasedClosureSpecialization, { experimentalSwiftBasedClosureSpecialization.run($0) })
-  registerPass(autodiffClosureSpecialization, { autodiffClosureSpecialization.run($0) })
+  PassManager.register(functionPass: allocVectorLowering)
+  PassManager.register(functionPass: booleanLiteralFolding)
+  PassManager.register(functionPass: letPropertyLowering)
+  PassManager.register(functionPass: mergeCondFails)
+  PassManager.register(functionPass: computeEscapeEffects)
+  PassManager.register(functionPass: computeSideEffects)
+  PassManager.register(functionPass: initializeStaticGlobals)
+  PassManager.register(functionPass: objCBridgingOptimization)
+  PassManager.register(functionPass: objectOutliner)
+  PassManager.register(functionPass: stackPromotion)
+  PassManager.register(functionPass: functionStackProtection)
+  PassManager.register(functionPass: simplification)
+  PassManager.register(functionPass: ononeSimplification)
+  PassManager.register(functionPass: lateOnoneSimplification)
+  PassManager.register(functionPass: assumeSingleThreaded)
+  PassManager.register(functionPass: releaseDevirtualizer)
+  PassManager.register(functionPass: cleanupDebugSteps)
+  PassManager.register(functionPass: namedReturnValueOptimization)
+  PassManager.register(functionPass: stripObjectHeaders)
+  PassManager.register(functionPass: deadStoreElimination)
+  PassManager.register(functionPass: redundantLoadElimination)
+  PassManager.register(functionPass: earlyRedundantLoadElimination)
+  PassManager.register(functionPass: deinitDevirtualizer)
+  PassManager.register(functionPass: lifetimeDependenceDiagnosticsPass)
+  PassManager.register(functionPass: lifetimeDependenceInsertionPass)
+  PassManager.register(functionPass: lifetimeDependenceScopeFixupPass)
+  PassManager.register(functionPass: experimentalSwiftBasedClosureSpecialization)
+  PassManager.register(functionPass: autodiffClosureSpecialization)
 
   // Instruction passes
   registerForSILCombine(BeginCOWMutationInst.self, { run(BeginCOWMutationInst.self, $0) })
@@ -112,18 +96,18 @@ private func registerSwiftPasses() {
   registerForSILCombine(TypeValueInst.self, { run(TypeValueInst.self, $0) })
 
   // Test passes
-  registerPass(aliasInfoDumper, { aliasInfoDumper.run($0) })
-  registerPass(functionUsesDumper, { functionUsesDumper.run($0) })
-  registerPass(silPrinterPass, { silPrinterPass.run($0) })
-  registerPass(escapeInfoDumper, { escapeInfoDumper.run($0) })
-  registerPass(addressEscapeInfoDumper, { addressEscapeInfoDumper.run($0) })
-  registerPass(accessDumper, { accessDumper.run($0) })
-  registerPass(deadEndBlockDumper, { deadEndBlockDumper.run($0) })
-  registerPass(memBehaviorDumper, { memBehaviorDumper.run($0) })
-  registerPass(rangeDumper, { rangeDumper.run($0) })
-  registerPass(runUnitTests, { runUnitTests.run($0) })
-  registerPass(testInstructionIteration, { testInstructionIteration.run($0) })
-  registerPass(updateBorrowedFromPass, { updateBorrowedFromPass.run($0) })
+  PassManager.register(modulePass: functionUsesDumper)
+  PassManager.register(modulePass: runUnitTests)
+  PassManager.register(functionPass: silPrinterPass)
+  PassManager.register(functionPass: aliasInfoDumper)
+  PassManager.register(functionPass: escapeInfoDumper)
+  PassManager.register(functionPass: addressEscapeInfoDumper)
+  PassManager.register(functionPass: accessDumper)
+  PassManager.register(functionPass: deadEndBlockDumper)
+  PassManager.register(functionPass: memBehaviorDumper)
+  PassManager.register(functionPass: rangeDumper)
+  PassManager.register(functionPass: testInstructionIteration)
+  PassManager.register(functionPass: updateBorrowedFromPass)
 }
 
 private func registerSwiftAnalyses() {

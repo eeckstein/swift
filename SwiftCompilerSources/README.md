@@ -133,14 +133,6 @@ For example, to add a new instruction class:
 
 Similar to SIL, the optimizer also uses a small bridging layer (`OptimizerBridging.h`).
 Passes are registered in `registerSwiftPasses()`, called from `initializeSwiftModules()`.
-The C++ `PassManager` can then call a Swift pass like any other `SILFunctionTransform` pass.
-
-To add a new function pass:
-
-* add a `SWIFT_FUNCTION_PASS` entry in `Passes.def`
-* create a new Swift file in `SwiftCompilerSources/Optimizer/FunctionPasses`
-* add a `FunctionPass` global
-* register the pass in `registerSwiftPasses()`
 
 All SIL modifications, which a pass can do, are going through the `PassContext` - the second parameter of the pass run-function. In other words, the context is the central place to make modifications. This enables automatic change notifications to the pass manager. Also, it makes it easier to build a concurrent pass manager in future.
 

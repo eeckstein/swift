@@ -16,15 +16,15 @@ import SIL
 /// If a `debug_step` has the same debug location as a previous or succeeding instruction
 /// it is removed. It's just important that there is at least one instruction for a
 /// certain debug location so that single stepping on that location will work.
-let cleanUpDebugSteps = FunctionPass(name: "cleanup-debug-steps") {
+let cleanupDebugSteps = FunctionPass(name: "cleanup-debug-steps") {
   (function: Function, context: FunctionPassContext) in
 
   for block in function.blocks {
-    cleanupDebugSteps(in: block, context)
+    cleanup(in: block, context)
   }
 }
 
-private func cleanupDebugSteps(in block: BasicBlock, _ context: FunctionPassContext) {
+private func cleanup(in block: BasicBlock, _ context: FunctionPassContext) {
   var lastInstWithSameLocation: Instruction?
 
   for inst in block.instructions {

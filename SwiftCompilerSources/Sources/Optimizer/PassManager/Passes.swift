@@ -21,20 +21,10 @@ struct FunctionPass: Pass {
   let name: String
   let runFunction: (Function, FunctionPassContext) -> ()
 
-  /// Unique identifier for vector indexing and deterministic sorting.
-  let uniqueIndex: Int
-
   public init(name: String,
               _ runFunction: @escaping (Function, FunctionPassContext) -> ()) {
     self.name = name
     self.runFunction = runFunction
-    self.uniqueIndex = PassManager.allocatePassIndex(passName: name)
-  }
-
-  func run(_ bridgedCtxt: BridgedFunctionPassCtxt) {
-    let function = bridgedCtxt.function.function
-    let context = FunctionPassContext(_bridged: bridgedCtxt.passContext)
-    runFunction(function, context)
   }
 }
 
@@ -43,17 +33,9 @@ struct ModulePass: Pass {
   let name: String
   let runFunction: (ModulePassContext) -> ()
 
-  /// Unique identifier for vector indexing and deterministic sorting.
-  let uniqueIndex: Int
-
   public init(name: String,
               _ runFunction: @escaping (ModulePassContext) -> ()) {
     self.name = name
     self.runFunction = runFunction
-    self.uniqueIndex = PassManager.allocatePassIndex(passName: name)
-  }
-
-  func run(_ bridgedCtxt: BridgedPassContext) {
-    fatalError("cannot run swift module pass from legacy SILPassManager")
   }
 }

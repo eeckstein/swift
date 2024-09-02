@@ -79,7 +79,6 @@ static void addOwnershipModelEliminatorPipeline(SILPassPipelinePlan &P) {
 /// order.
 static void addDefiniteInitialization(SILPassPipelinePlan &P) {
   P.addDefiniteInitialization();
-  P.addLetPropertyLowering();
   P.addRawSILInstLowering();
 }
 
@@ -104,7 +103,6 @@ static void addMandatoryDiagnosticOptPipeline(SILPassPipelinePlan &P) {
 
   P.addAllocBoxToStack();
   P.addNoReturnFolding();
-  P.addBooleanLiteralFolding();
   addDefiniteInitialization(P);
 
   P.addAddressLowering();
@@ -166,11 +164,6 @@ static void addMandatoryDiagnosticOptPipeline(SILPassPipelinePlan &P) {
   P.addConsumeOperatorCopyableAddressesChecker();
   // No uses after consume operator of copyable value.
   P.addConsumeOperatorCopyableValuesChecker();
-
-  // Check ~Escapable.
-  if (P.getOptions().EnableLifetimeDependenceDiagnostics) {
-    P.addLifetimeDependenceDiagnostics();
-  }
 
   // As a temporary measure, we also eliminate move only for non-trivial types
   // until we can audit the later part of the pipeline. Eventually, this should
@@ -243,11 +236,6 @@ static void addMandatoryDiagnosticOptPipeline(SILPassPipelinePlan &P) {
   // For embedded Swift: Specialize generic class vtables.
   P.addVTableSpecializer();
 
-  P.addMandatoryPerformanceOptimizations();
-  P.addOnoneSimplification();
-  P.addAllocVectorLowering();
-  P.addInitializeStaticGlobals();
-
   // MandatoryPerformanceOptimizations might create specializations that are not
   // used, and by being unused they are might have unspecialized applies.
   // Eliminate them via the DeadFunctionAndGlobalElimination in embedded Swift
@@ -267,10 +255,6 @@ SILPassPipelinePlan::getSILGenPassPipeline(const SILOptions &Options) {
   P.startPipeline("SILGen Passes");
 
   P.addSILGenCleanup();
-  if (P.getOptions().EnableLifetimeDependenceDiagnostics) {
-    P.addLifetimeDependenceInsertion();
-    P.addLifetimeDependenceScopeFixup();
-  }
   if (SILViewSILGenCFG) {
     addCFGPrinterPipeline(P, "SIL View SILGen CFG");
   }
@@ -476,8 +460,6 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   }
   P.addARCSequenceOpts();
 
-  P.addDeinitDevirtualizer();
-
   // We earlier eliminated ownership if we are not compiling the stdlib. Now
   // handle the stdlib functions, re-simplifying, eliminating ARC as we do.
   if (P.getOptions().CopyPropagation != CopyPropagationOption::Off) {
@@ -531,14 +513,6 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   P.addSimplifyCFG();
 
   P.addCSE();
-  if (OpLevel == OptimizationLevelKind::HighLevel) {
-    // Early RLE does not touch loads from Arrays. This is important because
-    // later array optimizations, like ABCOpt, get confused if an array load in
-    // a loop is converted to a pattern with a phi argument.
-    P.addEarlyRedundantLoadElimination();
-  } else {
-    P.addRedundantLoadElimination();
-  }
   // Optimize copies created during RLE.
   P.addSemanticARCOpts();
 
@@ -590,7 +564,6 @@ static void addPrepareOptimizationsPipeline(SILPassPipelinePlan &P) {
 #endif
 
   P.addForEachLoopUnroll();
-  P.addSimplification();
   P.addAccessMarkerElimination();
 }
 
@@ -605,7 +578,6 @@ static void addPerfEarlyModulePassPipeline(SILPassPipelinePlan &P) {
   P.addTempRValueOpt();
   // Cleanup after SILGen: remove unneeded borrows/copies.
   if (P.getOptions().CopyPropagation == CopyPropagationOption::On) {
-    P.addComputeSideEffects();
     P.addCopyPropagation();
   }
   P.addSemanticARCOpts();
@@ -646,15 +618,11 @@ static void addHighLevelFunctionPipeline(SILPassPipelinePlan &P) {
     P.addEagerSpecializer();
   }
 
-  P.addObjCBridgingOptimization();
-
   addFunctionPasses(P, OptimizationLevelKind::HighLevel);
 
   addHighLevelLoopOptPasses(P);
   
   P.addStringOptimization();
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
 }
 
 // After "high-level" function passes have processed the entire call tree, run
@@ -665,17 +633,6 @@ static void addHighLevelModulePipeline(SILPassPipelinePlan &P) {
   P.addPerformanceSILLinker();
   P.addDeadObjectElimination();
   P.addGlobalPropertyOpt();
-
-  if (P.getOptions().EnableAsyncDemotion)
-    P.addAsyncDemotion();
-
-  // Do the first stack promotion on high-level SIL before serialization.
-  //
-  // FIXME: why does StackPromotion need to run in the module pipeline?
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
-  P.addStackPromotion();
-
   P.addLetPropertiesOpt();
 }
 
@@ -700,8 +657,6 @@ static void addMidLevelFunctionPipeline(SILPassPipelinePlan &P) {
 static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   P.startPipeline("ClosureSpecialize");
   P.addDeadFunctionAndGlobalElimination();
-  P.addReadOnlyGlobalVariablesPass();
-  P.addDeadStoreElimination();
   P.addDeadObjectElimination();
 
   // These few passes are needed to cleanup between loop unrolling and InitializeStaticGlobals.
@@ -710,15 +665,6 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   P.addSILCombine();
   P.addPerformanceConstantPropagation();
   P.addSimplifyCFG();
-  P.addSimplification();
-
-  P.addInitializeStaticGlobals();
-
-  // ComputeEffects should be done at the end of a function-pipeline. The next
-  // pass (LetPropertiesOpt) is a module pass, so this is the end of a function-pipeline.
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
-
   P.addLetPropertiesOpt();
 
   // Propagate constants into closures and convert to static dispatch.  This
@@ -730,15 +676,9 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   P.addCapturePropagation();
 
   // Specialize closure.
-  if (P.getOptions().EnableExperimentalSwiftBasedClosureSpecialization) {
-    P.addExperimentalSwiftBasedClosureSpecialization();
-  } else {
+  if (!P.getOptions().EnableExperimentalSwiftBasedClosureSpecialization) {
     P.addClosureSpecializer();
   }
-
-  // Do the second stack promotion on low-level SIL.
-  P.addStackPromotion();
-
   // Speculate virtual call targets.
   if (P.getOptions().EnableSpeculativeDevirtualization) {
     P.addSpeculativeDevirtualization();
@@ -749,9 +689,6 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   // passes can expose more inlining opportunities.
   addSimplifyCFGSILCombinePasses(P);
 
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
-
   // We do this late since it is a pass like the inline caches that we only want
   // to run once very late. Make sure to run at least one round of the ARC
   // optimizer after this.
@@ -760,29 +697,15 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
 static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   P.startPipeline("LowLevel,Function", true /*isFunctionPassPipeline*/);
 
-  // Should be after FunctionSignatureOpts and before the last inliner.
-  P.addReleaseDevirtualizer();
-
   addFunctionPasses(P, OptimizationLevelKind::LowLevel);
-
-  // The NamedReturnValueOptimization shouldn't be done before serialization.
-  // For details see the comment for `namedReturnValueOptimization`.
-  P.addNamedReturnValueOptimization();
-
   P.addDeadObjectElimination();
-  P.addObjectOutliner();
-  P.addDeadStoreElimination();
   P.addDCE();
-  P.addSimplification();
-  P.addInitializeStaticGlobals();
 
   // dead-store-elimination can expose opportunities for dead object elimination.
   P.addDeadObjectElimination();
 
   // We've done a lot of optimizations on this function, attempt to FSO.
   P.addFunctionSignatureOpts();
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
 }
 
 static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
@@ -809,21 +732,12 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
   P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
 
-  // Sometimes stack promotion can catch cases only at this late stage of the
-  // pipeline, after FunctionSignatureOpts.
-  P.addComputeEscapeEffects();
-  P.addComputeSideEffects();
-  P.addStackPromotion();
-
   // Optimize overflow checks.
   P.addRedundantOverflowCheckRemoval();
-  P.addMergeCondFails();
-
   // Remove dead code.
   P.addDCE();
   P.addSILCombine();
   P.addSimplifyCFG();
-  P.addStripObjectHeaders();
 
   // Try to hoist all releases, including epilogue releases. This should be
   // after FSO.
@@ -850,16 +764,8 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
   P.addAccessPathVerification();
 #endif
 
-  // Only has an effect if the -assume-single-thread option is specified.
-  if (P.getOptions().AssumeSingleThreaded) {
-    P.addAssumeSingleThreaded();
-  }
-
   // Emits remarks on all functions with @_assemblyVision attribute.
   P.addAssemblyVisionRemarkGenerator();
-
-  // In optimized builds, do the inter-procedural analysis in a module pass.
-  P.addStackProtection();
 
   // FIXME: rdar://72935649 (Miscompile on combining PruneVTables with WMO)
   // P.addPruneVTables();
@@ -973,13 +879,9 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   if (Options.StopOptimizationAfterSerialization)
     return P;
 
-  P.addAutodiffClosureSpecialization();
-
   // After serialization run the function pass pipeline to iteratively lower
   // high-level constructs like @_semantics calls.
   addMidLevelFunctionPipeline(P);
-
-  P.addAutodiffClosureSpecialization();
 
   // Perform optimizations that specialize.
   addClosureSpecializePassPipeline(P);
@@ -1049,26 +951,12 @@ SILPassPipelinePlan::getOnonePassPipeline(const SILOptions &Options) {
   P.startPipeline("Rest of Onone");
   P.addUsePrespecialized();
 
-  // Has only an effect if the -assume-single-thread option is specified.
-  if (P.getOptions().AssumeSingleThreaded) {
-    P.addAssumeSingleThreaded();
-  }
-
-  // In Onone builds, do a function-local analysis in a function pass.
-  P.addFunctionStackProtection();
-
-  // This is mainly there to optimize `Builtin.isConcrete`, which must not be
-  // constant folded before any generic specialization.
-  P.addLateOnoneSimplification();
-
   if (Options.EmbeddedSwift) {
     // For embedded Swift: Remove all unspecialized functions. This is important
     // to avoid having debuginfo references to these functions that we don't
     // want to emit in IRGen.
     P.addLateDeadFunctionAndGlobalElimination();
   }
-
-  P.addCleanupDebugSteps();
 
   // Has only an effect if the -sil-based-debuginfo option is specified.
   P.addSILDebugInfoGenerator();

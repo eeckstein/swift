@@ -21,7 +21,7 @@ final class PassManager {
 
   private let scheduledModulePasses: [ModulePass]
 
-  private var scheduledFunctionPasses: [FunctionPass] = []
+  private var scheduledFunctionPasses: [(FunctionPass, uniqueID: Int)] = []
 
   private var worklist = FunctionWorklist()
 
@@ -51,12 +51,14 @@ final class PassManager {
   private var anyPassOptionSet: Bool
   private var shouldVerifyAfterAllChanges: Bool
 
-  static var passIndices = Dictionary<String, Int>()
+  static var registeredFunctionPasses = Dictionary<String, (FunctionPass, uniqueID: Int)>()
+  static var registeredModulePasses = Dictionary<String, ModulePass>()
 
   private init(bridged: BridgedPassManager, passPipeline: [ModulePass]) {
     self._bridged = bridged
     self.scheduledModulePasses = passPipeline
-    self.completedPasses = CompletedPasses(numPasses: Self.passIndices.count)
+    let numRegisteredPasses = Self.registeredFunctionPasses.count + Self.registeredModulePasses.count
+    self.completedPasses = CompletedPasses(numPasses: numRegisteredPasses)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
     self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
     self.shouldPrintPassNames =  _bridged.shouldPrintPassNames()
@@ -67,6 +69,20 @@ final class PassManager {
 
   deinit {
     _bridged.setSwiftPassManager(nil)
+  }
+
+  static func register(functionPass: FunctionPass) {
+    assert(registeredFunctionPasses[functionPass.name] == nil, "function pass registered a second time")
+    registeredFunctionPasses[functionPass.name] = (functionPass, uniqueID: registeredFunctionPasses.count)
+  }
+
+  static func register(modulePass: ModulePass) {
+    assert(registeredModulePasses[modulePass.name] == nil, "module pass registered a second time")
+    registeredModulePasses[modulePass.name] = modulePass
+  }
+
+  static var numRegisteredPasses: Int {
+    registeredFunctionPasses.count + registeredModulePasses.count
   }
 
   func run() {
@@ -157,8 +173,8 @@ final class PassManager {
   }
 
   private func runFunctionPass(on function: Function, passIndex: Int, _ context: FunctionPassContext) {
-    let pass = scheduledFunctionPasses[passIndex]
-    if !completedPasses.needToRunPass(passIndex: pass.uniqueIndex, on: function) {
+    let (pass, uniqueID) = scheduledFunctionPasses[passIndex]
+    if !completedPasses.needToRunPass(passID: uniqueID, on: function) {
       if shouldPrintPassNames {
         printPassInfo("(Skipping)", pass.name, passIndex, function)
       }
@@ -289,7 +305,7 @@ final class PassManager {
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
     precondition(scheduledFunctionPasses.isEmpty, "function passes not cleared")
-    scheduledFunctionPasses = passes
+    scheduledFunctionPasses = passes.map { ($0, Self.registeredFunctionPasses[$0.name]!.uniqueID) }
   }
 
   private func isPassDisabled<P: Pass>(_ pass: P) -> Bool {
@@ -346,16 +362,6 @@ final class PassManager {
 
   func setMandatory() {
     isMandatory = true
-  }
-
-  static func allocatePassIndex(passName: String) -> Int {
-    if let idx = passIndices[passName] {
-      return idx
-    }
-    let idx = passIndices.count
-    passIndices[passName] = idx
-    assert(passIndices.count == idx + 1)
-    return idx
   }
 
   static func register() {
@@ -559,24 +565,24 @@ private struct CompletedPasses {
     self.numIntsPerFunction = (numPasses + 63) / 64
   }
 
-  mutating func passDidNotModify(passIndex: Int, function: Function) {
-    let idx = arrayIndex(passIndex: passIndex, functionIndex: function.uniqueIndex)
+  mutating func passDidNotModify(passID: Int, function: Function) {
+    let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
     if idx > completedPasses.count {
       completedPasses += Array(repeating: 0, count: idx - completedPasses.count + 1)
     }
-    completedPasses[idx] |= bitMask(for: passIndex)
+    completedPasses[idx] |= bitMask(for: passID)
   }
 
-  mutating func needToRunPass(passIndex: Int, on function: Function) -> Bool {
-    let idx = arrayIndex(passIndex: passIndex, functionIndex: function.uniqueIndex)
+  mutating func needToRunPass(passID: Int, on function: Function) -> Bool {
+    let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
     if idx >= completedPasses.count {
       return true
     }
-    return completedPasses[idx] & bitMask(for: passIndex) == 0
+    return completedPasses[idx] & bitMask(for: passID) == 0
   }
 
   mutating func notifyFunctionModified(function: Function) {
-    let startIdx = arrayIndex(passIndex: 0, functionIndex: function.uniqueIndex)
+    let startIdx = arrayIndex(passID: 0, functionIndex: function.uniqueIndex)
     if startIdx < completedPasses.count {
       for idx in startIdx..<startIdx + numIntsPerFunction {
         completedPasses[idx] = 0
@@ -590,9 +596,9 @@ private struct CompletedPasses {
     }
   }
 
-  private func arrayIndex(passIndex: Int, functionIndex: Int) -> Int {
-    assert(passIndex < numPasses, "pass created during pass-manager run")
-    return passIndex / 64 + functionIndex * numIntsPerFunction
+  private func arrayIndex(passID: Int, functionIndex: Int) -> Int {
+    assert(passID < numPasses, "pass created during pass-manager run")
+    return passID / 64 + functionIndex * numIntsPerFunction
   }
 
   private func bitMask(for passIndex: Int) -> UInt64 {

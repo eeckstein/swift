@@ -238,7 +238,7 @@ func getOnonePassPipeline(options: Options) -> [ModulePass] {
       // constant folded before any generic specialization.
       lateOnoneSimplification
 
-      BridgedPass.CleanupDebugSteps
+      cleanupDebugSteps
     }
     BridgedModulePass.UsePrespecialized
 
@@ -305,7 +305,7 @@ private func prepareOptimizationsPasses() -> [ModulePass] {
 
     functionPasses {
       BridgedPass.ForEachLoopUnroll
-      BridgedPass.Simplification
+      simplification
     }
     BridgedModulePass.AccessMarkerElimination
   }
@@ -482,7 +482,7 @@ private func closureSpecializationPasses(_ options: Options) -> [ModulePass] {
       BridgedPass.SILCombine
       BridgedPass.PerformanceConstantPropagation
       BridgedPass.SimplifyCFG
-      BridgedPass.Simplification
+      simplification
 
       initializeStaticGlobals
 
@@ -541,7 +541,7 @@ private func lowLevelOptimizations(_ options: Options) -> [ModulePass] {
       namedReturnValueOptimization
 
       BridgedPass.DeadObjectElimination
-      BridgedPass.ObjectOutliner
+      objectOutliner
       deadStoreElimination
       BridgedPass.DCE
       simplification
