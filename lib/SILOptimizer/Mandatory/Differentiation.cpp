@@ -802,7 +802,7 @@ static SILFunction *createEmptyVJP(ADContext &context,
       vjpCanGenSig,
       /*isReabstractionThunk*/ original->isThunk() == IsReabstractionThunk);
 
-  SILOptFunctionBuilder fb(context.getTransform());
+  SILOptFunctionBuilder fb(context.getTransform().getPassManager());
   auto *vjp = fb.createFunction(
       witness->getLinkage(),
       context.getASTContext().getIdentifier(vjpName).str(), vjpType,
@@ -846,7 +846,7 @@ static SILFunction *createEmptyJVP(ADContext &context,
       jvpCanGenSig,
       /*isReabstractionThunk*/ original->isThunk() == IsReabstractionThunk);
 
-  SILOptFunctionBuilder fb(context.getTransform());
+  SILOptFunctionBuilder fb(context.getTransform().getPassManager());
   auto *jvp = fb.createFunction(
       witness->getLinkage(),
       context.getASTContext().getIdentifier(jvpName).str(), jvpType,
@@ -883,7 +883,7 @@ static void emitFatalError(ADContext &context, SILFunction *f,
       SILCoroutineKind::None, ParameterConvention::Direct_Unowned, {},
       /*interfaceYields*/ {}, neverResultInfo,
       /*interfaceErrorResults*/ std::nullopt, {}, {}, context.getASTContext());
-  auto fnBuilder = SILOptFunctionBuilder(context.getTransform());
+  auto fnBuilder = SILOptFunctionBuilder(context.getTransform().getPassManager());
   auto *fatalErrorFn = fnBuilder.getOrCreateFunction(
       loc, fatalErrorFuncName, SILLinkage::PublicExternal, fatalErrorFnType,
       IsNotBare, IsNotTransparent, IsNotSerialized, IsNotDynamic,
@@ -1049,7 +1049,7 @@ static SILValue promoteCurryThunkApplicationToDifferentiableFunction(
       thunkTy->getASTContext());
 
   // Construct new curry thunk, returning a `@differentiable` function.
-  SILOptFunctionBuilder fb(dt.getTransform());
+  SILOptFunctionBuilder fb(dt.getTransform().getPassManager());
   auto *newThunk = fb.getOrCreateFunction(
       loc, newThunkName, getSpecializedLinkage(thunk, thunk->getLinkage()),
       thunkType, thunk->isBare(), thunk->isTransparent(),
@@ -1174,7 +1174,7 @@ SILValue DifferentiationTransformer::promoteToDifferentiableFunction(
           extendedDesiredParameterIndices));
       SILFunction *thunk;
       SubstitutionMap interfaceSubs;
-      SILOptFunctionBuilder fb(transform);
+      SILOptFunctionBuilder fb(transform.getPassManager());
       std::tie(thunk, interfaceSubs) =
           getOrCreateSubsetParametersThunkForDerivativeFunction(
               fb, origFnOperand, derivativeFn, derivativeFnKind, desiredConfig,
@@ -1211,7 +1211,7 @@ SILValue DifferentiationTransformer::promoteToDifferentiableFunction(
         derivativeFn->getType().castTo<SILFunctionType>()->isABICompatibleWith(
           expectedDerivativeFnTy, *dfi->getFunction());
     if (!abiCompatibility.isCompatible()) {
-      SILOptFunctionBuilder fb(context.getTransform());
+      SILOptFunctionBuilder fb(context.getTransform().getPassManager());
       auto newDerivativeFn = reabstractFunction(
           builder, fb, loc, derivativeFn, expectedDerivativeFnTy,
           [](SubstitutionMap substMap) { return substMap; });

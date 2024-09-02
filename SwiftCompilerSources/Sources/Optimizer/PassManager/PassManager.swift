@@ -291,7 +291,9 @@ final class PassManager {
       newLevel = 1
     }
     derivationLevels[function] = newLevel
-    worklist.pushNewFunctionToReadyList(function)
+    if !scheduledFunctionPasses.isEmpty {
+      worklist.pushNewFunctionToReadyList(function)
+    }
   }
 
   func notifyPassMadeChanges() {

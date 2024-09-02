@@ -20,13 +20,13 @@
 namespace swift {
 
 class SILOptFunctionBuilder {
-  SILTransform &transform;
+  SILPassManager *pm;
   SILFunctionBuilder builder;
 
 public:
-  SILOptFunctionBuilder(SILTransform &transform)
-      : transform(transform),
-        builder(*transform.getPassManager()->getModule()) {}
+  SILOptFunctionBuilder(SILPassManager *pm)
+      : pm(pm),
+        builder(*pm->getModule()) {}
 
   template <class... ArgTys>
   SILFunction *getOrCreateSharedFunction(ArgTys &&... args) {
@@ -50,25 +50,19 @@ public:
   }
 
   void eraseFunction(SILFunction *f) {
-    auto &pm = getPassManager();
-    pm.notifyWillDeleteFunction(f);
-    pm.getModule()->eraseFunction(f);
+    pm->notifyWillDeleteFunction(f);
+    pm->getModule()->eraseFunction(f);
   }
 
-  SILModule &getModule() const { return *getPassManager().getModule(); }
+  SILModule &getModule() const { return *pm->getModule(); }
   irgen::IRGenModule *getIRGenModule() const {
-    return transform.getIRGenModule();
+    return pm->getIRGenModule();
   }
 
 private:
-  SILPassManager &getPassManager() const {
-    return *transform.getPassManager();
-  }
-
   void notifyAddFunction(SILFunction *f) {
-    auto &pm = getPassManager();
-    pm.notifyOfNewFunction(f, &transform);
-    pm.notifyAnalysisOfFunction(f);
+    pm->notifyOfNewFunction(f);
+    pm->notifyAnalysisOfFunction(f);
   }
 };
 

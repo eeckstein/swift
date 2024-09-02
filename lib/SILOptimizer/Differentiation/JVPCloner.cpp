@@ -670,7 +670,7 @@ public:
     // If actual differential type does not match lowered differential type,
     // reabstract the differential using a thunk.
     if (!loweredDifferentialType->isEqual(originalDifferentialType)) {
-      SILOptFunctionBuilder fb(context.getTransform());
+      SILOptFunctionBuilder fb(context.getTransform().getPassManager());
       differential = reabstractFunction(
           builder, fb, loc, differential, loweredDifferentialType,
           [this](SubstitutionMap subs) -> SubstitutionMap {
@@ -1288,7 +1288,7 @@ public:
     // If callee differential was reabstracted in JVP, reabstract the callee
     // differential.
     if (!differentialType->isEqual(originalDifferentialType)) {
-      SILOptFunctionBuilder fb(context.getTransform());
+      SILOptFunctionBuilder fb(context.getTransform().getPassManager());
       differential = reabstractFunction(
           diffBuilder, fb, loc, differential, originalDifferentialType,
           [this](SubstitutionMap subs) -> SubstitutionMap {
@@ -1700,7 +1700,7 @@ void JVPCloner::Implementation::prepareForDifferentialGeneration() {
       origTy->getPatternSubstitutions(), origTy->getInvocationSubstitutions(),
       original->getASTContext());
 
-  SILOptFunctionBuilder fb(context.getTransform());
+  SILOptFunctionBuilder fb(context.getTransform().getPassManager());
   auto linkage = jvp->isSerialized() ? SILLinkage::Public : SILLinkage::Private;
   auto *differential = fb.createFunction(
       linkage, context.getASTContext().getIdentifier(diffName).str(), diffType,

@@ -337,7 +337,7 @@ void ExistentialSpecializer::specializeExistentialArgsInAppliesWithinFunction(
                  << Callee->getName() << " ***\n");
 
       /// Instantiate the ExistentialSpecializerTransform pass.
-      SILOptFunctionBuilder FuncBuilder(*this);
+      SILOptFunctionBuilder FuncBuilder(getPassManager());
       ExistentialTransform ET(FuncBuilder, Callee, Mangler, ArgumentDescList,
                               ExistentialArgDescriptor);
 

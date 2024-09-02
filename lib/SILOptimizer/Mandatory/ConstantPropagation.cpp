@@ -34,7 +34,7 @@ public:
 private:
   /// The entry point to the transformation.
   void run() override {
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
     ConstantFolder Folder(FuncBuilder, getOptions().AssertConfig,
                           EnableDiagnostics);
     Folder.initializeWorklist(*getFunction());

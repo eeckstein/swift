@@ -56,12 +56,12 @@ class VTableSpecializer : public SILModuleTransform {
 static SILFunction *specializeVTableMethod(SILFunction *origMethod,
                                            SubstitutionMap subs,
                                            SILModule &module,
-                                           SILTransform *transform);
+                                           SILPassManager *pm);
 
-static bool specializeVTablesOfSuperclasses(SILModule &module, SILTransform *transform);
+static bool specializeVTablesOfSuperclasses(SILModule &module, SILPassManager *pm);
 
 static bool specializeVTablesInFunction(SILFunction &func, SILModule &module,
-                                        SILTransform *transform) {
+                                        SILPassManager *pm) {
   bool changed = false;
   if (func.getLoweredFunctionType()->isPolymorphic())
     return changed;
@@ -70,11 +70,11 @@ static bool specializeVTablesInFunction(SILFunction &func, SILModule &module,
     for (SILInstruction &inst : block) {
       if (auto *allocRef = dyn_cast<AllocRefInst>(&inst)) {
         changed |= (specializeVTableForType(allocRef->getType(), module,
-                                            transform) != nullptr);
+                                            pm) != nullptr);
       } else if (auto *metatype = dyn_cast<MetatypeInst>(&inst)) {
         changed |= (specializeVTableForType(
                         metatype->getType().getLoweredInstanceTypeOfMetatype(&func),
-                        module, transform) != nullptr);
+                        module, pm) != nullptr);
       } else if (auto *cm = dyn_cast<ClassMethodInst>(&inst)) {
         changed |= specializeClassMethodInst(cm);
       }
@@ -87,10 +87,10 @@ static bool specializeVTablesInFunction(SILFunction &func, SILModule &module,
 bool VTableSpecializer::specializeVTables(SILModule &module) {
   bool changed = false;
   for (SILFunction &func : module) {
-    changed |= specializeVTablesInFunction(func, module, this);
+    changed |= specializeVTablesInFunction(func, module, getPassManager());
   }
 
-  changed |= specializeVTablesOfSuperclasses(module, this);
+  changed |= specializeVTablesOfSuperclasses(module, getPassManager());
 
   for (SILVTable *vtable : module.getVTables()) {
     if (vtable->getClass()->isGenericContext()) continue;
@@ -118,7 +118,7 @@ bool VTableSpecializer::specializeVTables(SILModule &module) {
 
 static bool specializeVTablesOfSuperclasses(SILVTable *vtable,
                                             SILModule &module,
-                                            SILTransform *transform) {
+                                            SILPassManager *pm) {
   if (vtable->getClass()->isGenericContext() && !vtable->getClassType())
     return false;
 
@@ -131,7 +131,7 @@ static bool specializeVTablesOfSuperclasses(SILVTable *vtable,
           SILType::getPrimitiveObjectType(superTy->getCanonicalType());
   }
   if (superClassTy) {
-    return (specializeVTableForType(superClassTy, module, transform) !=
+    return (specializeVTableForType(superClassTy, module, pm) !=
             nullptr);
   }
 
@@ -139,13 +139,13 @@ static bool specializeVTablesOfSuperclasses(SILVTable *vtable,
 }
 
 static bool specializeVTablesOfSuperclasses(SILModule &module,
-                                            SILTransform *transform) {
+                                            SILPassManager *pm) {
   bool changed = false;
   // The module's vtable table can grow while we are specializing superclass
   // vtables.
   for (unsigned i = 0; i < module.getVTables().size(); ++i) {
     SILVTable *vtable = module.getVTables()[i];
-    specializeVTablesOfSuperclasses(vtable, module, transform);
+    specializeVTablesOfSuperclasses(vtable, module, pm);
   }
   return changed;
 }
@@ -171,7 +171,7 @@ static bool hasInvalidConformance(SubstitutionMap subs) {
 }
 
 SILVTable *swift::specializeVTableForType(SILType classTy, SILModule &module,
-                                SILTransform *transform) {
+                                          SILPassManager *pm) {
   CanType astType = classTy.getASTType();
   if (!astType->isSpecialized())
     return nullptr;
@@ -214,7 +214,7 @@ SILVTable *swift::specializeVTableForType(SILType classTy, SILModule &module,
     }
 
     SILFunction *specializedMethod =
-        specializeVTableMethod(origMethod, methodSubs, module, transform);
+        specializeVTableMethod(origMethod, methodSubs, module, pm);
 
     newEntries.push_back(SILVTableEntry(entry.getMethod(), specializedMethod,
                                         entry.getKind(),
@@ -224,7 +224,7 @@ SILVTable *swift::specializeVTableForType(SILType classTy, SILModule &module,
   SILVTable *vtable = SILVTable::create(module, classDecl, classTy,
                                         IsNotSerialized, newEntries);
 
-  specializeVTablesOfSuperclasses(vtable, module, transform);
+  specializeVTablesOfSuperclasses(vtable, module, pm);
 
   return vtable;
 }
@@ -232,7 +232,7 @@ SILVTable *swift::specializeVTableForType(SILType classTy, SILModule &module,
 static SILFunction *specializeVTableMethod(SILFunction *origMethod,
                                            SubstitutionMap subs,
                                            SILModule &module,
-                                           SILTransform *transform) {
+                                           SILPassManager *pm) {
   LLVM_DEBUG(llvm::errs() << "specializeVTableMethod " << origMethod->getName()
                           << '\n');
 
@@ -249,7 +249,7 @@ static SILFunction *specializeVTableMethod(SILFunction *origMethod,
     llvm::report_fatal_error("cannot specialize vtable method");
   }
 
-  SILOptFunctionBuilder FunctionBuilder(*transform);
+  SILOptFunctionBuilder FunctionBuilder(pm);
 
   GenericFuncSpecializer FuncSpecializer(FunctionBuilder, origMethod, subs,
                                          ReInfo, /*isMandatory=*/true);

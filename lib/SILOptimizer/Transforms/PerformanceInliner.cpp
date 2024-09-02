@@ -1341,7 +1341,7 @@ public:
 
     auto OptMode = getFunction()->getEffectiveOptimizationMode();
 
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
 
     SILPerformanceInliner Inliner(getID(), FuncBuilder, WhatToInline,
                                   getPassManager(), DA, LA, BCA, OptMode, ORE);

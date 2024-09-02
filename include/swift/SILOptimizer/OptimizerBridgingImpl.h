@@ -430,12 +430,6 @@ void BridgedPassContext::endTransformFunction() const {
   invocation->endTransformFunction();
 }
 
-bool BridgedPassContext::continueWithNextSubpassRun(OptionalBridgedInstruction inst) const {
-  swift::SILPassManager *pm = invocation->getPassManager();
-  return pm->continueWithNextSubpassRun(
-      inst.unbridged(), invocation->getFunction(), invocation->getTransform());
-}
-
 BridgedPassContext BridgedPassContext::initializeNestedPassContext(BridgedFunction newFunction) const {
   return { invocation->initializeNestedSwiftPassInvocation(newFunction.getFunction()) }; 
 }

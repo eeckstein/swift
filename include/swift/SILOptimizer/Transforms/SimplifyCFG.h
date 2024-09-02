@@ -78,7 +78,7 @@ class SimplifyCFG {
 public:
   SimplifyCFG(SILFunction &Fn, SILFunctionTransform &T, bool Verify,
               bool EnableJumpThread)
-      : FuncBuilder(T), Fn(Fn), transform(T), PM(T.getPassManager()),
+      : FuncBuilder(T.getPassManager()), Fn(Fn), transform(T), PM(T.getPassManager()),
         ConstFolder(FuncBuilder, PM->getOptions().AssertConfig,
                     /* EnableDiagnostics */ false,
                     [&](SILInstruction *I) { constFoldingCallback(I); }),

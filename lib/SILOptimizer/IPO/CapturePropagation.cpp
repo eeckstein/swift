@@ -290,7 +290,7 @@ SILFunction *CapturePropagation::specializeConstClosure(PartialApplyInst *PAI,
   GenericEnvironment *GenericEnv = nullptr;
   if (NewFTy->getInvocationGenericSignature())
     GenericEnv = OrigF->getGenericEnvironment();
-  SILOptFunctionBuilder FuncBuilder(*this);
+  SILOptFunctionBuilder FuncBuilder(getPassManager());
   SILFunction *NewF = FuncBuilder.createFunction(
       SILLinkage::Shared, Name, NewFTy, GenericEnv, OrigF->getLocation(),
       OrigF->isBare(), OrigF->isTransparent(), serializedKind, IsNotDynamic,
@@ -525,7 +525,7 @@ bool CapturePropagation::optimizePartialApply(PartialApplyInst *PAI) {
   // First possibility: Is it a partial_apply where all partially applied
   // arguments are dead?
   std::pair<SILFunction *, SILFunction *> GenericSpecialized;
-  SILOptFunctionBuilder FuncBuilder(*this);
+  SILOptFunctionBuilder FuncBuilder(getPassManager());
   if (auto *NewFunc = getSpecializedWithDeadParams(FuncBuilder, PAI, SubstF,
                                                    PAI->getNumArguments(),
                                                    GenericSpecialized)) {

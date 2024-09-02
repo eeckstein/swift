@@ -196,7 +196,7 @@ SILCombiner::SILCombiner(SILFunctionTransform *trans,
   MadeChange(false), RemoveCondFails(removeCondFails),
   enableCopyPropagation(enableCopyPropagation), Iteration(0),
   Builder(*trans->getFunction(), &TrackingList),
-  FuncBuilder(*trans),
+  FuncBuilder(trans->getPassManager()),
   CastOpt(
       FuncBuilder, nullptr /*SILBuilderContext*/,
       /* ReplaceValueUsesAction */

@@ -1240,7 +1240,7 @@ static void rewriteApplySites(AllocBoxToStackState &pass) {
   // Clone the referenced function of each ApplySite, removing the
   // operands that we will not need, and remove the existing
   // ApplySite.
-  SILOptFunctionBuilder FuncBuilder(*pass.T);
+  SILOptFunctionBuilder FuncBuilder(pass.T->getPassManager());
   for (auto &It : AppliesToSpecialize) {
     if (!It.has_value()) {
       continue;

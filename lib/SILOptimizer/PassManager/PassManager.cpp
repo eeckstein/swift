@@ -730,7 +730,7 @@ void SILPassManager::runPassOnFunction(SILFunctionTransform *SFT, unsigned Trans
     F->createSnapshot(SnapshotID);
   }
   for (unsigned runIdx = 0; runIdx < numRepeats; runIdx++) {
-    swiftPassInvocation.startFunctionPassRun(SFT);
+    swiftPassInvocation.startFunctionPassRun(F);
 
     // Run it!
     SFT->run();
@@ -912,7 +912,7 @@ void SILPassManager::runModulePass(SILModuleTransform *SMT, unsigned TransIdx) {
     runSwiftModuleVerification();
   }
 
-  swiftPassInvocation.startModulePassRun(SMT);
+  swiftPassInvocation.startModulePassRun();
 
   llvm::sys::TimePoint<> StartTime = std::chrono::system_clock::now();
   assert(analysesUnlocked() && "Expected all analyses to be unlocked!");
@@ -1180,11 +1180,8 @@ void SILPassManager::setDependingOnCalleeBodies() {
     notifyDepdendencyFunction({this});
 }
 
-void SILPassManager::notifyOfNewFunction(SILFunction *F, SILTransform *T) {
-  if (doPrintAfter(T, F, /*PassChangedSIL*/ true)) {
-    dumpPassInfo("*** New SIL function in ", T, F);
-    F->dump(getOptions().EmitVerboseSIL);
-  }
+void SILPassManager::notifyOfNewFunction(SILFunction *F) {
+  // TODO
 }
 
 void SILPassManager::addFunctionToWorklist(SILFunction *F,
@@ -1566,16 +1563,14 @@ void SwiftPassInvocation::freeOperandSet(OperandSet *set) {
   }
 }
 
-void SwiftPassInvocation::startModulePassRun(SILModuleTransform *transform) {
-  assert(!this->function && !this->transform && "a pass is already running");
-  this->function = nullptr;
-  this->transform = transform;
+void SwiftPassInvocation::startModulePassRun() {
+  assert(!isRunningPass && "a pass is already running");
+  assert(!this->function && "a pass is already running");
 }
 
-void SwiftPassInvocation::startFunctionPassRun(SILFunctionTransform *transform) {
-  assert(!this->transform && "a pass is already running");
-  this->transform = transform;
-  beginTransformFunction(transform->getFunction());
+void SwiftPassInvocation::startFunctionPassRun(SILFunction *function) {
+  assert(!isRunningPass && "a pass is already running");
+  beginTransformFunction(function);
 }
 
 void SwiftPassInvocation::startInstructionPassRun(SILInstruction *inst) {
@@ -1585,17 +1580,18 @@ void SwiftPassInvocation::startInstructionPassRun(SILInstruction *inst) {
 
 void SwiftPassInvocation::finishedModulePassRun() {
   endPass();
-  assert(!function && transform && "not running a pass");
+  assert(isRunningPass && "not running a pass");
+  assert(!function && "not running a pass");
   assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing
          && "unhandled change notifications at end of module pass");
-  transform = nullptr;
+  isRunningPass = false;
 }
 
 void SwiftPassInvocation::finishedFunctionPassRun() {
   endPass();
   endTransformFunction();
   assert(allocatedSlabs.empty() && "StackList is leaking slabs");
-  transform = nullptr;
+  isRunningPass = false;
 }
 
 void SwiftPassInvocation::finishedInstructionPassRun() {
@@ -1620,14 +1616,14 @@ void SwiftPassInvocation::endPass() {
 }
 
 void SwiftPassInvocation::beginTransformFunction(SILFunction *function) {
-  assert(!this->function && transform && "not running a pass");
+  assert(!this->function && "not running a function pass");
   assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing
          && "change notifications not cleared");
   this->function = function;
 }
 
 void SwiftPassInvocation::endTransformFunction() {
-  assert(function && transform && "not running a pass");
+  assert(function && "not running a function pass");
   if (changeNotifications != SILAnalysis::InvalidationKind::Nothing) {
     passManager->invalidateAnalysis(function, changeNotifications);
     changeNotifications = SILAnalysis::InvalidationKind::Nothing;
@@ -1639,7 +1635,7 @@ void SwiftPassInvocation::endTransformFunction() {
 }
 
 void SwiftPassInvocation::beginVerifyFunction(SILFunction *function) {
-  if (transform) {
+  if (isRunningPass) {
     assert(this->function == function);
   } else {
     assert(!this->function);
@@ -1649,7 +1645,7 @@ void SwiftPassInvocation::beginVerifyFunction(SILFunction *function) {
 
 void SwiftPassInvocation::endVerifyFunction() {
   assert(function);
-  if (!transform) {
+  if (!isRunningPass) {
     assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing &&
            "verifyication must not change the SIL of a function");
     assert(numBlockSetsAllocated == 0 && "Not all BasicBlockSets deallocated");
@@ -1689,7 +1685,7 @@ static swift::PassKind getFunctionPassKind(BridgedPass kind) {
 #define IRGEN_MODULE_PASS(ID, TAG, NAME)
 #include "swift/SILOptimizer/PassManager/Passes.def"
     default:
-      ASSERT(false && "invalid BridgedPass kind");
+      llvm_unreachable("invalid BridgedPass kind");
   }
 }
 
@@ -1700,7 +1696,7 @@ static swift::PassKind getModulePassKind(BridgedModulePass kind) {
 #define IRGEN_MODULE_PASS MODULE_PASS
 #include "swift/SILOptimizer/PassManager/Passes.def"
     default:
-      ASSERT(false && "invalid BridgedModulePass kind");
+      llvm_unreachable("invalid BridgedPass kind");
   }
 }
 
@@ -1857,7 +1853,7 @@ OptionalBridgedValue BridgedPassContext::constantFoldBuiltin(BridgedInstruction 
 }
 
 void BridgedPassContext::inlineFunction(BridgedInstruction apply, bool mandatoryInline) const {
-  SILOptFunctionBuilder funcBuilder(*invocation->getTransform());
+  SILOptFunctionBuilder funcBuilder(invocation->getPassManager());
   InstructionDeleter deleter;
   SILInliner::inlineFullApply(FullApplySite(apply.unbridged()),
                               mandatoryInline
@@ -1916,7 +1912,7 @@ bool BridgedPassContext::canMakeStaticObjectReadOnly(BridgedType type) const {
 swift::SILVTable * BridgedPassContext::specializeVTableForType(BridgedType type, BridgedFunction function) const {
   return ::specializeVTableForType(type.unbridged(),
                                    function.getFunction()->getModule(),
-                                   invocation->getTransform());
+                                   invocation->getPassManager());
 }
 
 bool BridgedPassContext::specializeClassMethodInst(BridgedInstruction cm) const {
@@ -1924,7 +1920,7 @@ bool BridgedPassContext::specializeClassMethodInst(BridgedInstruction cm) const 
 }
 
 bool BridgedPassContext::specializeAppliesInFunction(BridgedFunction function, bool isMandatory) const {
-  return ::specializeAppliesInFunction(*function.getFunction(), invocation->getTransform(), isMandatory);
+  return ::specializeAppliesInFunction(*function.getFunction(), invocation->getPassManager(), isMandatory);
 }
 
 namespace  {
@@ -2049,7 +2045,7 @@ OptionalBridgedFunction BridgedPassContext::lookupStdlibFunction(BridgedStringRe
     return {nullptr};
 
   SILDeclRef declRef(decl, SILDeclRef::Kind::Func);
-  SILOptFunctionBuilder funcBuilder(*invocation->getTransform());
+  SILOptFunctionBuilder funcBuilder(invocation->getPassManager());
   return {funcBuilder.getOrCreateFunction(SILLocation(decl), declRef, NotForDefinition)};
 }
 
@@ -2106,7 +2102,7 @@ createEmptyFunction(BridgedStringRef name,
       SubstitutionMap(), SubstitutionMap(),
       mod->getASTContext());
 
-  SILOptFunctionBuilder functionBuilder(*invocation->getTransform());
+  SILOptFunctionBuilder functionBuilder(invocation->getPassManager());
 
   SILFunction *newF = functionBuilder.createFunction(
       fromFn->getLinkage(), name.unbridged(), newTy, nullptr,
@@ -2157,7 +2153,7 @@ ClosureSpecializer_createEmptyFunctionWithSpecializedSignature(BridgedStringRef 
       applySiteCalleeType->getInvocationSubstitutions(),
       applySiteCallee->getModule().getASTContext());
 
-  SILOptFunctionBuilder functionBuilder(*invocation->getTransform());
+  SILOptFunctionBuilder functionBuilder(invocation->getPassManager());
 
   // We make this function bare so we don't have to worry about decls in the
   // SILArgument.

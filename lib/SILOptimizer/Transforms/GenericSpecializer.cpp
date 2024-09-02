@@ -78,9 +78,9 @@ static void transferSpecializeAttributeTargets(SILModule &M,
 } // end anonymous namespace
 
 bool swift::specializeAppliesInFunction(SILFunction &F,
-                                        SILTransform *transform,
+                                        SILPassManager *pm,
                                         bool isMandatory) {
-  SILOptFunctionBuilder FunctionBuilder(*transform);
+  SILOptFunctionBuilder FunctionBuilder(pm);
   DeadInstructionSet DeadApplies;
   llvm::SmallSetVector<SILInstruction *, 8> Applies;
   OptRemark::Emitter ORE(DEBUG_TYPE, F);
@@ -160,13 +160,11 @@ bool swift::specializeAppliesInFunction(SILFunction &F,
         Changed = true;
       }
 
-      if (auto *sft = dyn_cast<SILFunctionTransform>(transform)) {
-        // If calling the specialization utility resulted in new functions
-        // (as opposed to returning a previous specialization), we need to notify
-        // the pass manager so that the new functions get optimized.
-        for (SILFunction *NewF : reverse(NewFunctions)) {
-          sft->addFunctionToPassManagerWorklist(NewF, Callee);
-        }
+      // If calling the specialization utility resulted in new functions
+      // (as opposed to returning a previous specialization), we need to notify
+      // the pass manager so that the new functions get optimized.
+      for (SILFunction *NewF : reverse(NewFunctions)) {
+        pm->addFunctionToWorklist(NewF, Callee);
       }
     }
   }
@@ -186,7 +184,7 @@ class GenericSpecializer : public SILFunctionTransform {
     LLVM_DEBUG(llvm::dbgs() << "***** GenericSpecializer on function:"
                             << F.getName() << " *****\n");
 
-    if (specializeAppliesInFunction(F, this, /*isMandatory*/ false)) {
+    if (specializeAppliesInFunction(F, getPassManager(), /*isMandatory*/ false)) {
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
     }
   }

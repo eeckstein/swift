@@ -886,7 +886,7 @@ public:
       ResultDescList.emplace_back(IR);
     }
 
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
     // Owned to guaranteed optimization.
     FunctionSignatureTransform FST(FuncBuilder, F, RCIA, EA, Mangler, AIM,
                                    ArgumentDescList, ResultDescList,

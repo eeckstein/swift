@@ -508,7 +508,7 @@ public:
     if (!loweredPullbackType->isEqual(actualPullbackType)) {
       // Set non-reabstracted original pullback type in nested apply info.
       applyInfoIt->second.originalPullbackType = actualPullbackType;
-      SILOptFunctionBuilder fb(context.getTransform());
+      SILOptFunctionBuilder fb(context.getTransform().getPassManager());
       pullback = reabstractCoroutine(
           getBuilder(), fb, loc, pullback, loweredPullbackType,
           [this](SubstitutionMap subs) -> SubstitutionMap {
@@ -964,7 +964,7 @@ public:
     if (!loweredPullbackType->isEqual(actualPullbackType)) {
       // Set non-reabstracted original pullback type in nested apply info.
       nestedApplyInfo.originalPullbackType = actualPullbackType;
-      SILOptFunctionBuilder fb(context.getTransform());
+      SILOptFunctionBuilder fb(context.getTransform().getPassManager());
       pullback = reabstractFunction(
           getBuilder(), fb, ai->getLoc(), pullback, loweredPullbackType,
           [this](SubstitutionMap subs) -> SubstitutionMap {
@@ -1297,7 +1297,7 @@ SILFunction *VJPCloner::Implementation::createEmptyPullback() {
       origTy->getPatternSubstitutions(), origTy->getInvocationSubstitutions(),
       original->getASTContext());
 
-  SILOptFunctionBuilder fb(context.getTransform());
+  SILOptFunctionBuilder fb(context.getTransform().getPassManager());
   auto linkage = vjp->isSerialized() ? SILLinkage::Public : SILLinkage::Private;
   auto *pullback = fb.createFunction(
       linkage, context.getASTContext().getIdentifier(pbName).str(), pbType,

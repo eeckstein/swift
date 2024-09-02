@@ -1452,7 +1452,7 @@ bool SILClosureSpecializerTransform::specialize(SILFunction *Caller,
     invalidateAnalysis(SILAnalysis::InvalidationKind::Branches);
   }
 
-  SILOptFunctionBuilder FuncBuilder(*this);
+  SILOptFunctionBuilder FuncBuilder(getPassManager());
   bool Changed = false;
   for (const auto &CInfo : ClosureCandidates) {
     for (auto &CSDesc : CInfo->CallSites) {

@@ -1382,7 +1382,7 @@ public:
     DeadEndBlocks *deBlocks = deBlocksAnalysis->get(Fun);
     InstModCallbacks callbacks;
 
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
     SmallVector<SILFunction *, 16> FunctionsAdded;
     bool Changed = false;
 

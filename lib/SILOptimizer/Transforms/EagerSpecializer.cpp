@@ -808,7 +808,7 @@ void EagerSpecializerTransform::run() {
   if (!EagerSpecializeFlag)
     return;
 
-  SILOptFunctionBuilder FuncBuilder(*this);
+  SILOptFunctionBuilder FuncBuilder(getPassManager());
   auto &F = *getFunction();
 
   // Process functions in any order.

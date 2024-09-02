@@ -606,12 +606,12 @@ bool optimizeMemoryAccesses(SILFunction *fn, DominanceInfo *domInfo);
 /// See the PredictableDeadAllocationElimination pass.
 bool eliminateDeadAllocations(SILFunction *fn, DominanceInfo *domInfo);
 
-SILVTable *specializeVTableForType(SILType type, SILModule &mod, SILTransform *transform);
+SILVTable *specializeVTableForType(SILType type, SILModule &mod, SILPassManager *pm);
 
 bool specializeClassMethodInst(ClassMethodInst *cm);
 
 bool specializeAppliesInFunction(SILFunction &F,
-                                 SILTransform *transform,
+                                 SILPassManager *pm,
                                  bool isMandatory);
 
 bool tryOptimizeKeypath(ApplyInst *AI, SILBuilder Builder);

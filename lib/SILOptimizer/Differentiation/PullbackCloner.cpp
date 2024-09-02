@@ -1069,7 +1069,7 @@ public:
     // If callee pullback was reabstracted in VJP, reabstract callee pullback.
     if (applyInfo.originalPullbackType) {
       auto toType = *applyInfo.originalPullbackType;
-      SILOptFunctionBuilder fb(getContext().getTransform());
+      SILOptFunctionBuilder fb(getContext().getTransform().getPassManager());
       if (toType->isCoroutine())
         pullback = reabstractCoroutine(
           builder, fb, loc, pullback, toType,
@@ -2706,7 +2706,7 @@ AllocStackInst *PullbackCloner::Implementation::createOptionalAdjoint(
   }
 
   // Apply `Optional<T>.TangentVector.init`.
-  SILOptFunctionBuilder fb(getContext().getTransform());
+  SILOptFunctionBuilder fb(getContext().getTransform().getPassManager());
   // %init_fn = function_ref @Optional<T>.TangentVector.init
   auto *initFn = fb.getOrCreateFunction(pbLoc, SILDeclRef(constructorDecl),
                                         NotForDefinition);
@@ -3599,7 +3599,7 @@ AllocStackInst *PullbackCloner::Implementation::getArrayAdjointElementBuffer(
   auto *subscriptGetterDecl =
       subscriptDecl->getOpaqueAccessor(AccessorKind::Get);
   assert(subscriptGetterDecl && "No `Array.TangentVector.subscript` getter");
-  SILOptFunctionBuilder fb(getContext().getTransform());
+  SILOptFunctionBuilder fb(getContext().getTransform().getPassManager());
   auto *subscriptGetterFn = fb.getOrCreateFunction(
       loc, SILDeclRef(subscriptGetterDecl), NotForDefinition);
   // %subscript_fn = function_ref @Array.TangentVector<T>.subscript.getter

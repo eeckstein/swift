@@ -1028,7 +1028,7 @@ class MandatoryInlining : public SILModuleTransform {
     ImmutableFunctionSet::Factory SetFactory;
     DenseFunctionSet changedFunctions;
 
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
     for (auto &F : *M) {
       switch (F.isThunk()) {
       case IsThunk_t::IsThunk:

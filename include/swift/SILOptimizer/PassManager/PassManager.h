@@ -62,14 +62,13 @@ class SwiftPassInvocation {
   /// Backlink to the pass manager.
   SILPassManager *passManager;
 
-  /// The current transform.
-  SILTransform *transform = nullptr;
-
   /// The currently optimized function.
   SILFunction *function = nullptr;
 
   /// Non-null if this is an instruction pass, invoked from SILCombine.
   SILCombiner *silCombiner = nullptr;
+
+  bool isRunningPass = false;
 
   /// Change notifications, collected during a pass run.
   SILAnalysis::InvalidationKind changeNotifications =
@@ -108,9 +107,8 @@ public:
                          SILCombiner *silCombiner) :
     passManager(passManager), function(function), silCombiner(silCombiner) {}
 
-  SwiftPassInvocation(SILPassManager *passManager, SILTransform *transform,
-                      SILFunction *function) :
-    passManager(passManager), transform(transform), function(function) {}
+  SwiftPassInvocation(SILPassManager *passManager, SILFunction *function) :
+    passManager(passManager), function(function) {}
 
   SwiftPassInvocation(SILPassManager *passManager) :
     passManager(passManager) {}
@@ -119,8 +117,6 @@ public:
 
   SILPassManager *getPassManager() const { return passManager; }
   
-  SILTransform *getTransform() const { return transform; }
-
   SILFunction *getFunction() const { return function; }
 
   irgen::IRGenModule *getIRGenModule();
@@ -148,10 +144,10 @@ public:
   void notifyChanges(SILAnalysis::InvalidationKind invalidationKind);
 
   /// Called by the pass manager before the pass starts running.
-  void startModulePassRun(SILModuleTransform *transform);
+  void startModulePassRun();
 
   /// Called by the pass manager before the pass starts running.
-  void startFunctionPassRun(SILFunctionTransform *transform);
+  void startFunctionPassRun(SILFunction *function);
 
   /// Called by the SILCombiner before the instruction pass starts running.
   void startInstructionPassRun(SILInstruction *inst);
@@ -192,7 +188,7 @@ public:
 
   SwiftPassInvocation *initializeNestedSwiftPassInvocation(SILFunction *newFunction) {
     assert(!nestedSwiftPassInvocation && "Nested Swift pass invocation already initialized");
-    nestedSwiftPassInvocation = new SwiftPassInvocation(passManager, transform, newFunction);
+    nestedSwiftPassInvocation = new SwiftPassInvocation(passManager, newFunction);
     return nestedSwiftPassInvocation;
   }
 
@@ -376,7 +372,7 @@ public:
   }
 
   /// Notify the pass manager of a newly create function for tracing.
-  void notifyOfNewFunction(SILFunction *F, SILTransform *T);
+  void notifyOfNewFunction(SILFunction *F);
 
   /// Add the function \p F to the function pass worklist.
   /// If not null, the function \p DerivedFrom is the function from which \p F

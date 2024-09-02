@@ -2614,7 +2614,7 @@ class ConsumeOperatorCopyableAddressesCheckerPass
     auto addressToProcess =
         llvm::ArrayRef(addressesToCheck.begin(), addressesToCheck.end());
 
-    SILOptFunctionBuilder funcBuilder(*this);
+    SILOptFunctionBuilder funcBuilder(getPassManager());
 
     ConsumeOperatorCopyableAddressesChecker checker(getFunction(), funcBuilder);
 

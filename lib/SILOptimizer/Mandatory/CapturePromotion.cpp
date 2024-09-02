@@ -1650,7 +1650,7 @@ void CapturePromotionPass::processFunction(
 
   // Do the actual promotions; all promotions on a single partial_apply are
   // handled together.
-  SILOptFunctionBuilder funcBuilder(*this);
+  SILOptFunctionBuilder funcBuilder(getPassManager());
   for (auto &indicesPair : indicesMap) {
     PartialApplyInst *pai = indicesPair.first;
     SILFunction *clonedFn =

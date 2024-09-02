@@ -1477,7 +1477,7 @@ class SILCSE : public SILFunctionTransform {
     DominanceAnalysis* DA = getAnalysis<DominanceAnalysis>();
 
     auto *BCA = PM->getAnalysis<BasicCalleeAnalysis>();
-    SILOptFunctionBuilder FuncBuilder(*this);
+    SILOptFunctionBuilder FuncBuilder(getPassManager());
 
     auto *Fn = getFunction();
     DeadEndBlocks DeadEndBBs(Fn);
