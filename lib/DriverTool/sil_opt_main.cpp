@@ -379,6 +379,7 @@ struct SILOptOptions {
   llvm::cl::list<PassKind>
   Passes = llvm::cl::list<PassKind>(llvm::cl::desc("Passes:"),
          llvm::cl::values(
+  #define SWIFT_PASS(ID, TAG, NAME) clEnumValN(PassKind::ID, TAG, NAME),
   #define PASS(ID, TAG, NAME) clEnumValN(PassKind::ID, TAG, NAME),
   #include "swift/SILOptimizer/PassManager/Passes.def"
          clEnumValN(0, "", "")));

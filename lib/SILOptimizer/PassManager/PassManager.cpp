@@ -989,7 +989,7 @@ void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
 void SILPassManager::executeCustomPassPipeline(ArrayRef<PassKind> passKinds) {
   llvm::SmallVector<BridgedStringRef, 8> passNames;
   for (PassKind kind : passKinds) {
-    passNames.push_back(PassKindID(kind));
+    passNames.push_back(PassKindTag(kind));
   }
   ASSERT(executePassesFromNameFunction != nullptr && "executing custom passes requires SwiftCompilerSources");
   executePassesFromNameFunction({this}, BridgedArrayRef(ArrayRef(passNames)));
