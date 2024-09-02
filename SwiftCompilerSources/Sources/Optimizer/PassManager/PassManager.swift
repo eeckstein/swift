@@ -141,23 +141,22 @@ final class PassManager {
 
       pass.runFunction(context)
 
+      if currentPassMadeChanges && shouldVerifyAfterAllChanges {
+        context.verifyModule()
+      }
+
       _bridged.postModulePassRun()
 
       if shouldPrintAfter(pass: pass) {
         printPassInfo("*** module after", pass.name, passIdx)
         print(context)
       }
-      if currentPassMadeChanges {
-        if shouldPrintAnyFunction {
-          printPassInfo("*** functions after", pass.name, passIdx)
-          for f in context.functions {
-            if shouldPrint(function: f) {
-              print(f)
-            }
+      if currentPassMadeChanges && shouldPrintAnyFunction {
+        printPassInfo("*** functions after", pass.name, passIdx)
+        for f in context.functions {
+          if shouldPrint(function: f) {
+            print(f)
           }
-        }
-        if shouldVerifyAfterAllChanges {
-          verifyModule(context)
         }
       }
 
@@ -192,9 +191,7 @@ final class PassManager {
       if !shouldContinueTransforming {
         return numPasses
       }
-      context.transform(function: function) {
-        runFunctionPass(on: function, passIndex: passIdx, $0)
-      }
+      runFunctionPass(on: function, passIndex: passIdx, context)
       currentPassIndex += 1
 
       if worklist.readyList.count > readyListSize {
@@ -204,7 +201,7 @@ final class PassManager {
     return numPasses
   }
 
-  private func runFunctionPass(on function: Function, passIndex: Int, _ context: FunctionPassContext) {
+  private func runFunctionPass(on function: Function, passIndex: Int, _ context: ModulePassContext) {
     let (pass, uniqueID) = scheduledFunctionPasses[passIndex]
     if !completedPasses.needToRunPass(passID: uniqueID, on: function) {
       if shouldPrintPassNames {
@@ -232,7 +229,12 @@ final class PassManager {
       _bridged.preFunctionPassRun(function.bridged, $0, currentPassIndex)
     }
 
-    pass.runFunction(function, context)
+    let functionPassContext = FunctionPassContext(_bridged: context._bridged)
+    pass.runFunction(function, functionPassContext)
+
+    if currentPassMadeChanges && shouldVerifyAfterAllChanges {
+      verify(function: function, functionPassContext)
+    }
 
     _bridged.postFunctionPassRun()
 
@@ -243,8 +245,8 @@ final class PassManager {
       printPassInfo("*** function after", pass.name, passIndex, function)
       print(function)
     }
-    if currentPassMadeChanges && shouldVerifyAfterAllChanges {
-      verify(function: function, context)
+    if !currentPassMadeChanges {
+      completedPasses.passDidNotModify(passID: uniqueID, function: function)
     }
   }
 
@@ -266,17 +268,8 @@ final class PassManager {
     print("  \(title) #\(currentPassIndex), stage \(pipelineInfo), pass \(passIndex): \(passName)\(fnInfo)")
   }
 
-  private func verifyModule(_ context: ModulePassContext) {
-    _bridged.verifyModule();
-    for f in context.functions {
-      context.transform(function: f) {
-        f.verify($0)
-      }
-    }
-  }
-
   private func verify(function: Function, _ context: FunctionPassContext) {
-    _bridged.verifyFunction(function.bridged)
+    context._bridged.verifyFunction(function.bridged)
     function.verify(context)
   }
 
@@ -306,7 +299,7 @@ final class PassManager {
 
   func continueWithNextSubpassRun(on function: Function, for inst: Instruction? = nil) -> Bool {
     let subPassIdx = currentSubPassIndex
-    currentPassIndex += 1
+    currentSubPassIndex += 1
 
     if isMandatory {
       return true

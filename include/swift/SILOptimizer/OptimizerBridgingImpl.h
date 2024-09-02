@@ -430,6 +430,14 @@ void BridgedPassContext::endTransformFunction() const {
   invocation->endTransformFunction();
 }
 
+void BridgedPassContext::beginVerifyFunction(BridgedFunction function) const {
+  invocation->beginVerifyFunction(function.getFunction());
+}
+
+void BridgedPassContext::endVerifyFunction() const {
+  invocation->endVerifyFunction();
+}
+
 BridgedPassContext BridgedPassContext::initializeNestedPassContext(BridgedFunction newFunction) const {
   return { invocation->initializeNestedSwiftPassInvocation(newFunction.getFunction()) }; 
 }

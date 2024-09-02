@@ -125,6 +125,15 @@ struct ModulePassContext : Context, CustomStringConvertible {
     _bridged.endTransformFunction();
   }
 
+  func verifyModule() {
+    _bridged.verifyModule();
+    for f in functions {
+      _bridged.beginVerifyFunction(f.bridged)
+      f.verify(FunctionPassContext(_bridged: _bridged))
+      _bridged.endVerifyFunction();
+    }
+  }
+
   func loadFunction(function: Function, loadCalleesRecursively: Bool) -> Bool {
     if function.isDefinition {
       return true

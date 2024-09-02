@@ -1023,8 +1023,7 @@ void SILPassManager::runBridgedFunctionPass(PassKind passKind, SILFunction *f) {
   auto *sft = cast<SILFunctionTransform>(getCachedPass(passKind));
   sft->injectPassManager(this);
   sft->injectFunction(f);
-
-  runPassOnFunction(sft, /*TransIdx=*/ 0, f);
+  sft->run();
 }
 
 void SILPassManager::runBridgedModulePass(PassKind passKind) {
@@ -1037,9 +1036,12 @@ void SILPassManager::preFunctionPassRun(SILFunction *function, StringRef passNam
   ASSERT(!debugPrintEnabler.has_value());
   functionPassStackTracer.emplace(function, passName, passIdx);
   debugPrintEnabler.emplace(passIdx);
+  swiftPassInvocation.startFunctionPassRun(function);
 }
 
 void SILPassManager::postFunctionPassRun() {
+  Mod->flushDeletedInsts();
+  swiftPassInvocation.finishedFunctionPassRun();
   functionPassStackTracer.reset();
   debugPrintEnabler.reset();
 }
@@ -1049,9 +1051,12 @@ void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
   ASSERT(!debugPrintEnabler.has_value());
   modulePassStackTracer.emplace(passName, passIdx);
   debugPrintEnabler.emplace(passIdx);
+  swiftPassInvocation.startModulePassRun();
 }
 
 void SILPassManager::postModulePassRun() {
+  Mod->flushDeletedInsts();
+  swiftPassInvocation.finishedModulePassRun();
   modulePassStackTracer.reset();
   debugPrintEnabler.reset();
 }
@@ -1566,10 +1571,12 @@ void SwiftPassInvocation::freeOperandSet(OperandSet *set) {
 void SwiftPassInvocation::startModulePassRun() {
   assert(!isRunningPass && "a pass is already running");
   assert(!this->function && "a pass is already running");
+  isRunningPass = true;
 }
 
 void SwiftPassInvocation::startFunctionPassRun(SILFunction *function) {
   assert(!isRunningPass && "a pass is already running");
+  isRunningPass = true;
   beginTransformFunction(function);
 }
 
@@ -1623,6 +1630,7 @@ void SwiftPassInvocation::beginTransformFunction(SILFunction *function) {
 }
 
 void SwiftPassInvocation::endTransformFunction() {
+  assert(isRunningPass && "not running a function pass");
   assert(function && "not running a function pass");
   if (changeNotifications != SILAnalysis::InvalidationKind::Nothing) {
     passManager->invalidateAnalysis(function, changeNotifications);
@@ -1704,13 +1712,13 @@ void BridgedPassManager::registerBridgedPasses() {
   for (int i = 0; i < (int)BridgedModulePass::lastKind; i++) {
     auto bridgedKind = (BridgedModulePass)i;
     PassKind kind = getModulePassKind(bridgedKind);
-    StringRef passName = PassKindID(kind);
+    StringRef passName = PassKindTag(kind);
     registerBridgedModulePassFunction(BridgedStringRef(passName), bridgedKind);
   }
   for (int i = 0; i < (int)BridgedPass::lastKind; i++) {
     auto bridgedKind = (BridgedPass)i;
     PassKind kind = getFunctionPassKind(bridgedKind);
-    StringRef passName = PassKindID(kind);
+    StringRef passName = PassKindTag(kind);
     registerBridgedFunctionPassFunction(BridgedStringRef(passName), bridgedKind);
   }
 }
@@ -1766,14 +1774,6 @@ bool BridgedPassManager::shouldPrintAnyFunction() const {
 
 bool BridgedPassManager::shouldPrintFunction(BridgedFunction function) const {
   return isFunctionSelectedForPrinting(function.getFunction());
-}
-
-void BridgedPassManager::verifyModule() const {
-  pm->getModule()->verify(pm->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
-}
-
-void BridgedPassManager::verifyFunction(BridgedFunction function) const {
-  function.getFunction()->verify(pm->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
 }
 
 BridgedStringRef BridgedPassManager::getPassName(BridgedPass passKind) {
@@ -2122,6 +2122,15 @@ void BridgedPassContext::moveFunctionBody(BridgedFunction sourceFunc, BridgedFun
   invocation->getPassManager()->invalidateAnalysis(sourceFn, SILAnalysis::InvalidationKind::Everything);
   invocation->getPassManager()->invalidateAnalysis(destFn, SILAnalysis::InvalidationKind::Everything);
 }
+
+void BridgedPassContext::verifyModule() const {
+  getModule()->verify(invocation->getPassManager()->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
+}
+
+void BridgedPassContext::verifyFunction(BridgedFunction function) const {
+  function.getFunction()->verify(invocation->getPassManager()->getAnalysis<BasicCalleeAnalysis>()->getCalleeCache());
+}
+
 
 BridgedFunction BridgedPassContext::
 ClosureSpecializer_createEmptyFunctionWithSpecializedSignature(BridgedStringRef specializedName,
