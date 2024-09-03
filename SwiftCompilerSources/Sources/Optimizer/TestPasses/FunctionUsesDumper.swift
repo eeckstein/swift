@@ -15,7 +15,7 @@ import SIL
 let functionUsesDumper = ModulePass(name: "dump-function-uses") {
     (context: ModulePassContext) in
 
-  var functionUses = FunctionUses()
+  var functionUses = FunctionUses<Instruction>()
   functionUses.collect(context: context)
 
   for function in context.functions {

@@ -522,7 +522,7 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
 
 private struct FunctionWorklist {
 
-  var functionUses = FunctionUses()
+  var functionUses = FunctionUses<Function>()
   // TODO: make this an array, indexed by Function.uniqueIndex
   var unhandledCallees = Dictionary<Function, Int>()
   var readyList: [(Function, passIndex: Int)] = []
@@ -533,7 +533,7 @@ private struct FunctionWorklist {
     var onStack = Set<Function>()
 
     var functionCount = 0
-    for f in context.functions {
+    for f in context.functions where f.isDefinition {
       visit(f, &onStack, calleeAnalysis)
       functionCount += 1
     }
@@ -551,6 +551,7 @@ private struct FunctionWorklist {
     guard unhandledCallees[f] == nil else {
       return
     }
+    assert(f.isDefinition, "should only visit functions with bodies")
 
     onStack.insert(f)
 
@@ -573,8 +574,8 @@ private struct FunctionWorklist {
         continue
       }
       for callee in callees {
-        if !onStack.contains(callee) {
-          functionUses.addUse(of: callee, by: inst)
+        if !onStack.contains(callee) && callee.isDefinition {
+          functionUses.addUse(of: callee, by: f)
           numCallees += 1
           visit(callee, &onStack, calleeAnalysis)
         }
@@ -589,8 +590,7 @@ private struct FunctionWorklist {
 
   mutating func popLastFromReadyList() {
     let (f, _) = readyList.removeLast()
-    for use in functionUses.getUses(of: f) {
-      let caller = use.parentFunction
+    for caller in functionUses.getUses(of: f) {
       if unhandledCallees[caller, default: 0].decrementAndCheckForZero() {
         readyList.append((caller, 0))
       }
@@ -623,7 +623,7 @@ private struct CompletedPasses {
 
   mutating func passDidNotModify(passID: Int, function: Function) {
     let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
-    if idx > completedPasses.count {
+    if idx >= completedPasses.count {
       completedPasses += Array(repeating: 0, count: idx - completedPasses.count + 1)
     }
     completedPasses[idx] |= bitMask(for: passID)

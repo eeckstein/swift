@@ -517,7 +517,7 @@ bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
                                                 SILFunction *function,
                                                 SILTransform *trans) {
   if (continueWithSubpassFunction) {
-    return continueWithSubpassFunction({this}, {function}, {forInst->asSILNode()});
+    return continueWithSubpassFunction({this}, {function}, {forInst? forInst->asSILNode() : nullptr});
   }
   return true;
 
@@ -1024,11 +1024,15 @@ void SILPassManager::runBridgedFunctionPass(PassKind passKind, SILFunction *f) {
   sft->injectPassManager(this);
   sft->injectFunction(f);
   sft->run();
+  assert(analysesUnlocked() && "Expected all analyses to be unlocked!");
 }
 
 void SILPassManager::runBridgedModulePass(PassKind passKind) {
   auto *smt = cast<SILModuleTransform>(getCachedPass(passKind));
-  runModulePass(smt, /*TransIdx=*/ 0);
+  smt->injectPassManager(this);
+  smt->injectModule(Mod);
+  smt->run();
+  assert(analysesUnlocked() && "Expected all analyses to be unlocked!");
 }
 
 void SILPassManager::preFunctionPassRun(SILFunction *function, StringRef passName, unsigned passIdx) {

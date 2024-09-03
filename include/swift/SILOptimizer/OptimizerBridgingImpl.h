@@ -491,7 +491,7 @@ bool BridgedPassContext::enableLifetimeDependenceDiagnostics() const {
 }
 
 bool BridgedPassContext::enableLexicalLifetimes() const {
-  return getOptions().LexicalLifetimes == LexicalLifetimesOption::On;
+  return getOptions().LexicalLifetimes == swift::LexicalLifetimesOption::On;
 }
 
 bool BridgedPassContext::enableAsyncDemotion() const {
@@ -499,7 +499,7 @@ bool BridgedPassContext::enableAsyncDemotion() const {
 }
 
 bool BridgedPassContext::enableDestroyHoisting() const {
-  return getOptions().DestroyHoisting == DestroyHoistingOption::On;
+  return getOptions().DestroyHoisting == swift::DestroyHoistingOption::On;
 }
 
 bool BridgedPassContext::enableSpeculativeDevirtualization() const {
