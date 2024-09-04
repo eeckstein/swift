@@ -24,7 +24,7 @@ import SIL
 ///
 /// In order to use `FunctionUses`, first call `collect()` and then get use-lists of
 /// functions with `getUses(of:)`.
-struct FunctionUses<Owner: AnyObject> {
+struct FunctionUses {
 
   // Function uses are stored in a single linked list, whereas the "next" is not a pointer
   // but an index into `FunctionUses.useStorage`.
@@ -33,7 +33,7 @@ struct FunctionUses<Owner: AnyObject> {
     let next: Int?
 
     // The instruction which references the function.
-    let usingInstruction: Owner
+    let usingInstruction: Instruction
   }
 
   // The head of the single-linked list of function uses.
@@ -48,9 +48,9 @@ struct FunctionUses<Owner: AnyObject> {
       self.hasUnknownUses = function.isPossiblyUsedExternally || function.isDefinedExternally
     }
 
-    mutating func insert(_ owner: Owner, _ uses: inout [Use]) {
+    mutating func insert(_ inst: Instruction, _ uses: inout [Use]) {
       let newFirst = uses.count
-      uses.append(Use(next: first, usingInstruction: owner))
+      uses.append(Use(next: first, usingInstruction: inst))
       first = newFirst
     }
   }
@@ -61,7 +61,7 @@ struct FunctionUses<Owner: AnyObject> {
       fileprivate let useStorage: [Use]
       fileprivate var currentUseIdx: Int?
       
-      mutating func next() -> Owner? {
+      mutating func next() -> Instruction? {
         if let useIdx = currentUseIdx {
           let use = useStorage[useIdx]
           currentUseIdx = use.next
@@ -93,7 +93,8 @@ struct FunctionUses<Owner: AnyObject> {
         result += "<unknown uses>\n"
       }
       for inst in self {
-//        result += "@\(inst.parentFunction.name): \(inst)\n"
+        result += "@\(inst.parentFunction.name): \(inst)\n"
+  
       }
       result += "]"
       return result
@@ -108,11 +109,6 @@ struct FunctionUses<Owner: AnyObject> {
   // The use-list head for each function.
   private var uses: [Function: FirstUse] = [:]
   
-  mutating func clear() {
-    useStorage.removeAll(keepingCapacity: true)
-    uses.removeAll(keepingCapacity: true)
-  }
-
   /// Returns the use-list of `function`.
   ///
   /// Note that `collect` must be called before `getUses` can be used.
@@ -120,16 +116,6 @@ struct FunctionUses<Owner: AnyObject> {
     UseList(useStorage: useStorage, firstUse: uses[function, default: FirstUse(of: function)])
   }
 
-  mutating func addUse(of function: Function, by owner: Owner) {
-    uses[function, default: FirstUse(of: function)].insert(owner, &useStorage)
-  }
-
-  private mutating func markUnknown(_ function: Function) {
-    uses[function, default: FirstUse(of: function)].hasUnknownUses = true
-  }
-}
-
-extension FunctionUses where Owner == Instruction {
   /// Collects all uses of all function in the module.
   mutating func collect(context: ModulePassContext) {
 
@@ -166,9 +152,13 @@ extension FunctionUses where Owner == Instruction {
     for function in context.functions {
       for inst in function.instructions {
         inst.visitReferencedFunctions { referencedFunc in
-          addUse(of: referencedFunc, by: inst)
+          uses[referencedFunc, default: FirstUse(of: referencedFunc)].insert(inst, &useStorage)
         }
       }
     }
+  }
+
+  private mutating func markUnknown(_ function: Function) {
+    uses[function, default: FirstUse(of: function)].hasUnknownUses = true
   }
 }

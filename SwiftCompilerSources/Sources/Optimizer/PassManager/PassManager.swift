@@ -171,34 +171,38 @@ final class PassManager {
 
   private func runScheduledFunctionPasses(_ context: ModulePassContext) {
     derivationLevels.removeAll(keepingCapacity: true)
-    worklist.initialize(context)
-    defer { worklist.clear() }
 
-    while let (f, passIdx) = worklist.readyList.last {
-      let endPassIdx = runFunctionPasses(on: f, initialPassIndex: passIdx, context)
-      worklist.readyList[worklist.readyList.count - 1].passIndex = endPassIdx
-      if endPassIdx == scheduledFunctionPasses.count {
-        worklist.popLastFromReadyList()
-      }
+    worklist.initialize()
+
+    var allFunctions = context.functions
+    
+    while let element = worklist.next(allFunctions: &allFunctions, numPasses: scheduledFunctionPasses.count,
+                                      context.calleeAnalysis),
+          shouldContinueTransforming
+    {
+      runFunctionPasses(on: element.function, initialPassIndex: element.completedPasses, context)
     }
   }
 
-  private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) -> Int {
-    let readyListSize = worklist.readyList.count
+  private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) {
     let numPasses = scheduledFunctionPasses.count
+    var passIdx = initialPassIndex
+    defer {
+      worklist.updateNumberOfCompletedPasses(to: passIdx)
+    }
 
-    for passIdx in initialPassIndex..<numPasses {
+    while passIdx < numPasses {
       if !shouldContinueTransforming {
-        return numPasses
+        return
       }
       runFunctionPass(on: function, passIndex: passIdx, context)
       currentPassIndex += 1
+      passIdx += 1
 
-      if worklist.readyList.count > readyListSize {
-        return passIdx + 1
+      if !worklist.continueRunning() {
+        return
       }
     }
-    return numPasses
   }
 
   private func runFunctionPass(on function: Function, passIndex: Int, _ context: ModulePassContext) {
@@ -284,8 +288,10 @@ final class PassManager {
       newLevel = 1
     }
     derivationLevels[function] = newLevel
+
+
     if !scheduledFunctionPasses.isEmpty {
-      worklist.pushNewFunctionToReadyList(function)
+      worklist.addCallee(function)
     }
   }
 
@@ -522,92 +528,91 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
 
 private struct FunctionWorklist {
 
-  var functionUses = FunctionUses<Function>()
-  // TODO: make this an array, indexed by Function.uniqueIndex
-  var unhandledCallees = Dictionary<Function, Int>()
-  var readyList: [(Function, passIndex: Int)] = []
+  struct Element {
+    let function: Function
+    var firstCalleeIndex: Int
+    var completedPasses = 0
+  }
 
-  mutating func initialize(_ context: ModulePassContext) {
-    let calleeAnalysis = context.calleeAnalysis
+  private var stack: [Element] = []
+  private var callees: [Function] = []
+  private var onStack = Set<Function>()
+  private var visited = Set<Function>()
 
-    var onStack = Set<Function>()
+  mutating func initialize() {
+    assert(stack.isEmpty && callees.isEmpty && onStack.isEmpty, "not all functions handled")
+    visited.removeAll(keepingCapacity: true)
+  }
 
-    var functionCount = 0
-    for f in context.functions where f.isDefinition {
-      visit(f, &onStack, calleeAnalysis)
-      functionCount += 1
+  mutating func next(allFunctions: inout ModulePassContext.FunctionList,
+                     numPasses: Int,
+                     _ calleeAnalysis: CalleeAnalysis
+  ) -> Element? {
+    while true {
+      if let current = stack.last {
+        if callees.count > current.firstCalleeIndex {
+          push(function: callees.removeLast(), calleeAnalysis)
+          continue
+        }
+        if current.completedPasses == numPasses {
+          stack.removeLast()
+          continue
+        }
+        return current
+      }
+      if let f = allFunctions.next() {
+        push(function: f, calleeAnalysis)
+        continue
+      }
+      return nil
     }
-
-    precondition(unhandledCallees.count == functionCount, "not all functions added to worklist")
   }
 
-  mutating func clear() {
-    assert(readyList.isEmpty, "not all functions handled")
-    functionUses.clear()
-    unhandledCallees.removeAll(keepingCapacity: true)
-  }
-
-  private mutating func visit(_ f: Function, _ onStack: inout Set<Function>, _ calleeAnalysis: CalleeAnalysis) {
-    guard unhandledCallees[f] == nil else {
+  private mutating func push(function: Function, _ calleeAnalysis: CalleeAnalysis) {
+    if !function.isDefinition {
       return
     }
-    assert(f.isDefinition, "should only visit functions with bodies")
+    if !visited.insert(function).inserted {
+      return
+    }
 
-    onStack.insert(f)
+    stack.append(Element(function: function, firstCalleeIndex: callees.count))
 
-    var numCallees = 0
-    for inst in f.instructions {
-      let callees: FunctionArray
+    assert(function.isDefinition, "should only visit functions with bodies")
+
+    precondition(onStack.insert(function).inserted)
+
+    for inst in function.instructions {
       switch inst {
       case let fas as FullApplySite:
-        callees = calleeAnalysis.getIncompleteCallees(callee: fas.callee)
+        // TODO: only append definitions
+        callees.append(contentsOf: calleeAnalysis.getIncompleteCallees(callee: fas.callee))
       case let bi as BuiltinInst:
         switch bi.id {
         case .Once, .OnceWithContext:
-          callees = calleeAnalysis.getIncompleteCallees(callee: bi.operands[0].value)
+          callees.append(contentsOf: calleeAnalysis.getIncompleteCallees(callee: bi.operands[0].value))
         default:
-          continue
+          break
         }
       case is StrongReleaseInst, is ReleaseValueInst, is DestroyValueInst:
-        callees = calleeAnalysis.getIncompleteDestructors(of: inst.operands[0].value.type)
+        callees.append(contentsOf: calleeAnalysis.getIncompleteDestructors(of: inst.operands[0].value.type))
       default:
-        continue
-      }
-      for callee in callees {
-        if !onStack.contains(callee) && callee.isDefinition {
-          functionUses.addUse(of: callee, by: f)
-          numCallees += 1
-          visit(callee, &onStack, calleeAnalysis)
-        }
-      }
-    }
-    unhandledCallees[f] = numCallees
-    if numCallees == 0 {
-      readyList.append((f, 0))
-    }
-    onStack.remove(f)
-  }
-
-  mutating func popLastFromReadyList() {
-    let (f, _) = readyList.removeLast()
-    for caller in functionUses.getUses(of: f) {
-      if unhandledCallees[caller, default: 0].decrementAndCheckForZero() {
-        readyList.append((caller, 0))
+        break
       }
     }
   }
 
-  mutating func pushNewFunctionToReadyList(_ function: Function) {
-    assert(unhandledCallees[function] == nil, "not a new function")
-    readyList.append((function, 0))
+  mutating func updateNumberOfCompletedPasses(to numPasses: Int) {
+    stack[stack.count - 1].completedPasses = numPasses
   }
-}
 
-private extension Int {
-  mutating func decrementAndCheckForZero() -> Bool {
-    assert(self > 0)
-    self -= 1
-    return self == 0
+  mutating func continueRunning() -> Bool {
+    return stack.last!.firstCalleeIndex == callees.count
+  }
+
+  mutating func addCallee(_ callee: Function) {
+    assert(!stack.isEmpty, "no currently transformed function")
+    callees.append(callee)
   }
 }
 

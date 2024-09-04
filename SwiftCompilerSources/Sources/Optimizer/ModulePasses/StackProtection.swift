@@ -72,7 +72,7 @@ private struct StackProtectionOptimization {
   // The following members are nil/not used if this utility is used on function-level.
 
   private var moduleContext: ModulePassContext?
-  private var functionUses = FunctionUses<Instruction>()
+  private var functionUses = FunctionUses()
   private var functionUsesComputed = false
 
   // Functions (other than the currently processed one) which need stack protection,
