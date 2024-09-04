@@ -177,8 +177,8 @@ bool BridgedPassContext::moduleIsSerialized() const {
   return getModule()->isSerialized();
 }
 
-BridgedFunction BridgedPassContext::getCurrentlyTransformedFunction() const {
-  return {invocation->getFunction()};
+bool BridgedPassContext::isTransforming(BridgedFunction function) const {
+  return invocation->getFunction() == function.getFunction();
 }
 
 BridgedPassManager BridgedPassContext::getPassManager() const {
@@ -457,8 +457,7 @@ void BridgedPassContext::addFunctionToPassManagerWorklist(
     BridgedFunction newFunction, BridgedFunction oldFunction) const {
   swift::SILPassManager *pm = invocation->getPassManager();
   pm->addFunctionToWorklist(newFunction.getFunction(),
-                            oldFunction.getFunction(),
-                            invocation->getFunction());
+                            oldFunction.getFunction());
 }
 
 void BridgedPassContext::SSAUpdater_addAvailableValue(BridgedBasicBlock block, BridgedValue value) const {

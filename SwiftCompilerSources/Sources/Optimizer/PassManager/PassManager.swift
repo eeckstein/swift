@@ -174,17 +174,17 @@ final class PassManager {
     worklist.initialize(context)
     defer { worklist.clear() }
 
-    while let f = worklist.popLast() {
-      let startPassIdx = worklist.getCompletedPasses(of: f)
-      let endPassIdx = runFunctionPasses(on: f, initialPassIndex: startPassIdx, context)
-      worklist.setCompletedPasses(of: f, to: endPassIdx)
+    while let (f, passIdx) = worklist.readyList.last {
+      let endPassIdx = runFunctionPasses(on: f, initialPassIndex: passIdx, context)
+      worklist.readyList[worklist.readyList.count - 1].passIndex = endPassIdx
       if endPassIdx == scheduledFunctionPasses.count {
-        worklist.scheduleCallers(of: f)
+        worklist.popLastFromReadyList()
       }
     }
   }
 
   private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) -> Int {
+    let readyListSize = worklist.readyList.count
     let numPasses = scheduledFunctionPasses.count
 
     for passIdx in initialPassIndex..<numPasses {
@@ -194,7 +194,7 @@ final class PassManager {
       runFunctionPass(on: function, passIndex: passIdx, context)
       currentPassIndex += 1
 
-      if worklist.getUnhandledCallees(of: function) > 0 {
+      if worklist.readyList.count > readyListSize {
         return passIdx + 1
       }
     }
@@ -273,7 +273,7 @@ final class PassManager {
     function.verify(context)
   }
 
-  func notifyNewFunction(function: Function, derivedFrom: Function?, currentlyTransformedFunction: Function) {
+  func notifyNewFunction(function: Function, derivedFrom: Function?) {
     let newLevel: Int
     if let derivedFrom = derivedFrom {
       newLevel = derivationLevels[derivedFrom, default: 0] + 1
@@ -284,12 +284,8 @@ final class PassManager {
       newLevel = 1
     }
     derivationLevels[function] = newLevel
-
-    if !worklist.isVisited(function) ||
-       !worklist.introducesCycle(from: currentlyTransformedFunction, to: function)
-    {
-      worklist.functionUses.addUse(of: function, by: currentlyTransformedFunction)
-      worklist.readyList.append(function)
+    if !scheduledFunctionPasses.isEmpty {
+      worklist.pushNewFunctionToReadyList(function)
     }
   }
 
@@ -443,11 +439,9 @@ final class PassManager {
       },
       // notifyNewFunctionFn
       {
-        (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction,
-         currentlyTransformedFunction: BridgedFunction) in
+        (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction) in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
-        pm.notifyNewFunction(function: function.function, derivedFrom: derivedFrom.function,
-                             currentlyTransformedFunction: currentlyTransformedFunction.function)
+        pm.notifyNewFunction(function: function.function, derivedFrom: derivedFrom.function)
       },
       // continueWithSubpassFn
       {
@@ -529,28 +523,32 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
 private struct FunctionWorklist {
 
   var functionUses = FunctionUses<Function>()
-  typealias FunctionData = (unhandledCallees: Int, numPassesCompleted: Int, visited: Bool)
-  var functionData: [FunctionData] = []
-  var readyList: [Function] = []
+  // TODO: make this an array, indexed by Function.uniqueIndex
+  var unhandledCallees = Dictionary<Function, Int>()
+  var readyList: [(Function, passIndex: Int)] = []
 
   mutating func initialize(_ context: ModulePassContext) {
     let calleeAnalysis = context.calleeAnalysis
 
     var onStack = Set<Function>()
 
+    var functionCount = 0
     for f in context.functions where f.isDefinition {
       visit(f, &onStack, calleeAnalysis)
+      functionCount += 1
     }
+
+    precondition(unhandledCallees.count == functionCount, "not all functions added to worklist")
   }
 
   mutating func clear() {
     assert(readyList.isEmpty, "not all functions handled")
     functionUses.clear()
-    functionData.removeAll(keepingCapacity: true)
+    unhandledCallees.removeAll(keepingCapacity: true)
   }
 
   private mutating func visit(_ f: Function, _ onStack: inout Set<Function>, _ calleeAnalysis: CalleeAnalysis) {
-    if isVisited(f) {
+    guard unhandledCallees[f] == nil else {
       return
     }
     assert(f.isDefinition, "should only visit functions with bodies")
@@ -583,75 +581,33 @@ private struct FunctionWorklist {
         }
       }
     }
-    setUnhandledCallees(of: f, to: numCallees)
+    unhandledCallees[f] = numCallees
     if numCallees == 0 {
-      readyList.append(f)
+      readyList.append((f, 0))
     }
     onStack.remove(f)
   }
 
-  mutating func popLast() -> Function? {
-    if readyList.isEmpty {
-      return nil
-    }
-    return readyList.removeLast()
-  }
-
-  mutating func scheduleCallers(of function: Function) {
-    for caller in functionUses.getUses(of: function) {
-      let uc = getUnhandledCallees(of: caller) - 1
-      assert(uc >= 0, "function not added correctly to worklist")
-      setUnhandledCallees(of: caller, to: uc)
-      if uc == 0 {
-        readyList.append(caller)
+  mutating func popLastFromReadyList() {
+    let (f, _) = readyList.removeLast()
+    for caller in functionUses.getUses(of: f) {
+      if unhandledCallees[caller, default: 0].decrementAndCheckForZero() {
+        readyList.append((caller, 0))
       }
     }
   }
 
-  mutating func setUnhandledCallees(of function: Function, to unhandledCallees: Int) {
-    functionData[function.uniqueIndex].unhandledCallees = unhandledCallees
+  mutating func pushNewFunctionToReadyList(_ function: Function) {
+    assert(unhandledCallees[function] == nil, "not a new function")
+    readyList.append((function, 0))
   }
+}
 
-  func getUnhandledCallees(of function: Function) ->  Int {
-    return functionData[function.uniqueIndex].unhandledCallees
-  }
-
-  mutating func setCompletedPasses(of function: Function, to completedPasses: Int) {
-    functionData[function.uniqueIndex].numPassesCompleted = completedPasses
-  }
-
-  func getCompletedPasses(of function: Function) -> Int {
-    return functionData[function.uniqueIndex].numPassesCompleted
-  }
-
-  mutating func isVisited(_ function: Function) -> Bool {
-    let fIdx = function.uniqueIndex
-    if fIdx >= functionData.count {
-      functionData += Array(repeating: (0, 0, false), count: fIdx - functionData.count + 1)
-    }
-    let visited = functionData[fIdx].visited
-    functionData[fIdx].visited = true
-    return visited
-  }
-
-  func introducesCycle(from fromFunction: Function, to toFunction: Function) -> Bool {
-    if getUnhandledCallees(of: toFunction) == 0 {
-      return false
-    }
-    var visited = Set<Function>()
-    var worklist = [fromFunction]
-    while !worklist.isEmpty {
-      let f = worklist.removeLast()
-      if f == toFunction {
-        return true
-      }
-      for caller in functionUses.getUses(of: f) {
-        if visited.insert(caller).inserted {
-          worklist.append(caller)
-        }
-      }
-    }
-    return false
+private extension Int {
+  mutating func decrementAndCheckForZero() -> Bool {
+    assert(self > 0)
+    self -= 1
+    return self == 0
   }
 }
 
