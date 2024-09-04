@@ -378,7 +378,8 @@ public:
   /// If not null, the function \p DerivedFrom is the function from which \p F
   /// is derived. This is used to avoid an infinite amount of functions pushed
   /// on the worklist (e.g. caused by a bug in a specializing optimization).
-  void addFunctionToWorklist(SILFunction *F, SILFunction *DerivedFrom);
+  void addFunctionToWorklist(SILFunction *F, SILFunction *DerivedFrom,
+                             SILFunction *currentlyOptimizedFunction);
 
   /// Iterate over all analysis and notify them of the function.
   ///

@@ -220,7 +220,7 @@ struct BridgedPassContext {
   BRIDGED_INLINE SILStage getSILStage() const;
   BRIDGED_INLINE bool hadError() const;
   BRIDGED_INLINE bool moduleIsSerialized() const;
-  BRIDGED_INLINE bool isTransforming(BridgedFunction function) const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedFunction getCurrentlyTransformedFunction() const;
   BRIDGED_INLINE BridgedPassManager getPassManager() const;
 
   // Analysis
@@ -469,7 +469,8 @@ struct BridgedPassManager {
   typedef void (* _Nonnull RegisterBridgedModulePassFn)(BridgedStringRef name, BridgedModulePass kind);
   typedef void (* _Nonnull RegisterBridgedFunctionPassFn)(BridgedStringRef name, BridgedPass kind);
   typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
-                                                BridgedFunction derivedFrom);
+                                                BridgedFunction derivedFrom,
+                                                BridgedFunction currentlyOptimizedFunction);
   typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, BridgedFunction function,
                                                   OptionalBridgedInstruction inst);
   typedef void (* _Nonnull NotifyFn)(BridgedPassManager pm);

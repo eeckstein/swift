@@ -73,7 +73,7 @@ extension MutatingContext {
   var needFixStackNesting: Bool { _bridged.getNeedFixStackNesting() }
 
   func verifyIsTransforming(function: Function) {
-    precondition(_bridged.isTransforming(function.bridged), "pass modifies wrong function")
+    precondition(_bridged.getCurrentlyTransformedFunction().function == function, "pass modifies wrong function")
   }
 
   /// Splits the basic block, which contains `inst`, before `inst` and returns the
@@ -266,7 +266,8 @@ struct FunctionPassContext : MutatingContext {
 
   func notifyNewFunction(function: Function, derivedFrom: Function) {
     let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
-    pm.notifyNewFunction(function: function, derivedFrom: derivedFrom)
+    pm.notifyNewFunction(function: function, derivedFrom: derivedFrom,
+                         currentlyTransformedFunction: _bridged.getCurrentlyTransformedFunction().function)
   }
 
   var deadEndBlocks: DeadEndBlocksAnalysis {

@@ -1194,9 +1194,10 @@ void SILPassManager::notifyOfNewFunction(SILFunction *F) {
 }
 
 void SILPassManager::addFunctionToWorklist(SILFunction *F,
-                                           SILFunction *DerivedFrom) {
+                                           SILFunction *DerivedFrom,
+                                           SILFunction *currentlyOptimizedFunction) {
   if (notifyNewFunctionFunction) {
-    notifyNewFunctionFunction({this}, {F}, {DerivedFrom});
+    notifyNewFunctionFunction({this}, {F}, {DerivedFrom}, {currentlyOptimizedFunction});
   }
 }
 
