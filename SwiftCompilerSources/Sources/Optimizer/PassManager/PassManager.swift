@@ -125,6 +125,7 @@ final class PassManager {
         return
       }
       currentSubPassIndex = 0
+      currentPassMadeChanges = false
 
       if shouldPrintPassNames {
         printPassInfo("Run module pass", pass.name, passIdx)
@@ -226,6 +227,7 @@ final class PassManager {
       printPassInfo("Run", pass.name, passIndex, function)
     }
     currentSubPassIndex = 0
+    currentPassMadeChanges = false
 
     if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
       printPassInfo("*** function before", pass.name, passIndex, function)

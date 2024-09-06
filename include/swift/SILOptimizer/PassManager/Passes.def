@@ -101,7 +101,7 @@ MODULE_PASS(AccessStorageAnalysisDumper, "access-storage-analysis-dump",
      "Dump Access Storage Analysis Summaries")
 MODULE_PASS(AccessPathVerification, "access-path-verification",
      "Verify Access Paths (and Access Storage)")
-PASS(AccessStorageDumper, "access-storage-dump",
+MODULE_PASS(AccessStorageDumper, "access-storage-dump",
      "Dump Access Storage Information")
 MODULE_PASS(AccessMarkerElimination, "access-marker-elim",
      "Access Marker Elimination.")
