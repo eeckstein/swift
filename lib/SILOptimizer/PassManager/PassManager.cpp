@@ -270,6 +270,7 @@ static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullp
 static BridgedPassManager::ContinueWithSubpassFn continueWithSubpassFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyPassHasInvalidatedFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyDepdendencyFunction = nullptr;
+static BridgedPassManager::NotifyFn notifyRestartPipelineFunction = nullptr;
 
 void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
                                           ExecutePassesFromNameFn executePassesFromNameFn,
@@ -278,7 +279,8 @@ void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
                                           NotifyNewFunctionFn notifyNewFunctionFn,
                                           ContinueWithSubpassFn continueWithSubpassFn,
                                           NotifyFn notifyPassHasInvalidatedFn,
-                                          NotifyFn notifyDepdendencyFn) {
+                                          NotifyFn notifyDepdendencyFn,
+                                          NotifyFn notifyRestartPipelineFn) {
   executePassesFunction = executePassesFn;
   executePassesFromNameFunction = executePassesFromNameFn;
   registerBridgedModulePassFunction = registerBridgedModulePassFn;
@@ -287,6 +289,7 @@ void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
   continueWithSubpassFunction = continueWithSubpassFn;
   notifyPassHasInvalidatedFunction = notifyPassHasInvalidatedFn;
   notifyDepdendencyFunction = notifyDepdendencyFn;
+  notifyRestartPipelineFunction = notifyRestartPipelineFn;
 }
 
 static bool functionSelectionEmpty() {
@@ -1197,7 +1200,9 @@ void SILPassManager::addFunctionToWorklist(SILFunction *F,
 void SILPassManager::restartWithCurrentFunction(SILTransform *T) {
   assert(isa<SILFunctionTransform>(T) &&
          "Can only restart the pipeline from function passes");
-  RestartPipeline = true;
+  if (notifyRestartPipelineFunction) {
+    notifyRestartPipelineFunction({this});
+  }
 }
 
 /// Reset the state of the pass manager and remove all transformation

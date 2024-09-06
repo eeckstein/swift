@@ -476,7 +476,7 @@ struct BridgedPassManager {
 
   static void registerBridging(ExecutePassesFn, ExecutePassesFromNameFn,
                                RegisterBridgedModulePassFn, RegisterBridgedFunctionPassFn,
-                               NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn);
+                               NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn, NotifyFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);

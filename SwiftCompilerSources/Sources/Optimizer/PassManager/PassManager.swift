@@ -39,6 +39,7 @@ final class PassManager {
 
   private var currentPassMadeChanges = false
   private var currentPassDepdendsOnOtherFunction = false
+  private var restartPipeline = false
 
   private let maxNumPassesToRun: Int
   private let maxNumSubpassesToRun: Int
@@ -126,6 +127,8 @@ final class PassManager {
       }
       currentSubPassIndex = 0
       currentPassMadeChanges = false
+      currentPassDepdendsOnOtherFunction = false
+      restartPipeline = false
 
       if shouldPrintPassNames {
         printPassInfo("Run module pass", pass.name, passIdx)
@@ -142,8 +145,11 @@ final class PassManager {
 
       pass.runFunction(context)
 
-      if currentPassMadeChanges && shouldVerifyAfterAllChanges {
-        context.verifyModule()
+      if currentPassMadeChanges {
+        completedPasses.notifyAllFunctionsModified()
+        if shouldVerifyAfterAllChanges {
+          context.verifyModule()
+        }
       }
 
       _bridged.postModulePassRun()
@@ -191,20 +197,23 @@ final class PassManager {
   private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) {
     let numPasses = scheduledFunctionPasses.count
     var passIdx = initialPassIndex
-    defer {
-      worklist.updateNumberOfCompletedPasses(to: passIdx)
-    }
 
     while passIdx < numPasses {
       if !shouldContinueTransforming {
         return
       }
       runFunctionPass(on: function, passIndex: passIdx, context)
+
       currentPassIndex += 1
       passIdx += 1
+      worklist.updateNumberOfCompletedPasses(to: passIdx)
 
       if !worklist.continueRunning() {
         return
+      }
+
+      if restartPipeline && worklist.resetPassIndex() {
+        passIdx = 0
       }
     }
   }
@@ -228,6 +237,8 @@ final class PassManager {
     }
     currentSubPassIndex = 0
     currentPassMadeChanges = false
+    currentPassDepdendsOnOtherFunction = false
+    restartPipeline = false
 
     if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
       printPassInfo("*** function before", pass.name, passIndex, function)
@@ -254,7 +265,9 @@ final class PassManager {
       printPassInfo("*** function after", pass.name, passIndex, function)
       print(function)
     }
-    if !currentPassMadeChanges {
+    if currentPassMadeChanges {
+      completedPasses.notifyFunctionModified(function: function)
+    } else {
       completedPasses.passDidNotModify(passID: uniqueID, function: function)
     }
   }
@@ -305,7 +318,12 @@ final class PassManager {
   }
 
   func notifyPassDependsOnOtherFunction() {
+    // TODO: handle this
     currentPassDepdendsOnOtherFunction = true
+  }
+
+  func notifyRestartPipeline() {
+    restartPipeline = true
   }
 
   func continueWithNextSubpassRun(on function: Function, for inst: Instruction? = nil) -> Bool {
@@ -471,6 +489,12 @@ final class PassManager {
         (bridgedPM: BridgedPassManager) in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
         pm.notifyPassDependsOnOtherFunction()
+      },
+      // notifyRestartPipelineFn
+      {
+        (bridgedPM: BridgedPassManager) in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        pm.notifyRestartPipeline()
       }
     )
   }
@@ -537,12 +561,24 @@ private struct FunctionWorklist {
     let function: Function
     var firstCalleeIndex: Int
     var completedPasses = 0
+    var numRestarts = 0
+
+    mutating func resetPassIndex() -> Bool{
+      if numRestarts < FunctionWorklist.maxNumPipelineRestarts {
+        completedPasses = 0
+        numRestarts += 1
+        return true
+      }
+      return false
+    }
   }
 
   private var stack: [Element] = []
   private var callees: [Function] = []
   private var visited = Set<Function>()
   private var calleesInFunction = Set<Function>()
+
+  static let maxNumPipelineRestarts = 20
 
   func verifyIsEmpty() {
     assert(stack.isEmpty && callees.isEmpty, "not all functions handled")
@@ -621,6 +657,10 @@ private struct FunctionWorklist {
     stack[stack.count - 1].completedPasses = numPasses
   }
 
+  mutating func resetPassIndex() -> Bool {
+    return stack[stack.count - 1].resetPassIndex()
+  }
+
   mutating func continueRunning() -> Bool {
     return stack.last!.firstCalleeIndex == callees.count
   }
@@ -644,7 +684,8 @@ private struct CompletedPasses {
   mutating func passDidNotModify(passID: Int, function: Function) {
     let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
     if idx >= completedPasses.count {
-      completedPasses += Array(repeating: 0, count: idx - completedPasses.count + 1)
+      let endIndex = arrayIndex(passID: 0, functionIndex: function.uniqueIndex + 1)
+      completedPasses += Array(repeating: 0, count: endIndex - completedPasses.count)
     }
     completedPasses[idx] |= bitMask(for: passID)
   }
