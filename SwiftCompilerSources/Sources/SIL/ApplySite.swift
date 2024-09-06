@@ -281,6 +281,23 @@ extension ApplySite {
   public func calleeArgumentIndex(of operand: Operand) -> Int? {
     operandConventions.calleeArgumentIndex(of: operand)
   }
+
+  public var calleeOrigin: Value {
+    var c = callee
+    while true {
+      switch c {
+      case is ThinToThickFunctionInst,
+           is ConvertFunctionInst,
+           is ConvertEscapeToNoEscapeInst,
+           is BeginBorrowInst,
+           is CopyValueInst:
+        c = (c as! UnaryInstruction).operand.value
+        continue
+      default:
+        return c
+      }
+    }
+  }
 }
 
 extension ApplySite {

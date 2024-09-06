@@ -172,16 +172,19 @@ final class PassManager {
   private func runScheduledFunctionPasses(_ context: ModulePassContext) {
     derivationLevels.removeAll(keepingCapacity: true)
 
-    worklist.initialize()
+    defer { worklist.clear() }
 
     var allFunctions = context.functions
     
     while let element = worklist.next(allFunctions: &allFunctions, numPasses: scheduledFunctionPasses.count,
-                                      context.calleeAnalysis),
-          shouldContinueTransforming
+                                      context.calleeAnalysis)
     {
       runFunctionPasses(on: element.function, initialPassIndex: element.completedPasses, context)
+      if !shouldContinueTransforming {
+        return
+      }
     }
+    worklist.verifyIsEmpty()
   }
 
   private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) {
@@ -536,11 +539,16 @@ private struct FunctionWorklist {
 
   private var stack: [Element] = []
   private var callees: [Function] = []
-  private var onStack = Set<Function>()
   private var visited = Set<Function>()
+  private var calleesInFunction = Set<Function>()
 
-  mutating func initialize() {
-    assert(stack.isEmpty && callees.isEmpty && onStack.isEmpty, "not all functions handled")
+  func verifyIsEmpty() {
+    assert(stack.isEmpty && callees.isEmpty, "not all functions handled")
+  }
+
+  mutating func clear() {
+    stack.removeAll(keepingCapacity: true)
+    callees.removeAll(keepingCapacity: true)
     visited.removeAll(keepingCapacity: true)
   }
 
@@ -576,28 +584,33 @@ private struct FunctionWorklist {
       return
     }
 
+    defer { calleesInFunction.removeAll(keepingCapacity: true) }
+
     stack.append(Element(function: function, firstCalleeIndex: callees.count))
 
     assert(function.isDefinition, "should only visit functions with bodies")
 
-    precondition(onStack.insert(function).inserted)
-
     for inst in function.instructions {
+      let instCallees: FunctionArray
       switch inst {
       case let fas as FullApplySite:
-        // TODO: only append definitions
-        callees.append(contentsOf: calleeAnalysis.getIncompleteCallees(callee: fas.callee))
+        instCallees = calleeAnalysis.getIncompleteCallees(callee: fas.calleeOrigin)
       case let bi as BuiltinInst:
         switch bi.id {
         case .Once, .OnceWithContext:
-          callees.append(contentsOf: calleeAnalysis.getIncompleteCallees(callee: bi.operands[0].value))
+          instCallees = calleeAnalysis.getIncompleteCallees(callee: bi.operands[0].value)
         default:
-          break
+          continue
         }
       case is StrongReleaseInst, is ReleaseValueInst, is DestroyValueInst:
-        callees.append(contentsOf: calleeAnalysis.getIncompleteDestructors(of: inst.operands[0].value.type))
+        instCallees = calleeAnalysis.getIncompleteDestructors(of: inst.operands[0].value.type)
       default:
-        break
+        continue
+      }
+      for c in instCallees {
+        if c.isDefinition && calleesInFunction.insert(c).inserted {
+          callees.append(c)
+        }
       }
     }
   }

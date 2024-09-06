@@ -68,7 +68,7 @@ class SwiftPassInvocation {
   /// Non-null if this is an instruction pass, invoked from SILCombine.
   SILCombiner *silCombiner = nullptr;
 
-  bool isRunningPass = false;
+  bool isTransformingFunction = false;
 
   /// Change notifications, collected during a pass run.
   SILAnalysis::InvalidationKind changeNotifications =
@@ -505,9 +505,6 @@ private:
 
   /// Add a pass of a specific kind.
   void addPass(PassKind Kind);
-
-  /// Add a pass with a given name.
-  void addPassForName(StringRef Name);
 
   /// Run the \p TransIdx'th SIL module transform over all the functions in
   /// the module.

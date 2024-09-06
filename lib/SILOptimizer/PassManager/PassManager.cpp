@@ -214,7 +214,7 @@ static llvm::cl::opt<bool> SILPrintEverySubpass(
     llvm::cl::desc("Print the function before every subpass run of passes that "
                    "have multiple subpasses"));
 
-static bool isInPrintFunctionList(SILFunction *F) {
+bool isFunctionSelectedForPrinting(SILFunction *F) {
   for (const std::string &printFnName : SILPrintFunction) {
     if (printFnName == F->getName())
       return true;
@@ -224,17 +224,11 @@ static bool isInPrintFunctionList(SILFunction *F) {
       return true;
     }
   }
+
+  if (!SILPrintFunctions.empty() && F->getName().contains(SILPrintFunctions))
+    return true;
+
   return false;
-}
-
-bool isFunctionSelectedForPrinting(SILFunction *F) {
-  if (!SILPrintFunction.empty() && !isInPrintFunctionList(F))
-    return false;
-
-  if (!F->getName().contains(SILPrintFunctions))
-    return false;
-
-  return true;
 }
 
 void printInliningDetails(StringRef passName, SILFunction *caller,
@@ -1264,14 +1258,6 @@ SILTransform *SILPassManager::getPass(PassKind Kind) {
   }
 }
 
-void SILPassManager::addPassForName(StringRef Name) {
-  PassKind P = llvm::StringSwitch<PassKind>(Name)
-#define PASS(ID, TAG, NAME) .Case(#ID, PassKind::ID)
-#include "swift/SILOptimizer/PassManager/Passes.def"
-  ;
-  addPass(P);
-}
-
 //===----------------------------------------------------------------------===//
 //                          View Call-Graph Implementation
 //===----------------------------------------------------------------------===//
@@ -1573,14 +1559,11 @@ void SwiftPassInvocation::freeOperandSet(OperandSet *set) {
 }
 
 void SwiftPassInvocation::startModulePassRun() {
-  assert(!isRunningPass && "a pass is already running");
+  assert(!isTransformingFunction && "a function pass is already running");
   assert(!this->function && "a pass is already running");
-  isRunningPass = true;
 }
 
 void SwiftPassInvocation::startFunctionPassRun(SILFunction *function) {
-  assert(!isRunningPass && "a pass is already running");
-  isRunningPass = true;
   beginTransformFunction(function);
 }
 
@@ -1591,18 +1574,15 @@ void SwiftPassInvocation::startInstructionPassRun(SILInstruction *inst) {
 
 void SwiftPassInvocation::finishedModulePassRun() {
   endPass();
-  assert(isRunningPass && "not running a pass");
+  assert(!isTransformingFunction && "still transforming function");
   assert(!function && "not running a pass");
   assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing
          && "unhandled change notifications at end of module pass");
-  isRunningPass = false;
 }
 
 void SwiftPassInvocation::finishedFunctionPassRun() {
   endPass();
   endTransformFunction();
-  assert(allocatedSlabs.empty() && "StackList is leaking slabs");
-  isRunningPass = false;
 }
 
 void SwiftPassInvocation::finishedInstructionPassRun() {
@@ -1627,14 +1607,17 @@ void SwiftPassInvocation::endPass() {
 }
 
 void SwiftPassInvocation::beginTransformFunction(SILFunction *function) {
+  assert(!isTransformingFunction && "a pass is already running");
+  isTransformingFunction = true;
   assert(!this->function && "not running a function pass");
+  this->function = function;
   assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing
          && "change notifications not cleared");
-  this->function = function;
 }
 
 void SwiftPassInvocation::endTransformFunction() {
-  assert(isRunningPass && "not running a function pass");
+  assert(isTransformingFunction && "not running a function pass");
+  isTransformingFunction = false;
   assert(function && "not running a function pass");
   if (changeNotifications != SILAnalysis::InvalidationKind::Nothing) {
     passManager->invalidateAnalysis(function, changeNotifications);
@@ -1647,7 +1630,7 @@ void SwiftPassInvocation::endTransformFunction() {
 }
 
 void SwiftPassInvocation::beginVerifyFunction(SILFunction *function) {
-  if (isRunningPass) {
+  if (isTransformingFunction) {
     assert(this->function == function);
   } else {
     assert(!this->function);
@@ -1657,7 +1640,7 @@ void SwiftPassInvocation::beginVerifyFunction(SILFunction *function) {
 
 void SwiftPassInvocation::endVerifyFunction() {
   assert(function);
-  if (!isRunningPass) {
+  if (!isTransformingFunction) {
     assert(changeNotifications == SILAnalysis::InvalidationKind::Nothing &&
            "verifyication must not change the SIL of a function");
     assert(numBlockSetsAllocated == 0 && "Not all BasicBlockSets deallocated");
@@ -1754,10 +1737,27 @@ bool BridgedPassManager::isPassDisabled(BridgedStringRef passName) const {
   return SILPassManager::isPassDisabled(passName.unbridged());
 }
 
+static PassKind getKindFromPassName(StringRef Name) {
+  PassKind k = llvm::StringSwitch<PassKind>(Name)
+#define PASS(ID, TAG, NAME) .Case(#ID, PassKind::ID)
+#include "swift/SILOptimizer/PassManager/Passes.def"
+    .Default(PassKind::invalidPassKind);
+
+  return k;
+}
+
 static bool isContainedIn(StringRef passName, const llvm::cl::list<std::string> &option) {
   for (const std::string &s : option) {
     if (passName.contains(s))
       return true;
+    if (s.size() > 0 && isupper(s[0])) {
+      PassKind k = getKindFromPassName(s);
+      if (k != PassKind::invalidPassKind) {
+        StringRef tag = PassKindTag(k);
+        if (passName.contains(tag))
+          return true;
+      }
+    }
   }
   return false;
 }
