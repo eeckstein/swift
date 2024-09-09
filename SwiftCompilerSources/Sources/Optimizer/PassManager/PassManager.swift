@@ -130,6 +130,13 @@ final class PassManager {
       currentPassDepdendsOnOtherFunction = false
       restartPipeline = false
 
+      if isPassDisabled(pass) {
+        if shouldPrintPassNames {
+          printPassInfo("(Disabled)", pass.name, passIdx)
+        }
+        continue
+      }
+
       if shouldPrintPassNames {
         printPassInfo("Run module pass", pass.name, passIdx)
       }
@@ -196,6 +203,11 @@ final class PassManager {
 
   private func runFunctionPasses(on function: Function, initialPassIndex: Int, _ context: ModulePassContext) {
     let numPasses = scheduledFunctionPasses.count
+    if !function.shouldOptimize && !isMandatory {
+      worklist.updateNumberOfCompletedPasses(to: numPasses)
+      return
+    }
+
     var passIdx = initialPassIndex
 
     while passIdx < numPasses {
@@ -205,16 +217,18 @@ final class PassManager {
       runFunctionPass(on: function, passIndex: passIdx, context)
 
       currentPassIndex += 1
-      passIdx += 1
+
+      if restartPipeline && worklist.resetPassIndex() {
+        passIdx = 0
+      } else {
+        passIdx += 1
+      }
       worklist.updateNumberOfCompletedPasses(to: passIdx)
 
       if !worklist.continueRunning() {
         return
       }
 
-      if restartPipeline && worklist.resetPassIndex() {
-        passIdx = 0
-      }
     }
   }
 
@@ -265,7 +279,7 @@ final class PassManager {
       printPassInfo("*** function after", pass.name, passIndex, function)
       print(function)
     }
-    if currentPassMadeChanges {
+    if currentPassMadeChanges || currentPassDepdendsOnOtherFunction {
       completedPasses.notifyFunctionModified(function: function)
     } else {
       completedPasses.passDidNotModify(passID: uniqueID, function: function)
@@ -318,7 +332,6 @@ final class PassManager {
   }
 
   func notifyPassDependsOnOtherFunction() {
-    // TODO: handle this
     currentPassDepdendsOnOtherFunction = true
   }
 

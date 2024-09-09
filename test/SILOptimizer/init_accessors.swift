@@ -379,17 +379,6 @@ func test_local_with_memberwise() {
 
     var c: [MyValue]
 
-    // CHECK-LABEL: sil private [ossa] @$s14init_accessors26test_local_with_memberwiseyyF22TestMemberwiseConcreteL_V4pair1cADSi_SSt_SayAaByyF7MyValueL_CGtcfC : $@convention(method) (Int, @owned String, @owned Array<MyValue>, @thin TestMemberwiseConcrete.Type) -> @owned TestMemberwiseConcrete
-    // CHECK:  [[SELF_VALUE:%.*]] = alloc_stack $TestMemberwiseConcrete
-    // CHECK-NEXT: [[A_REF:%.*]] = struct_element_addr [[SELF_VALUE]] : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.a
-    // CHECK-NEXT: [[B_REF:%.*]] = struct_element_addr [[SELF_VALUE]] : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.b
-    // CHECK:  [[INIT_ACCESSOR_REF:%.*]] = function_ref @$s14init_accessors26test_local_with_memberwiseyyF22TestMemberwiseConcreteL_V4pairSi_SStvi : $@convention(thin) (Int, @owned String, @thin TestMemberwiseConcrete.Type) -> (@out Int, @out String)
-    // CHECK-NEXT: {{.*}} = apply [[INIT_ACCESSOR_REF]]([[A_REF]], [[B_REF]], %0, %1, %3) : $@convention(thin) (Int, @owned String, @thin TestMemberwiseConcrete.Type) -> (@out Int, @out String)
-    // CHECK-NEXT: [[C_REF:%.*]] = struct_element_addr %4 : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.c
-    // CHECK-NEXT: store %2 to [init] [[C_REF]] : $*Array<MyValue>
-    // CHECK-NEXT: [[RESULT:%.*]] = load [take] [[SELF_VALUE]] : $*TestMemberwiseConcrete
-    // CHECK-NEXT: dealloc_stack [[SELF_VALUE]] : $*TestMemberwiseConcrete
-    // CHECK-NEXT: return [[RESULT]] : $TestMemberwiseConcrete
   }
 
   _ = TestMemberwiseConcrete(pair: (0, "a"), c: [])
@@ -433,6 +422,19 @@ func test_local_with_memberwise() {
     // CHECK-NEXT: {{.*}} = apply [[INIT_ACCESSOR_REF]]<T, C>([[B_REF]], [[C_REF]], [[B_VALUE]], [[C_VALUE]], [[A_REF]], [[METATYPE]]) : $@convention(thin) <τ_0_0, τ_0_1 where τ_0_0 == τ_0_1.Element, τ_0_1 : RangeReplaceableCollection> (@owned String, @in τ_0_1, @inout τ_0_0, @thin TestMemberwiseGeneric<τ_0_0, τ_0_1>.Type) -> (@out String, @out τ_0_1)
     // CHECK-NEXT: [[VOID:%.*]] = tuple ()
     // CHECK-NEXT: return [[VOID]] : $()
+
+
+    // CHECK-LABEL: sil private [ossa] @$s14init_accessors26test_local_with_memberwiseyyF22TestMemberwiseConcreteL_V4pair1cADSi_SSt_SayAaByyF7MyValueL_CGtcfC : $@convention(method) (Int, @owned String, @owned Array<MyValue>, @thin TestMemberwiseConcrete.Type) -> @owned TestMemberwiseConcrete
+    // CHECK:  [[SELF_VALUE:%.*]] = alloc_stack $TestMemberwiseConcrete
+    // CHECK-NEXT: [[A_REF:%.*]] = struct_element_addr [[SELF_VALUE]] : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.a
+    // CHECK-NEXT: [[B_REF:%.*]] = struct_element_addr [[SELF_VALUE]] : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.b
+    // CHECK:  [[INIT_ACCESSOR_REF:%.*]] = function_ref @$s14init_accessors26test_local_with_memberwiseyyF22TestMemberwiseConcreteL_V4pairSi_SStvi : $@convention(thin) (Int, @owned String, @thin TestMemberwiseConcrete.Type) -> (@out Int, @out String)
+    // CHECK-NEXT: {{.*}} = apply [[INIT_ACCESSOR_REF]]([[A_REF]], [[B_REF]], %0, %1, %3) : $@convention(thin) (Int, @owned String, @thin TestMemberwiseConcrete.Type) -> (@out Int, @out String)
+    // CHECK-NEXT: [[C_REF:%.*]] = struct_element_addr %4 : $*TestMemberwiseConcrete, #<abstract function>TestMemberwiseConcrete.c
+    // CHECK-NEXT: store %2 to [init] [[C_REF]] : $*Array<MyValue>
+    // CHECK-NEXT: [[RESULT:%.*]] = load [take] [[SELF_VALUE]] : $*TestMemberwiseConcrete
+    // CHECK-NEXT: dealloc_stack [[SELF_VALUE]] : $*TestMemberwiseConcrete
+    // CHECK-NEXT: return [[RESULT]] : $TestMemberwiseConcrete
   }
 
   _ = TestMemberwiseGeneric(a: 1, pair: ("a", [0]))

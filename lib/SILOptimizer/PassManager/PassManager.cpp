@@ -614,14 +614,6 @@ static bool isDisabled(SILTransform *T, SILFunction *F = nullptr) {
   return false;
 }
 
-bool SILPassManager::isPassDisabled(StringRef passName) {
-  for (const std::string &namePattern : SILDisablePass) {
-    if (passName.contains(namePattern))
-      return true;
-  }
-  return false;
-}
-
 bool SILPassManager::isInstructionPassDisabled(StringRef instName) {
   StringRef prefix("simplify-");
   for (const std::string &namePattern : SILDisablePass) {
@@ -1775,6 +1767,10 @@ bool BridgedPassManager::shouldPrintBefore(BridgedStringRef passName) const {
 bool BridgedPassManager::shouldPrintAfter(BridgedStringRef passName) const {
   StringRef name = passName.unbridged();
   return isContainedIn(name, SILPrintAfter) || isContainedIn(name, SILPrintAround);
+}
+
+bool SILPassManager::isPassDisabled(StringRef passName) {
+  return isContainedIn(passName, SILDisablePass);
 }
 
 bool BridgedPassManager::shouldPrintAnyFunction() const {
