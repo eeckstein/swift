@@ -514,6 +514,10 @@ bool BridgedPassContext::enablePackMetadataStackPromotion() const {
   return getOptions().EnablePackMetadataStackPromotion;
 }
 
+bool BridgedPassContext::stopOptimizationAfterSerialization() const {
+  return getOptions().StopOptimizationAfterSerialization;
+}
+
 bool BridgedPassContext::enableOSSAModules() const {
   return getOptions().EnableOSSAModules;
 }

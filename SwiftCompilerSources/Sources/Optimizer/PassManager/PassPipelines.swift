@@ -277,6 +277,10 @@ func getPerformancePassPipeline(options: Options) -> [ModulePass] {
     // importing this module.
     BridgedModulePass.SerializeSILPass
 
+    if options.stopOptimizationAfterSerialization {
+      .abortPipeline
+    }
+
     functionPasses {
       BridgedPass.OwnershipModelEliminator
     }

@@ -86,6 +86,10 @@ struct Options {
     _bridged.hasFeature(.Embedded)
   }
 
+  var stopOptimizationAfterSerialization: Bool {
+    _bridged.stopOptimizationAfterSerialization()
+  }
+
   var shouldOptimize: Bool {
     _bridged.shouldOptimize()
   }

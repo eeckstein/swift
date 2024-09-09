@@ -40,6 +40,7 @@ final class PassManager {
   private var currentPassMadeChanges = false
   private var currentPassDepdendsOnOtherFunction = false
   private var restartPipeline = false
+  private var abortPipeline = false
 
   private let maxNumPassesToRun: Int
   private let maxNumSubpassesToRun: Int
@@ -120,6 +121,7 @@ final class PassManager {
 
   func runPipeline(_ modulePasses: [ModulePass]) {
     let context = createModulePassContext()
+    abortPipeline = false
 
     for (passIdx, pass) in modulePasses.enumerated() {
       if !shouldContinueTransforming {
@@ -292,7 +294,7 @@ final class PassManager {
     if isMandatory {
       return true
     }
-    return currentPassIndex < maxNumPassesToRun
+    return currentPassIndex < maxNumPassesToRun && !abortPipeline
   }
 
   private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function? = nil) {
@@ -339,6 +341,10 @@ final class PassManager {
 
   func notifyRestartPipeline() {
     restartPipeline = true
+  }
+
+  func notifyAbortPipeline() {
+    abortPipeline = true
   }
 
   func continueWithNextSubpassRun(on function: Function, for inst: Instruction? = nil) -> Bool {
