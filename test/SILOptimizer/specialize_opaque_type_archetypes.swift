@@ -101,9 +101,10 @@ public func returnC() -> some CP {
 }
 
 // CHECK-LABEL: sil @$s1A4useCyyF
-// CHECK: [[FUN:%.*]] = function_ref @$s1A4usePyyxAA1PRzlFs5Int64V_Tg5
-// CHECK: [[INT:%.*]] = struct $Int64 (
-// CHECK:  = apply [[FUN]]([[INT]])
+// CHECK-DAG:    [[FUN:%.*]] = function_ref @$s1A4usePyyxAA1PRzlFs5Int64V_Tg5
+// CHECK-DAG:    [[INT:%.*]] = struct $Int64 (
+// CHECK:        = apply [[FUN]]([[INT]])
+// CHECK:      } // end sil function '$s1A4useCyyF'
 public func useC() {
    let c = returnC()
    useP(c.myValue())
@@ -229,14 +230,15 @@ func nonResilient() -> some ExternalP2 {
 }
 
 // CHECK-LABEL: sil @$s1A019usePairResilientNonC0yyF : $@convention(thin) () -> ()
-// CHECK: alloc_stack [var_decl] $Pair<MyInt64, @_opaqueReturnTypeOf("$s9External217externalResilientQryF", 0)
-// CHECK: [[USEP:%.*]] = function_ref @$s1A4usePyyxAA1PRzlFs5Int64V_Tg5
-// CHECK: [[FIRST_MYVALUE3:%.*]] = struct $Int64
-// CHECK: apply [[USEP]]([[FIRST_MYVALUE3]])
-// CHECK:  [[MYVALUE_WITNESS:%.*]] = witness_method $@_opaqueReturnTypeOf("$s9External217externalResilientQryF"
-// CHECK:  [[SECOND_MYVALUE3:%.*]] = apply [[MYVALUE_WITNESS]]
-// CHECK:  apply [[USEP]]([[SECOND_MYVALUE3]])
-// CHECK: return
+// CHECK:         alloc_stack [var_decl] $Pair<MyInt64, @_opaqueReturnTypeOf("$s9External217externalResilientQryF", 0)
+// CHECK:         store
+// CHECK-DAG:     [[USEP:%.*]] = function_ref @$s1A4usePyyxAA1PRzlFs5Int64V_Tg5
+// CHECK-DAG:     [[FIRST_MYVALUE3:%.*]] = struct $Int64
+// CHECK:         apply [[USEP]]([[FIRST_MYVALUE3]])
+// CHECK:         [[MYVALUE_WITNESS:%.*]] = witness_method $@_opaqueReturnTypeOf("$s9External217externalResilientQryF"
+// CHECK:         [[SECOND_MYVALUE3:%.*]] = apply [[MYVALUE_WITNESS]]
+// CHECK:         apply [[USEP]]([[SECOND_MYVALUE3]])
+// CHECK:       } // end sil function '$s1A019usePairResilientNonC0yyF'
 
 public func usePairResilientNonResilient() {
   var x = Pair(first: nonResilient(), second: externalResilient())

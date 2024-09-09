@@ -16,25 +16,37 @@
 // CHECK-NEXT:    %initval = thin_to_thick_function %0
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of arrayLookup(_:)
-// CHECK-NEXT:  sil_global private @{{.*}}arrayLookup{{.*}} = {
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 10
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 11
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 12
-// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}}, {{[^,]*}})
+// CHECK-LABEL: outlined variable #0 of returnStringDictionary()
+// CHECK-NEXT:  sil_global private @{{.*}}returnStringDictionary{{.*}} = {
+// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of returnArray()
-// CHECK-NEXT:  sil_global private @{{.*}}returnArray{{.*}} = {
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 20
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 21
-// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}})
+// CHECK-LABEL: outlined variable #0 of returnDictionary()
+// CHECK-NEXT:  sil_global private @{{.*}}returnDictionary{{.*}} = {
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 5
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 4
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 2
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 1
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 6
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 3
+// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of returnStaticStringArray()
-// CHECK-NEXT:  sil_global private @{{.*}}returnStaticStringArray{{.*}} = {
-// CHECK-DAG:     string_literal utf8 "a"
-// CHECK-DAG:     string_literal utf8 "b"
+// CHECK-LABEL: outlined variable #0 of functionArray()
+// CHECK-NEXT:  sil_global private @{{.*functionArray.*}} = {
+// CHECK:         function_ref
+// CHECK:         thin_to_thick_function
+// CHECK:         convert_function
+// CHECK:         function_ref
+// CHECK:         thin_to_thick_function
+// CHECK:         convert_function
+// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
+// CHECK-NEXT:  }
+
+// CHECK-LABEL: outlined variable #0 of storeArray()
+// CHECK-NEXT:  sil_global private @{{.*}}storeArray{{.*}} = {
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 227
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 228
 // CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}})
 // CHECK-NEXT:  }
 
@@ -51,38 +63,26 @@
 // CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}})
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of storeArray()
-// CHECK-NEXT:  sil_global private @{{.*}}storeArray{{.*}} = {
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 227
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 228
+// CHECK-LABEL: outlined variable #0 of returnStaticStringArray()
+// CHECK-NEXT:  sil_global private @{{.*}}returnStaticStringArray{{.*}} = {
+// CHECK-DAG:     string_literal utf8 "a"
+// CHECK-DAG:     string_literal utf8 "b"
 // CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}})
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of functionArray()
-// CHECK-NEXT:  sil_global private @{{.*functionArray.*}} = {
-// CHECK:         function_ref
-// CHECK:         thin_to_thick_function
-// CHECK:         convert_function
-// CHECK:         function_ref
-// CHECK:         thin_to_thick_function
-// CHECK:         convert_function
-// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
+// CHECK-LABEL: outlined variable #0 of returnArray()
+// CHECK-NEXT:  sil_global private @{{.*}}returnArray{{.*}} = {
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 20
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 21
+// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}})
 // CHECK-NEXT:  }
 
-// CHECK-LABEL: outlined variable #0 of returnDictionary()
-// CHECK-NEXT:  sil_global private @{{.*}}returnDictionary{{.*}} = {
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 5
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 4
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 2
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 1
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 6
-// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 3
-// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
-// CHECK-NEXT:  }
-
-// CHECK-LABEL: outlined variable #0 of returnStringDictionary()
-// CHECK-NEXT:  sil_global private @{{.*}}returnStringDictionary{{.*}} = {
-// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems]
+// CHECK-LABEL: outlined variable #0 of arrayLookup(_:)
+// CHECK-NEXT:  sil_global private @{{.*}}arrayLookup{{.*}} = {
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 10
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 11
+// CHECK-DAG:     integer_literal $Builtin.Int{{[0-9]+}}, 12
+// CHECK:         object {{.*}} ({{[^,]*}}, [tail_elems] {{[^,]*}}, {{[^,]*}}, {{[^,]*}})
 // CHECK-NEXT:  }
 
 // CHECK-LABEL: sil_global private @{{.*}}main{{.*}} = {

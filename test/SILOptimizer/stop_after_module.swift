@@ -1,6 +1,6 @@
-// RUN: %target-swift-frontend -c -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
-// RUN: %target-swift-frontend -emit-sil -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix NOTSKIPPING
-// RUN: %target-swift-frontend -emit-module -o /dev/null -O -Xllvm -sil-print-after=inline %s 2>&1 | %FileCheck %s --check-prefix SKIPPING
+// RUN: %target-swift-frontend -c -o /dev/null -O -Xllvm -sil-print-after=inline %s | %FileCheck %s --check-prefix NOTSKIPPING
+// RUN: %target-swift-frontend -emit-sil -o /dev/null -O -Xllvm -sil-print-after=inline %s | %FileCheck %s --check-prefix NOTSKIPPING
+// RUN: %target-swift-frontend -emit-module -o /dev/null -O -Xllvm -sil-print-after=inline %s | %FileCheck %s --check-prefix SKIPPING
 
 // This test ensures that we don't run the Perf Inliner after serializing a
 // module, if we're stopping optimizations after serializing. We want to also
@@ -19,5 +19,5 @@ public func caller() {
   _blackHole(inlinableFunction(20))
 }
 
-// NOTSKIPPING: *** SIL function after {{.*}}, stage MidLevel,Function, pass {{.*}}: PerfInliner (inline)
-// SKIPPING-NOT: *** SIL function after {{.*}}, stage MidLevel,Function, pass {{.*}}: PerfInliner (inline)
+// NOTSKIPPING: *** function after {{.*}}, stage Mid-level optimizations, pass {{.*}}: inline
+// SKIPPING-NOT: *** function after {{.*}}, stage Mid-level optimizations, pass {{.*}}: inline

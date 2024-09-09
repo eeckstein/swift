@@ -1,4 +1,4 @@
-// RUN: %target-sil-opt -enable-sil-verify-all %s -sil-opt-pass-count=1.1 -simplification -simplify-instruction=br | %FileCheck %s
+// RUN: %target-sil-opt -enable-sil-verify-all %s -sil-opt-pass-count=2.1 -simplification -simplify-instruction=br | %FileCheck %s
 
 // REQUIRES: swift_in_compiler
 

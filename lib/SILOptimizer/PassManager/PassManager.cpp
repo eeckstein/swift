@@ -1033,10 +1033,10 @@ void SILPassManager::preFunctionPassRun(SILFunction *function, StringRef passNam
 }
 
 void SILPassManager::postFunctionPassRun() {
-  Mod->flushDeletedInsts();
   swiftPassInvocation.finishedFunctionPassRun();
   functionPassStackTracer.reset();
   debugPrintEnabler.reset();
+  Mod->flushDeletedInsts();
 }
 
 void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
@@ -1048,10 +1048,10 @@ void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
 }
 
 void SILPassManager::postModulePassRun() {
-  Mod->flushDeletedInsts();
   swiftPassInvocation.finishedModulePassRun();
   modulePassStackTracer.reset();
   debugPrintEnabler.reset();
+  Mod->flushDeletedInsts();
 }
 
 void SILPassManager::execute() {

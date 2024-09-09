@@ -233,6 +233,11 @@ final class PassManager {
   }
 
   private func runFunctionPass(on function: Function, passIndex: Int, _ context: ModulePassContext) {
+    currentSubPassIndex = 0
+    currentPassMadeChanges = false
+    currentPassDepdendsOnOtherFunction = false
+    restartPipeline = false
+
     let (pass, uniqueID) = scheduledFunctionPasses[passIndex]
     if !completedPasses.needToRunPass(passID: uniqueID, on: function) {
       if shouldPrintPassNames {
@@ -249,11 +254,6 @@ final class PassManager {
     if shouldPrintPassNames {
       printPassInfo("Run", pass.name, passIndex, function)
     }
-    currentSubPassIndex = 0
-    currentPassMadeChanges = false
-    currentPassDepdendsOnOtherFunction = false
-    restartPipeline = false
-
     if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
       printPassInfo("*** function before", pass.name, passIndex, function)
       print(function)
@@ -264,6 +264,8 @@ final class PassManager {
     }
 
     let functionPassContext = FunctionPassContext(_bridged: context._bridged)
+
+    // TODO: rename runFunction -> run
     pass.runFunction(function, functionPassContext)
 
     if currentPassMadeChanges && shouldVerifyAfterAllChanges {
