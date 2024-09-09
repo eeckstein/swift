@@ -23,6 +23,7 @@ add_swift_compiler_module(SIL
     Linkage.swift
     Location.swift
     Operand.swift
+    OptimizationMode.swift
     Registration.swift
     SILStage.swift
     SubstitutionMap.swift

@@ -38,6 +38,18 @@ final public class Function : CustomStringConvertible, HasShortDescription, Hash
     hasher.combine(ObjectIdentifier(self))
   }
 
+  public var effectiveOptimizationMode: OptimizationMode {
+    switch bridged.getEffectiveOptimizationMode() {
+      case .NotSet:         return .notSet
+      case .NoOptimization: return .noOptimization
+      case .ForSpeed:       return .forSpeed
+      case .ForSize:        return .forSize
+      default: fatalError("unknown optimization mode")
+    }
+  }
+
+  public var shouldOptimize: Bool { effectiveOptimizationMode != .noOptimization }
+
   public var isTrapNoReturn: Bool { bridged.isTrapNoReturn() }
 
   public var isAutodiffVJP: Bool { bridged.isAutodiffVJP() }

@@ -633,6 +633,13 @@ struct BridgedFunction {
     IsSerializedForPackage
   };
 
+  enum class OptimizationMode {
+    NotSet,
+    NoOptimization,
+    ForSpeed,
+    ForSize
+  };
+
   SWIFT_NAME("init(obj:)")
   SWIFT_IMPORT_UNSAFE BridgedFunction(SwiftObject obj) : obj(obj) {}
   SWIFT_IMPORT_UNSAFE BridgedFunction() {}
@@ -641,6 +648,7 @@ struct BridgedFunction {
   BRIDGED_INLINE SwiftInt getIndex() const;
   SWIFT_IMPORT_UNSAFE BridgedOwnedString getDebugDescription() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedLocation getLocation() const;
+  BRIDGED_INLINE OptimizationMode getEffectiveOptimizationMode() const;
   BRIDGED_INLINE bool hasOwnership() const;
   BRIDGED_INLINE bool hasLoweredAddresses() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedASTType getLoweredFunctionTypeInContext() const;

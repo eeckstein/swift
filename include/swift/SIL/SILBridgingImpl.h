@@ -649,6 +649,10 @@ BridgedLocation BridgedFunction::getLocation() const {
   return {swift::SILDebugLocation(getFunction()->getLocation(), getFunction()->getDebugScope())}; 
 }
 
+BridgedFunction::OptimizationMode BridgedFunction::getEffectiveOptimizationMode() const {
+  return (OptimizationMode)getFunction()->getEffectiveOptimizationMode();
+}
+
 bool BridgedFunction::hasOwnership() const { return getFunction()->hasOwnership(); }
 
 bool BridgedFunction::hasLoweredAddresses() const { return getFunction()->getModule().useLoweredAddresses(); }

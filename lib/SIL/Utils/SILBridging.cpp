@@ -202,6 +202,11 @@ static_assert((int)BridgedFunction::ThunkKind::IsThunk == (int)swift::IsThunk);
 static_assert((int)BridgedFunction::ThunkKind::IsReabstractionThunk == (int)swift::IsReabstractionThunk);
 static_assert((int)BridgedFunction::ThunkKind::IsSignatureOptimizedThunk == (int)swift::IsSignatureOptimizedThunk);
 
+static_assert((int)BridgedFunction::OptimizationMode::NotSet == (int)swift::OptimizationMode::NotSet);
+static_assert((int)BridgedFunction::OptimizationMode::NoOptimization == (int)swift::OptimizationMode::NoOptimization);
+static_assert((int)BridgedFunction::OptimizationMode::ForSpeed == (int)swift::OptimizationMode::ForSpeed);
+static_assert((int)BridgedFunction::OptimizationMode::ForSize == (int)swift::OptimizationMode::ForSize);
+
 BridgedOwnedString BridgedFunction::getDebugDescription() const {
   std::string str;
   llvm::raw_string_ostream os(str);
