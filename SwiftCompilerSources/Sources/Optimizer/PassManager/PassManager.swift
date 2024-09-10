@@ -48,6 +48,7 @@ final class PassManager {
   private var isMandatory = false
 
   private var shouldPrintPassNames: Bool
+  private var shouldPrintPassTimes: Bool
   private var anyPassOptionSet: Bool
   private var shouldVerifyAfterAllChanges: Bool
 
@@ -60,7 +61,8 @@ final class PassManager {
     self.completedPasses = CompletedPasses(numPasses: numRegisteredPasses)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
     self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
-    self.shouldPrintPassNames =  _bridged.shouldPrintPassNames()
+    self.shouldPrintPassNames = _bridged.shouldPrintPassNames()
+    self.shouldPrintPassTimes = _bridged.shouldPrintPassTimes()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
     self.shouldVerifyAfterAllChanges = _bridged.shouldVerifyAfterAllChanges()
     bridged.setSwiftPassManager(SwiftObject(self))
@@ -148,20 +150,23 @@ final class PassManager {
         print(context)
       }
 
-      pass.name._withBridgedStringRef() {
-        _bridged.preModulePassRun($0, currentPassIndex)
-      }
+      pass.name._withBridgedStringRef() { bridgedPassName in
+        _bridged.preModulePassRun(bridgedPassName, currentPassIndex)
 
-      pass.runFunction(context)
+        pass.runFunction(context)
 
-      if currentPassMadeChanges {
-        completedPasses.notifyAllFunctionsModified()
-        if shouldVerifyAfterAllChanges {
-          context.verifyModule()
+        if currentPassMadeChanges {
+          completedPasses.notifyAllFunctionsModified()
+          if shouldVerifyAfterAllChanges {
+            context.verifyModule()
+          }
+        }
+
+        let milliSecs = _bridged.postModulePassRun(bridgedPassName, currentPassIndex)
+        if shouldPrintPassTimes {
+          printPassInfo("\(formatTime(milliSeconds: milliSecs))s: ", pass.name, passIdx)
         }
       }
-
-      _bridged.postModulePassRun()
 
       if shouldPrintAfter(pass: pass) {
         printPassInfo("*** module after", pass.name, passIdx)
@@ -261,20 +266,23 @@ final class PassManager {
       print(function)
     }
 
-    pass.name._withBridgedStringRef() {
-      _bridged.preFunctionPassRun(function.bridged, $0, currentPassIndex)
-    }
-
     let functionPassContext = FunctionPassContext(_bridged: context._bridged)
 
-    // TODO: rename runFunction -> run
-    pass.runFunction(function, functionPassContext)
+    pass.name._withBridgedStringRef() { bridgedPassName in
+      _bridged.preFunctionPassRun(function.bridged, bridgedPassName, currentPassIndex)
 
-    if currentPassMadeChanges && shouldVerifyAfterAllChanges {
-      verify(function: function, functionPassContext)
+      // TODO: rename runFunction -> run
+      pass.runFunction(function, functionPassContext)
+
+      if currentPassMadeChanges && shouldVerifyAfterAllChanges {
+        verify(function: function, functionPassContext)
+      }
+
+      let milliSecs = _bridged.postFunctionPassRun(bridgedPassName, currentPassIndex)
+      if shouldPrintPassTimes {
+        printPassInfo("\(formatTime(milliSeconds: milliSecs))s: ", pass.name, passIndex, function)
+      }
     }
-
-    _bridged.postFunctionPassRun()
 
     if shouldPrintAfter(pass: pass) ||
        isLastPass(passIndex) ||
@@ -460,7 +468,7 @@ final class PassManager {
         assert(bridgedPM.getSwiftPassManager() == nil)
       },
       // executePassesFromNameFn
-      { (bridgedPM: BridgedPassManager, bridgedPassNames: BridgedArrayRef) in
+      { (bridgedPM: BridgedPassManager, bridgedPassNames: BridgedArrayRef, isMandatory) in
         let passNames: [String] = bridgedPassNames.withElements(ofType: BridgedStringRef.self) {
             (buffer: UnsafeBufferPointer<BridgedStringRef>) -> [String] in
           buffer.map { String($0) }
@@ -468,6 +476,9 @@ final class PassManager {
         let pipeline = PassManager.buildPassPipeline(fromPassNames: passNames)
         do {
           let pm = PassManager(bridged: bridgedPM)
+          if isMandatory {
+            pm.setMandatory()
+          }
           pm.runPipeline(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
@@ -742,6 +753,14 @@ private struct CompletedPasses {
   private func bitMask(for passIndex: Int) -> UInt64 {
     UInt64(1) << (passIndex % 64)
   }
+}
+
+private func formatTime(milliSeconds: Int64) -> String {
+  let secs = String(describing: milliSeconds / 1000)
+  let millis = String(describing: milliSeconds % 1000)
+  let first = String(repeating: " ", count: max(0, 3 - secs.count)) + secs
+  let second = String(repeating: "0", count: 3 - millis.count) + millis
+  return "\(first).\(second)"
 }
 
 extension BridgedPassManager {

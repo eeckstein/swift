@@ -573,16 +573,16 @@ void BridgedPassManager::preFunctionPassRun(BridgedFunction function, BridgedStr
   pm->preFunctionPassRun(function.getFunction(), passName.unbridged(), (unsigned)passIdx);
 }
 
-void BridgedPassManager::postFunctionPassRun() const {
-  pm->postFunctionPassRun();
+int64_t BridgedPassManager::postFunctionPassRun(BridgedStringRef passName, SwiftInt passIdx) const {
+  return pm->postFunctionPassRun(passName.unbridged(), (unsigned)passIdx);
 }
 
 void BridgedPassManager::preModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const {
   pm->preModulePassRun(passName.unbridged(), (unsigned)passIdx);
 }
 
-void BridgedPassManager::postModulePassRun() const {
-  pm->postModulePassRun();
+int64_t BridgedPassManager::postModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const {
+  return pm->postModulePassRun(passName.unbridged(), (unsigned)passIdx);
 }
 
 

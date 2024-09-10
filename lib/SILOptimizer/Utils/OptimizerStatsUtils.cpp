@@ -441,7 +441,7 @@ class TransformationContext {
   /// The pass manager being used.
   SILPassManager &PM;
   /// The transformation that was/will be performed.
-  SILTransform *Transform;
+  StringRef passName;
   /// The time it took to perform the transformation.
   int Duration;
   /// The pass number in the optimizer pipeline.
@@ -449,8 +449,8 @@ class TransformationContext {
 
 public:
   TransformationContext(SILModule &M, SILPassManager &PM,
-                        SILTransform *Transform, int PassNumber, int Duration)
-      : M(M), PM(PM), Transform(Transform), Duration(Duration),
+                        StringRef passName, int PassNumber, int Duration)
+      : M(M), PM(PM), passName(passName), Duration(Duration),
         PassNumber(PassNumber) {}
 
   int getPassNumber() const {
@@ -461,12 +461,8 @@ public:
     return Duration;
   }
 
-  StringRef getTransformId() const {
-    return Transform->getID();
-  }
-
-  StringRef getStageName() const {
-    return PM.getStageName();
+  StringRef getPassName() const {
+    return passName;
   }
 
   SILModule &getModule() {
@@ -628,10 +624,7 @@ void printCounterValue(StringRef Kind, StringRef CounterName, int CounterValue,
   stats_os() << CounterName;
   stats_os() << ", ";
 
-  stats_os() << Ctx.getStageName();
-  stats_os() << ", ";
-
-  stats_os() << Ctx.getTransformId();
+  stats_os() << Ctx.getPassName();
   stats_os() << ", ";
 
   stats_os() << Ctx.getPassNumber();
@@ -657,10 +650,7 @@ void printCounterChange(StringRef Kind, StringRef CounterName, double Delta,
   stats_os() << CounterName;
   stats_os() << ", ";
 
-  stats_os() << Ctx.getStageName();
-  stats_os() << ", ";
-
-  stats_os() << Ctx.getTransformId();
+  stats_os() << Ctx.getPassName();
   stats_os() << ", ";
 
   stats_os() << Ctx.getPassNumber();
@@ -1019,26 +1009,15 @@ FunctionStat::FunctionStat(SILFunction *F) {
 /// \param Transform the SIL transformation that was just executed
 /// \param PM the PassManager being used
 void swift::updateSILModuleStatsAfterTransform(SILModule &M,
-                                               SILTransform *Transform,
+                                               StringRef passName,
                                                SILPassManager &PM,
                                                int PassNumber, int Duration) {
   if (!SILStatsModules && !SILStatsFunctions && !SILStatsLostVariables
       && !SILStatsDumpAll)
     return;
-  TransformationContext Ctx(M, PM, Transform, PassNumber, Duration);
+  TransformationContext Ctx(M, PM, passName, PassNumber, Duration);
   OptimizerStatsAnalysis *Stats = PM.getAnalysis<OptimizerStatsAnalysis>();
   Stats->updateModuleStats(Ctx);
-}
-
-// This is just a hook for possible extensions in the future.
-// It could be used e.g. to detect sequences of consecutive executions
-// of the same transform.
-void swift::updateSILModuleStatsBeforeTransform(SILModule &M,
-                                                SILTransform *Transform,
-                                                SILPassManager &PM,
-                                                int PassNumber) {
-  if (!SILStatsModules && !SILStatsFunctions)
-    return;
 }
 
 SILAnalysis *swift::createOptimizerStatsAnalysis(SILModule *M) {

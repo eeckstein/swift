@@ -421,7 +421,7 @@ void swift::executePasses(ArrayRef<PassKind> passKinds,
                           SILModule *mod, irgen::IRGenModule *IRMod,
                           bool isMandatory) {
   SILPassManager pm(mod, isMandatory, IRMod);
-  pm.executeCustomPassPipeline(passKinds);
+  pm.executeCustomPassPipeline(passKinds, isMandatory);
 }
 
 void swift::executePassPipelinePlan(SILModule *SM,
@@ -667,8 +667,6 @@ void SILPassManager::runPassOnFunction(SILFunctionTransform *SFT, unsigned Trans
     return;
   }
 
-  updateSILModuleStatsBeforeTransform(F->getModule(), SFT, *this, NumPassesRun);
-
   CurrentPassHasInvalidated = false;
   currentPassDependsOnCalleeBodies = false;
   numSubpassesRun = 0;
@@ -769,7 +767,7 @@ void SILPassManager::runPassOnFunction(SILFunctionTransform *SFT, unsigned Trans
     F->dump(getOptions().EmitVerboseSIL);
   }
 
-  updateSILModuleStatsAfterTransform(F->getModule(), SFT, *this, NumPassesRun,
+  updateSILModuleStatsAfterTransform(F->getModule(), SFT->getTag(), *this, NumPassesRun,
                                      duration.count());
 
   // Remember if this pass didn't change anything.
@@ -874,8 +872,6 @@ void SILPassManager::runModulePass(SILModuleTransform *SMT, unsigned TransIdx) {
   PrettyStackTraceSILModuleTransform X(SMT->getID(), NumPassesRun);
   DebugPrintEnabler DebugPrint(NumPassesRun);
 
-  updateSILModuleStatsBeforeTransform(*Mod, SMT, *this, NumPassesRun);
-
   CurrentPassHasInvalidated = false;
   numSubpassesRun = 0;
 
@@ -927,7 +923,7 @@ void SILPassManager::runModulePass(SILModuleTransform *SMT, unsigned TransIdx) {
     printModule(Mod, Options.EmitVerboseSIL);
   }
 
-  updateSILModuleStatsAfterTransform(*Mod, SMT, *this, NumPassesRun, duration.count());
+  updateSILModuleStatsAfterTransform(*Mod, SMT->getTag(), *this, NumPassesRun, duration.count());
 
   if (Options.VerifyAll &&
       (CurrentPassHasInvalidated || !SILVerifyWithoutInvalidation)) {
@@ -975,13 +971,13 @@ void SILPassManager::executePassPipelinePlan(PassPipelineKind kind) {
   }
 }
 
-void SILPassManager::executeCustomPassPipeline(ArrayRef<PassKind> passKinds) {
+void SILPassManager::executeCustomPassPipeline(ArrayRef<PassKind> passKinds, bool isMandatory) {
   llvm::SmallVector<BridgedStringRef, 8> passNames;
   for (PassKind kind : passKinds) {
     passNames.push_back(PassKindTag(kind));
   }
   ASSERT(executePassesFromNameFunction != nullptr && "executing custom passes requires SwiftCompilerSources");
-  executePassesFromNameFunction({this}, BridgedArrayRef(ArrayRef(passNames)));
+  executePassesFromNameFunction({this}, BridgedArrayRef(ArrayRef(passNames)), isMandatory);
 }
 
 void SILPassManager::executePassPipelinePlan(const SILPassPipelinePlan &Plan) {
@@ -1030,13 +1026,17 @@ void SILPassManager::preFunctionPassRun(SILFunction *function, StringRef passNam
   functionPassStackTracer.emplace(function, passName, passIdx);
   debugPrintEnabler.emplace(passIdx);
   swiftPassInvocation.startFunctionPassRun(function);
+  startTime = std::chrono::system_clock::now();
 }
 
-void SILPassManager::postFunctionPassRun() {
+int64_t SILPassManager::postFunctionPassRun(StringRef passName, unsigned passIdx) {
   swiftPassInvocation.finishedFunctionPassRun();
   functionPassStackTracer.reset();
   debugPrintEnabler.reset();
   Mod->flushDeletedInsts();
+  std::chrono::nanoseconds duration = std::chrono::system_clock::now() - startTime;
+  updateSILModuleStatsAfterTransform(*Mod, passName, *this, passIdx, duration.count());
+  return (int64_t)duration.count() / 1000000;
 }
 
 void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
@@ -1045,13 +1045,17 @@ void SILPassManager::preModulePassRun(StringRef passName, unsigned passIdx) {
   modulePassStackTracer.emplace(passName, passIdx);
   debugPrintEnabler.emplace(passIdx);
   swiftPassInvocation.startModulePassRun();
+  startTime = std::chrono::system_clock::now();
 }
 
-void SILPassManager::postModulePassRun() {
+int64_t SILPassManager::postModulePassRun(StringRef passName, unsigned passIdx) {
   swiftPassInvocation.finishedModulePassRun();
   modulePassStackTracer.reset();
   debugPrintEnabler.reset();
   Mod->flushDeletedInsts();
+  std::chrono::nanoseconds duration = std::chrono::system_clock::now() - startTime;
+  updateSILModuleStatsAfterTransform(*Mod, passName, *this, passIdx, duration.count());
+  return (int64_t)duration.count() / 1000000;
 }
 
 void SILPassManager::execute() {
@@ -1717,6 +1721,10 @@ void BridgedPassManager::runBridgedModulePass(BridgedModulePass passKind) const 
 
 bool BridgedPassManager::shouldPrintPassNames() const {
   return SILPrintPassName;
+}
+
+bool BridgedPassManager::shouldPrintPassTimes() const {
+  return SILPrintPassTime;
 }
 
 bool BridgedPassManager::anyPassOptionSet() const {

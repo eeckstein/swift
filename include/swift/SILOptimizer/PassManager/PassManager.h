@@ -264,6 +264,7 @@ class SILPassManager {
   std::optional<PrettyStackTraceSILModuleTransform> modulePassStackTracer;
   std::optional<PrettyStackTraceSILFunctionTransform> functionPassStackTracer;
   std::optional<DebugPrintEnabler> debugPrintEnabler;
+  llvm::sys::TimePoint<> startTime;
 
   /// A mask which has one bit for each pass. A one for a pass-bit means that
   /// the pass doesn't need to run, because nothing has changed since the
@@ -468,7 +469,7 @@ public:
   void verifyAnalyses(SILFunction *F) const;
 
   void executePassPipelinePlan(PassPipelineKind kind);
-  void executeCustomPassPipeline(ArrayRef<PassKind> passKinds);
+  void executeCustomPassPipeline(ArrayRef<PassKind> passKinds, bool isMandatory);
 
   void executePassPipelinePlan(const SILPassPipelinePlan &Plan);
 
@@ -476,9 +477,9 @@ public:
   void runBridgedFunctionPass(PassKind passKind, SILFunction *f);
   void runBridgedModulePass(PassKind passKind);
   void preFunctionPassRun(SILFunction *function, StringRef passName, unsigned passIdx);
-  void postFunctionPassRun();
+  int64_t postFunctionPassRun(StringRef passName, unsigned passIdx);
   void preModulePassRun(StringRef passName, unsigned passIdx);
-  void postModulePassRun();
+  int64_t postModulePassRun(StringRef passName, unsigned passIdx);
 
   bool continueWithNextSubpassRun(SILInstruction *forInst, SILFunction *function,
                                   SILTransform *trans);

@@ -18,21 +18,13 @@ class SILModule;
 class SILTransform;
 class SILPassManager;
 
-/// Updates SILModule stats before executing the transform \p Transform.
-///
-/// \param M SILModule to be processed
-/// \param Transform the SIL transformation that was just executed
-/// \param PM the PassManager being used
-void updateSILModuleStatsBeforeTransform(SILModule &M, SILTransform *Transform,
-                                         SILPassManager &PM, int PassNumber);
-
 /// Updates SILModule stats after finishing executing the
 /// transform \p Transform.
 ///
 /// \param M SILModule to be processed
 /// \param Transform the SIL transformation that was just executed
 /// \param PM the PassManager being used
-void updateSILModuleStatsAfterTransform(SILModule &M, SILTransform *Transform,
+void updateSILModuleStatsAfterTransform(SILModule &M, StringRef passName,
                                         SILPassManager &PM, int PassNumber,
                                         int Duration);
 

@@ -446,14 +446,15 @@ struct BridgedPassManager {
   void runBridgedModulePass(BridgedModulePass passKind) const;
 
   BRIDGED_INLINE void preFunctionPassRun(BridgedFunction function, BridgedStringRef passName, SwiftInt passIdx) const;
-  BRIDGED_INLINE void postFunctionPassRun() const;
+  BRIDGED_INLINE int64_t postFunctionPassRun(BridgedStringRef passName, SwiftInt passIdx) const;
   BRIDGED_INLINE void preModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const;
-  BRIDGED_INLINE void postModulePassRun() const;
+  BRIDGED_INLINE int64_t postModulePassRun(BridgedStringRef passName, SwiftInt passIdx) const;
 
   BRIDGED_INLINE SwiftInt getMaxNumPassesToRun() const;
   BRIDGED_INLINE SwiftInt getMaxNumSubpassesToRun() const;
 
   bool shouldPrintPassNames() const;
+  bool shouldPrintPassTimes() const;
   bool anyPassOptionSet() const;
   bool shouldVerifyAfterAllChanges() const;
   bool isPassDisabled(BridgedStringRef passName) const;
@@ -466,7 +467,8 @@ struct BridgedPassManager {
   SWIFT_IMPORT_UNSAFE static BridgedStringRef getPassName(BridgedModulePass);
 
   typedef void (* _Nonnull ExecutePassesFn)(BridgedPassManager pm, PassPipelineKind pipelineKind);
-  typedef void (* _Nonnull ExecutePassesFromNameFn)(BridgedPassManager pm, BridgedArrayRef passNames);
+  typedef void (* _Nonnull ExecutePassesFromNameFn)(BridgedPassManager pm, BridgedArrayRef passNames,
+                                                    bool isMandatory);
   typedef void (* _Nonnull RegisterBridgedModulePassFn)(BridgedStringRef name, BridgedModulePass kind);
   typedef void (* _Nonnull RegisterBridgedFunctionPassFn)(BridgedStringRef name, BridgedPass kind);
   typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
