@@ -25,7 +25,7 @@ func test_osize(_ a: A) -> Int {
   return donothing(a.foo(27))
 }
 
-// CHECK-LABEL: sil {{.*}} [Onone] @{{.*}}test_onone
+// CHECK-LABEL: sil {{.*}} [Onone] [ossa] @{{.*}}test_onone
 // CHECK: [[M:%[0-9]+]] = class_method
 // CHECK: [[A:%[0-9]+]] = apply [[M]]
 // CHECK: [[A2:%[0-9]+]] = apply

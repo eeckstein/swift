@@ -46,7 +46,7 @@ var unused6 = 0
 // See Baz - line 71
 // CHECK: sil_global [let] {{.*}}darwin{{.*}} : $Baz
 
-// CHECK-LABEL: sil [Onone] @${{.*}}test{{.*}}
+// CHECK-LABEL: sil [Onone] [ossa] @${{.*}}test{{.*}}
 @_optimize(none) public func test(x: Int) -> Int {
   return used1 + used2 + x
 }

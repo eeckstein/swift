@@ -170,15 +170,6 @@ func generic3_throwing<T>(_ t1: T, _ b: Bool) throws -> T {
 	return t1
 }
 
-// CHECK-LABEL: sil shared [transparent] [thunk] @$s4test16generic_get_funcyxxcx_SbtlF0B0L_yxxlFSi_TG5 : $@convention(thin) (@in_guaranteed Int, Bool, @in_guaranteed Int) -> @out Int {
-// CHECK: bb0(%0 : $*Int, %1 : $*Int, %2 : @closureCapture $Bool, %3 : @closureCapture $*Int):
-// CHECK: [[LD1:%[0-9]+]] = load %1 : $*Int
-// CHECK: [[LD2:%[0-9]+]] = load %3 : $*Int
-// CHECK: [[F:%[0-9]+]] = function_ref @$s4test16generic_get_funcyxxcx_SbtlF0B0L_yxxlFSi_Tg5 : $@convention(thin) (Int, Bool, Int) -> Int
-// CHECK: [[RET:%[0-9]+]] = apply [[F]]([[LD1]], %2, [[LD2]])
-// CHECK: store [[RET]] to %0 : $*Int
-// CHECK: return %{{[0-9]*}} : $()
-
 // CHECK-LABEL: sil shared [transparent] [thunk] @$s4test25generic_get_func_throwingyxxKcSblF0B0L_yxxKlFSi_TG5 : $@convention(thin) (@in_guaranteed Int, Bool) -> (@out Int, @error any Error) {
 // CHECK: bb0(%0 : $*Int, %1 : $*Int, %2 : @closureCapture $Bool):
 // CHECK: [[LD:%[0-9]+]] = load %1 : $*Int
@@ -189,6 +180,15 @@ func generic3_throwing<T>(_ t1: T, _ b: Bool) throws -> T {
 // CHECK: return %{{[0-9]*}} : $()
 // CHECK: bb2([[ERROR:%[0-9]+]] : $any Error):
 // CHECK: throw [[ERROR]] : $any Error
+
+// CHECK-LABEL: sil shared [transparent] [thunk] @$s4test16generic_get_funcyxxcx_SbtlF0B0L_yxxlFSi_TG5 : $@convention(thin) (@in_guaranteed Int, Bool, @in_guaranteed Int) -> @out Int {
+// CHECK: bb0(%0 : $*Int, %1 : $*Int, %2 : @closureCapture $Bool, %3 : @closureCapture $*Int):
+// CHECK: [[LD1:%[0-9]+]] = load %1 : $*Int
+// CHECK: [[LD2:%[0-9]+]] = load %3 : $*Int
+// CHECK: [[F:%[0-9]+]] = function_ref @$s4test16generic_get_funcyxxcx_SbtlF0B0L_yxxlFSi_Tg5 : $@convention(thin) (Int, Bool, Int) -> Int
+// CHECK: [[RET:%[0-9]+]] = apply [[F]]([[LD1]], %2, [[LD2]])
+// CHECK: store [[RET]] to %0 : $*Int
+// CHECK: return %{{[0-9]*}} : $()
 
 
 // The main program.
