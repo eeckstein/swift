@@ -189,6 +189,7 @@ public:
   SwiftPassInvocation *initializeNestedSwiftPassInvocation(SILFunction *newFunction) {
     assert(!nestedSwiftPassInvocation && "Nested Swift pass invocation already initialized");
     nestedSwiftPassInvocation = new SwiftPassInvocation(passManager, newFunction);
+    nestedSwiftPassInvocation->isTransformingFunction = true;
     return nestedSwiftPassInvocation;
   }
 
