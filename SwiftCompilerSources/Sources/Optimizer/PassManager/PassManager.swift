@@ -153,7 +153,7 @@ final class PassManager {
       pass.name._withBridgedStringRef() { bridgedPassName in
         _bridged.preModulePassRun(bridgedPassName, currentPassIndex)
 
-        pass.runFunction(context)
+        pass.run(context)
 
         if currentPassMadeChanges {
           completedPasses.notifyAllFunctionsModified()
@@ -271,8 +271,7 @@ final class PassManager {
     pass.name._withBridgedStringRef() { bridgedPassName in
       _bridged.preFunctionPassRun(function.bridged, bridgedPassName, currentPassIndex)
 
-      // TODO: rename runFunction -> run
-      pass.runFunction(function, functionPassContext)
+      pass.run(function, functionPassContext)
 
       if currentPassMadeChanges && shouldVerifyAfterAllChanges {
         verify(function: function, functionPassContext)

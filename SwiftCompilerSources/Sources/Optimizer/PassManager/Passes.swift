@@ -19,23 +19,23 @@ protocol Pass {
 struct FunctionPass: Pass {
 
   let name: String
-  let runFunction: (Function, FunctionPassContext) -> ()
+  let run: (Function, FunctionPassContext) -> ()
 
   public init(name: String,
-              _ runFunction: @escaping (Function, FunctionPassContext) -> ()) {
+              _ run: @escaping (Function, FunctionPassContext) -> ()) {
     self.name = name
-    self.runFunction = runFunction
+    self.run = run
   }
 }
 
 struct ModulePass: Pass {
 
   let name: String
-  let runFunction: (ModulePassContext) -> ()
+  let run: (ModulePassContext) -> ()
 
   public init(name: String,
-              _ runFunction: @escaping (ModulePassContext) -> ()) {
+              _ run: @escaping (ModulePassContext) -> ()) {
     self.name = name
-    self.runFunction = runFunction
+    self.run = run
   }
 }
