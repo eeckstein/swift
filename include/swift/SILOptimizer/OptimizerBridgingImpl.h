@@ -453,13 +453,6 @@ void BridgedPassContext::SSAUpdater_initialize(
                                    BridgedValue::castToOwnership(ownership));
 }
 
-void BridgedPassContext::addFunctionToPassManagerWorklist(
-    BridgedFunction newFunction, BridgedFunction oldFunction) const {
-  swift::SILPassManager *pm = invocation->getPassManager();
-  pm->addFunctionToWorklist(newFunction.getFunction(),
-                            oldFunction.getFunction());
-}
-
 void BridgedPassContext::SSAUpdater_addAvailableValue(BridgedBasicBlock block, BridgedValue value) const {
   invocation->getSSAUpdater()->addAvailableValue(block.unbridged(),
                                                  value.getSILValue());
@@ -558,10 +551,6 @@ static_assert((int)BridgedPassContext::AssertConfiguration::Unchecked == (int)sw
 
 BridgedPassContext BridgedPassManager::getContext() const {
   return {pm->getSwiftPassInvocation()};
-}
-
-void BridgedPassManager::setSwiftPassManager(OptionalSwiftObject passManager) const {
-  pm->setSwiftPassManager(passManager);
 }
 
 OptionalSwiftObject BridgedPassManager::getSwiftPassManager() const {

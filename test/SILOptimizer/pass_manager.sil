@@ -1,0 +1,132 @@
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-pass-name %s | %FileCheck %s --check-prefix=PRINT1 --check-prefix=CHECK
+// RUN: %target-sil-opt -generic-specializer -stack-promotion -sil-print-pass-name %s | %FileCheck %s --check-prefix=SPECIALIZATION --check-prefix=CHECK
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-pass-name -sil-opt-pass-count=4 %s | %FileCheck %s --check-prefix=OPC1 --check-prefix=CHECK
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-pass-name -sil-opt-pass-count=5.1 %s | %FileCheck %s --check-prefix=OPC2 --check-prefix=CHECK
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-last -sil-opt-pass-count=5 %s -o /dev/null | %FileCheck %s --check-prefix=LAST1
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-last -sil-opt-pass-count=5.1 %s -o /dev/null | %FileCheck %s --check-prefix=LAST2
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-last -sil-opt-pass-count=5.2 %s -o /dev/null | %FileCheck %s --check-prefix=LAST3
+// RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -ownership-model-eliminator -sil-print-function=mid %s -o /dev/null | %FileCheck %s --check-prefix=FUNC
+sil_stage canonical
+
+import Builtin
+import Swift
+import SwiftShims
+
+class C {}
+
+// PRINT1-LABEL: Run module pass #0, stage ?, pass 0: function passes
+// PRINT1-NEXT:  Run #1, stage ?, pass 0: stack-promotion, Function: leave
+// PRINT1-NEXT:  Run #2, stage ?, pass 1: redundant-load-elimination, Function: leave
+// PRINT1-NEXT:  (Skipping) #3, stage ?, pass 2: stack-promotion, Function: leave
+// PRINT1-NEXT:  Run #4, stage ?, pass 0: stack-promotion, Function: mid
+// PRINT1-NEXT:  Run #5, stage ?, pass 1: redundant-load-elimination, Function: mid
+// PRINT1-NEXT:  Run #6, stage ?, pass 2: stack-promotion, Function: mid
+// PRINT1-NEXT:  Run #7, stage ?, pass 0: stack-promotion, Function: root
+// PRINT1-NEXT:  Run #8, stage ?, pass 1: redundant-load-elimination, Function: root
+// PRINT1-NEXT:  (Skipping) #9, stage ?, pass 2: stack-promotion, Function: root
+// PRINT1-NEXT:  sil_stage canonical
+
+
+// SPECIALIZATION-LABEL:  Run module pass #0, stage ?, pass 0: function passes
+// SPECIALIZATION-NEXT:   Run #1, stage ?, pass 0: generic-specializer, Function: leave
+// SPECIALIZATION-NEXT:   Run #2, stage ?, pass 1: stack-promotion, Function: leave
+// SPECIALIZATION-NEXT:   Run #3, stage ?, pass 0: generic-specializer, Function: mid
+// SPECIALIZATION-NEXT:   Run #4, stage ?, pass 1: stack-promotion, Function: mid
+// SPECIALIZATION-NEXT:   Run #5, stage ?, pass 0: generic-specializer, Function: root
+// SPECIALIZATION-NEXT:   Run #6, stage ?, pass 0: generic-specializer, Function: $s3midSi_Ttg5
+// SPECIALIZATION-NEXT:   Run #7, stage ?, pass 1: stack-promotion, Function: $s3midSi_Ttg5
+// SPECIALIZATION-NEXT:   Run #8, stage ?, pass 1: stack-promotion, Function: root
+// SPECIALIZATION-NEXT:  sil_stage canonical
+
+// OPC1-LABEL: Run module pass #0, stage ?, pass 0: function passes
+// OPC1-NEXT:  Run #1, stage ?, pass 0: stack-promotion, Function: leave
+// OPC1-NEXT:  Run #2, stage ?, pass 1: redundant-load-elimination, Function: leave
+// OPC1-NEXT:  (Skipping) #3, stage ?, pass 2: stack-promotion, Function: leave
+// OPC1-NEXT:  sil_stage canonical
+
+// OPC2-LABEL: Run module pass #0, stage ?, pass 0: function passes
+// OPC2-NEXT:  Run #1, stage ?, pass 0: stack-promotion, Function: leave
+// OPC2-NEXT:  Run #2, stage ?, pass 1: redundant-load-elimination, Function: leave
+// OPC2-NEXT:  (Skipping) #3, stage ?, pass 2: stack-promotion, Function: leave
+// OPC2-NEXT:  Run #4, stage ?, pass 0: stack-promotion, Function: mid
+// OPC2-NEXT:  sil_stage canonical
+
+// LAST1-LABEL: *** function before #4, stage ?, pass 0: stack-promotion, Function: mid
+// LAST1-LABEL: sil [ossa] @mid :
+// LAST1:          %1 = alloc_ref $C
+// LAST1:          %3 = alloc_ref $C
+// LAST1:       } // end sil function 'mid'
+// LAST1-LABEL: *** function after #4, stage ?, pass 0: stack-promotion, Function: mid
+// LAST1-LABEL: sil [ossa] @mid :
+// LAST1:          %1 = alloc_ref [stack] $C
+// LAST1:          %4 = alloc_ref [stack] $C
+// LAST1:       } // end sil function 'mid'
+
+// LAST2-LABEL: *** function before sub-pass 0 for %1 = alloc_ref $C
+// LAST2-LABEL: sil [ossa] @mid :
+// LAST2:          %1 = alloc_ref $C
+// LAST2:          %3 = alloc_ref $C
+// LAST2:       } // end sil function 'mid'
+// LAST2-LABEL: *** function after #4, stage ?, pass 0: stack-promotion, Function: mid
+// LAST2-LABEL: sil [ossa] @mid :
+// LAST2:          %1 = alloc_ref [stack] $C
+// LAST2:          %4 = alloc_ref $C
+// LAST2:       } // end sil function 'mid'
+
+// LAST3-LABEL: *** function before sub-pass 1 for %4 = alloc_ref $C
+// LAST3-LABEL: sil [ossa] @mid :
+// LAST3:          %1 = alloc_ref [stack] $C
+// LAST3:          %4 = alloc_ref $C
+// LAST3:       } // end sil function 'mid'
+// LAST3-LABEL: *** function after #4, stage ?, pass 0: stack-promotion, Function: mid
+// LAST3-LABEL: sil [ossa] @mid :
+// LAST3:          %1 = alloc_ref [stack] $C
+// LAST3:          %4 = alloc_ref [stack] $C
+// LAST3:       } // end sil function 'mid'
+
+// FUNC-LABEL: *** function after #4, stage ?, pass 0: stack-promotion, Function: mid
+// FUNC-LABEL: sil [ossa] @mid :
+// FUNC:          %1 = alloc_ref [stack] $C
+// FUNC:          %4 = alloc_ref [stack] $C
+// FUNC:       } // end sil function 'mid'
+// FUNC-NOT:   ***
+// FUNC-LABEL: *** function after #6, stage ?, pass 2: ownership-model-eliminator, Function: mid
+// FUNC-LABEL: sil @mid : $@convention(thin) <T> (@thick T.Type) -> () {
+// FUNC-NOT:   ***
+
+// CHECK-LABEL: sil [ossa] @mid :
+// PRINT1:        %1 = alloc_ref [stack] $C
+// PRINT1:        %4 = alloc_ref [stack] $C
+// OPC1:          %1 = alloc_ref $C
+// OPC1:          %3 = alloc_ref $C
+// OPC2:          %1 = alloc_ref [stack] $C
+// OPC2:          %4 = alloc_ref $C
+// CHECK:       } // end sil function 'mid'
+sil [ossa] @mid : $@convention(thin) <T> (@thick T.Type) -> () {
+bb0(%0 : $@thick T.Type):
+  %1 = alloc_ref $C
+  destroy_value %1 : $C
+  %3 = alloc_ref $C
+  destroy_value %3 : $C
+  %5 = function_ref @leave : $@convention(thin) () -> () 
+  apply %5() : $@convention(thin) () -> () 
+  %7 = tuple ()
+  return %7 : $()
+}
+
+sil [ossa] @root : $@convention(thin) () -> () {
+bb0:
+  %0 = metatype $@thick Int.Type
+  %1 = function_ref @mid : $@convention(thin) <τ_0_0> (@thick τ_0_0.Type) -> ()
+  %2 = apply %1<Int>(%0) : $@convention(thin) <τ_0_0> (@thick τ_0_0.Type) -> ()
+  %3 = tuple ()
+  return %3 : $()
+}
+
+sil [ossa] @leave : $@convention(thin) () -> () {
+bb0:
+  %2 = tuple ()
+  return %2 : $()
+}
+
+

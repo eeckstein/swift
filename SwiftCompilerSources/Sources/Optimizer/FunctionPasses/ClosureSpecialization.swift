@@ -133,11 +133,9 @@ let autodiffClosureSpecialization = FunctionPass(name: "autodiff-closure-special
 
     if !callSites.isEmpty {
       for callSite in callSites {
-        var (specializedFunction, alreadyExists) = getOrCreateSpecializedFunction(basedOn: callSite, context)
+        var specializedFunction = getOrCreateSpecializedFunction(basedOn: callSite, context)
 
-        if !alreadyExists {
-          context.notifyNewFunction(function: specializedFunction, derivedFrom: callSite.applyCallee)
-        }
+        context.notifyNewCallee(function: specializedFunction, derivedFrom: callSite.applyCallee)
 
         rewriteApplyInstruction(using: specializedFunction, callSite: callSite, context)
       }
@@ -220,11 +218,11 @@ private func gatherCallSites(in caller: Function, _ context: FunctionPassContext
 }
 
 private func getOrCreateSpecializedFunction(basedOn callSite: CallSite, _ context: FunctionPassContext)
-  -> (function: Function, alreadyExists: Bool)
+  -> Function
 {
   let specializedFunctionName = callSite.specializedCalleeName(context)
   if let specializedFunction = context.lookupFunction(name: specializedFunctionName) {
-    return (specializedFunction, true)
+    return specializedFunction
   }
 
   let applySiteCallee = callSite.applyCallee
@@ -241,7 +239,7 @@ private func getOrCreateSpecializedFunction(basedOn callSite: CallSite, _ contex
                                       closureSpecCloner.cloneAndSpecializeFunctionBody(using: callSite)
                                    })
 
-  return (specializedFunction, false)
+  return specializedFunction
 }
 
 private func rewriteApplyInstruction(using specializedCallee: Function, callSite: CallSite, 
@@ -1363,7 +1361,7 @@ let specializedFunctionSignatureAndBodyTest = FunctionTest(
   var callSites = gatherCallSites(in: function, context)
 
   for callSite in callSites {
-    let (specializedFunction, _) = getOrCreateSpecializedFunction(basedOn: callSite, context)
+    let specializedFunction = getOrCreateSpecializedFunction(basedOn: callSite, context)
     print("Generated specialized function: \(specializedFunction.name)")
     print("\(specializedFunction)\n")
   }
@@ -1373,7 +1371,7 @@ let rewrittenCallerBodyTest = FunctionTest("closure_specialize_rewritten_caller_
   var callSites = gatherCallSites(in: function, context)
 
   for callSite in callSites {
-    let (specializedFunction, _) = getOrCreateSpecializedFunction(basedOn: callSite, context)
+    let specializedFunction = getOrCreateSpecializedFunction(basedOn: callSite, context)
     rewriteApplyInstruction(using: specializedFunction, callSite: callSite, context)
 
     print("Rewritten caller body for: \(function.name):")

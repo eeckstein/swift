@@ -120,7 +120,7 @@ namespace swift {
     /// an infinite loop in the passmanager.
     void addFunctionToPassManagerWorklist(SILFunction *F,
                                           SILFunction *DerivedFrom) {
-      PM->addFunctionToWorklist(F, DerivedFrom);
+      PM->notifyNewCallee(F, DerivedFrom);
     }
 
     /// Reoptimize the current function by restarting the pass

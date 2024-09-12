@@ -264,9 +264,9 @@ struct FunctionPassContext : MutatingContext {
     SimplifyContext(_bridged: _bridged, notifyInstructionChanged: notifyInstructionChanged, preserveDebugInfo: preserveDebugInfo)
   }
 
-  func notifyNewFunction(function: Function, derivedFrom: Function) {
+  func notifyNewCallee(function: Function, derivedFrom: Function) {
     let pm = _bridged.getPassManager().getSwiftPassManager().getAs(PassManager.self)!
-    pm.notifyNewFunction(function: function, derivedFrom: derivedFrom)
+    pm.notifyNewCallee(callee: function, derivedFrom: derivedFrom)
   }
 
   var deadEndBlocks: DeadEndBlocksAnalysis {

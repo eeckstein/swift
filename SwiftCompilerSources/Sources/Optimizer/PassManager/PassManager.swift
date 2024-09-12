@@ -269,7 +269,7 @@ final class PassManager {
     }
     // TODO: check shouldPrintLast
     if shouldPrintBefore(pass: pass) ||
-       (shouldPrintLast && isRunningLastPass)
+       (shouldPrintLast && isRunningLastPass && maxNumSubpassesToRun == nil)
     {
       printPassInfo("*** function before", pass.name, passIndex, function)
       print(function)
@@ -329,7 +329,14 @@ final class PassManager {
     function.verify(context)
   }
 
-  func notifyNewFunction(function: Function, derivedFrom: Function?) {
+  func notifyNewFunction(function: Function) {
+    if shouldPrint(function: function) {
+      print("  *** function created by pass #\(currentPassIndex)")
+      print(function)
+    }
+  }
+
+  func notifyNewCallee(callee: Function, derivedFrom: Function?) {
     let newLevel: Int
     if let derivedFrom = derivedFrom {
       newLevel = derivationLevels[derivedFrom, default: 0] + 1
@@ -339,11 +346,11 @@ final class PassManager {
     } else {
       newLevel = 1
     }
-    derivationLevels[function] = newLevel
+    derivationLevels[callee] = newLevel
 
 
     if !scheduledFunctionPasses.isEmpty {
-      worklist.addCallee(function)
+      worklist.addCallee(callee)
     }
   }
 
@@ -393,9 +400,7 @@ final class PassManager {
   }
 
   private var isRunningLastPass: Bool {
-    return currentPassIndex == maxNumPassesToRun - 1 &&
-           maxNumSubpassesToRun == nil &&
-           !isMandatory
+    return currentPassIndex == maxNumPassesToRun - 1 && !isMandatory
   }
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {
@@ -510,9 +515,15 @@ final class PassManager {
       },
       // notifyNewFunctionFn
       {
-        (bridgedPM: BridgedPassManager, function: BridgedFunction, derivedFrom: BridgedFunction) in
+        (bridgedPM: BridgedPassManager, function: BridgedFunction) in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
-        pm.notifyNewFunction(function: function.function, derivedFrom: derivedFrom.function)
+        pm.notifyNewFunction(function: function.function)
+      },
+      // notifyNewCalleeFn
+      {
+        (bridgedPM: BridgedPassManager, callee: BridgedFunction, derivedFrom: BridgedFunction) in
+        let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
+        pm.notifyNewCallee(callee: callee.function, derivedFrom: derivedFrom.function)
       },
       // continueWithSubpassFn
       {

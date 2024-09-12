@@ -200,6 +200,7 @@ static BridgedPassManager::ExecutePassesFromNameFn executePassesFromNameFunction
 static BridgedPassManager::RegisterBridgedModulePassFn registerBridgedModulePassFunction = nullptr;
 static BridgedPassManager::RegisterBridgedFunctionPassFn registerBridgedFunctionPassFunction = nullptr;
 static BridgedPassManager::NotifyNewFunctionFn notifyNewFunctionFunction = nullptr;
+static BridgedPassManager::NotifyNewCalleeFn notifyNewCalleeFunction = nullptr;
 static BridgedPassManager::ContinueWithSubpassFn continueWithSubpassFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyPassHasInvalidatedFunction = nullptr;
 static BridgedPassManager::NotifyFn notifyDepdendencyFunction = nullptr;
@@ -210,6 +211,7 @@ void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
                                           RegisterBridgedModulePassFn registerBridgedModulePassFn,
                                           RegisterBridgedFunctionPassFn registerBridgedFunctionPassFn,
                                           NotifyNewFunctionFn notifyNewFunctionFn,
+                                          NotifyNewCalleeFn notifyNewCalleeFn,
                                           ContinueWithSubpassFn continueWithSubpassFn,
                                           NotifyFn notifyPassHasInvalidatedFn,
                                           NotifyFn notifyDepdendencyFn,
@@ -219,6 +221,7 @@ void BridgedPassManager::registerBridging(ExecutePassesFn executePassesFn,
   registerBridgedModulePassFunction = registerBridgedModulePassFn;
   registerBridgedFunctionPassFunction = registerBridgedFunctionPassFn;
   notifyNewFunctionFunction = notifyNewFunctionFn;
+  notifyNewCalleeFunction = notifyNewCalleeFn;
   continueWithSubpassFunction = continueWithSubpassFn;
   notifyPassHasInvalidatedFunction = notifyPassHasInvalidatedFn;
   notifyDepdendencyFunction = notifyDepdendencyFn;
@@ -296,6 +299,7 @@ public:
 
   /// Observe that we deserialized a function declaration.
   void didDeserialize(ModuleDecl *mod, SILFunction *fn) override {
+    pm.get()->notifyNewFunction(fn);
     pm.get()->notifyAnalysisOfFunction(fn);
   }
 };
@@ -749,10 +753,15 @@ void SILPassManager::setDependingOnCalleeBodies() {
     notifyDepdendencyFunction({this});
 }
 
-void SILPassManager::addFunctionToWorklist(SILFunction *F,
-                                           SILFunction *DerivedFrom) {
+void SILPassManager::notifyNewFunction(SILFunction *function) {
   if (notifyNewFunctionFunction) {
-    notifyNewFunctionFunction({this}, {F}, {DerivedFrom});
+    notifyNewFunctionFunction({this}, {function});
+  }
+}
+
+void SILPassManager::notifyNewCallee(SILFunction *callee, SILFunction *derivedFrom) {
+  if (notifyNewCalleeFunction) {
+    notifyNewCalleeFunction({this}, {callee}, {derivedFrom});
   }
 }
 
@@ -1060,6 +1069,13 @@ void BridgedPassManager::registerBridgedPasses() {
     PassKind kind = getFunctionPassKind(bridgedKind);
     StringRef passName = PassKindTag(kind);
     registerBridgedFunctionPassFunction(BridgedStringRef(passName), bridgedKind);
+  }
+}
+
+void BridgedPassManager::setSwiftPassManager(OptionalSwiftObject passManager) const {
+  pm->setSwiftPassManager(passManager);
+  if (!passManager) {
+    fflush(stdout);
   }
 }
 

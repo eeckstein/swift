@@ -357,9 +357,6 @@ struct BridgedPassContext {
 
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedPassContext initializeNestedPassContext(BridgedFunction newFunction) const;
   BRIDGED_INLINE void deinitializedNestedPassContext() const;
-  BRIDGED_INLINE void
-  addFunctionToPassManagerWorklist(BridgedFunction newFunction,
-                                   BridgedFunction oldFunction) const;
 
   // SSAUpdater
 
@@ -439,7 +436,7 @@ struct BridgedPassManager {
 
   BRIDGED_INLINE BridgedPassContext getContext() const;
 
-  BRIDGED_INLINE void setSwiftPassManager(OptionalSwiftObject passManager) const;
+  void setSwiftPassManager(OptionalSwiftObject passManager) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE OptionalSwiftObject getSwiftPassManager() const;
 
   void runBridgedFunctionPass(BridgedPass passKind, BridgedFunction f) const;
@@ -473,7 +470,8 @@ struct BridgedPassManager {
                                                     bool isMandatory);
   typedef void (* _Nonnull RegisterBridgedModulePassFn)(BridgedStringRef name, BridgedModulePass kind);
   typedef void (* _Nonnull RegisterBridgedFunctionPassFn)(BridgedStringRef name, BridgedPass kind);
-  typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function,
+  typedef void (* _Nonnull NotifyNewFunctionFn)(BridgedPassManager pm, BridgedFunction function);
+  typedef void (* _Nonnull NotifyNewCalleeFn)(BridgedPassManager pm, BridgedFunction callee,
                                                 BridgedFunction derivedFrom);
   typedef bool (* _Nonnull ContinueWithSubpassFn)(BridgedPassManager pm, BridgedFunction function,
                                                   OptionalBridgedInstruction inst);
@@ -481,7 +479,8 @@ struct BridgedPassManager {
 
   static void registerBridging(ExecutePassesFn, ExecutePassesFromNameFn,
                                RegisterBridgedModulePassFn, RegisterBridgedFunctionPassFn,
-                               NotifyNewFunctionFn, ContinueWithSubpassFn, NotifyFn, NotifyFn, NotifyFn);
+                               NotifyNewFunctionFn, NotifyNewCalleeFn, ContinueWithSubpassFn,
+                               NotifyFn, NotifyFn, NotifyFn);
 };
 
 bool FullApplySite_canInline(BridgedInstruction apply);
