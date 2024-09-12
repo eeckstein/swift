@@ -24,6 +24,7 @@ PrettyStackTraceSILFunctionTransform::PrettyStackTraceSILFunctionTransform(
   passName(passName), PassNumber(PassNumber) {}
 
 void PrettyStackTraceSILFunctionTransform::print(llvm::raw_ostream &out) const {
+  fflush(stdout);
   out << "While running pass #" << PassNumber
       << " SILFunctionTransform \"" << passName
       << "\" on SILFunction ";
@@ -31,6 +32,7 @@ void PrettyStackTraceSILFunctionTransform::print(llvm::raw_ostream &out) const {
 }
 
 void PrettyStackTraceSILModuleTransform::print(llvm::raw_ostream &out) const {
+  fflush(stdout);
   out << "While running pass #" << PassNumber
       << " SILModuleTransform \"" << passName << "\".\n";
 }
