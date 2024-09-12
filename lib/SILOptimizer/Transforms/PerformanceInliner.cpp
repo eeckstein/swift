@@ -414,10 +414,10 @@ bool isFunctionAutodiffVJP(SILFunction *callee) {
 
 bool isProfitableToInlineAutodiffVJP(SILFunction *vjp, SILFunction *caller,
                                      InlineSelection whatToInline,
-                                     StringRef stageName) {
-  bool isLowLevelFunctionPassPipeline = stageName == "LowLevel,Function";
-  auto isHighLevelFunctionPassPipeline =
-      stageName == "HighLevel,Function+EarlyLoopOpt";
+                                     bool isLowLevelFunctionPassPipeline) {
+  // TODO: distinguish between mid-level and low-level inliner
+  auto isHighLevelFunctionPassPipeline = !isLowLevelFunctionPassPipeline;
+
   auto calleeHasControlFlow = vjp->size() > 1;
   auto isCallerVJP = isFunctionAutodiffVJP(caller);
   auto callerHasControlFlow = caller->size() > 1;
@@ -462,7 +462,7 @@ bool SILPerformanceInliner::isProfitableToInline(
 
   if (isFunctionAutodiffVJP(Callee) &&
       !isProfitableToInlineAutodiffVJP(Callee, AI.getFunction(), WhatToInline,
-                                       this->pm->getStageName())) {
+                                       WhatToInline == InlineSelection::Everything)) {
     return false;
   }
 

@@ -43,12 +43,13 @@ final class PassManager {
   private var abortPipeline = false
 
   private let maxNumPassesToRun: Int
-  private let maxNumSubpassesToRun: Int
+  private let maxNumSubpassesToRun: Int?
 
   private var isMandatory = false
 
   private var shouldPrintPassNames: Bool
   private var shouldPrintPassTimes: Bool
+  private var shouldPrintLast: Bool
   private var anyPassOptionSet: Bool
   private var shouldVerifyAfterAllChanges: Bool
 
@@ -60,9 +61,14 @@ final class PassManager {
     let numRegisteredPasses = Self.registeredFunctionPasses.count + Self.registeredModulePasses.count
     self.completedPasses = CompletedPasses(numPasses: numRegisteredPasses)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
-    self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
+    if _bridged.hasSpecifiedMaxNumSubpassesToRun() {
+      self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
+    } else {
+      self.maxNumSubpassesToRun = nil
+    }
     self.shouldPrintPassNames = _bridged.shouldPrintPassNames()
     self.shouldPrintPassTimes = _bridged.shouldPrintPassTimes()
+    self.shouldPrintLast = _bridged.shouldPrintLast()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
     self.shouldVerifyAfterAllChanges = _bridged.shouldVerifyAfterAllChanges()
     bridged.setSwiftPassManager(SwiftObject(self))
@@ -261,7 +267,10 @@ final class PassManager {
     if shouldPrintPassNames {
       printPassInfo("Run", pass.name, passIndex, function)
     }
-    if shouldPrintBefore(pass: pass) || isLastPass(passIndex) {
+    // TODO: check shouldPrintLast
+    if shouldPrintBefore(pass: pass) ||
+       (shouldPrintLast && isRunningLastPass)
+    {
       printPassInfo("*** function before", pass.name, passIndex, function)
       print(function)
     }
@@ -284,7 +293,7 @@ final class PassManager {
     }
 
     if shouldPrintAfter(pass: pass) ||
-       isLastPass(passIndex) ||
+       (shouldPrintLast && isRunningLastPass) ||
        (currentPassMadeChanges && shouldPrint(function: function))
     {
       printPassInfo("*** function after", pass.name, passIndex, function)
@@ -365,7 +374,11 @@ final class PassManager {
       return true
     }
 
-    if isLastSubpass(subPassIdx) {
+    guard let maxNumSubpassesToRun else {
+      return true
+    }
+
+    if shouldPrintLast && subPassIdx == maxNumSubpassesToRun - 1 {
       let instInfo: String
       if let inst = inst {
         instInfo = " for \(inst)"
@@ -379,12 +392,10 @@ final class PassManager {
     return subPassIdx < maxNumSubpassesToRun
   }
 
-  private func isLastPass(_ passIndex: Int) -> Bool {
-    return passIndex == maxNumPassesToRun - 1
-  }
-
-  private func isLastSubpass(_ subPassIndex: Int) -> Bool {
-    return subPassIndex == maxNumSubpassesToRun - 1
+  private var isRunningLastPass: Bool {
+    return currentPassIndex == maxNumPassesToRun - 1 &&
+           maxNumSubpassesToRun == nil &&
+           !isMandatory
   }
 
   func scheduleFunctionPassesForRunning(passes: [FunctionPass]) {

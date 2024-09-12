@@ -586,8 +586,7 @@ SILInstruction *SILCombiner::visit##INST(INST *inst) {                     \
     StringRef instName = getSILInstructionName(SILInstructionKind::INST);  \
     passDisabled = SILPassManager::isInstructionPassDisabled(instName);    \
   }                                                                        \
-  if (passDisabled &&                                                      \
-      SILPassManager::disablePassesForFunction(inst->getFunction())) {     \
+  if (passDisabled) {                                                      \
     return nullptr;                                                        \
   }                                                                        \
   runSwiftInstructionPass(inst, runFunction);                              \

@@ -61,7 +61,6 @@ public:
 
 private:
   void notifyAddFunction(SILFunction *f) {
-    pm->notifyOfNewFunction(f);
     pm->notifyAnalysisOfFunction(f);
   }
 };

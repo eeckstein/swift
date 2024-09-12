@@ -452,9 +452,11 @@ struct BridgedPassManager {
 
   BRIDGED_INLINE SwiftInt getMaxNumPassesToRun() const;
   BRIDGED_INLINE SwiftInt getMaxNumSubpassesToRun() const;
+  BRIDGED_INLINE bool hasSpecifiedMaxNumSubpassesToRun() const;
 
   bool shouldPrintPassNames() const;
   bool shouldPrintPassTimes() const;
+  bool shouldPrintLast() const;
   bool anyPassOptionSet() const;
   bool shouldVerifyAfterAllChanges() const;
   bool isPassDisabled(BridgedStringRef passName) const;

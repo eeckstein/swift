@@ -229,32 +229,11 @@ class SILPassManager {
   /// A list of registered analysis.
   llvm::SmallVector<SILAnalysis *, 16> Analyses;
 
-  /// An entry in the FunctionWorkList.
-  struct WorklistEntry {
-    WorklistEntry(SILFunction *F) : F(F) { }
-
-    SILFunction *F;
-
-    /// The current position in the transform-list.
-    unsigned PipelineIdx = 0;
-
-    /// How many times the pipeline was restarted for the function.
-    unsigned NumRestarts = 0;
-  };
-
-  /// The worklist of functions to be processed by function passes.
-  std::vector<WorklistEntry> FunctionWorklist;
-
-  // Name of the current optimization stage for diagnostics.
-  std::string StageName;
-
   /// The number of passes run so far.
   unsigned NumPassesRun = 0;
-  unsigned numSubpassesRun = 0;
 
   unsigned maxNumPassesToRun = UINT_MAX;
   unsigned maxNumSubpassesToRun = UINT_MAX;
-  unsigned breakBeforePassCount = UINT_MAX;
 
   /// For invoking Swift passes.
   SwiftPassInvocation swiftPassInvocation;
@@ -267,30 +246,6 @@ class SILPassManager {
   std::optional<DebugPrintEnabler> debugPrintEnabler;
   llvm::sys::TimePoint<> startTime;
 
-  /// A mask which has one bit for each pass. A one for a pass-bit means that
-  /// the pass doesn't need to run, because nothing has changed since the
-  /// previous run of that pass.
-  typedef std::bitset<(size_t)PassKind::AllPasses_Last + 1> CompletedPasses;
-  
-  /// A completed-passes mask for each function.
-  llvm::DenseMap<SILFunction *, CompletedPasses> CompletedPassesMap;
-
-  /// Stores for each function the number of levels of specializations it is
-  /// derived from an original function. E.g. if a function is a signature
-  /// optimized specialization of a generic specialization, it has level 2.
-  /// This is used to avoid an infinite amount of functions pushed on the
-  /// worklist (e.g. caused by a bug in a specializing optimization).
-  llvm::DenseMap<SILFunction *, int> DerivationLevels;
-
-  /// Set to true when a pass invalidates an analysis.
-  bool CurrentPassHasInvalidated = false;
-
-  bool currentPassDependsOnCalleeBodies = false;
-
-  /// True if we need to stop running passes and restart again on the
-  /// same function.
-  bool RestartPipeline = false;
-
   /// If true, passes are also run for functions which have
   /// OptimizationMode::NoOptimization.
   bool isMandatory = false;
@@ -302,8 +257,6 @@ class SILPassManager {
   /// bare pointer to ensure that we can deregister the notification after this
   /// pass manager is destroyed.
   DeserializationNotificationHandler *deserializationNotificationHandler;
-
-  std::chrono::nanoseconds totalPassRuntime = std::chrono::nanoseconds(0);
 
 public:
   /// C'tor. It creates and registers all analysis passes, which are defined
@@ -357,9 +310,6 @@ public:
   /// Restart the function pass pipeline on the same function
   /// that is currently being processed.
   void restartWithCurrentFunction(SILTransform *T);
-  void clearRestartPipeline() { RestartPipeline = false; }
-  bool shouldRestartPipeline() { return RestartPipeline; }
-
   /// Iterate over all analysis and invalidate them.
   void invalidateAllAnalysis() {
     // Invalidate the analysis (unless they are locked)
@@ -368,13 +318,7 @@ public:
         AP->invalidate();
 
     notifyPassHasInvalidated();
-
-    // Assume that all functions have changed. Clear all masks of all functions.
-    CompletedPassesMap.clear();
   }
-
-  /// Notify the pass manager of a newly create function for tracing.
-  void notifyOfNewFunction(SILFunction *F);
 
   /// Add the function \p F to the function pass worklist.
   /// If not null, the function \p DerivedFrom is the function from which \p F
@@ -402,8 +346,6 @@ public:
         AP->invalidate(F, K);
     
     notifyPassHasInvalidated();
-    // Any change let all passes run again.
-    CompletedPassesMap[F].reset();
   }
 
   /// Iterate over all analysis and notify them of a change in witness-
@@ -415,9 +357,6 @@ public:
         AP->invalidateFunctionTables();
 
     notifyPassHasInvalidated();
-
-    // Assume that all functions have changed. Clear all masks of all functions.
-    CompletedPassesMap.clear();
   }
 
   /// Iterate over all analysis and notify them of a deleted function.
@@ -428,8 +367,6 @@ public:
         AP->notifyWillDeleteFunction(F);
 
     notifyPassHasInvalidated();
-    // Any change let all passes run again.
-    CompletedPassesMap[F].reset();
   }
 
   void setDependingOnCalleeBodies();
@@ -437,16 +374,6 @@ public:
   /// Reset the state of the pass manager and remove all transformation
   /// owned by the pass manager. Analysis passes will be kept.
   void resetAndRemoveTransformations();
-
-  /// Set the name of the current optimization stage.
-  ///
-  /// This is useful for debugging.
-  void setStageName(llvm::StringRef NextStage = "");
-
-  /// Get the name of the current optimization stage.
-  ///
-  /// This is useful for debugging.
-  StringRef getStageName() const;
 
   /// D'tor.
   ~SILPassManager();
@@ -487,7 +414,6 @@ public:
 
   static bool isPassDisabled(StringRef passName);
   static bool isInstructionPassDisabled(StringRef instName);
-  static bool disablePassesForFunction(SILFunction *function);
 
   /// Runs the SIL verifier which is implemented in the SwiftCompilerSources.
   void runSwiftFunctionVerification(SILFunction *f);
@@ -497,11 +423,8 @@ public:
 
 private:
   void parsePassesToRunCount(StringRef countsStr);
-  void parseBreakBeforePassCount(StringRef countsStr);
 
-  bool doPrintBefore(SILTransform *T, SILFunction *F);
-
-  bool doPrintAfter(SILTransform *T, SILFunction *F, bool PassChangedSIL);
+  bool doPrintAfter(SILTransform *T, SILFunction *F);
 
   void execute();
 
@@ -520,19 +443,11 @@ private:
 
   SILTransform *getCachedPass(PassKind passKind);
 
-  /// Helper function to check if the function pass should be run mandatorily
-  /// All passes in mandatory pass pipeline and ownership model elimination are
-  /// mandatory function passes.
-  bool isMandatoryFunctionPass(SILFunctionTransform *);
-
   void notifyPassHasInvalidated();
 
   /// A helper function that returns (based on SIL stage and debug
   /// options) whether we should continue running passes.
   bool continueTransforming();
-
-  /// Break before running a pass.
-  bool breakBeforeRunning(StringRef fnName, SILFunctionTransform *SFT);
 
   /// Return true if all analyses are unlocked.
   bool analysesUnlocked();
@@ -545,10 +460,6 @@ private:
   void dumpPassInfo(const char *Title, unsigned TransIdx,
                     SILFunction *F = nullptr);
 
-  /// Displays the call graph in an external dot-viewer.
-  /// This function is meant for use from the debugger.
-  /// When asserts are disabled, this is a NoOp.
-  void viewCallGraph();
 };
 
 inline void SwiftPassInvocation::

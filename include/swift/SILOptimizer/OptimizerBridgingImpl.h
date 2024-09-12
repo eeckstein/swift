@@ -594,10 +594,12 @@ SwiftInt BridgedPassManager::getMaxNumPassesToRun() const {
 }
 
 SwiftInt BridgedPassManager::getMaxNumSubpassesToRun() const {
-  unsigned n = pm->getMaxNumSubpassesToRun();
-  if (n == UINT_MAX)
-    return INT_MAX;
-  return (SwiftInt)n;
+  assert(hasSpecifiedMaxNumSubpassesToRun());
+  return (SwiftInt)pm->getMaxNumSubpassesToRun();
+}
+
+bool BridgedPassManager::hasSpecifiedMaxNumSubpassesToRun() const {
+  return pm->getMaxNumSubpassesToRun() < UINT_MAX;
 }
 
 SWIFT_END_NULLABILITY_ANNOTATIONS
