@@ -597,7 +597,7 @@ func functionPasses(@FunctionPassPipelineBuilder _ passes: () -> [FunctionPass])
   passes()
 }
 
-private struct FunctionWorklist {
+private struct FunctionWorklist: CustomStringConvertible {
 
   struct Element {
     let function: Function
@@ -630,6 +630,21 @@ private struct FunctionWorklist {
     stack.removeAll(keepingCapacity: true)
     callees.removeAll(keepingCapacity: true)
     visited.removeAll(keepingCapacity: true)
+  }
+
+  var description: String {
+    var s = ""
+    var endCalleeIdx = callees.count
+
+    for elmt in stack.reversed() {
+      s += "@\(elmt.function.name):\n"
+      s += "  completedPasses: \(elmt.completedPasses), numRestarts: \(elmt.numRestarts)\n"
+      for calleeIdx in elmt.firstCalleeIndex..<endCalleeIdx {
+        s += "  callee: @\(callees[calleeIdx].name)\n"
+      }
+      endCalleeIdx = elmt.firstCalleeIndex
+    }
+    return s
   }
 
   mutating func next(allFunctions: inout ModulePassContext.FunctionList,
