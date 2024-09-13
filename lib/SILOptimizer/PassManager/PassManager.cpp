@@ -141,11 +141,10 @@ static llvm::cl::opt<DebugOnlyPassNumberOpt, true,
               llvm::cl::location(DebugOnlyPassNumberOptLoc),
               llvm::cl::ValueRequired);
 
-// TODO
-static llvm::cl::opt<bool> SILPrintEverySubpass(
-    "sil-print-every-subpass", llvm::cl::init(false),
-    llvm::cl::desc("Print the function before every subpass run of passes that "
-                   "have multiple subpasses"));
+static llvm::cl::opt<bool> SILPrintAllSubpasses(
+    "sil-print-all-subpasses", llvm::cl::init(false),
+    llvm::cl::desc("Print the function before every subpass run of the last pass."
+                   "In combination with -sil-opt-pass-count"));
 
 bool isFunctionSelectedForPrinting(SILFunction *F) {
   for (const std::string &printFnName : SILPrintFunction) {
@@ -392,9 +391,10 @@ bool SILPassManager::continueTransforming() {
 }
 
 bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
-                                                SILFunction *function,
-                                                SILTransform *trans) {
-  // TODO: call back to swift pm
+                                                SILFunction *function) {
+  if (continueWithSubpassFunction) {
+    return continueWithSubpassFunction({this}, {function}, {forInst->asSILNode()});
+  }
   return true;
 }
 
@@ -1097,6 +1097,10 @@ bool BridgedPassManager::shouldPrintPassTimes() const {
 
 bool BridgedPassManager::shouldPrintLast() const {
   return SILPrintLast;
+}
+
+bool BridgedPassManager::shouldPrintAllSubpasses() const {
+  return SILPrintAllSubpasses;
 }
 
 bool BridgedPassManager::anyPassOptionSet() const {

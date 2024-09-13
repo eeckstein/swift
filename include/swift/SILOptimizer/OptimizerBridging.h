@@ -454,6 +454,7 @@ struct BridgedPassManager {
   bool shouldPrintPassNames() const;
   bool shouldPrintPassTimes() const;
   bool shouldPrintLast() const;
+  bool shouldPrintAllSubpasses() const;
   bool anyPassOptionSet() const;
   bool shouldVerifyAfterAllChanges() const;
   bool isPassDisabled(BridgedStringRef passName) const;

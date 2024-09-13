@@ -50,6 +50,7 @@ final class PassManager {
   private var shouldPrintPassNames: Bool
   private var shouldPrintPassTimes: Bool
   private var shouldPrintLast: Bool
+  private var shouldPrintAllSubpasses: Bool
   private var anyPassOptionSet: Bool
   private var shouldVerifyAfterAllChanges: Bool
 
@@ -69,6 +70,7 @@ final class PassManager {
     self.shouldPrintPassNames = _bridged.shouldPrintPassNames()
     self.shouldPrintPassTimes = _bridged.shouldPrintPassTimes()
     self.shouldPrintLast = _bridged.shouldPrintLast()
+    self.shouldPrintAllSubpasses = _bridged.shouldPrintAllSubpasses()
     self.anyPassOptionSet = _bridged.anyPassOptionSet()
     self.shouldVerifyAfterAllChanges = _bridged.shouldVerifyAfterAllChanges()
     bridged.setSwiftPassManager(SwiftObject(self))
@@ -385,7 +387,9 @@ final class PassManager {
       return true
     }
 
-    if shouldPrintLast && subPassIdx == maxNumSubpassesToRun - 1 {
+    if (shouldPrintLast && subPassIdx == maxNumSubpassesToRun - 1) ||
+       (shouldPrintAllSubpasses && isRunningLastPass)
+    {
       let instInfo: String
       if let inst = inst {
         instInfo = " for \(inst)"

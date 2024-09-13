@@ -411,8 +411,7 @@ public:
   void preModulePassRun(StringRef passName, unsigned passIdx);
   int64_t postModulePassRun(StringRef passName, unsigned passIdx);
 
-  bool continueWithNextSubpassRun(SILInstruction *forInst, SILFunction *function,
-                                  SILTransform *trans);
+  bool continueWithNextSubpassRun(SILInstruction *forInst, SILFunction *function);
 
   static bool isPassDisabled(StringRef passName);
   static bool isInstructionPassDisabled(StringRef instName);

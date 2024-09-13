@@ -130,7 +130,7 @@ namespace swift {
     SILFunction *getFunction() { return F; }
 
     bool continueWithNextSubpassRun(SILInstruction *forInst = nullptr) {
-      return PM->continueWithNextSubpassRun(forInst, F, this);
+      return PM->continueWithNextSubpassRun(forInst, F);
     }
 
     void invalidateAnalysis(SILAnalysis::InvalidationKind K) {
