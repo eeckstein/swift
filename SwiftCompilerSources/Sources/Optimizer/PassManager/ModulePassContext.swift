@@ -198,10 +198,6 @@ extension PassManager {
 @resultBuilder
 struct ModulePassPipelineBuilder {
 
-  enum PipelineControl {
-    case abortPipeline
-  }
-
   static func buildExpression(_ pass: ModulePass) -> [ModulePass] {
     return [pass]
   }
@@ -211,14 +207,11 @@ struct ModulePassPipelineBuilder {
     return [PassManager.lookupModulePass(withName: passName)]
   }
 
-  static func buildExpression(_ control: PipelineControl) -> [ModulePass] {
-    switch control {
-    case .abortPipeline:
-      let pass =  ModulePass(name: "abort pipeline") {
-        $0.passManager.notifyAbortPipeline()
-      }
-      return [pass]
+  static func buildExpression(_ control: PassManager.PipelineControl) -> [ModulePass] {
+    let pass =  ModulePass(name: "abort pipeline") {
+      $0.passManager.setPipelineControl(to: control)
     }
+    return [pass]
   }
 
   static func buildExpression(_ functionPasses: [FunctionPass]) -> [ModulePass] {

@@ -6,6 +6,7 @@
 // RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-last -sil-opt-pass-count=5.1 %s -o /dev/null | %FileCheck %s --check-prefix=LAST2
 // RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -stack-promotion -sil-print-last -sil-opt-pass-count=5.2 %s -o /dev/null | %FileCheck %s --check-prefix=LAST3
 // RUN: %target-sil-opt -stack-promotion -redundant-load-elimination -ownership-model-eliminator -sil-print-function=mid %s -o /dev/null | %FileCheck %s --check-prefix=FUNC
+// RUN: %target-sil-opt -generic-specializer -sil-print-function=s3midSi_Ttg5 %s -o /dev/null | %FileCheck %s --check-prefix=FUNC2
 sil_stage canonical
 
 import Builtin
@@ -93,6 +94,10 @@ class C {}
 // FUNC-LABEL: *** function after #6, stage ?, pass 2: ownership-model-eliminator, Function: mid
 // FUNC-LABEL: sil @mid : $@convention(thin) <T> (@thick T.Type) -> () {
 // FUNC-NOT:   ***
+
+// FUNC2-LABEL: *** function created by pass #3
+// FUNC2-LABEL: sil shared [ossa] @$s3midSi_Ttg5 :
+// FUNC2-NOT:   ***
 
 // CHECK-LABEL: sil [ossa] @mid :
 // PRINT1:        %1 = alloc_ref [stack] $C

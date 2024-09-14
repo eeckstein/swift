@@ -23,7 +23,7 @@ final class PassManager {
 
   private var worklist = FunctionWorklist()
 
-  private var completedPasses: CompletedPasses
+  private var idlePasses: IdlePasses
 
   /// Stores for each function the number of levels of specializations it is
   /// derived from an original function. E.g. if a function is a signature
@@ -39,14 +39,21 @@ final class PassManager {
 
   private var currentPassMadeChanges = false
   private var currentPassDepdendsOnOtherFunction = false
-  private var restartPipeline = false
-  private var abortPipeline = false
 
-  private let maxNumPassesToRun: Int
-  private let maxNumSubpassesToRun: Int?
+  enum PipelineControl {
+    case continuePipeline
+    case abortPipeline
+    case restartPipeline
+  }
+
+  private var pipelineControl = PipelineControl.continuePipeline
 
   private var isMandatory = false
 
+  // Command line options
+  //
+  private let maxNumPassesToRun: Int
+  private let maxNumSubpassesToRun: Int?
   private var shouldPrintPassNames: Bool
   private var shouldPrintPassTimes: Bool
   private var shouldPrintLast: Bool
@@ -60,7 +67,7 @@ final class PassManager {
   private init(bridged: BridgedPassManager) {
     self._bridged = bridged
     let numRegisteredPasses = Self.registeredFunctionPasses.count + Self.registeredModulePasses.count
-    self.completedPasses = CompletedPasses(numPasses: numRegisteredPasses)
+    self.idlePasses = IdlePasses(numPasses: numRegisteredPasses)
     self.maxNumPassesToRun = _bridged.getMaxNumPassesToRun()
     if _bridged.hasSpecifiedMaxNumSubpassesToRun() {
       self.maxNumSubpassesToRun = _bridged.getMaxNumSubpassesToRun()
@@ -129,9 +136,8 @@ final class PassManager {
     return pipeline
   }
 
-  func runPipeline(_ modulePasses: [ModulePass]) {
+  func runModulePasses(_ modulePasses: [ModulePass]) {
     let context = createModulePassContext()
-    abortPipeline = false
 
     for (passIdx, pass) in modulePasses.enumerated() {
       if !shouldContinueTransforming {
@@ -140,7 +146,7 @@ final class PassManager {
       currentSubPassIndex = 0
       currentPassMadeChanges = false
       currentPassDepdendsOnOtherFunction = false
-      restartPipeline = false
+      pipelineControl = .continuePipeline
 
       if isPassDisabled(pass) {
         if shouldPrintPassNames {
@@ -164,7 +170,7 @@ final class PassManager {
         pass.run(context)
 
         if currentPassMadeChanges {
-          completedPasses.notifyAllFunctionsModified()
+          idlePasses.notifyAllFunctionsModified()
           if shouldVerifyAfterAllChanges {
             context.verifyModule()
           }
@@ -187,6 +193,15 @@ final class PassManager {
             print(f)
           }
         }
+      }
+
+      switch pipelineControl {
+      case .continuePipeline:
+         break
+      case .abortPipeline:
+        return
+      case .restartPipeline:
+        fatalError("can't restart module pipeline")
       }
 
       currentPassIndex += 1
@@ -229,18 +244,23 @@ final class PassManager {
       if !shouldContinueTransforming {
         return
       }
+      pipelineControl = .continuePipeline
+
       runFunctionPass(on: function, passIndex: passIdx, context)
 
       currentPassIndex += 1
 
-      if restartPipeline && worklist.resetPassIndex() {
-        passIdx = 0
-      } else {
+      switch pipelineControl {
+      case .continuePipeline:
         passIdx += 1
+      case .abortPipeline:
+        return
+      case .restartPipeline:
+        passIdx = worklist.resetPassIndex() ? 0 : passIdx + 1
       }
       worklist.updateNumberOfCompletedPasses(to: passIdx)
 
-      if !worklist.continueRunning() {
+      if worklist.newCalleesAdded() {
         return
       }
 
@@ -251,10 +271,9 @@ final class PassManager {
     currentSubPassIndex = 0
     currentPassMadeChanges = false
     currentPassDepdendsOnOtherFunction = false
-    restartPipeline = false
 
     let (pass, uniqueID) = scheduledFunctionPasses[passIndex]
-    if !completedPasses.needToRunPass(passID: uniqueID, on: function) {
+    if !idlePasses.needToRunPass(passID: uniqueID, on: function) {
       if shouldPrintPassNames {
         printPassInfo("(Skipping)", pass.name, passIndex, function)
       }
@@ -302,9 +321,9 @@ final class PassManager {
       print(function)
     }
     if currentPassMadeChanges || currentPassDepdendsOnOtherFunction {
-      completedPasses.notifyFunctionModified(function: function)
+      idlePasses.notifyFunctionModified(function: function)
     } else {
-      completedPasses.passDidNotModify(passID: uniqueID, function: function)
+      idlePasses.passDidNotModify(passID: uniqueID, function: function)
     }
   }
 
@@ -312,7 +331,7 @@ final class PassManager {
     if isMandatory {
       return true
     }
-    return currentPassIndex < maxNumPassesToRun && !abortPipeline
+    return currentPassIndex < maxNumPassesToRun
   }
 
   private func printPassInfo(_ title: String, _ passName: String, _ passIndex: Int, _ function: Function? = nil) {
@@ -339,6 +358,7 @@ final class PassManager {
   }
 
   func notifyNewCallee(callee: Function, derivedFrom: Function?) {
+    notifyNewFunction(function: callee)
     let newLevel: Int
     if let derivedFrom = derivedFrom {
       newLevel = derivationLevels[derivedFrom, default: 0] + 1
@@ -364,12 +384,8 @@ final class PassManager {
     currentPassDepdendsOnOtherFunction = true
   }
 
-  func notifyRestartPipeline() {
-    restartPipeline = true
-  }
-
-  func notifyAbortPipeline() {
-    abortPipeline = true
+  func setPipelineControl(to pc: PipelineControl) {
+    pipelineControl = pc
   }
 
   func continueWithNextSubpassRun(on function: Function, for inst: Instruction? = nil) -> Bool {
@@ -481,7 +497,7 @@ final class PassManager {
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
         do {
           let pm = PassManager(bridged: bridgedPM)
-          pm.runPipeline(pipeline)
+          pm.runModulePasses(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
@@ -498,7 +514,7 @@ final class PassManager {
           if isMandatory {
             pm.setMandatory()
           }
-          pm.runPipeline(pipeline)
+          pm.runModulePasses(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
@@ -551,7 +567,7 @@ final class PassManager {
       {
         (bridgedPM: BridgedPassManager) in
         let pm = bridgedPM.getSwiftPassManager().getAs(PassManager.self)!
-        pm.notifyRestartPipeline()
+        pm.setPipelineControl(to: .restartPipeline)
       }
     )
   }
@@ -733,8 +749,8 @@ private struct FunctionWorklist: CustomStringConvertible {
     return stack[stack.count - 1].resetPassIndex()
   }
 
-  mutating func continueRunning() -> Bool {
-    return stack.last!.firstCalleeIndex == callees.count
+  mutating func newCalleesAdded() -> Bool {
+    return callees.count > stack.last!.firstCalleeIndex
   }
 
   mutating func addCallee(_ callee: Function) {
@@ -743,45 +759,47 @@ private struct FunctionWorklist: CustomStringConvertible {
   }
 }
 
-private struct CompletedPasses {
-  private var completedPasses: [UInt64] = []
+/// Stores information which pass did _not_ modify a function.
+/// If a pass does not modify a function and no other pass afterwards, either, that pass doesn't need to run again.
+private struct IdlePasses {
+  // Each function has numPasses bits in this bit mask.
+  private var passPerFunctionBits: [UInt64] = []
+
   private let numPasses: Int
-  private let numIntsPerFunction: Int
 
   init(numPasses: Int) {
     self.numPasses = numPasses
-    self.numIntsPerFunction = (numPasses + 63) / 64
   }
 
   mutating func passDidNotModify(passID: Int, function: Function) {
     let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
-    if idx >= completedPasses.count {
+    if idx >= passPerFunctionBits.count {
       let endIndex = arrayIndex(passID: 0, functionIndex: function.uniqueIndex + 1)
-      completedPasses += Array(repeating: 0, count: endIndex - completedPasses.count)
+      passPerFunctionBits += Array(repeating: 0, count: endIndex - passPerFunctionBits.count)
     }
-    completedPasses[idx] |= bitMask(for: passID)
+    passPerFunctionBits[idx] |= bitMask(for: passID)
   }
 
   mutating func needToRunPass(passID: Int, on function: Function) -> Bool {
     let idx = arrayIndex(passID: passID, functionIndex: function.uniqueIndex)
-    if idx >= completedPasses.count {
+    if idx >= passPerFunctionBits.count {
       return true
     }
-    return completedPasses[idx] & bitMask(for: passID) == 0
+    return passPerFunctionBits[idx] & bitMask(for: passID) == 0
   }
 
   mutating func notifyFunctionModified(function: Function) {
     let startIdx = arrayIndex(passID: 0, functionIndex: function.uniqueIndex)
-    if startIdx < completedPasses.count {
+    if startIdx < passPerFunctionBits.count {
       for idx in startIdx..<startIdx + numIntsPerFunction {
-        completedPasses[idx] = 0
+        passPerFunctionBits[idx] = 0
       }
     }
   }
 
   mutating func notifyAllFunctionsModified() {
-    for idx in 0..<completedPasses.count {
-      completedPasses[idx] = 0
+    for idx in 0..<passPerFunctionBits.count {
+      passPerFunctionBits[idx] = 0
     }
   }
 
@@ -789,6 +807,8 @@ private struct CompletedPasses {
     assert(passID < numPasses, "pass created during pass-manager run")
     return passID / 64 + functionIndex * numIntsPerFunction
   }
+
+  private var numIntsPerFunction: Int { (numPasses + 63) / 64 }
 
   private func bitMask(for passIndex: Int) -> UInt64 {
     UInt64(1) << (passIndex % 64)
