@@ -243,17 +243,20 @@ struct ModulePassPipelineBuilder {
 }
 
 func modulePasses(_ name: String,
-                  isMandatory: Bool = false,
                   @ModulePassPipelineBuilder _ passes: () -> [ModulePass]
 ) -> [ModulePass] {
   let beginPass = ModulePass(name: "begin \(name)") {
     $0.passManager.beginPipelineStage(name: name)
-    if isMandatory {
-      $0.passManager.setMandatory()
-    }
   }
   let endPass = ModulePass(name: "end \(name)") {
     $0.passManager.endPipelineStage(name: name)
   }
   return [beginPass] + passes() + [endPass]
+}
+
+func pipeline(_ name: String,
+               isMandatory: Bool,
+               @ModulePassPipelineBuilder _ passes: () -> [ModulePass]
+) -> Pipeline {
+  return (modulePasses(name, passes), isMandatory)
 }

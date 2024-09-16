@@ -393,7 +393,11 @@ bool SILPassManager::continueTransforming() {
 bool SILPassManager::continueWithNextSubpassRun(SILInstruction *forInst,
                                                 SILFunction *function) {
   if (continueWithSubpassFunction) {
-    return continueWithSubpassFunction({this}, {function}, {forInst->asSILNode()});
+    if (forInst) {
+      return continueWithSubpassFunction({this}, {function}, {forInst->asSILNode()});
+    } else {
+      return continueWithSubpassFunction({this}, {function}, {nullptr});
+    }
   }
   return true;
 }

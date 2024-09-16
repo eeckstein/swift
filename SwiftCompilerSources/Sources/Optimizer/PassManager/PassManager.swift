@@ -13,6 +13,8 @@
 import SIL
 import OptimizerBridging
 
+typealias Pipeline = (passes: [ModulePass], isMandatory: Bool)
+
 final class PassManager {
 
   let _bridged: BridgedPassManager
@@ -111,12 +113,12 @@ final class PassManager {
     return pass
   }
 
-  static func buildPassPipeline(fromPassNames passNames: [String]) -> [ModulePass] {
-    var pipeline: [ModulePass] = []
+  static func buildPassPipeline(fromPassNames passNames: [String], isMandatory: Bool) -> Pipeline {
+    var passes: [ModulePass] = []
     var i = 0
     while i < passNames.count {
       if let modulePass = registeredModulePasses[passNames[i]] {
-        pipeline.append(modulePass)
+        passes.append(modulePass)
         i += 1
         continue
       }
@@ -131,15 +133,16 @@ final class PassManager {
       let pass = ModulePass(name: "function passes") {
         $0.passManager.scheduleFunctionPassesForRunning(passes: functionPasses)
       }
-      pipeline.append(pass)
+      passes.append(pass)
     }
-    return pipeline
+    return (passes, isMandatory)
   }
 
-  func runModulePasses(_ modulePasses: [ModulePass]) {
+  func runPipeline(_ pipeline: Pipeline) {
     let context = createModulePassContext()
+    isMandatory = pipeline.isMandatory
 
-    for (passIdx, pass) in modulePasses.enumerated() {
+    for (passIdx, pass) in pipeline.passes.enumerated() {
       if !shouldContinueTransforming {
         return
       }
@@ -485,10 +488,6 @@ final class PassManager {
     precondition(current == name)
   }
 
-  func setMandatory() {
-    isMandatory = true
-  }
-
   static func register() {
     BridgedPassManager.registerBridging(
       // executePassesFn
@@ -497,7 +496,7 @@ final class PassManager {
         let pipeline = getPassPipeline(ofKind: bridgedPipelineKind, options: options)
         do {
           let pm = PassManager(bridged: bridgedPM)
-          pm.runModulePasses(pipeline)
+          pm.runPipeline(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
@@ -508,13 +507,10 @@ final class PassManager {
             (buffer: UnsafeBufferPointer<BridgedStringRef>) -> [String] in
           buffer.map { String($0) }
         }
-        let pipeline = PassManager.buildPassPipeline(fromPassNames: passNames)
+        let pipeline = PassManager.buildPassPipeline(fromPassNames: passNames, isMandatory: isMandatory)
         do {
           let pm = PassManager(bridged: bridgedPM)
-          if isMandatory {
-            pm.setMandatory()
-          }
-          pm.runModulePasses(pipeline)
+          pm.runPipeline(pipeline)
           assert(bridgedPM.getSwiftPassManager() != nil)
         }
         assert(bridgedPM.getSwiftPassManager() == nil)
@@ -573,7 +569,7 @@ final class PassManager {
   }
 }
 
-private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> [ModulePass] {
+private func getPassPipeline(ofKind kind: BridgedPassManager.PassPipelineKind, options: Options) -> Pipeline {
   switch kind {
     case .SILGen:                        return getSILGenPassPipeline(options: options)
     case .Mandatory:                     return getMandatoryPassPipeline(options: options)
