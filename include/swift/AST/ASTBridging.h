@@ -35,11 +35,15 @@ SWIFT_BEGIN_NULLABILITY_ANNOTATIONS
 
 namespace swift {
 class ASTContext;
+class DeclBaseName;
+class DeclNameLoc;
+class DeclNameRef;
 class DiagnosticArgument;
 class DiagnosticEngine;
 class Type;
 class CanType;
 class TypeBase;
+class StmtConditionElement;
 class SubstitutionMap;
 }
 
@@ -89,17 +93,9 @@ class BridgedDeclBaseName {
   BridgedIdentifier Ident;
 
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedDeclBaseName() : Ident() {}
+  BRIDGED_INLINE BridgedDeclBaseName(swift::DeclBaseName baseName);
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDeclBaseName(swift::DeclBaseName baseName) : Ident(baseName.Ident) {}
-
-  swift::DeclBaseName unbridged() const {
-    return swift::DeclBaseName(Ident.unbridged());
-  }
-#endif
+  BRIDGED_INLINE swift::DeclBaseName unbridged() const;
 };
 
 SWIFT_NAME("BridgedDeclBaseName.createConstructor()")
@@ -119,17 +115,9 @@ class BridgedDeclNameRef {
   void *_Nonnull opaque;
 
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedDeclNameRef() : opaque() {}
+  BRIDGED_INLINE BridgedDeclNameRef(swift::DeclNameRef name);
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDeclNameRef(swift::DeclNameRef name) : opaque(name.getOpaqueValue()) {}
-
-  swift::DeclNameRef unbridged() const {
-    return swift::DeclNameRef::getFromOpaqueValue(opaque);
-  }
-#endif
+  BRIDGED_INLINE swift::DeclNameRef unbridged() const;
 };
 
 SWIFT_NAME("BridgedDeclNameRef.createParsed(_:baseName:argumentLabels:)")
@@ -149,15 +137,9 @@ class BridgedDeclNameLoc {
 public:
   BridgedDeclNameLoc() : LocationInfo(nullptr), NumArgumentLabels(0) {}
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDeclNameLoc(swift::DeclNameLoc loc)
-      : LocationInfo(loc.LocationInfo),
-        NumArgumentLabels(loc.NumArgumentLabels) {}
+  BRIDGED_INLINE BridgedDeclNameLoc(swift::DeclNameLoc loc);
 
-  swift::DeclNameLoc unbridged() const {
-    return swift::DeclNameLoc(LocationInfo, NumArgumentLabels);
-  }
-#endif
+  BRIDGED_INLINE swift::DeclNameLoc unbridged() const;
 };
 
 SWIFT_NAME("BridgedDeclNameLoc.createParsed(_:baseNameLoc:lParenLoc:"
@@ -179,17 +161,11 @@ class BridgedASTContext {
   swift::ASTContext * _Nonnull Ctx;
 
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedASTContext() : Ctx() {}
-
-#ifdef USED_IN_CPP_SOURCE
   SWIFT_UNAVAILABLE("Use init(raw:) instead")
-  BridgedASTContext(swift::ASTContext &ctx) : Ctx(&ctx) {}
+  BRIDGED_INLINE BridgedASTContext(swift::ASTContext &ctx);
 
   SWIFT_UNAVAILABLE("Use '.raw' instead")
-  swift::ASTContext &unbridged() const { return *Ctx; }
-#endif
+  BRIDGED_INLINE swift::ASTContext &unbridged() const;
 };
 
 SWIFT_NAME("getter:BridgedASTContext.raw(self:)")
@@ -453,18 +429,8 @@ class BridgedDiagnosticArgument {
   int64_t storage[3];
 
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedDiagnosticArgument() {}
-
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDiagnosticArgument(const swift::DiagnosticArgument &arg) {
-    *reinterpret_cast<swift::DiagnosticArgument *>(&storage) = arg;
-  }
-  const swift::DiagnosticArgument &unbridged() const {
-    return *reinterpret_cast<const swift::DiagnosticArgument *>(&storage);
-  }
-#endif
+  BRIDGED_INLINE BridgedDiagnosticArgument(const swift::DiagnosticArgument &arg);
+  BRIDGED_INLINE const swift::DiagnosticArgument &unbridged() const;
 
   BridgedDiagnosticArgument(SwiftInt i);
   BridgedDiagnosticArgument(BridgedStringRef s);
@@ -1539,18 +1505,9 @@ class BridgedStmtConditionElement {
   void *_Nonnull Raw;
 
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedStmtConditionElement() {}
+  BRIDGED_INLINE BridgedStmtConditionElement(swift::StmtConditionElement elem);
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedStmtConditionElement(swift::StmtConditionElement elem)
-      : Raw(elem.getOpaqueValue()) {}
-
-  swift::StmtConditionElement unbridged() const {
-    return swift::StmtConditionElement::fromOpaqueValue(Raw);
-  }
-#endif
+  BRIDGED_INLINE swift::StmtConditionElement unbridged() const;
 };
 
 SWIFT_NAME("BridgedStmtConditionElement.createBoolean(expr:)")

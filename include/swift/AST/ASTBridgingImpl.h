@@ -21,8 +21,44 @@
 SWIFT_BEGIN_NULLABILITY_ANNOTATIONS
 
 //===----------------------------------------------------------------------===//
+// MARK: BridgedDeclBaseName
+//===----------------------------------------------------------------------===//
+
+BridgedDeclBaseName::BridgedDeclBaseName(swift::DeclBaseName baseName) : Ident(baseName.Ident) {}
+
+swift::DeclBaseName BridgedDeclBaseName::unbridged() const {
+  return swift::DeclBaseName(Ident.unbridged());
+}
+
+//===----------------------------------------------------------------------===//
+// MARK: BridgedDeclNameRef
+//===----------------------------------------------------------------------===//
+
+BridgedDeclNameRef::BridgedDeclNameRef(swift::DeclNameRef name) : opaque(name.getOpaqueValue()) {}
+
+swift::DeclNameRef BridgedDeclNameRef::unbridged() const {
+  return swift::DeclNameRef::getFromOpaqueValue(opaque);
+}
+
+//===----------------------------------------------------------------------===//
+// MARK: BridgedDeclNameLoc
+//===----------------------------------------------------------------------===//
+
+BridgedDeclNameLoc::BridgedDeclNameLoc(swift::DeclNameLoc loc)
+    : LocationInfo(loc.LocationInfo),
+      NumArgumentLabels(loc.NumArgumentLabels) {}
+
+swift::DeclNameLoc BridgedDeclNameLoc::unbridged() const {
+  return swift::DeclNameLoc(LocationInfo, NumArgumentLabels);
+}
+
+//===----------------------------------------------------------------------===//
 // MARK: BridgedASTContext
 //===----------------------------------------------------------------------===//
+
+BridgedASTContext::BridgedASTContext(swift::ASTContext &ctx) : Ctx(&ctx) {}
+
+swift::ASTContext &BridgedASTContext::unbridged() const { return *Ctx; }
 
 void * _Nonnull BridgedASTContext_raw(BridgedASTContext bridged) {
   return &bridged.unbridged();
@@ -86,6 +122,17 @@ bool BridgedDeclObj::Struct_hasUnreferenceableStorage() const {
 
 BridgedASTType BridgedDeclObj::Class_getSuperclass() const {
   return {getAs<swift::ClassDecl>()->getSuperclass().getPointer()};
+}
+
+//===----------------------------------------------------------------------===//
+// MARK: Diagnostic Engine
+//===----------------------------------------------------------------------===//
+
+BridgedDiagnosticArgument::BridgedDiagnosticArgument(const swift::DiagnosticArgument &arg) {
+  *reinterpret_cast<swift::DiagnosticArgument *>(&storage) = arg;
+}
+const swift::DiagnosticArgument &BridgedDiagnosticArgument::unbridged() const {
+  return *reinterpret_cast<const swift::DiagnosticArgument *>(&storage);
 }
 
 //===----------------------------------------------------------------------===//
@@ -236,6 +283,18 @@ SwiftInt BridgedSubstitutionMap::getNumConformances() const {
 BridgedConformance BridgedSubstitutionMap::getConformance(SwiftInt index) const {
   return unbridged().getConformances()[index];
 }
+
+//===----------------------------------------------------------------------===//
+// MARK: BridgedStmtConditionElement
+//===----------------------------------------------------------------------===//
+
+BridgedStmtConditionElement::BridgedStmtConditionElement(swift::StmtConditionElement elem)
+    : Raw(elem.getOpaqueValue()) {}
+
+swift::StmtConditionElement BridgedStmtConditionElement::unbridged() const {
+  return swift::StmtConditionElement::fromOpaqueValue(Raw);
+}
+
 
 SWIFT_END_NULLABILITY_ANNOTATIONS
 
