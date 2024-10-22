@@ -1125,7 +1125,7 @@ bool BridgedInstruction::IndexAddrInst_needsStackProtection() const {
 }
 
 BridgedConformanceArray BridgedInstruction::InitExistentialRefInst_getConformances() const {
-  return getAs<swift::InitExistentialRefInst>()->getConformances();
+  return {getAs<swift::InitExistentialRefInst>()->getConformances()};
 }
 
 BridgedCanType BridgedInstruction::InitExistentialRefInst_getFormalConcreteType() const {
@@ -2167,7 +2167,7 @@ BridgedInstruction BridgedBuilder::createInitExistentialRef(BridgedValue instanc
                                             BridgedConformanceArray conformances) const {
   return {unbridged().createInitExistentialRef(
       regularLoc(), type.unbridged(), formalConcreteType.unbridged(),
-      instance.getSILValue(), conformances.unbridged())};
+      instance.getSILValue(), conformances.pcArray.unbridged<swift::ProtocolConformanceRef>())};
 }
 
 BridgedInstruction BridgedBuilder::createInitExistentialMetatype(BridgedValue metatype,
@@ -2175,7 +2175,7 @@ BridgedInstruction BridgedBuilder::createInitExistentialMetatype(BridgedValue me
                                             BridgedConformanceArray conformances) const {
   return {unbridged().createInitExistentialMetatype(
       regularLoc(), metatype.getSILValue(), existentialType.unbridged(),
-      conformances.unbridged())};
+      conformances.pcArray.unbridged<swift::ProtocolConformanceRef>())};
 }
 
 BridgedInstruction BridgedBuilder::createMetatype(BridgedType type,

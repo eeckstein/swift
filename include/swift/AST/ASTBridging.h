@@ -34,12 +34,19 @@
 SWIFT_BEGIN_NULLABILITY_ANNOTATIONS
 
 namespace swift {
+class Argument;
 class ASTContext;
+struct ASTNode;
+class DeclAttributes;
 class DeclBaseName;
 class DeclNameLoc;
 class DeclNameRef;
 class DiagnosticArgument;
 class DiagnosticEngine;
+class Identifier;
+class IfConfigClauseRangeInfo;
+struct LabeledStmtInfo;
+class ProtocolConformanceRef;
 class Type;
 class CanType;
 class TypeBase;
@@ -66,14 +73,9 @@ public:
   SWIFT_NAME("init(raw:)")
   BridgedIdentifier(const void *_Nullable raw) : Raw(raw) {}
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedIdentifier(swift::Identifier ident)
-      : Raw(ident.getAsOpaquePointer()) {}
+  BRIDGED_INLINE BridgedIdentifier(swift::Identifier ident);
 
-  swift::Identifier unbridged() const {
-    return swift::Identifier::getFromOpaquePointer(Raw);
-  }
-#endif
+  BRIDGED_INLINE swift::Identifier unbridged() const;
 };
 
 SWIFT_NAME("getter:BridgedIdentifier.raw(self:)")
@@ -319,18 +321,7 @@ struct BridgedASTNode {
   SWIFT_NAME("kind")
   ASTNodeKind Kind;
 
-#ifdef USED_IN_CPP_SOURCE
-  swift::ASTNode unbridged() const {
-    switch (Kind) {
-    case ASTNodeKindExpr:
-      return swift::ASTNode(static_cast<swift::Expr *>(Raw));
-    case ASTNodeKindStmt:
-      return swift::ASTNode(static_cast<swift::Stmt *>(Raw));
-    case ASTNodeKindDecl:
-      return swift::ASTNode(static_cast<swift::Decl *>(Raw));
-    }
-  }
-#endif
+  BRIDGED_INLINE swift::ASTNode unbridged() const;
 };
 
 // Forward declare the underlying AST node type for each wrapper.
@@ -437,21 +428,8 @@ public:
 };
 
 class BridgedDiagnosticFixIt {
-  int64_t storage[7];
-
 public:
-  // Ensure that this struct value type will be indirectly returned on
-  // Windows ARM64
-  BridgedDiagnosticFixIt() {}
-
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDiagnosticFixIt(const swift::DiagnosticInfo::FixIt &fixit){
-    *reinterpret_cast<swift::DiagnosticInfo::FixIt *>(&storage) = fixit;
-  }
-  const swift::DiagnosticInfo::FixIt &unbridged() const {
-    return *reinterpret_cast<const swift::DiagnosticInfo::FixIt *>(&storage);
-  }
-#endif
+  int64_t storage[7];
 
   BridgedDiagnosticFixIt(BridgedSourceLoc start, uint32_t length, BridgedStringRef text);
 };
@@ -551,16 +529,9 @@ struct BridgedDeclAttributes {
 
   BridgedDeclAttributes() : chain(nullptr){};
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedDeclAttributes(swift::DeclAttributes attrs)
-      : chain(attrs.getRawAttributeChain()) {}
+  BRIDGED_INLINE BridgedDeclAttributes(swift::DeclAttributes attrs);
 
-  swift::DeclAttributes unbridged() const {
-    swift::DeclAttributes attrs;
-    attrs.setRawAttributeChain(chain.unbridged());
-    return attrs;
-  }
-#endif
+  BRIDGED_INLINE swift::DeclAttributes unbridged() const;
 };
 
 SWIFT_NAME("BridgedDeclAttributes.add(self:_:)")
@@ -1175,12 +1146,7 @@ struct BridgedCallArgument {
   BridgedIdentifier label;
   BridgedExpr argExpr;
 
-#ifdef USED_IN_CPP_SOURCE
-  swift::Argument unbridged() const {
-    return swift::Argument(labelLoc.unbridged(), label.unbridged(),
-                           argExpr.unbridged());
-  }
-#endif
+  BRIDGED_INLINE swift::Argument unbridged() const;
 };
 
 SWIFT_NAME("BridgedArgumentList.createImplicitUnlabeled(_:exprs:)")
@@ -1494,11 +1460,7 @@ struct BridgedLabeledStmtInfo {
   SWIFT_NAME("loc")
   BridgedSourceLoc Loc;
 
-#ifdef USED_IN_CPP_SOURCE
-  swift::LabeledStmtInfo unbridged() const {
-    return {Name.unbridged(), Loc.unbridged()};
-  }
-#endif
+  BRIDGED_INLINE swift::LabeledStmtInfo unbridged() const;
 };
 
 class BridgedStmtConditionElement {
@@ -2056,14 +2018,8 @@ public:
 struct BridgedConformance {
   void * _Nullable opaqueValue;
 
-#ifdef USED_IN_CPP_SOURCE
-  BridgedConformance(swift::ProtocolConformanceRef conformance)
-      : opaqueValue(conformance.getOpaqueValue()) {}
-
-  swift::ProtocolConformanceRef unbridged() const {
-    return swift::ProtocolConformanceRef::getFromOpaqueValue(opaqueValue);
-  }
-#endif
+  BRIDGED_INLINE BridgedConformance(swift::ProtocolConformanceRef conformance);
+  BRIDGED_INLINE swift::ProtocolConformanceRef unbridged() const;
 
   BridgedOwnedString getDebugDescription() const;
   BRIDGED_INLINE bool isConcrete() const;
@@ -2078,15 +2034,6 @@ struct BridgedConformance {
 
 struct BridgedConformanceArray {
   BridgedArrayRef pcArray;
-
-#ifdef USED_IN_CPP_SOURCE
-  BridgedConformanceArray(llvm::ArrayRef<swift::ProtocolConformanceRef> conformances)
-      : pcArray(conformances) {}
-
-  llvm::ArrayRef<swift::ProtocolConformanceRef> unbridged() const {
-    return pcArray.unbridged<swift::ProtocolConformanceRef>();
-  }
-#endif
 
   SwiftInt getCount() const { return SwiftInt(pcArray.Length); }
 
@@ -2125,29 +2072,7 @@ struct BridgedIfConfigClauseRangeInfo {
   BridgedSourceLoc endLoc;
   BridgedIfConfigClauseKind kind;
 
-#ifdef USED_IN_CPP_SOURCE
-  swift::IfConfigClauseRangeInfo unbridged() const {
-    swift::IfConfigClauseRangeInfo::ClauseKind clauseKind;
-    switch (kind) {
-    case IfConfigActive:
-      clauseKind = swift::IfConfigClauseRangeInfo::ActiveClause;
-      break;
-
-    case IfConfigInactive:
-      clauseKind = swift::IfConfigClauseRangeInfo::InactiveClause;
-      break;
-
-    case IfConfigEnd:
-      clauseKind = swift::IfConfigClauseRangeInfo::EndDirective;
-      break;
-    }
-
-    return swift::IfConfigClauseRangeInfo(directiveLoc.unbridged(),
-                                          bodyLoc.unbridged(),
-                                          endLoc.unbridged(),
-                                          clauseKind);
-  }
-#endif
+  BRIDGED_INLINE swift::IfConfigClauseRangeInfo unbridged() const;
 };
 
 //===----------------------------------------------------------------------===//
