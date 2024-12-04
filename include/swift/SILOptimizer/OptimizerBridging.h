@@ -120,6 +120,7 @@ struct BridgedDomTree {
   swift::DominanceInfo * _Nonnull di;
 
   BRIDGED_INLINE bool dominates(BridgedBasicBlock dominating, BridgedBasicBlock dominated) const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE OptionalBridgedBasicBlock getParent(BridgedBasicBlock block) const;
 };
 
 struct BridgedPostDomTree {
@@ -137,6 +138,7 @@ struct BridgedUtilities {
   static void registerPhiUpdater(UpdateFunctionFn updateBorrowedFromFn,
                                  UpdatePhisFn updateBorrowedFromPhisFn,
                                  UpdatePhisFn replacePhisWithIncomingValuesFn);
+  static void registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn);
 };
 
 struct BridgedBasicBlockSet {

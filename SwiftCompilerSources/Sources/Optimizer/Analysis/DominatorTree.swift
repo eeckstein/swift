@@ -15,6 +15,10 @@ import OptimizerBridging
 
 struct DominatorTree {
   let bridged: BridgedDomTree
+
+  func getParent(of block: BasicBlock) -> BasicBlock? {
+    bridged.getParent(block.bridged).block
+  }
 }
 
 extension BasicBlock {

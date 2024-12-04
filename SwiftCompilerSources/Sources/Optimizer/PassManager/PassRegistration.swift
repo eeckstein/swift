@@ -133,6 +133,7 @@ private func registerSwiftPasses() {
   registerPass(runUnitTests, { runUnitTests.run($0) })
   registerPass(testInstructionIteration, { testInstructionIteration.run($0) })
   registerPass(updateBorrowedFromPass, { updateBorrowedFromPass.run($0) })
+  registerPass(completeLifetimesPass, { completeLifetimesPass.run($0) })
 }
 
 private func registerSwiftAnalyses() {
@@ -143,4 +144,5 @@ private func registerSwiftAnalyses() {
 private func registerUtilities() {
   registerVerifier()
   registerPhiUpdater()
+  registerLifetimeCompletion()
 }

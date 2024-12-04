@@ -1916,6 +1916,7 @@ bool swift::extendStoreBorrow(StoreBorrowInst *sbi,
 static BridgedUtilities::UpdateFunctionFn updateAllGuaranteedPhisFunction;
 static BridgedUtilities::UpdatePhisFn updateGuaranteedPhisFunction;
 static BridgedUtilities::UpdatePhisFn replacePhisWithIncomingValuesFunction;
+static BridgedUtilities::UpdateFunctionFn completeAllLifetimesFunction;
 
 void BridgedUtilities::registerPhiUpdater(UpdateFunctionFn updateAllGuaranteedPhisFn,
                                           UpdatePhisFn updateGuaranteedPhisFn,
@@ -1923,6 +1924,10 @@ void BridgedUtilities::registerPhiUpdater(UpdateFunctionFn updateAllGuaranteedPh
   updateAllGuaranteedPhisFunction = updateAllGuaranteedPhisFn;
   updateGuaranteedPhisFunction = updateGuaranteedPhisFn;
   replacePhisWithIncomingValuesFunction = replacePhisWithIncomingValuesFn;
+}
+
+void BridgedUtilities::registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn) {
+  completeAllLifetimesFunction = completeAllLifetimesFn;
 }
 
 void swift::updateAllGuaranteedPhis(SILPassManager *pm, SILFunction *f) {
@@ -1965,4 +1970,9 @@ bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
       return true;
   }
   return false;
+}
+
+void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f) {
+  if (completeAllLifetimesFunction)
+    completeAllLifetimesFunction({pm->getSwiftPassInvocation()}, {f});
 }

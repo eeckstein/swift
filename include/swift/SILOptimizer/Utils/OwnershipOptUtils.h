@@ -367,6 +367,8 @@ void updateGuaranteedPhis(SILPassManager *pm, ArrayRef<SILPhiArgument *> phis);
 /// Replaces phis with the unique incoming values if all incoming values are the same.
 void replacePhisWithIncomingValues(SILPassManager *pm, ArrayRef<SILPhiArgument *> phis);
 
+void completeAllLifetimes(SILPassManager *pm, SILFunction *f);
+
 bool hasOwnershipOperandsOrResults(SILInstruction *inst);
 
 } // namespace swift

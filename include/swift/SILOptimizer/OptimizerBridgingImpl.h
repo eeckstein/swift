@@ -81,6 +81,14 @@ bool BridgedDomTree::dominates(BridgedBasicBlock dominating, BridgedBasicBlock d
   return di->dominates(dominating.unbridged(), dominated.unbridged());
 }
 
+OptionalBridgedBasicBlock BridgedDomTree::getParent(BridgedBasicBlock block) const {
+  if (auto *parentNode = di->getNode(block.unbridged())->getIDom()) {
+    return {parentNode->getBlock()};
+  }
+  return {nullptr};
+}
+
+
 bool BridgedPostDomTree::postDominates(BridgedBasicBlock dominating, BridgedBasicBlock dominated) const {
   return pdi->dominates(dominating.unbridged(), dominated.unbridged());
 }

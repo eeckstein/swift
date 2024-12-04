@@ -32,6 +32,7 @@
 #include "swift/SILOptimizer/Utils/CanonicalizeInstruction.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 
 using namespace swift;
 
@@ -333,12 +334,16 @@ void SILGenCleanup::run() {
     if (!function.isDefinition())
       continue;
 
+    getPassManager()->getSwiftPassInvocation()->beginTransformFunction(&function);
+
     PrettyStackTraceSILFunction stackTrace("silgen cleanup", &function);
 
     LLVM_DEBUG(llvm::dbgs()
                << "\nRunning SILGenCleanup on " << function.getName() << "\n");
 
-    bool changed = completeOSSALifetimes(&function);
+    completeAllLifetimes(getPassManager(), &function);
+    function.verifyOwnership(/*deadEndBlocks=*/nullptr);
+
     DeadEndBlocks deadEndBlocks(&function);
     SILGenCanonicalize sgCanonicalize(deadEndBlocks);
 
@@ -351,12 +356,13 @@ void SILGenCleanup::run() {
         ii = sgCanonicalize.deleteDeadOperands(ii, ie);
       }
     }
-    changed |= sgCanonicalize.changed;
-    if (changed) {
+    if (sgCanonicalize.changed) {
       auto invalidKind = SILAnalysis::InvalidationKind::Instructions;
       invalidateAnalysis(&function, invalidKind);
     }
-  }
+ 
+    getPassManager()->getSwiftPassInvocation()->endTransformFunction();
+}
 }
 
 } // end anonymous namespace

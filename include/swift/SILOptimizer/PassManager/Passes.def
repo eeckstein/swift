@@ -510,6 +510,8 @@ PASS(DiagnosticDeadFunctionElimination, "sil-diagnostic-dead-function-elim",
      "Eliminate dead functions from early specialization optimizations before we run later diagnostics")
 SWIFT_FUNCTION_PASS(UpdateBorrowedFrom, "update-borrowed-from",
      "Test pass for update borrowed-from instructions")
+SWIFT_FUNCTION_PASS(CompleteLifetimes, "complete-lifetimes",
+     "Test pass for completing OSSA lifetimes")
 PASS(DiagnoseUnnecessaryPreconcurrencyImports, "sil-diagnose-unnecessary-preconcurrency-imports",
      "Diagnose any preconcurrency imports that Sema and TransferNonSendable did not use")
 PASS(ThunkLowering, "sil-thunk-lowering",

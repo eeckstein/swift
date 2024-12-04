@@ -41,10 +41,13 @@ struct Worklist<Set: IntrusiveSet> : CustomStringConvertible, NoReflectionChildr
     return nil
   }
 
-  mutating func pushIfNotVisited(_ element: Element) {
+  @discardableResult
+  mutating func pushIfNotVisited(_ element: Element) -> Bool {
     if pushedElements.insert(element) {
       worklist.append(element)
+      return true
     }
+    return false
   }
 
   mutating func pushIfNotVisited<S: Sequence>(contentsOf other: S) where S.Element == Element {
