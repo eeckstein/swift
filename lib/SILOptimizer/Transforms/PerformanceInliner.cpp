@@ -1375,6 +1375,7 @@ public:
     if (Inliner.inlineCallsIntoFunction(getFunction())) {
       removeUnreachableBlocks(*getFunction());
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+      completeAllLifetimes(getPassManager(), getFunction());
       restartPassPipeline();
     }
   }

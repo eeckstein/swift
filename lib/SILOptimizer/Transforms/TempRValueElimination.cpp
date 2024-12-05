@@ -29,6 +29,7 @@
 #include "swift/SIL/SILBuilder.h"
 #include "swift/SIL/SILVisitor.h"
 #include "swift/SILOptimizer/Analysis/AliasAnalysis.h"
+#include "swift/SILOptimizer/Analysis/DeadEndBlocksAnalysis.h"
 #include "swift/SILOptimizer/Analysis/DominanceAnalysis.h"
 #include "swift/SILOptimizer/Analysis/PostOrderAnalysis.h"
 #include "swift/SILOptimizer/Analysis/RCIdentityAnalysis.h"
@@ -871,8 +872,14 @@ TempRValueOptPass::tryOptimizeStoreIntoTemp(StoreInst *si) {
     inst->eraseFromParent();
   }
   auto nextIter = std::next(si->getIterator());
+  SILValue src = si->getSrc();
   si->eraseFromParent();
   tempObj->eraseFromParent();
+
+  DeadEndBlocks *deb = getAnalysis<DeadEndBlocksAnalysis>()->get(si->getFunction());
+  OSSALifetimeCompletion completion(si->getFunction(), /*domInfo=*/nullptr, *deb);
+  completion.completeOSSALifetime(src, OSSALifetimeCompletion::Boundary::Availability);
+
   invalidateAnalysis(SILAnalysis::InvalidationKind::Instructions);
 
   return nextIter;
