@@ -210,7 +210,7 @@ SILCombiner::SILCombiner(SILFunctionTransform *trans,
       /* EraseAction */
       [&](SILInstruction *I) { eraseInstFromFunction(*I); }),
   deBlocks(trans->getFunction()),
-  ownershipFixupContext(getInstModCallbacks(), deBlocks),
+  ownershipFixupContext(getInstModCallbacks()),
   swiftPassInvocation(trans->getPassManager(),
                       trans->getFunction(), this) {}
 

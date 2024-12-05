@@ -726,19 +726,16 @@ public:
   /// Pass \p deadEndBlocks when the defs' lifetime isn't known to be complete.
   /// When passed, the liveness boundary is understood to extend into dead-end
   /// regions.
-  bool isWithinBoundary(SILInstruction *inst,
-                        DeadEndBlocks *deadEndBlocks) const;
+  bool isWithinBoundary(SILInstruction *inst) const;
 
   /// Returns true when all \p uses are between this def and the liveness
   /// boundary \p deadEndBlocks is optional.
-  bool areUsesWithinBoundary(ArrayRef<Operand *> uses,
-                             DeadEndBlocks *deadEndBlocks) const;
+  bool areUsesWithinBoundary(ArrayRef<Operand *> uses) const;
 
   /// Returns true if any of the \p uses are before this def or after the
   /// liveness boundary
   /// \p deadEndBlocks is optional.
-  bool areUsesOutsideBoundary(ArrayRef<Operand *> uses,
-                              DeadEndBlocks *deadEndBlocks) const;
+  bool areUsesOutsideBoundary(ArrayRef<Operand *> uses) const;
 
   /// Compute the boundary from the blocks discovered during liveness analysis.
   ///

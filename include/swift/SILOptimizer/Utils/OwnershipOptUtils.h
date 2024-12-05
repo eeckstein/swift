@@ -81,7 +81,6 @@ bool createBorrowScopeForPhiOperands(SILPhiArgument *newPhi);
 
 SILValue
 makeGuaranteedValueAvailable(SILValue value, SILInstruction *user,
-                             DeadEndBlocks &deBlocks,
                              InstModCallbacks callbacks = InstModCallbacks());
 
 /// Compute the liveness boundary for a guaranteed value. Returns true if no
@@ -103,7 +102,6 @@ bool computeGuaranteedBoundary(SILValue value,
 class GuaranteedOwnershipExtension {
   // --- context
   InstructionDeleter &deleter;
-  DeadEndBlocks &deBlocks;
 
   // --- analysis state
   MultiDefPrunedLiveness guaranteedLiveness;
@@ -112,9 +110,8 @@ class GuaranteedOwnershipExtension {
   BeginBorrowInst *beginBorrow = nullptr;
 
 public:
-  GuaranteedOwnershipExtension(InstructionDeleter &deleter,
-                               DeadEndBlocks &deBlocks, SILFunction *function)
-    : deleter(deleter), deBlocks(deBlocks),
+  GuaranteedOwnershipExtension(InstructionDeleter &deleter, SILFunction *function)
+    : deleter(deleter),
       guaranteedLiveness(function), ownedLifetime(function) {}
 
   /// Invalid indicates that the current guaranteed scope is insufficient, and
@@ -161,7 +158,6 @@ public:
 struct OwnershipFixupContext {
   std::optional<InstModCallbacks> inlineCallbacks;
   InstModCallbacks &callbacks;
-  DeadEndBlocks &deBlocks;
 
   // Cache the use-points for the lifetime of an inner guaranteed value (which
   // does not introduce a borrow scope) after checking validity. These will be
@@ -196,8 +192,8 @@ struct OwnershipFixupContext {
   };
   AddressFixupContext extraAddressFixupInfo;
 
-  OwnershipFixupContext(InstModCallbacks &callbacks, DeadEndBlocks &deBlocks)
-      : callbacks(callbacks), deBlocks(deBlocks) {}
+  OwnershipFixupContext(InstModCallbacks &callbacks)
+      : callbacks(callbacks) {}
 
   void clear() {
     guaranteedUsePoints.clear();
@@ -354,7 +350,6 @@ private:
 /// Extend the store_borrow \p sbi's scope such that it encloses \p newUsers.
 bool extendStoreBorrow(StoreBorrowInst *sbi,
                        SmallVectorImpl<Operand *> &newUses,
-                       DeadEndBlocks *deadEndBlocks,
                        InstModCallbacks callbacks = InstModCallbacks());
 
 /// Updates the reborrow flags and the borrowed-from instructions for all

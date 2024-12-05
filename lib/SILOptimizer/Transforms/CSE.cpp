@@ -652,8 +652,6 @@ public:
 
   SILOptFunctionBuilder &FuncBuilder;
 
-  DeadEndBlocks &DeadEndBBs;
-
   OwnershipFixupContext &RAUWFixupContext;
 
   /// The set of calls to lazy property getters which can be replace by a direct
@@ -661,9 +659,9 @@ public:
   llvm::SmallVector<ApplyInst *, 8> lazyPropertyGetters;
 
   CSE(bool RunsOnHighLevelSil, BasicCalleeAnalysis *BCA,
-      SILOptFunctionBuilder &FuncBuilder, DeadEndBlocks &DeadEndBBs,
+      SILOptFunctionBuilder &FuncBuilder,
       OwnershipFixupContext &RAUWFixupContext)
-      : BCA(BCA), FuncBuilder(FuncBuilder), DeadEndBBs(DeadEndBBs),
+      : BCA(BCA), FuncBuilder(FuncBuilder),
         RAUWFixupContext(RAUWFixupContext),
         RunsOnHighLevelSil(RunsOnHighLevelSil) {}
 
@@ -1037,8 +1035,7 @@ bool CSE::processNode(DominanceInfoNode *Node) {
     // If the instruction can be simplified (e.g. X+0 = X) then replace it with
     // its simpler value.
     InstModCallbacks callbacks;
-    nextI = simplifyAndReplaceAllSimplifiedUsesAndErase(Inst, callbacks,
-                                                        &DeadEndBBs);
+    nextI = simplifyAndReplaceAllSimplifiedUsesAndErase(Inst, callbacks);
     if (callbacks.hadCallbackInvocation()) {
       ++NumSimplify;
       Changed = true;
@@ -1480,10 +1477,9 @@ class SILCSE : public SILFunctionTransform {
     SILOptFunctionBuilder FuncBuilder(*this);
 
     auto *Fn = getFunction();
-    DeadEndBlocks DeadEndBBs(Fn);
     InstModCallbacks callbacks;
-    OwnershipFixupContext FixupCtx{callbacks, DeadEndBBs};
-    CSE C(RunsOnHighLevelSil, BCA, FuncBuilder, DeadEndBBs, FixupCtx);
+    OwnershipFixupContext FixupCtx{callbacks};
+    CSE C(RunsOnHighLevelSil, BCA, FuncBuilder, FixupCtx);
     bool Changed = false;
 
     // Perform the traditional CSE.

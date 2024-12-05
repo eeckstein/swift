@@ -935,8 +935,7 @@ computeTransitiveLiveness(MultiDefPrunedLiveness &liveness) const {
   });
 }
 
-bool BorrowedValue::areUsesWithinExtendedScope(
-    ArrayRef<Operand *> uses, DeadEndBlocks *deadEndBlocks) const {
+bool BorrowedValue::areUsesWithinExtendedScope(ArrayRef<Operand *> uses) const {
   // First make sure that we actually have a local scope. If we have a non-local
   // scope, then we have something (like a SILFunctionArgument) where a larger
   // semantic construct (in the case of SILFunctionArgument, the function
@@ -948,7 +947,7 @@ bool BorrowedValue::areUsesWithinExtendedScope(
   // Compute the local scope's liveness.
   MultiDefPrunedLiveness liveness(value->getFunction());
   computeTransitiveLiveness(liveness);
-  return liveness.areUsesWithinBoundary(uses, deadEndBlocks);
+  return liveness.areUsesWithinBoundary(uses);
 }
 
 // The visitor \p func is only called on final scope-ending uses, not reborrows.
@@ -1087,15 +1086,14 @@ bool BorrowedValue::visitInteriorPointerOperandHelper(
 //                              AddressOwnership
 //===----------------------------------------------------------------------===//
 
-bool AddressOwnership::areUsesWithinLifetime(
-    ArrayRef<Operand *> uses, DeadEndBlocks &deadEndBlocks) const {
+bool AddressOwnership::areUsesWithinLifetime(ArrayRef<Operand *> uses) const {
   if (!base.hasLocalOwnershipLifetime())
     return true;
 
   SILValue root = base.getOwnershipReferenceRoot();
   BorrowedValue borrow(root);
   if (borrow)
-    return borrow.areUsesWithinExtendedScope(uses, &deadEndBlocks);
+    return borrow.areUsesWithinExtendedScope(uses);
 
   // --- A reference with no borrow scope! Currently happens for project_box.
 
@@ -1110,7 +1108,7 @@ bool AddressOwnership::areUsesWithinLifetime(
 
   // FIXME (implicit borrow): handle reborrows transitively just like above so
   // we don't bail out if a uses is within the reborrowed scope.
-  return liveness.areUsesWithinBoundary(uses, &deadEndBlocks);
+  return liveness.areUsesWithinBoundary(uses);
 }
 
 //===----------------------------------------------------------------------===//

@@ -516,7 +516,7 @@ bool SILValueOwnershipChecker::checkDeadEnds(
   }
   auto allWithinBoundary = true;
   for (auto *use : regularUses) {
-    if (!liveness.isWithinBoundary(use->getUser(), /*deadEndBlocks=*/nullptr)) {
+    if (!liveness.isWithinBoundary(use->getUser())) {
       allWithinBoundary |= errorBuilder.handleMalformedSIL([&] {
         llvm::errs()
             << "Owned value without lifetime ending uses whose regular use "

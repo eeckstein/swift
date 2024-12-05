@@ -197,7 +197,7 @@ bool SemanticARCOptVisitor::performGuaranteedCopyValueOptimization(
   {
     if (llvm::any_of(borrowScopeIntroducers, [&](BorrowedValue borrowScope) {
           return !borrowScope.areUsesWithinExtendedScope(
-              lr.getAllConsumingUses(), nullptr);
+              lr.getAllConsumingUses());
         })) {
       LLVM_DEBUG(llvm::dbgs() << "copy_value is extending borrow introducer "
                                  "lifetime, bailing out\n");
@@ -239,7 +239,7 @@ bool SemanticARCOptVisitor::performGuaranteedCopyValueOptimization(
 
       if (llvm::any_of(borrowScopeIntroducers, [&](BorrowedValue borrowScope) {
             return !borrowScope.areUsesWithinExtendedScope(
-                phiArgLR.getAllConsumingUses(), nullptr);
+                phiArgLR.getAllConsumingUses());
           })) {
         return false;
       }

@@ -149,7 +149,7 @@ public:
       bool EnableOSSARewriteTerminator)
       : Fn(Fn), DT(DT), deBlocks(deBlocks), pm(pm),
         EnableOSSARewriteTerminator(EnableOSSARewriteTerminator),
-        rauwContext(callbacks, *deBlocks),
+        rauwContext(callbacks),
         BlocksForWorklist(BlocksForWorklist), BlocksToEdit(Fn),
         BlocksToClone(Fn) {}
 
