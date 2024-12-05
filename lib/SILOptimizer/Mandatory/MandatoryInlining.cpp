@@ -24,6 +24,7 @@
 #include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/Devirtualize.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILInliner.h"
 #include "swift/SILOptimizer/Utils/SILOptFunctionBuilder.h"
 #include "swift/SILOptimizer/Utils/StackNesting.h"
@@ -1059,19 +1060,20 @@ class MandatoryInlining : public SILModuleTransform {
       if (mergeBasicBlocks(&F)) {
         changedFunctions.insert(&F);
       }
-
-      // If we are asked to perform SIL verify all, perform that now so that we
-      // can discover the immediate inlining trigger of the problematic
-      // function.
-      if (SILVerifyAll) {
-        F.verify();
-      }
     }
 
     if (getOptions().DebugSerialization)
       return;
     for (auto *F : changedFunctions) {
       invalidateAnalysis(F, SILAnalysis::InvalidationKind::FunctionBody);
+
+      getPassManager()->getSwiftPassInvocation()->beginTransformFunction(F);
+      completeAllLifetimes(getPassManager(), F);
+      getPassManager()->getSwiftPassInvocation()->endTransformFunction();
+
+      if (SILVerifyAll) {
+        F->verify();
+      }
     }
   }
 

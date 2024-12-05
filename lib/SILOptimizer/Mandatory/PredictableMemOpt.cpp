@@ -490,7 +490,7 @@ struct AvailableValueDataflowFixup: AvailableValueFixup {
   // -sil-verify-all is set.
   //
   // Clears insertedInsts.
-  void verifyOwnership(DeadEndBlocks &deBlocks);
+  void verifyOwnership();
 
   // Fix ownership of inserted instructions and delete dead instructions.
   //
@@ -532,13 +532,13 @@ SILValue AvailableValueDataflowFixup::getSingleOwnedValue(
     .emitCopyValueOperation(insertPts[0]->getLoc(), value);
 }
 
-void AvailableValueDataflowFixup::verifyOwnership(DeadEndBlocks &deBlocks) {
+void AvailableValueDataflowFixup::verifyOwnership() {
   for (auto *inst : insertedInsts) {
     if (inst->isDeleted())
       continue;
 
     for (auto result : inst->getResults()) {
-      result.verifyOwnership(&deBlocks);
+      result.verifyOwnership();
     }
   }
   insertedInsts.clear();
@@ -584,8 +584,6 @@ deleteInsertedInsts(InstructionDeleter  &deleter) {
 // In OptimizationMode::PreserveAlloc: insert copies and phis for aggregate
 // values.
 struct AvailableValueAggregationFixup: AvailableValueFixup {
-  DeadEndBlocks &deadEndBlocks;
-  
   /// The list of phi nodes inserted by the SSA updater.
   SmallVector<SILPhiArgument *, 16> insertedPhiNodes;
 
@@ -594,8 +592,7 @@ struct AvailableValueAggregationFixup: AvailableValueFixup {
   /// addMissingDestroysForCopiedValues.
   SmallPtrSet<CopyValueInst *, 16> copyValueProcessedWithPhiNodes;
 
-  AvailableValueAggregationFixup(DeadEndBlocks &deadEndBlocks)
-    : deadEndBlocks(deadEndBlocks) {}
+  AvailableValueAggregationFixup() {}
 
   /// For a single 'availableVal', insert copies at each insertion point. Merge
   /// all copies, creating phis if needed. Return the final copy. Otherwise,
@@ -747,7 +744,7 @@ public:
     copiesToCleanup.insert(iter.first->second, copy);
   }
 
-  void emit(DeadEndBlocks &deadEndBlocks) &&;
+  void emit() &&;
 };
 
 } // end anonymous namespace
@@ -789,7 +786,7 @@ terminatorHasAnyKnownPhis(TermInst *ti,
   return false;
 }
 
-void PhiNodeCopyCleanupInserter::emit(DeadEndBlocks &deadEndBlocks) && {
+void PhiNodeCopyCleanupInserter::emit() && {
   // READ THIS: We are being very careful here to avoid allowing for
   // non-determinism to enter here.
   //
@@ -838,7 +835,7 @@ void PhiNodeCopyCleanupInserter::emit(DeadEndBlocks &deadEndBlocks) && {
                   "the single block cases earlier");
     ValueLifetimeAnalysis analysis(def, copies);
     bool foundCriticalEdges = !analysis.computeFrontier(
-        lifetimeFrontier, ValueLifetimeAnalysis::DontModifyCFG, &deadEndBlocks);
+        lifetimeFrontier, ValueLifetimeAnalysis::DontModifyCFG);
     (void)foundCriticalEdges;
     assert(!foundCriticalEdges);
 
@@ -1001,7 +998,7 @@ void AvailableValueAggregationFixup::addHandOffCopyDestroysForPhis(
     // Then perform the linear lifetime check. If we succeed, continue. We have
     // no further work to do.
     auto *loadOperand = &load->getAllOperands()[0];
-    LinearLifetimeChecker checker(&deadEndBlocks);
+    LinearLifetimeChecker checker;
     bool consumedInLoop = checker.completeConsumingUseSet(
         phi, loadOperand, [&](SILBasicBlock::iterator iter) {
           SILBuilderWithScope builder(iter);
@@ -1031,7 +1028,7 @@ void AvailableValueAggregationFixup::addHandOffCopyDestroysForPhis(
   // lifetime extended them to the load block, and inserted phi copies
   // at all of our intermediate phi nodes. Now we need to cleanup and
   // insert all of the compensating destroy_value that we need.
-  std::move(cleanupInserter).emit(deadEndBlocks);
+  std::move(cleanupInserter).emit();
 
   // Clear the phi node array now that we are done.
   insertedPhiNodes.clear();
@@ -1086,7 +1083,7 @@ void AvailableValueAggregationFixup::addMissingDestroysForCopiedValues(
     // Then perform the linear lifetime check. If we succeed, continue. We have
     // no further work to do.
     auto *loadOperand = &load->getAllOperands()[0];
-    LinearLifetimeChecker checker(&deadEndBlocks);
+    LinearLifetimeChecker checker;
     bool consumedInLoop = checker.completeConsumingUseSet(
         cvi, loadOperand, [&](SILBasicBlock::iterator iter) {
           SILBuilderWithScope builder(iter);
@@ -1152,11 +1149,10 @@ public:
   AvailableValueAggregator(SILInstruction *Inst,
                            ArrayRef<AvailableValue> AvailableValueList,
                            SmallVectorImpl<PMOMemoryUse> &Uses,
-                           DeadEndBlocks &deadEndBlocks,
                            AvailableValueExpectedOwnership expectedOwnership)
       : M(Inst->getModule()), B(Inst), Loc(Inst->getLoc()),
         AvailableValueList(AvailableValueList), Uses(Uses),
-        expectedOwnership(expectedOwnership), ownershipFixup(deadEndBlocks)
+        expectedOwnership(expectedOwnership)
   {}
 
   // This is intended to be passed by reference only once constructed.
@@ -1501,8 +1497,7 @@ public:
                                 unsigned NumMemorySubElements,
                                 OptimizationMode mode,
                                 SmallVectorImpl<PMOMemoryUse> &Uses,
-                                InstructionDeleter &deleter,
-                                DeadEndBlocks &deBlocks);
+                                InstructionDeleter &deleter);
 
   // Find an available for for subelements of 'SrcAddr'.
   // Return the SILType of the object in 'SrcAddr' and index of the first sub
@@ -1524,8 +1519,8 @@ public:
   /// Explode a copy_addr, updating the Uses at the same time.
   void explodeCopyAddr(CopyAddrInst *CAI);
 
-  void verifyOwnership(DeadEndBlocks &deBlocks) {
-    ownershipFixup.verifyOwnership(deBlocks);
+  void verifyOwnership() {
+    ownershipFixup.verifyOwnership();
   }
   
   void fixupOwnership(InstructionDeleter &deleter,
@@ -1584,7 +1579,7 @@ private:
 AvailableValueDataflowContext::AvailableValueDataflowContext(
     AllocationInst *InputTheMemory, unsigned NumMemorySubElements,
     OptimizationMode mode, SmallVectorImpl<PMOMemoryUse> &InputUses,
-    InstructionDeleter &deleter, DeadEndBlocks &deBlocks)
+    InstructionDeleter &deleter)
     : TheMemory(InputTheMemory), NumMemorySubElements(NumMemorySubElements),
       Uses(InputUses), deleter(deleter),
       HasLocalDefinition(InputTheMemory->getFunction()),
@@ -2303,7 +2298,7 @@ public:
         Uses(uses), deleter(deleter), deadEndBlocks(deadEndBlocks),
         DataflowContext(TheMemory, NumMemorySubElements,
                         OptimizationMode::PreserveAlloc, uses,
-                        deleter, deadEndBlocks) {}
+                        deleter) {}
 
   bool optimize();
 
@@ -2366,7 +2361,7 @@ bool OptimizeAllocLoads::promoteLoadCopy(LoadInst *li) {
   // type as the load did, and emit smaller loads for any subelements that were
   // not available. We are "propagating" a +1 available value from the store
   // points.
-  AvailableValueAggregator agg(li, availableValues, Uses, deadEndBlocks,
+  AvailableValueAggregator agg(li, availableValues, Uses,
                                AvailableValueExpectedOwnership::Copy);
   SILValue newVal = agg.aggregateValues(loadInfo->loadType, li->getOperand(),
                                         loadInfo->firstElt);
@@ -2463,7 +2458,7 @@ bool OptimizeAllocLoads::promoteLoadBorrow(LoadBorrowInst *lbi) {
   // type as the load did, and emit smaller loads for any subelements that were
   // not available. We are "propagating" a +1 available value from the store
   // points.
-  AvailableValueAggregator agg(lbi, availableValues, Uses, deadEndBlocks,
+  AvailableValueAggregator agg(lbi, availableValues, Uses,
                                AvailableValueExpectedOwnership::Borrow);
   SILValue newVal = agg.aggregateValues(loadInfo->loadType, lbi->getOperand(),
                                         loadInfo->firstElt);
@@ -2684,8 +2679,7 @@ public:
         Uses(uses), Releases(releases), deadEndBlocks(deadEndBlocks),
         deleter(deleter), domInfo(domInfo),
         DataflowContext(TheMemory, NumMemorySubElements,
-                        OptimizationMode::ReplaceAlloc, uses, deleter,
-                        deadEndBlocks) {}
+                        OptimizationMode::ReplaceAlloc, uses, deleter) {}
 
   /// If the allocation is an autogenerated allocation that is only stored to
   /// (after load promotion) then remove it completely.
@@ -2925,7 +2919,7 @@ bool OptimizeDeadAlloc::canPromoteTake(
   // implies today that our value is fully available. If the value is not fully
   // available, we would need to split stores to promote this destroy_addr. We
   // do not support that yet.
-  AvailableValueAggregator agg(inst, availableValues, Uses, deadEndBlocks,
+  AvailableValueAggregator agg(inst, availableValues, Uses,
                                AvailableValueExpectedOwnership::Take);
   if (!agg.canTake(loadInfo->loadType, loadInfo->firstElt))
     return false;
@@ -3031,7 +3025,7 @@ void OptimizeDeadAlloc::removeDeadAllocation() {
   // If it is safe to remove, do it.  Recursively remove all instructions
   // hanging off the allocation instruction, then return success.
   deleter.forceDeleteWithUsers(TheMemory);
-  DataflowContext.verifyOwnership(deadEndBlocks);
+  DataflowContext.verifyOwnership();
 
   // Now look at all of our available values and complete any of their
   // post-dominating consuming use sets. This can happen if we have an enum that
@@ -3090,7 +3084,7 @@ OptimizeDeadAlloc::promoteLoadTake(LoadInst *li,
   // Aggregate together all of the subelements into something that has the same
   // type as the load did, and emit smaller) loads for any subelements that were
   // not available.
-  AvailableValueAggregator agg(li, availableValues, Uses, deadEndBlocks,
+  AvailableValueAggregator agg(li, availableValues, Uses,
                                AvailableValueExpectedOwnership::Take);
   SILValue newVal = agg.aggregateValues(loadTy, address, firstElt);
   assert(newVal);
@@ -3123,7 +3117,7 @@ void OptimizeDeadAlloc::promoteDestroyAddr(
   // Aggregate together all of the subelements into something that has the same
   // type as the load did, and emit smaller) loads for any subelements that were
   // not available.
-  AvailableValueAggregator agg(dai, availableValues, Uses, deadEndBlocks,
+  AvailableValueAggregator agg(dai, availableValues, Uses,
                                AvailableValueExpectedOwnership::Take);
   SILValue newVal = agg.aggregateValues(loadTy, address, firstElt);
 

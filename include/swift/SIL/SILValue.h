@@ -702,7 +702,7 @@ public:
   /// Verify that this SILValue and its uses respects ownership invariants.
   ///
   /// \p DEBlocks is nullptr when OSSA lifetimes are complete.
-  void verifyOwnership(DeadEndBlocks *DEBlocks) const;
+  void verifyOwnership(DeadEndBlocks *DEBlocks = nullptr) const;
 
   SWIFT_DEBUG_DUMP;
 };
