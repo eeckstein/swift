@@ -954,12 +954,7 @@ void SILModule::verifyOwnership() const {
     return;
 
   for (const SILFunction &function : *this) {
-    std::unique_ptr<DeadEndBlocks> deBlocks;
-    if (!getOptions().OSSAVerifyComplete) {
-      deBlocks =
-        std::make_unique<DeadEndBlocks>(const_cast<SILFunction *>(&function));
-    }
-    function.verifyOwnership(deBlocks.get());
+    function.verifyOwnership();
   }
 }
 

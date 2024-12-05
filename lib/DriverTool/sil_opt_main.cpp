@@ -235,10 +235,6 @@ struct SILOptOptions {
   EnableOSSACompleteLifetimes = llvm::cl::opt<bool>("enable-ossa-complete-lifetimes",
                         llvm::cl::desc("Require linear OSSA lifetimes after SILGenCleanup."));
   llvm::cl::opt<bool>
-  EnableOSSAVerifyComplete = llvm::cl::opt<bool>("enable-ossa-verify-complete",
-                        llvm::cl::desc("Verify linear OSSA lifetimes after SILGenCleanup."));
-
-  llvm::cl::opt<bool>
   EnableObjCInterop = llvm::cl::opt<bool>("enable-objc-interop",
                     llvm::cl::desc("Enable Objective-C interoperability."));
 
@@ -878,7 +874,6 @@ int sil_opt_main(ArrayRef<const char *> argv, void *MainAddr) {
   SILOpts.EnableOSSAModules = options.EnableOSSAModules;
   SILOpts.EnableSILOpaqueValues = options.EnableSILOpaqueValues;
   SILOpts.OSSACompleteLifetimes = options.EnableOSSACompleteLifetimes;
-  SILOpts.OSSAVerifyComplete = options.EnableOSSAVerifyComplete;
 
   if (options.CopyPropagationState) {
     SILOpts.CopyPropagation = *options.CopyPropagationState;

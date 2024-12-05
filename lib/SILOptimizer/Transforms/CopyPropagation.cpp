@@ -647,11 +647,7 @@ void CopyPropagation::run() {
 }
 
 void CopyPropagation::verifyOwnership() {
-  auto *f = getFunction();
-  auto *deBlocksAnalysis = getAnalysis<DeadEndBlocksAnalysis>();
-  f->verifyOwnership(f->getModule().getOptions().OSSAVerifyComplete
-                         ? nullptr
-                         : deBlocksAnalysis->get(f));
+  getFunction()->verifyOwnership();
 }
 
 // MandatoryCopyPropagation is not currently enabled in the -Onone pipeline
