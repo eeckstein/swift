@@ -84,7 +84,7 @@ simplifyAndReplace(SILInstruction *inst, CanonicalizeInstruction &pass) {
   // because the instruction and all non-replaced users will be deleted.
   pass.callbacks.resetHadCallbackInvocation();
   auto result = simplifyAndReplaceAllSimplifiedUsesAndErase(
-      inst, pass.callbacks, &pass.deadEndBlocks);
+      inst, pass.callbacks);
   if (!pass.callbacks.hadCallbackInvocation())
     return std::nullopt;
 

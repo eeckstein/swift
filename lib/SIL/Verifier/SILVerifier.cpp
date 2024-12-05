@@ -3052,7 +3052,7 @@ public:
                                   LinearLiveness::DoNotIncludeExtensions);
     linearLiveness.compute();
     auto &liveness = linearLiveness.getLiveness();
-    require(!liveness.isWithinBoundary(I, /*deadEndBlocks=*/nullptr),
+    require(!liveness.isWithinBoundary(I),
             "extend_lifetime use within unextended linear liveness boundary!?");
     PrunedLivenessBoundary boundary;
     liveness.computeBoundary(boundary);
@@ -3146,8 +3146,7 @@ public:
       if (scopedAddress.isScopeEndingUse(use)) {
         continue;
       }
-      if (!scopedAddressLiveness->isWithinBoundary(user,
-                                                   /*deadEndBlocks=*/nullptr)) {
+      if (!scopedAddressLiveness->isWithinBoundary(user)) {
         llvm::errs() << "User found outside scope: " << *user;
         return false;
       }
@@ -3370,7 +3369,7 @@ public:
             "Ill formed store_borrow scope");
 
     require(!success || !hasOtherStoreBorrowsInLifetime(
-              SI, &scopedAddressLiveness, DEBlocks.get()),
+              SI, &scopedAddressLiveness),
             "A store_borrow cannot be nested within another "
             "store_borrow to its destination");
 

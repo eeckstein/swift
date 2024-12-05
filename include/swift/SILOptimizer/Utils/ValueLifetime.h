@@ -56,8 +56,7 @@ struct ValueLifetimeBoundary {
   /// of the lastUsers ends the lifetime, for example when creating a new borrow
   /// scope to enclose all uses.
   void visitInsertionPoints(
-      llvm::function_ref<void(SILBasicBlock::iterator insertPt)> visitor,
-      DeadEndBlocks *deBlocks = nullptr);
+      llvm::function_ref<void(SILBasicBlock::iterator insertPt)> visitor);
 };
 
 /// Computes the lifetime frontier for a given value with respect to a

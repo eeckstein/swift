@@ -343,7 +343,7 @@ void OSSACanonicalizeOwned::extendLivenessToDeadEnds() {
   SSAPrunedLiveness completeLiveness(*liveness, &discoveredBlocks);
 
   for (auto destroy : destroys) {
-    if (liveness->isWithinBoundary(destroy, /*deadEndBlocks=*/nullptr))
+    if (liveness->isWithinBoundary(destroy))
       continue;
     completeLiveness.updateForUse(destroy, /*lifetimeEnding*/ true);
   }
@@ -711,7 +711,7 @@ void OSSACanonicalizeOwned::visitExtendedUnconsumedBoundary(
 
 #ifndef NDEBUG
   for (auto *consume : consumes) {
-    assert(!liveness->isWithinBoundary(consume, /*deadEndBlocks=*/nullptr));
+    assert(!liveness->isWithinBoundary(consume));
   }
 #endif
 
@@ -1368,9 +1368,7 @@ void OSSACanonicalizeOwned::rewriteCopies(
       liveness->updateForUse(destroy, /*lifetimeEnding=*/true);
     }
     for (auto *dvi : debugValues) {
-      if (liveness->isWithinBoundary(
-              dvi,
-              deadEndBlocksAnalysis->get(getCurrentDef()->getFunction()))) {
+      if (liveness->isWithinBoundary(dvi)) {
         continue;
       }
       LLVM_DEBUG(llvm::dbgs() << "  Removing debug_value: " << *dvi);

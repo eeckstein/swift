@@ -20,8 +20,7 @@
 using namespace swift;
 
 void ValueLifetimeBoundary::visitInsertionPoints(
-    llvm::function_ref<void(SILBasicBlock::iterator insertPt)> visitor,
-    DeadEndBlocks *deBlocks) {
+    llvm::function_ref<void(SILBasicBlock::iterator insertPt)> visitor) {
   for (SILInstruction *user : lastUsers) {
     if (!isa<TermInst>(user)) {
       visitor(std::next(user->getIterator()));
@@ -29,17 +28,11 @@ void ValueLifetimeBoundary::visitInsertionPoints(
     }
     auto *predBB = user->getParent();
     for (SILBasicBlock *succ : predBB->getSuccessors()) {
-      if (deBlocks && deBlocks->isDeadEnd(succ))
-        continue;
-
       assert(succ->getSinglePredecessorBlock() == predBB);
       visitor(succ->begin());
     }
   }
   for (SILBasicBlock *edge : boundaryEdges) {
-    if (deBlocks && deBlocks->isDeadEnd(edge))
-      continue;
-
     visitor(edge->begin());
   }
 }
