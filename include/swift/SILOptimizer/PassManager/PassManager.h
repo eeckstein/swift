@@ -170,6 +170,8 @@ public:
   void beginVerifyFunction(SILFunction *function);
   void endVerifyFunction();
 
+  bool runsInSILCombine() const { return silCombiner != nullptr; }
+
   void notifyNewCloner() { numClonersAllocated++; }
   void notifyClonerDestroyed() { numClonersAllocated--; }
 

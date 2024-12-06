@@ -245,7 +245,6 @@ public:
   SILInstruction *visitTryApplyInst(TryApplyInst *AI);
   SILInstruction *optimizeStringObject(BuiltinInst *BI);
   SILInstruction *visitBuiltinInst(BuiltinInst *BI);
-  SILInstruction *visitCondFailInst(CondFailInst *CFI);
   SILInstruction *visitRefToRawPointerInst(RefToRawPointerInst *RRPI);
   SILInstruction *visitUpcastInst(UpcastInst *UCI);
 

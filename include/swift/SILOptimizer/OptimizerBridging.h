@@ -208,6 +208,7 @@ struct BridgedPassContext {
   BRIDGED_INLINE bool hadError() const;
   BRIDGED_INLINE bool moduleIsSerialized() const;
   BRIDGED_INLINE bool isTransforming(BridgedFunction function) const;
+  BRIDGED_INLINE bool runsInSILCombine() const;
 
   // Analysis
 

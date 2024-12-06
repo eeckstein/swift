@@ -197,6 +197,10 @@ bool BridgedPassContext::isTransforming(BridgedFunction function) const {
   return invocation->getFunction() == function.getFunction();
 }
 
+bool BridgedPassContext::runsInSILCombine() const {
+  return invocation->runsInSILCombine();
+}
+
 BridgedAliasAnalysis BridgedPassContext::getAliasAnalysis() const {
   return {invocation->getPassManager()->getAnalysis<swift::AliasAnalysis>(invocation->getFunction())};
 }

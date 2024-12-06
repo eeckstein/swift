@@ -449,6 +449,7 @@ struct FunctionPassContext : MutatingContext {
 struct SimplifyContext : MutatingContext {
   let _bridged: BridgedPassContext
   let notifyInstructionChanged: (Instruction) -> ()
+  var runsInSILCombine: Bool { _bridged.runsInSILCombine() }
   let preserveDebugInfo: Bool
 }
 
@@ -537,11 +538,13 @@ extension Builder {
   /// `Builder.insert(after:location:_:insertFunc)` from OptUtils.swift. Rename this to afterNonTerminator.
   init(after insPnt: Instruction, location: Location, _ context: some MutatingContext) {
     context.verifyIsTransforming(function: insPnt.parentFunction)
-    guard let nextInst = insPnt.next else {
-      fatalError("cannot insert an instruction after a block terminator.")
+    if let nextInst = insPnt.next {
+      self.init(insertAt: .before(nextInst), location: location,
+                context.notifyInstructionChanged, context._bridged.asNotificationHandler())
+    } else {
+      self.init(insertAt: .atEndOf(insPnt.parentBlock), location: location,
+                context.notifyInstructionChanged, context._bridged.asNotificationHandler())
     }
-    self.init(insertAt: .before(nextInst), location: location,
-              context.notifyInstructionChanged, context._bridged.asNotificationHandler())
   }
 
   /// Creates a builder which inserts _after_ `insPnt`, using `insPnt`'s next
