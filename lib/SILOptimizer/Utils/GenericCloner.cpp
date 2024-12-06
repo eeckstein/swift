@@ -247,13 +247,6 @@ const SILDebugScope *GenericCloner::remapScope(const SILDebugScope *DS) {
 }
 
 void GenericCloner::postFixUp(SILFunction *f) {
-  for (auto *apply : noReturnApplies) {
-    auto applyBlock = apply->getParent();
-    applyBlock->split(std::next(SILBasicBlock::iterator(apply)));
-    getBuilder().setInsertionPoint(applyBlock);
-    getBuilder().createUnreachable(apply->getLoc());
-  }
-
   SmallVector<SILBasicBlock *, 4> discoveredBlocks;
   for (auto *sbi : StoreBorrowsToCleanup) {
     ScopedAddressValue scopedAddress(sbi);

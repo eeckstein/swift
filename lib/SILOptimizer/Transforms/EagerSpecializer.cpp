@@ -433,20 +433,14 @@ void EagerDispatch::emitDispatchTo(SILFunction *NewFunc) {
   else if (Result->getType().isVoid())
     Result = Builder.createTuple(Loc, VoidTy, { });
 
-  // Function marked as @NoReturn must be followed by 'unreachable'.
-  if (NewFunc->isNoReturnFunction(Builder.getTypeExpansionContext()) ||
-      !OldReturnBB)
-    Builder.createUnreachable(Loc);
-  else {
-    auto resultTy = GenericFunc->getConventions().getSILResultType(
-        Builder.getTypeExpansionContext());
-    auto GenResultTy = GenericFunc->mapTypeIntoContext(resultTy);
+  auto resultTy = GenericFunc->getConventions().getSILResultType(
+      Builder.getTypeExpansionContext());
+  auto GenResultTy = GenericFunc->mapTypeIntoContext(resultTy);
 
-    SILValue CastResult =
-        Builder.createUncheckedForwardingCast(Loc, Result, GenResultTy);
+  SILValue CastResult =
+      Builder.createUncheckedForwardingCast(Loc, Result, GenResultTy);
 
-    addReturnValue(Builder.getInsertionBB(), OldReturnBB, CastResult);
-  }
+  addReturnValue(Builder.getInsertionBB(), OldReturnBB, CastResult);
 }
 
 // Emits a type check in the current block.

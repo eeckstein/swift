@@ -884,3 +884,32 @@ extension Type {
     return context._bridged.shouldExpand(self.bridged)
   }
 }
+
+func cutOffControlFlow(after lastInst: Instruction, _ context: some MutatingContext) {
+  // Do not cut off any instructions, which would be inserted by e.g. lifetime completion again.
+  if InstructionList(first: lastInst.next!).allSatisfy({ $0.isRequiredAtDeadEnd }) {
+    return
+  }
+  // Move all instructions to a new block, which is a dead block.
+  // We cannot easily delete those instructions, because they might have uses in other blocks or
+  // - even worse - are scope beginning instructions (like begin_borrow) with scope-ending instructions
+  // in other blocks.
+  _ = context.splitBlock(after: lastInst)
+  let builder = Builder(after: lastInst, context)
+  builder.createUnreachable()
+
+}
+
+private extension Instruction {
+  var isRequiredAtDeadEnd: Bool {
+    switch self {
+    case // Avoid deleting and re-creating an `unreachable`
+         is UnreachableInst,
+         // Instructions which would be re-inserted by lifetime completion.
+         is DestroyValueInst, is EndBorrowInst:
+      return true
+    default:
+      return false
+    }
+  }
+}

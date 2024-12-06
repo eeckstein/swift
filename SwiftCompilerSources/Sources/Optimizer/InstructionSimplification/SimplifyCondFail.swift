@@ -48,31 +48,7 @@ extension CondFailInst : OnoneSimplifyable, SILCombineSimplifyable {
         // SILCombine is not allowed to change the CFG
         return
       }
-      // Do not cut off any instructions, which would be inserted by e.g. lifetime completion again.
-      if InstructionList(first: self.next!).allSatisfy({ $0.isRequiredAtDeadEnd }) {
-        return
-      }
-      // Move all instructions to a new block, which is a dead block.
-      // We cannot easily delete those instructions, because they might have uses in other blocks or
-      // - even worse - are scope beginning instructions (like begin_borrow) with scope-ending instructions
-      // in other blocks.
-      _ = context.splitBlock(after: self)
-      let builder = Builder(after: self, context)
-      builder.createUnreachable()
-    }
-  }
-}
-
-private extension Instruction {
-  var isRequiredAtDeadEnd: Bool {
-    switch self {
-    case // Avoid deleting and re-creating an `unreachable`
-         is UnreachableInst,
-         // Instructions which would be re-inserted by lifetime completion.
-         is DestroyValueInst, is EndBorrowInst:
-      return true
-    default:
-      return false
+      cutOffControlFlow(after: self, context)
     }
   }
 }

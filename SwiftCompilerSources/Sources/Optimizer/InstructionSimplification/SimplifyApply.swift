@@ -14,6 +14,9 @@ import SIL
 
 extension ApplyInst : OnoneSimplifyable {
   func simplify(_ context: SimplifyContext) {
+    if isCalleeNoReturn {
+      cutOffControlFlow(after: self, context)
+    }
     if tryTransformThickToThinCallee(of: self, context) {
       return
     }

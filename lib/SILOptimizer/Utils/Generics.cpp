@@ -2513,13 +2513,6 @@ swift::replaceWithSpecializedCallee(ApplySite applySite, SILValue callee,
 
         builder.emitStoreValueOperation(loc, returnValue, resultOut,
                                         StoreOwnershipQualifier::Init);
-      } else {
-        builder.createUnreachable(loc);
-        // unreachable should be the terminator instruction.
-        // So, split the current basic block right after the
-        // inserted unreachable instruction.
-        builder.getInsertionPoint()->getParent()->split(
-            builder.getInsertionPoint());
       }
     } else if (typeReplacements.hasResultType()) {
       returnValue = fixSpecializedReturnType(

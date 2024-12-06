@@ -197,16 +197,10 @@ static FullApplySite speculateMonomorphicTarget(SILPassManager *pm, FullApplySit
   SILArgument *Arg =
       Continue->createPhiArgument(AI.getType(), OwnershipKind::Owned);
   if (!isa<TryApplyInst>(AI)) {
-    if (AI.getSubstCalleeType()->isNoReturnFunction(
-            F->getModule(), AI.getFunction()->getTypeExpansionContext())) {
-      IdenBuilder.createUnreachable(AI.getLoc());
-      VirtBuilder.createUnreachable(AI.getLoc());
-    } else {
-      IdenBuilder.createBranch(AI.getLoc(), Continue,
-                               { cast<ApplyInst>(IdenAI) });
-      VirtBuilder.createBranch(AI.getLoc(), Continue,
-                               { cast<ApplyInst>(VirtAI) });
-    }
+    IdenBuilder.createBranch(AI.getLoc(), Continue,
+                             { cast<ApplyInst>(IdenAI) });
+    VirtBuilder.createBranch(AI.getLoc(), Continue,
+                             { cast<ApplyInst>(VirtAI) });
   }
 
   // Remove the old Apply instruction.
