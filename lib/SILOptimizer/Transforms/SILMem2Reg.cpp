@@ -2299,6 +2299,8 @@ class SILMem2Reg : public SILFunctionTransform {
     if (madeChange) {
       updateAllGuaranteedPhis(getPassManager(), f);
       invalidateAnalysis(SILAnalysis::InvalidationKind::Instructions);
+      // TODO: only complete lifetimes of changed values.
+      completeAllLifetimes(getPassManager(), f);
     }
   }
 };
