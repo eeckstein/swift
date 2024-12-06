@@ -1562,6 +1562,14 @@ void SwiftPassInvocation::beginTransformFunction(SILFunction *function) {
 
 void SwiftPassInvocation::endTransformFunction() {
   assert(function && transform && "not running a pass");
+  updateAllAnalysis();
+  function = nullptr;
+  assert(numBlockSetsAllocated == 0 && "Not all BasicBlockSets deallocated");
+  assert(numNodeSetsAllocated == 0 && "Not all NodeSets deallocated");
+  assert(numOperandSetsAllocated == 0 && "Not all OperandSets deallocated");
+}
+
+void SwiftPassInvocation::updateAllAnalysis() {
   if (changeNotifications != SILAnalysis::InvalidationKind::Nothing) {
     passManager->invalidateAnalysis(function, changeNotifications);
     changeNotifications = SILAnalysis::InvalidationKind::Nothing;
@@ -1570,10 +1578,6 @@ void SwiftPassInvocation::endTransformFunction() {
     passManager->invalidateFunctionTables();
     functionTablesChanged = false;
   }
-  function = nullptr;
-  assert(numBlockSetsAllocated == 0 && "Not all BasicBlockSets deallocated");
-  assert(numNodeSetsAllocated == 0 && "Not all NodeSets deallocated");
-  assert(numOperandSetsAllocated == 0 && "Not all OperandSets deallocated");
 }
 
 void SwiftPassInvocation::beginVerifyFunction(SILFunction *function) {

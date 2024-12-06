@@ -17,7 +17,9 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
   if !function.hasOwnership {
     return
   }
-  
+
+  context.updateAllAnalysis()
+
   let deadEndBlocks = context.deadEndBlocks
 
   // Contains all blocks which dominate or are dead-end blocks.

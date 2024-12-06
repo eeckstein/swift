@@ -360,6 +360,8 @@ struct BridgedPassContext {
   BRIDGED_INLINE void
   addFunctionToPassManagerWorklist(BridgedFunction newFunction,
                                    BridgedFunction oldFunction) const;
+  BRIDGED_INLINE bool branchesChanged() const;
+  BRIDGED_INLINE void updateAllAnalysis() const;
 
   // SSAUpdater
 

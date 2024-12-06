@@ -284,6 +284,12 @@ extension MutatingContext {
   func notifyDependency(onBodyOf otherFunction: Function) {
     _bridged.notifyDependencyOnBodyOf(otherFunction.bridged)
   }
+
+  var branchesChanged: Bool { _bridged.branchesChanged() }
+
+  func updateAllAnalysis() {
+    _bridged.updateAllAnalysis();
+  }
 }
 
 /// The context which is passed to the run-function of a FunctionPass.

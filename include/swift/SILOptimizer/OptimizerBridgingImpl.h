@@ -541,6 +541,14 @@ void BridgedPassContext::addFunctionToPassManagerWorklist(
                             oldFunction.getFunction());
 }
 
+bool BridgedPassContext::branchesChanged() const {
+  return (invocation->getChangeNotifications() & swift::SILAnalysis::InvalidationKind::Branches) != 0;
+}
+
+void BridgedPassContext::updateAllAnalysis() const {
+  return invocation->updateAllAnalysis();
+}
+
 void BridgedPassContext::SSAUpdater_addAvailableValue(BridgedBasicBlock block, BridgedValue value) const {
   invocation->getSSAUpdater()->addAvailableValue(block.unbridged(),
                                                  value.getSILValue());

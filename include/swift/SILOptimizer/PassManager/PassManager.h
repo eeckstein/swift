@@ -121,6 +121,10 @@ public:
 
   irgen::IRGenModule *getIRGenModule();
 
+  SILAnalysis::InvalidationKind getChangeNotifications() const {
+    return changeNotifications;
+  }
+
   FixedSizeSlab *allocSlab(FixedSizeSlab *afterSlab);
 
   FixedSizeSlab *freeSlab(FixedSizeSlab *slab);
@@ -166,6 +170,8 @@ public:
   void beginTransformFunction(SILFunction *function);
 
   void endTransformFunction();
+
+  void updateAllAnalysis();
 
   void beginVerifyFunction(SILFunction *function);
   void endVerifyFunction();

@@ -112,7 +112,10 @@ func runSimplification(on function: Function, _ context: FunctionPassContext,
   if context.needFixStackNesting {
     function.fixStackNesting(context)
   }
-  
+  if context.branchesChanged {
+    completeLifetimes(in: function, context)
+  }
+
   return changed
 }
 
