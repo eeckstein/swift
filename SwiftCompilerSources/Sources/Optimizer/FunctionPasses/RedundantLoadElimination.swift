@@ -251,10 +251,16 @@ private func replace(load: LoadInst, with availableValues: [AvailableValue], _ c
   var ssaUpdater = SSAUpdater(function: load.parentFunction,
                               type: load.type, ownership: load.ownership, context)
 
+  var needToComplete = Stack<Value>(context)
+  defer { needToComplete.deinitialize() }
+
   for availableValue in availableValues {
     let block = availableValue.instruction.parentBlock
     let availableValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
+    if availableValue.ownership != .none {
+      needToComplete.append(availableValue)
+    }
   }
 
   let newValue: Value
@@ -280,6 +286,11 @@ private func replace(load: LoadInst, with availableValues: [AvailableValue], _ c
     newValue = ssaUpdater.getValue(inMiddleOf: load.parentBlock)
   }
   load.replace(with: newValue, context)
+
+  // As we are ignoring dead-end blocks in the data-flow (see `hasExits`) we need to complete new lifetimes.
+  for v in needToComplete {
+    context.completeLifetime(of: v)
+  }
 }
 
 private func provideValue(
