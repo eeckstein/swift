@@ -2820,7 +2820,7 @@ static bool ParseSILArgs(SILOptions &Opts, ArgList &Args,
                    OPT_disable_lifetime_dependence_diagnostics,
                    Opts.EnableLifetimeDependenceDiagnostics);
 
-  Opts.VerifyAll |= Args.hasArg(OPT_sil_verify_all);
+  Opts.VerifyAll |= true; // Args.hasArg(OPT_sil_verify_all);
   Opts.VerifyNone |= Args.hasArg(OPT_sil_verify_none);
   Opts.VerifyOwnershipAll |= Args.hasArg(OPT_sil_ownership_verify_all);
   Opts.DebugSerialization |= Args.hasArg(OPT_sil_debug_serialization);
