@@ -261,7 +261,7 @@ bool swift::semanticarc::tryConvertOwnedPhisToGuaranteedPhis(Context &ctx) {
     // Then convert the phi's live range to be guaranteed.
     std::move(joinedLiveRange)
         .convertJoinedLiveRangePhiToGuaranteed(
-            ctx.getDeadEndBlocks(), ctx.lifetimeFrontier, ctx.instModCallbacks);
+            ctx.lifetimeFrontier, ctx.instModCallbacks);
 
     madeChange = true;
     ctx.verify();

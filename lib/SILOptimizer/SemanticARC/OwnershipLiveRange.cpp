@@ -310,7 +310,7 @@ static SILValue convertIntroducerToGuaranteed(OwnedValueIntroducer introducer) {
 }
 
 void OwnershipLiveRange::convertJoinedLiveRangePhiToGuaranteed(
-    DeadEndBlocks &deadEndBlocks, ValueLifetimeAnalysis::Frontier &scratch,
+    ValueLifetimeAnalysis::Frontier &scratch,
     InstModCallbacks callbacks) && {
 
   // First convert the phi value itself to be guaranteed.

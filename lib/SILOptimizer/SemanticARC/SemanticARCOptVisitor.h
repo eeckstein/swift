@@ -49,9 +49,9 @@ struct LLVM_LIBRARY_VISIBILITY SemanticARCOptVisitor
 
   Context ctx;
 
-  explicit SemanticARCOptVisitor(SILFunction &fn, SILPassManager *pm, DeadEndBlocks &deBlocks,
+  explicit SemanticARCOptVisitor(SILFunction &fn, SILPassManager *pm,
                                  bool onlyMandatoryOpts)
-      : ctx(fn, pm, deBlocks, onlyMandatoryOpts,
+      : ctx(fn, pm, onlyMandatoryOpts,
             InstModCallbacks()
                 .onDelete(
                     [this](SILInstruction *inst) { eraseInstruction(inst); })
@@ -65,8 +65,6 @@ struct LLVM_LIBRARY_VISIBILITY SemanticARCOptVisitor
     worklist.clear();
     visitedSinceLastMutation.clear();
   }
-
-  DeadEndBlocks &getDeadEndBlocks() { return ctx.getDeadEndBlocks(); }
 
   /// Given a single value instruction, RAUW it with newValue, add newValue to
   /// the worklist, and then call eraseInstruction on i.

@@ -186,7 +186,7 @@ public:
   /// NOTE: This routine leaves inserting begin_borrows for the incoming values
   /// to the caller since those are not part of the LiveRange itself.
   void convertJoinedLiveRangePhiToGuaranteed(
-      DeadEndBlocks &deadEndBlocks, ValueLifetimeAnalysis::Frontier &scratch,
+      ValueLifetimeAnalysis::Frontier &scratch,
       InstModCallbacks callbacks) &&;
 
   /// Given a new guaranteed value, insert end_borrow for the newGuaranteedValue

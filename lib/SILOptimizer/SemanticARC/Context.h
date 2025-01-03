@@ -33,7 +33,6 @@ struct LLVM_LIBRARY_VISIBILITY Context {
   SILFunction &fn;
   SILPassManager *pm = nullptr;
   ARCTransformKind transformKind = ARCTransformKind::All;
-  DeadEndBlocks &deadEndBlocks;
   ValueLifetimeAnalysis::Frontier lifetimeFrontier;
   SmallMultiMapCache<SILValue, Operand *> addressToExhaustiveWriteListCache;
 
@@ -118,12 +117,9 @@ struct LLVM_LIBRARY_VISIBILITY Context {
   using FrozenMultiMapRange =
       decltype(joinedOwnedIntroducerToConsumedOperands)::PairToSecondEltRange;
 
-  // TODO: remove this?
-  DeadEndBlocks &getDeadEndBlocks() { return deadEndBlocks; }
-
-  Context(SILFunction &fn, SILPassManager *pm, DeadEndBlocks &deBlocks, bool onlyMandatoryOpts,
+  Context(SILFunction &fn, SILPassManager *pm, bool onlyMandatoryOpts,
           InstModCallbacks callbacks)
-      : fn(fn), pm(pm), deadEndBlocks(deBlocks), lifetimeFrontier(),
+      : fn(fn), pm(pm), lifetimeFrontier(),
         addressToExhaustiveWriteListCache(constructCacheValue),
         onlyMandatoryOpts(onlyMandatoryOpts), instModCallbacks(callbacks) {}
 

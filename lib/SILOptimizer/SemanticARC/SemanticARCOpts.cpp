@@ -158,9 +158,7 @@ struct SemanticARCOpts : SILFunctionTransform {
            "Can not perform semantic arc optimization unless ownership "
            "verification is enabled");
 
-    auto *deBlocksAnalysis = getAnalysis<DeadEndBlocksAnalysis>();
-    SemanticARCOptVisitor visitor(f, getPassManager(), *deBlocksAnalysis->get(&f),
-                                  mandatoryOptsOnly);
+    SemanticARCOptVisitor visitor(f, getPassManager(), mandatoryOptsOnly);
 
 #ifndef NDEBUG
     // If we are being asked for testing purposes to run a series of transforms
