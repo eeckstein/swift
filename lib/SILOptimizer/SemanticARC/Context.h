@@ -118,6 +118,7 @@ struct LLVM_LIBRARY_VISIBILITY Context {
   using FrozenMultiMapRange =
       decltype(joinedOwnedIntroducerToConsumedOperands)::PairToSecondEltRange;
 
+  // TODO: remove this?
   DeadEndBlocks &getDeadEndBlocks() { return deadEndBlocks; }
 
   Context(SILFunction &fn, SILPassManager *pm, DeadEndBlocks &deBlocks, bool onlyMandatoryOpts,

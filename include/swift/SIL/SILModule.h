@@ -954,14 +954,11 @@ public:
   /// fetched in the given module?
   bool isTypeMetadataForLayoutAccessible(SILType type);
 
-  void verify(bool isCompleteOSSA = true,
-              bool checkLinearLifetime = true) const;
+  void verify(bool checkLinearLifetime = true) const;
 
   /// Run the SIL verifier to make sure that all Functions follow
   /// invariants.
-  void verify(CalleeCache *calleeCache,
-              bool isCompleteOSSA = true,
-              bool checkLinearLifetime = true) const;
+  void verify(CalleeCache *calleeCache, bool checkLinearLifetime = true) const;
 
   /// Run the SIL verifier without assuming OSSA lifetimes end at dead end
   /// blocks.

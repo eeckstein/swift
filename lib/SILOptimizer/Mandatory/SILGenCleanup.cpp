@@ -289,7 +289,7 @@ bool SILGenCleanup::completeOSSALifetimes(SILFunction *function) {
     changed |= completeLifetimesInRange(
         make_range(po_begin(root), po_end(root)), completion, completed);
   }
-  function->verifyOwnership(/*deadEndBlocks=*/nullptr);
+  function->verifyOwnership();
   return changed;
 }
 
@@ -342,7 +342,7 @@ void SILGenCleanup::run() {
                << "\nRunning SILGenCleanup on " << function.getName() << "\n");
 
     completeAllLifetimes(getPassManager(), &function);
-    function.verifyOwnership(/*deadEndBlocks=*/nullptr);
+    function.verifyOwnership();
 
     DeadEndBlocks deadEndBlocks(&function);
     SILGenCanonicalize sgCanonicalize(deadEndBlocks);

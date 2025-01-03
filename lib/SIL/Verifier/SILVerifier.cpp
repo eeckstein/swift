@@ -921,9 +921,6 @@ class SILVerifier : public SILVerifierBase<SILVerifier> {
   // Used for dominance checking within a basic block.
   llvm::DenseMap<const SILInstruction *, unsigned> InstNumbers;
 
-  /// TODO: LifetimeCompletion: Remove.
-  std::shared_ptr<DeadEndBlocks> DEBlocks;
-
   /// Blocks without function exiting paths.
   ///
   /// Used to verify extend_lifetime instructions.
@@ -1106,9 +1103,7 @@ public:
   }
 
   DeadEndBlocks &getDeadEndBlocks() {
-    if (DEBlocks) {
-      deadEndBlocks = DEBlocks;
-    } else {
+    if (!deadEndBlocks) {
       deadEndBlocks =
           std::make_shared<DeadEndBlocks>(const_cast<SILFunction *>(&F));
     }
@@ -1342,7 +1337,7 @@ public:
               "Once ownership is gone, all values should have none ownership");
       return;
     }
-    SILValue(V).verifyOwnership(DEBlocks.get());
+    SILValue(V).verifyOwnership();
   }
 
   void checkSILInstruction(SILInstruction *I) {
@@ -2814,17 +2809,13 @@ public:
   }
 
   bool checkScopedAddressUses(ScopedAddressValue scopedAddress,
-                              SSAPrunedLiveness *scopedAddressLiveness,
-                              DeadEndBlocks *deadEndBlocks) {
+                              SSAPrunedLiveness *scopedAddressLiveness) {
     SmallVector<Operand *, 4> uses;
     findTransitiveUsesForAddress(scopedAddress.value, &uses);
 
     // Check if the collected uses are well-scoped.
     for (auto *use : uses) {
       auto *user = use->getUser();
-      if (deadEndBlocks && deadEndBlocks->isDeadEnd(user->getParent())) {
-        continue;
-      }
       if (scopedAddress.isScopeEndingUse(use)) {
         continue;
       }
@@ -3047,7 +3038,7 @@ public:
     bool success = useKind == AddressUseKind::NonEscaping;
 
     require(!success || checkScopedAddressUses(
-              scopedAddress, &scopedAddressLiveness, DEBlocks.get()),
+              scopedAddress, &scopedAddressLiveness),
             "Ill formed store_borrow scope");
 
     require(!success || !hasOtherStoreBorrowsInLifetime(
@@ -7370,10 +7361,7 @@ public:
     }
   }
 
-  void verify(bool isCompleteOSSA) {
-    if (!isCompleteOSSA) {
-      DEBlocks = std::make_shared<DeadEndBlocks>(const_cast<SILFunction *>(&F));
-    }
+  void verify() {
     visitSILFunction(const_cast<SILFunction*>(&F));
   }
 };
@@ -7411,7 +7399,7 @@ static bool verificationEnabled(const SILModule &M) {
 /// verify - Run the SIL verifier to make sure that the SILFunction follows
 /// invariants.
 void SILFunction::verify(CalleeCache *calleeCache,
-                         bool SingleFunction, bool isCompleteOSSA,
+                         bool SingleFunction,
                          bool checkLinearLifetime) const {
   if (!verificationEnabled(getModule()))
     return;
@@ -7420,7 +7408,7 @@ void SILFunction::verify(CalleeCache *calleeCache,
   // ensures that the pretty stack trace in the verifier is included with the
   // back trace when the verifier crashes.
   SILVerifier verifier(*this, calleeCache, SingleFunction, checkLinearLifetime);
-  verifier.verify(isCompleteOSSA);
+  verifier.verify();
 }
 
 void SILFunction::verifyCriticalEdges() const {
@@ -7728,14 +7716,14 @@ void SILGlobalVariable::verify() const {
   }
 }
 
-void SILModule::verify(bool isCompleteOSSA, bool checkLinearLifetime) const {
+void SILModule::verify(bool checkLinearLifetime) const {
   CalleeCache calleeCache(*const_cast<SILModule *>(this));
-  verify(&calleeCache, isCompleteOSSA, checkLinearLifetime);
+  verify(&calleeCache, checkLinearLifetime);
 }
 
 /// Verify the module.
 void SILModule::verify(CalleeCache *calleeCache,
-                       bool isCompleteOSSA, bool checkLinearLifetime) const {
+                       bool checkLinearLifetime) const {
   if (!verificationEnabled(*this))
     return;
 
@@ -7748,7 +7736,7 @@ void SILModule::verify(CalleeCache *calleeCache,
       llvm::errs() << "Symbol redefined: " << f.getName() << "!\n";
       assert(false && "triggering standard assertion failure routine");
     }
-    f.verify(calleeCache, /*singleFunction*/ false, isCompleteOSSA, checkLinearLifetime);
+    f.verify(calleeCache, /*singleFunction*/ false, checkLinearLifetime);
   }
 
   // Check all globals.

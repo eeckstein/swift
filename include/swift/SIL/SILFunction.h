@@ -1658,33 +1658,28 @@ public:
   /// invariants.
   void verify(CalleeCache *calleeCache = nullptr,
               bool SingleFunction = true,
-              bool isCompleteOSSA = true,
               bool checkLinearLifetime = true) const;
 
   /// Run the SIL verifier without assuming OSSA lifetimes end at dead end
   /// blocks.
+  /// This is used in SILGen because lifetimes are completed in the SILGenCleanup
+  /// pass. This just disables ownership verification - which is eventually done
+  /// in SILGenCleanup.
   void verifyIncompleteOSSA() const {
-    verify(/*calleeCache*/nullptr, /*SingleFunction=*/true, /*completeOSSALifetimes=*/false);
+    verify(/*calleeCache*/nullptr, /*SingleFunction=*/true, /*checkLinearLifetime=*/false);
   }
 
   /// Verifies the lifetime of memory locations in the function.
   void verifyMemoryLifetime(CalleeCache *calleeCache);
 
-  /// Verifies ownership of the function.
-  /// Since we don't have complete lifetimes everywhere, computes DeadEndBlocks
-  /// and calls verifyOwnership(DeadEndBlocks *deadEndBlocks)
-  void verifyOwnership() const;
-
   /// Run the SIL ownership verifier to check that all values with ownership
   /// have a linear lifetime. Regular OSSA invariants are checked separately in
   /// normal SIL verification.
   ///
-  /// \p deadEndBlocks is nullptr when OSSA lifetimes are complete.
-  ///
   /// NOTE: The ownership verifier is run when performing normal IR
   /// verification, so this verification can be viewed as a subset of
   /// SILFunction::verify(checkLinearLifetimes=true).
-  void verifyOwnership(DeadEndBlocks *deadEndBlocks = nullptr) const;
+  void verifyOwnership() const;
 
   /// Verify that all non-cond-br critical edges have been split.
   ///

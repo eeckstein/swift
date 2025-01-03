@@ -60,11 +60,6 @@ static llvm::cl::opt<bool>
                        llvm::cl::desc("Disable verification of input SIL"),
                        llvm::cl::init(false));
 
-// Option for testing -silgen-cleanup -enable-complete-ossa
-static llvm::cl::opt<bool>
-ParseIncompleteOSSA("parse-incomplete-ossa",
-                    llvm::cl::desc("Parse OSSA with incomplete lifetimes"));
-
 //===----------------------------------------------------------------------===//
 // SILParserState implementation
 //===----------------------------------------------------------------------===//
@@ -131,7 +126,7 @@ ParseSILModuleRequest::evaluate(Evaluator &evaluator,
 
   // If SIL parsing succeeded, verify the generated SIL.
   if (!parser.Diags.hadAnyError() && !DisableInputVerify) {
-    silMod->verify(/*SingleFunction=*/true, !ParseIncompleteOSSA);
+    silMod->verify(/*SingleFunction=*/true);
   }
 
   return silMod;
