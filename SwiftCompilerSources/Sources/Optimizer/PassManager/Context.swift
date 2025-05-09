@@ -140,6 +140,11 @@ extension MutatingContext {
     return _bridged.createBlockAfter(block.bridged).block
   }
 
+  /// Insert compensating `debug_value` for `instruction` which is about to be erased.
+  func salvageDebugInfo(for instruction: Instruction) {
+    _bridged.salvageDebugInfo(instruction.bridged)
+  }
+
   func erase(instruction: Instruction) {
     if !instruction.isInStaticInitializer {
       verifyIsTransforming(function: instruction.parentFunction)

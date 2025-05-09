@@ -86,6 +86,7 @@ private func tryEliminate(store: StoreInst, complexityBudget: inout Int, _ conte
     case .alive:
       break
     case .dead:
+      context.salvageDebugInfo(for: store)
       context.erase(instruction: store)
     case .maybePartiallyDead(let subPath):
       // Check if the a partial store would really be dead to avoid unnecessary splitting.
