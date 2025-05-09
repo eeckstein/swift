@@ -19,6 +19,8 @@
 /// 1. We remove calls to Builtin.poundAssert() and Builtin.staticReport(),
 ///    which are not needed post SIL.
 ///
+/// 2. Lower `vector_extract`.
+///
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "sil-cleanup"
@@ -77,6 +79,19 @@ static bool cleanFunction(SILFunction &fn) {
           if (CondFailMessages.insert(msg).second)
             llvm::dbgs() << "cond_fail message encountered: " << msg << "\n";
         }
+      }
+
+      if (auto *vei = dyn_cast<VectorExtractInst>(inst)) {
+        SILBuilderWithScope builder(inst);
+        auto *as = builder.createAllocStack(inst->getLoc(), vei->getVector()->getType());
+        builder.createStore(inst->getLoc(), vei->getVector(), as,
+                            StoreOwnershipQualifier::Unqualified);
+        auto *elementAddr = builder.createVectorElementAddr(inst->getLoc(), as, vei->getIndex());
+        auto *element = builder.createLoad(inst->getLoc(), elementAddr,
+                                           LoadOwnershipQualifier::Unqualified);
+        vei->replaceAllUsesWith(element);
+        vei->eraseFromParent();
+        continue;
       }
 
       // Remove calls to Builtin.poundAssert() and Builtin.staticReport().

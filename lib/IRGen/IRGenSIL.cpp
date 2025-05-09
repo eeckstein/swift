@@ -1353,6 +1353,10 @@ public:
   void visitStructExtractInst(StructExtractInst *i);
   void visitStructElementAddrInst(StructElementAddrInst *i);
   void visitVectorBaseAddrInst(VectorBaseAddrInst *i);
+  void visitVectorExtractInst(VectorExtractInst *i) {
+    llvm_unreachable("unimplemented");
+  }
+  void visitVectorElementAddrInst(VectorElementAddrInst *i);
   void visitRefElementAddrInst(RefElementAddrInst *i);
   void visitRefTailAddrInst(RefTailAddrInst *i);
 
@@ -5645,6 +5649,19 @@ void IRGenSILFunction::visitVectorBaseAddrInst(VectorBaseAddrInst *i) {
   auto &ti = getTypeInfo(i->getType());
   auto result = Builder.CreateElementBitCast(addr, ti.getStorageType());
   setLoweredAddress(i, result);
+}
+
+void IRGenSILFunction::visitVectorElementAddrInst(VectorElementAddrInst *i) {
+  Address base = getLoweredAddress(i->getVector());
+  Explosion indexValues = getLoweredExplosion(i->getIndex());
+  llvm::Value *index = indexValues.claimNext();
+
+  auto elementTy = i->getType();
+  auto &ti = getTypeInfo(elementTy);
+
+  auto baseElementAddr = Builder.CreateElementBitCast(base, ti.getStorageType());
+  Address dest = ti.indexArray(*this, baseElementAddr, index, elementTy);
+  setLoweredAddress(i, dest);
 }
 
 void IRGenSILFunction::visitRefElementAddrInst(swift::RefElementAddrInst *i) {

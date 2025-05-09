@@ -2461,6 +2461,28 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
             getSILType(MF->getType(TyID2), (SILValueCategory)TyCategory2, Fn)));
     break;
   }
+  case SILInstructionKind::VectorExtractInst: {
+    auto Ty = MF->getType(TyID);
+    auto Ty2 = MF->getType(TyID2);
+    ResultInst = Builder.createVectorExtract(
+        Loc,
+        getLocalValue(Builder.maybeGetFunction(), ValID,
+                      getSILType(Ty, SILValueCategory::Object, Fn)),
+        getLocalValue(Builder.maybeGetFunction(), ValID2,
+                      getSILType(Ty2, SILValueCategory::Object, Fn)));
+    break;
+  }
+  case SILInstructionKind::VectorElementAddrInst: {
+    auto Ty = MF->getType(TyID);
+    auto Ty2 = MF->getType(TyID2);
+    ResultInst = Builder.createVectorElementAddr(
+        Loc,
+        getLocalValue(Builder.maybeGetFunction(), ValID,
+                      getSILType(Ty, SILValueCategory::Object, Fn)),
+        getLocalValue(Builder.maybeGetFunction(), ValID2,
+                      getSILType(Ty2, SILValueCategory::Object, Fn)));
+    break;
+  }
   case SILInstructionKind::IndexAddrInst: {
     auto Ty = MF->getType(TyID);
     auto Ty2 = MF->getType(TyID2);

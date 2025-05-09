@@ -946,6 +946,7 @@ InlineCost swift::instructionInlineCost(SILInstruction &I) {
   case SILInstructionKind::StructInst:
   case SILInstructionKind::StructExtractInst:
   case SILInstructionKind::TupleExtractInst:
+  case SILInstructionKind::VectorExtractInst:
   case SILInstructionKind::DestructureStructInst:
   case SILInstructionKind::DestructureTupleInst:
     return InlineCost::Free;
@@ -1097,6 +1098,7 @@ InlineCost swift::instructionInlineCost(SILInstruction &I) {
   case SILInstructionKind::EnumInst:
   case SILInstructionKind::IndexAddrInst:
   case SILInstructionKind::VectorBaseAddrInst:
+  case SILInstructionKind::VectorElementAddrInst:
   case SILInstructionKind::TailAddrInst:
   case SILInstructionKind::IndexRawPointerInst:
   case SILInstructionKind::InitEnumDataAddrInst:

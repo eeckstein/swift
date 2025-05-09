@@ -5897,6 +5897,24 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
       ResultVal = B.createVectorBaseAddr(InstLoc, Val);
       break;
     }
+    case SILInstructionKind::VectorExtractInst: {
+      SILValue indexVal;
+      if (parseTypedValueRef(Val, B) ||
+          P.parseToken(tok::comma, diag::expected_tok_in_sil_instr, ",") ||
+          parseTypedValueRef(indexVal, B) || parseSILDebugLocation(InstLoc, B))
+        return true;
+      ResultVal = B.createVectorExtract(InstLoc, Val, indexVal);
+      break;
+    }
+    case SILInstructionKind::VectorElementAddrInst: {
+      SILValue indexVal;
+      if (parseTypedValueRef(Val, B) ||
+          P.parseToken(tok::comma, diag::expected_tok_in_sil_instr, ",") ||
+          parseTypedValueRef(indexVal, B) || parseSILDebugLocation(InstLoc, B))
+        return true;
+      ResultVal = B.createVectorElementAddr(InstLoc, Val, indexVal);
+      break;
+    }
     case SILInstructionKind::TailAddrInst: {
       SILValue IndexVal;
       SILType ResultObjTy;

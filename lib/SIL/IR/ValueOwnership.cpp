@@ -126,6 +126,7 @@ CONSTANT_OWNERSHIP_INST(None, GlobalAddr)
 CONSTANT_OWNERSHIP_INST(None, BaseAddrForOffset)
 CONSTANT_OWNERSHIP_INST(None, HasSymbol)
 CONSTANT_OWNERSHIP_INST(None, VectorBaseAddr)
+CONSTANT_OWNERSHIP_INST(None, VectorElementAddr)
 CONSTANT_OWNERSHIP_INST(None, IndexAddr)
 CONSTANT_OWNERSHIP_INST(None, IndexRawPointer)
 CONSTANT_OWNERSHIP_INST(None, InitEnumDataAddr)
@@ -202,6 +203,16 @@ ValueOwnershipKind ValueOwnershipKindClassifier::visitTupleExtractInst(TupleExtr
       // a trivial enum case (e.g. with `Optional.none`).
       tei->getOperand()->getOwnershipKind() == OwnershipKind::None)
     return OwnershipKind::None;
+  return OwnershipKind::Guaranteed;
+}
+
+ValueOwnershipKind ValueOwnershipKindClassifier::visitVectorExtractInst(VectorExtractInst *vei) {
+  if (vei->getType().isTrivial(*vei->getFunction()) ||
+      // Similar to struct_extract and tuple_extract. Currently this cannot happen, but in
+      // future it might be the case.
+      vei->getVector()->getOwnershipKind() == OwnershipKind::None) {
+    return OwnershipKind::None;
+  }
   return OwnershipKind::Guaranteed;
 }
 

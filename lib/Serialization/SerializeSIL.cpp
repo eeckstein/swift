@@ -1864,6 +1864,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case SILInstructionKind::BeginDeallocRefInst:
   case SILInstructionKind::MarkDependenceInst:
   case SILInstructionKind::MarkDependenceAddrInst:
+  case SILInstructionKind::VectorExtractInst:
+  case SILInstructionKind::VectorElementAddrInst:
   case SILInstructionKind::IndexAddrInst:
   case SILInstructionKind::IndexRawPointerInst: {
     SILValue operand, operand2;
@@ -1894,6 +1896,14 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
       operand = MDI->getAddress();
       operand2 = MDI->getBase();
       Attr = unsigned(MDI->dependenceKind());
+    } else if (SI.getKind() == SILInstructionKind::VectorExtractInst) {
+      auto *vei = cast<VectorExtractInst>(&SI);
+      operand = vei->getVector();
+      operand2 = vei->getIndex();
+    } else if (SI.getKind() == SILInstructionKind::VectorElementAddrInst) {
+      auto *veai = cast<VectorElementAddrInst>(&SI);
+      operand = veai->getVector();
+      operand2 = veai->getIndex();
     } else {
       const IndexAddrInst *IAI = cast<IndexAddrInst>(&SI);
       operand = IAI->getBase();

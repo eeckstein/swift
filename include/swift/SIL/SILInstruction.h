@@ -6802,6 +6802,50 @@ public:
   SILValue getVector() const { return getOperand(); }
 };
 
+/// Extract an element from a vector.
+class VectorExtractInst
+    : public InstructionBase<SILInstructionKind::VectorExtractInst,
+                             SingleValueInstruction> {
+  friend SILBuilder;
+
+  FixedOperandList<2> operands;
+
+  VectorExtractInst(SILDebugLocation debugLoc, SILValue vector, SILValue index, SILType resultTy)
+      : InstructionBase(debugLoc, resultTy),
+        operands{this, vector, index} {}
+
+public:
+  enum { Vector, Index };
+
+  SILValue getVector() const { return operands[Vector].get(); }
+  SILValue getIndex() const { return operands[Index].get(); }
+
+  ArrayRef<Operand> getAllOperands() const { return operands.asArray(); }
+  MutableArrayRef<Operand> getAllOperands() { return operands.asArray(); }
+};
+
+/// Extract an element from a vector.
+class VectorElementAddrInst
+    : public InstructionBase<SILInstructionKind::VectorElementAddrInst,
+                             SingleValueInstruction> {
+  friend SILBuilder;
+
+  FixedOperandList<2> operands;
+
+  VectorElementAddrInst(SILDebugLocation debugLoc, SILValue vector, SILValue index, SILType resultTy)
+      : InstructionBase(debugLoc, resultTy),
+        operands{this, vector, index} {}
+
+public:
+  enum { Vector, Index };
+
+  SILValue getVector() const { return operands[Vector].get(); }
+  SILValue getIndex() const { return operands[Index].get(); }
+
+  ArrayRef<Operand> getAllOperands() const { return operands.asArray(); }
+  MutableArrayRef<Operand> getAllOperands() { return operands.asArray(); }
+};
+
 /// TupleInst - Represents a constructed loadable tuple.
 class TupleInst final : public InstructionBaseWithTrailingOperands<
                             SILInstructionKind::TupleInst, TupleInst,

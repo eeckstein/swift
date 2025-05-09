@@ -1354,6 +1354,16 @@ final public class VectorBaseAddrInst : SingleValueInstruction, UnaryInstruction
   public var vector: Value { operand.value }
 }
 
+final public class VectorExtractInst : SingleValueInstruction {
+  public var vector: Value { operands[0].value }
+  public var index: Value { operands[1].value }
+}
+
+final public class VectorElementAddrInst : SingleValueInstruction {
+  public var vector: Value { operands[0].value }
+  public var index: Value { operands[1].value }
+}
+
 final public class DifferentiableFunctionInst: SingleValueInstruction {}
 
 final public class LinearFunctionInst: SingleValueInstruction {}

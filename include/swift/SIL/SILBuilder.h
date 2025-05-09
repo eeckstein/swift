@@ -1932,6 +1932,24 @@ public:
         getSILDebugLocation(loc), vector, elemtTy.getAddressType()));
   }
 
+  VectorExtractInst *
+  createVectorExtract(SILLocation loc, SILValue vector, SILValue index) {
+    auto arrayTy = vector->getType().getAs<BuiltinFixedArrayType>();
+    ASSERT(arrayTy && "operand of vector_extract must be a builtin array type");
+    SILType resultType = SILType::getPrimitiveObjectType(arrayTy->getElementType());
+    return insert(new (getModule()) VectorExtractInst(
+        getSILDebugLocation(loc), vector, index, resultType));
+  }
+
+  VectorElementAddrInst *
+  createVectorElementAddr(SILLocation loc, SILValue vector, SILValue index) {
+    auto arrayTy = vector->getType().getAs<BuiltinFixedArrayType>();
+    ASSERT(arrayTy && "operand of vector_element_addr must be a builtin array type");
+    SILType resultType = SILType::getPrimitiveAddressType(arrayTy->getElementType());
+    return insert(new (getModule()) VectorElementAddrInst(
+        getSILDebugLocation(loc), vector, index, resultType));
+  }
+
   RefElementAddrInst *createRefElementAddr(SILLocation Loc, SILValue Operand,
                                            VarDecl *Field, SILType ResultTy,
                                            bool IsImmutable = false) {

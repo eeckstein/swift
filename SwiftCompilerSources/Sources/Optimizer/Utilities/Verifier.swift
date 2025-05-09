@@ -148,6 +148,28 @@ extension LoadBorrowInst : VerifiableInstruction {
   }
 }
 
+extension VectorExtractInst : VerifiableInstruction {
+  func verify(_ context: FunctionPassContext) {
+    require(vector.type.isBuiltinFixedArray,
+            "vector operand of vector_extract must be a Builtin.FixedArray")
+    require(index.type.isBuiltinInteger,
+            "index of vector_extract must be a builtin integer")
+    require(type == vector.type.builtinFixedArrayElementType(in: parentFunction),
+            "result of vector_extract has wrong type")
+  }
+}
+
+extension VectorElementAddrInst : VerifiableInstruction {
+  func verify(_ context: FunctionPassContext) {
+    require(vector.type.isBuiltinFixedArray,
+            "vector operand of vector_element_addr must be a Builtin.FixedArray")
+    require(index.type.isBuiltinInteger,
+            "index of vector_element_addr must be a builtin integer")
+    require(type == vector.type.builtinFixedArrayElementType(in: parentFunction).addressType,
+            "result of vector_element_addr has wrong type")
+  }
+}
+
 extension VectorBaseAddrInst : VerifiableInstruction {
   func verify(_ context: FunctionPassContext) {
     require(vector.type.isBuiltinFixedArray,
