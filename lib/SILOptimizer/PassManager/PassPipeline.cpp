@@ -1045,13 +1045,15 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   // Perform optimizations that specialize.
   addClosureSpecializePassPipeline(P);
 
-  P.addKillInvalidDebugValues();
-  P.addOwnershipModelEliminator();
-
   // Run another iteration of the SSA optimizations to optimize the
   // devirtualized inline caches and constants propagated into closures
   // (CapturePropagation).
   addLowLevelPassPipeline(P);
+
+  P.startPipeline("non-OSSA");
+
+  P.addKillInvalidDebugValues();
+  P.addOwnershipModelEliminator();
 
   addLateLoopOptPassPipeline(P);
 
