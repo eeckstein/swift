@@ -1010,8 +1010,6 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   }
   P.addAutodiffClosureSpecialization();
 
-  P.addOwnershipModelEliminator();
-
   // After serialization run the function pass pipeline to iteratively lower
   // high-level constructs like @_semantics calls.
   addMidLevelFunctionPipeline(P);
@@ -1025,6 +1023,10 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   // devirtualized inline caches and constants propagated into closures
   // (CapturePropagation).
   addLowLevelPassPipeline(P);
+
+  P.startPipeline("non-OSSA");
+
+  P.addOwnershipModelEliminator();
 
   addLateLoopOptPassPipeline(P);
 
