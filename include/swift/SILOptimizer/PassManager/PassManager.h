@@ -123,8 +123,8 @@ public:
   /// Called by the SILCombiner when the instruction pass has finished.
   void finishedInstructionPassRun();
   
-  void beginVerifyFunction(SILFunction *function);
-  void endVerifyFunction();
+  SILFunction *beginVerifyFunction(SILFunction *function);
+  void endVerifyFunction(SILFunction *prevFunction);
 
   void setNeedFixStackNesting(bool newValue) { needFixStackNesting = newValue; }
   bool getNeedFixStackNesting() const { return needFixStackNesting; }
