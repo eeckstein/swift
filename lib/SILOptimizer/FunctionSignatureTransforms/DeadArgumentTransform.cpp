@@ -55,7 +55,14 @@ bool FunctionSignatureTransform::DeadArgumentAnalyzeParameters() {
     }
 
     // Check whether argument is dead.
-    if (!hasNonTrivialNonDebugTransitiveUsers(Args[i])) {
+    if (!hasNonTrivialNonDebugTransitiveUsers(Args[i]) &&
+        // An owned argument always has at least one consuming use.
+        // Except if the function ends in an unreachable. For this case we need
+        // to check this explicitly, because otherwise the generated thunk
+        // would not destroy the dead owned argument.
+        // Removing a dead owned argument can only be done if there is no deinit
+        // barrier between the function entry and the consuming use(s).
+        !F->getConventions().getSILArgumentConvention(i).isOwnedConventionInCallee()) {
       A.IsEntirelyDead = true;
       SignatureOptimize = true;
       if (Args[i]->isSelf())
