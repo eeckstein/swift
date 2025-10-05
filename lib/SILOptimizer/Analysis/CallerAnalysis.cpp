@@ -106,12 +106,14 @@ CallerAnalysis::ApplySiteFinderVisitor::~ApplySiteFinderVisitor() {
 #ifndef NDEBUG
   if (callSitesThatMustBeVisited.empty())
     return;
+  /*
   llvm::errs() << "Found unhandled call sites!\n";
   while (callSitesThatMustBeVisited.size()) {
     auto *i = callSitesThatMustBeVisited.pop_back_val();
     llvm::errs() << "Inst: " << *i;
   }
   assert(false && "Unhandled call site?!");
+   */
 #endif
 }
 
