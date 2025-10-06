@@ -472,6 +472,8 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   // Split up opaque operations (copy_addr, retain_value, etc.).
   P.addLowerAggregateInstrs();
 
+  P.addLowerAddressInstructions();
+
   // Split up operations on stack-allocated aggregates (struct, tuple).
   if (OpLevel == OptimizationLevelKind::HighLevel) {
     P.addEarlySROA();
@@ -813,6 +815,10 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   P.addClassDestroyDevirtualizer();
 
   addFunctionPasses(P, OptimizationLevelKind::LowLevel);
+
+  // Must run after the last CopyPrpoagation pass, because CopyPropagation undos the
+  // effect of LowerAddressInstructions.
+  P.addLowerAddressInstructions();
 
   // The NamedReturnValueOptimization shouldn't be done before serialization.
   // For details see the comment for `namedReturnValueOptimization`.
