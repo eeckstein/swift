@@ -38,6 +38,7 @@ swift_compiler_sources(Optimizer
   LifetimeDependenceScopeFixup.swift
   LifetimeResolution.swift
   LoopInvariantCodeMotion.swift
+  LowerAddressInstructions.swift
   ObjectOutliner.swift
   ObjCBridgingOptimization.swift
   MandatoryDestroyHoisting.swift
