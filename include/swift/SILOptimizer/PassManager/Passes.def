@@ -357,8 +357,6 @@ LEGACY_PASS(LoopRotate, "loop-rotate",
      "Loop Rotation")
 LEGACY_PASS(LoopUnroll, "loop-unroll",
      "Loop Unrolling")
-LEGACY_PASS(LowerAggregateInstrs, "lower-aggregate-instrs",
-     "Lower Aggregate SIL Instructions to Multiple Scalar Operations")
 LEGACY_PASS(MandatoryInlining, "mandatory-inlining",
      "Mandatory Inlining of Transparent Functions")
 LEGACY_PASS(InlineAlwaysInlining, "inline-always-inlining",
