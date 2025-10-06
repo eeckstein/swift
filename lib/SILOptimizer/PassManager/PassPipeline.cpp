@@ -498,9 +498,6 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   // Optimize copies from a temporary (an "l-value") to a destination.
   P.addTempLValueElimination();
 
-  // Split up opaque operations (copy_addr, retain_value, etc.).
-  P.addLowerAggregateInstrs();
-
   P.addLowerAddressInstructions();
 
   // Split up operations on stack-allocated aggregates (struct, tuple).

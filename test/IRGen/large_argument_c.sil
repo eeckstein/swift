@@ -1,4 +1,4 @@
-// RUN: %target-swift-frontend %s -Osize -Xllvm -sil-disable-pass=lower-aggregate-instrs -disable-large-loadable-types-reg2mem -import-objc-header %S/Inputs/large_argument_result_c.h -emit-ir -o - 2>&1 | %FileCheck %s
+// RUN: %target-swift-frontend %s -Osize -disable-large-loadable-types-reg2mem -import-objc-header %S/Inputs/large_argument_result_c.h -emit-ir -o - 2>&1 | %FileCheck %s
 
 // REQUIRES: PTRSIZE=64
 // REQUIRES: CPU=arm64 || CPU=arm64e
