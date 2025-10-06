@@ -20,7 +20,6 @@ target_sources(swiftSILOptimizer PRIVATE
   PerformanceInliner.cpp
   PhiArgumentOptimizations.cpp
   SILCodeMotion.cpp
-  SILLowerAggregateInstrs.cpp
   SILSROA.cpp
   DestroyAddrHoisting.cpp
   SimplifyCFG.cpp
