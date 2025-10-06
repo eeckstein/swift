@@ -58,7 +58,9 @@ private func log(prefix: Bool = true, _ message: @autoclosure () -> String) {
 let closureSpecialization = FunctionPass(name: "closure-specialization") {
   (function: Function, context: FunctionPassContext) in
 
-  precondition(function.hasOwnership, "closure-specialization can only run on OSSA")
+  guard function.hasOwnership else {
+    return
+  }
 
   for inst in function.instructions {
     if let apply = inst as? FullApplySite {
@@ -156,7 +158,9 @@ let closureSpecialization = FunctionPass(name: "closure-specialization") {
 let autodiffClosureSpecialization = FunctionPass(name: "autodiff-closure-specialization") {
   (function: Function, context: FunctionPassContext) in
 
-  precondition(function.hasOwnership, "autodiff-closure-specialization can only run on OSSA")
+  guard function.hasOwnership else {
+    return
+  }
 
   guard !function.isDefinedExternally,
     function.isAutodiffVJP
