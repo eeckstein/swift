@@ -24,7 +24,6 @@ target_sources(swiftSILOptimizer PRIVATE
   PruneVTables.cpp
   RedundantOverflowCheckRemoval.cpp
   SILCodeMotion.cpp
-  SILLowerAggregateInstrs.cpp
   SILMem2Reg.cpp
   SILSROA.cpp
   DestroyAddrHoisting.cpp
