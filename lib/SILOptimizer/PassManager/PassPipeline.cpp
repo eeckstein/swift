@@ -859,6 +859,10 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
 
   addFunctionPasses(P, OptimizationLevelKind::LowLevel);
 
+  // Must run after the last CopyPrpoagation pass, because CopyPropagation undos the
+  // effect of LowerAddressInstructions.
+  P.addLowerAddressInstructions();
+
   // The NamedReturnValueOptimization shouldn't be done before serialization.
   // For details see the comment for `namedReturnValueOptimization`.
   P.addNamedReturnValueOptimization();
