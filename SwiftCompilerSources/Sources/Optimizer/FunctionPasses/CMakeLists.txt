@@ -30,6 +30,7 @@ swift_compiler_sources(Optimizer
   LifetimeDependenceInsertion.swift
   LifetimeDependenceScopeFixup.swift
   LoopInvariantCodeMotion.swift
+  LowerAddressInstructions.swift
   ObjectOutliner.swift
   ObjCBridgingOptimization.swift
   MandatoryDestroyHoisting.swift
