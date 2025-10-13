@@ -273,6 +273,11 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
       isa<UpcastInst>(Inst) || isa<UncheckedRefCastInst>(Inst))
     return true;
 
+  if (auto *ddi = dyn_cast<DropDeinitInst>(Inst)) {
+    if (ddi->use_empty())
+      return true;
+  }
+
   // It is ok to eliminate various retains/releases. We are either removing
   // everything or nothing.
   if (isa<RefCountingInst>(Inst) ||
