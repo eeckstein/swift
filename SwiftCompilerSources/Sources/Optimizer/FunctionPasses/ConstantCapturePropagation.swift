@@ -367,7 +367,8 @@ private extension Value {
       result = si.operands.reduce(.constant, {
         $0.merge(with: $1.value.isConstant(requireSingleUse: requireSingleUse))
       })
-    case is ThinToThickFunctionInst, is ConvertFunctionInst, is UpcastInst, is OpenExistentialRefInst:
+    case is ThinToThickFunctionInst, is ConvertFunctionInst, is UpcastInst, is OpenExistentialRefInst,
+         is MoveValueInst:
       result = (self as! UnaryInstruction).operand.value.isConstant(requireSingleUse: requireSingleUse)
     case is StringLiteralInst, is IntegerLiteralInst, is FloatLiteralInst, is FunctionRefInst, is GlobalAddrInst:
       result = .constant
