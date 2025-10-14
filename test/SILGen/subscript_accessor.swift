@@ -30,4 +30,4 @@ extension WillBeConcretelyConstrained where T == Int {
 func testXRead<T>(x: X<T>) -> T {
   return x[]!
 }
-// CHECK: $s18subscript_accessor1XVxSgycisTf4dn_n
+// CHECK: sil shared @$s18subscript_accessor1XVxSgycisTf4gn_nTf4dn_n :

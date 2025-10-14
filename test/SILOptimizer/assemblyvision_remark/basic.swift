@@ -32,7 +32,7 @@ public func useGlobal() {
              // expected-remark @-1:11 {{heap allocated ref of type}}
              // expected-remark @-2:12 {{release of type}}
              // expected-note@-4{{of 'x'}}
-             // expected-remark @-4:5 {{retain of type}}
+             // expected-remark @-4:11 {{retain of type}}
              // expected-note@-6{{of 'x'}}
 }
 
@@ -49,8 +49,8 @@ struct StructWithOwner {
 
 func printStructWithOwner(x : StructWithOwner) {
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
-             // expected-remark @-1 {{retain of type 'Klass'}}
-             // expected-note @-3:27 {{of 'x.owner'}}
+             // expected-remark @-1 {{retain of type 'StructWithOwner'}}
+             // expected-note @-3:27 {{of 'x'}}
              // expected-remark @-3:12 {{release of type}}
 }
 
@@ -80,17 +80,15 @@ func printKlassPair(x : KlassPair) {
     // We pattern match columns to ensure we get retain on the p and release on
     // the end ')'
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
-             // expected-remark @-1:5 {{retain of type 'Klass'}}
-             // expected-note @-5:21 {{of 'x.lhs'}}
-             // expected-remark @-3:5 {{retain of type 'Klass'}}
-             // expected-note @-7:21 {{of 'x.rhs'}}
-             // expected-remark @-5:12 {{release of type}}
+             // expected-remark @-1:11 {{retain of type 'KlassPair'}}
+             // expected-note @-5:21 {{of 'x'}}
+             // expected-remark @-3:12 {{release of type}}
 }
 
 func printKlassPairLHS(x : KlassPair) {
     // We print the remarks at the 'p' and at the ending ')'.
     print(x.lhs) // expected-remark @:11 {{heap allocated ref of type}}
-                 // expected-remark @-1:5 {{retain of type 'Klass'}}
+                 // expected-remark @-1:13 {{retain of type 'Klass'}}
                  // expected-note @-4:24 {{of 'x.lhs'}}
                  // expected-remark @-3:16 {{release of type}}
 }
@@ -105,7 +103,7 @@ func returnKlassPairLHS(x: KlassPair) -> Klass {
 func callingAnInitializerKlassPair(x: Klass, y: Klass) -> KlassPair {
     return KlassPair(lhs: x, rhs: y) // expected-remark {{retain of type 'Klass'}}
                                      // expected-note @-2:36 {{of 'x'}}
-                                     // expected-remark @-2:5 {{retain of type 'Klass'}}
+                                     // expected-remark @-2:12 {{retain of type 'Klass'}}
                                      // expected-note @-4:46 {{of 'y'}}
 }
 
@@ -113,9 +111,9 @@ func printKlassTuplePair(x : (Klass, Klass)) {
     // We pattern match columns to ensure we get retain on the p and release on
     // the end ')'
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
-             // expected-remark @-1:5 {{retain of type 'Klass'}}
+             // expected-remark @-1:11 {{retain of type 'Klass'}}
              // expected-note @-5:26 {{of 'x'}}
-             // expected-remark @-3:5 {{retain of type 'Klass'}}
+             // expected-remark @-3:11 {{retain of type 'Klass'}}
              // expected-note @-7:26 {{of 'x'}}
              // expected-remark @-5:12 {{release of type}}
 }
@@ -123,7 +121,7 @@ func printKlassTuplePair(x : (Klass, Klass)) {
 func printKlassTupleLHS(x : (Klass, Klass)) {
     // We print the remarks at the 'p' and at the ending ')'.
     print(x.0) // expected-remark @:11 {{heap allocated ref of type}}
-               // expected-remark @-1:5 {{retain of type 'Klass'}}
+               // expected-remark @-1:11 {{retain of type 'Klass'}}
                // expected-note @-4:25 {{of 'x'}}
                // Release on Array<Any> for print.
                // expected-remark @-4:14 {{release of type}}
@@ -135,11 +133,11 @@ func returnKlassTupleLHS(x: (Klass, Klass)) -> Klass {
 }
 
 func callingAnInitializerKlassTuplePair(x: Klass, y: Klass) -> (Klass, Klass) {
-    return (x, y) // expected-remark {{retain of type 'Klass'}}
-                  // expected-note @-2:41 {{of 'x'}}
-                  // expected-remark @-2:5 {{retain of type 'Klass'}}
-                  // expected-note @-4:51 {{of 'y'}}
-}
+    return (x, y)
+}                 // expected-remark {{retain of type 'Klass'}}
+                  // expected-note @-3:41 {{of 'x'}}
+                  // expected-remark @-2:1 {{retain of type 'Klass'}}
+                  // expected-note @-5:51 {{of 'y'}}
 
 public class SubKlass : Klass {
     @inline(never)
