@@ -113,8 +113,8 @@ private func optimizeObjectAllocation(allocRef: AllocRefInstBase, _ context: Fun
         markedAsUsed: false)
 
   constructObject(of: allocRef, inInitializerOf: outlinedGlobal, storesToClassFields, storesToTailElements, context)
-  context.erase(instructions: storesToClassFields)
-  context.erase(instructions: storesToTailElements)
+  erase(stores: storesToClassFields, context)
+  erase(stores: storesToTailElements, context)
 
   return replace(object: allocRef, with: outlinedGlobal, context)
 }
@@ -401,6 +401,16 @@ private func constructObject(of allocRef: AllocRefInstBase,
   //   let a = [UnsafePointer(&p)]
   //
   global.stripAccessInstructionFromInitializer(context)
+}
+
+private func erase(stores: [StoreInst], _ context: FunctionPassContext) {
+  for store in stores {
+    if store.source.ownership == .owned {
+      let builder = Builder(before: store, context)
+      builder.createEndLifetime(of: store.source)
+    }
+    context.erase(instruction: store)
+  }
 }
 
 private func replace(object allocRef: AllocRefInstBase,

@@ -193,21 +193,24 @@ extension Value {
 
   /// True if this value is a valid in a static initializer, including all its operands.
   func isValidGlobalInitValue(_ context: some Context) -> Bool {
-    guard let svi = self as? SingleValueInstruction else {
-      return false
-    }
-    if let beginAccess = svi as? BeginAccessInst {
+    switch self {
+    case let beginAccess as BeginAccessInst:
       return beginAccess.address.isValidGlobalInitValue(context)
-    }
-    if !svi.isValidInStaticInitializerOfGlobal(context) {
-      return false
-    }
-    for op in svi.operands {
-      if !op.value.isValidGlobalInitValue(context) {
+    case let copyValue as CopyValueInst:
+      return copyValue.fromValue.isValidGlobalInitValue(context)
+    case let svi as SingleValueInstruction:
+      if !svi.isValidInStaticInitializerOfGlobal(context) {
         return false
       }
+      for op in svi.operands {
+        if !op.value.isValidGlobalInitValue(context) {
+          return false
+        }
+      }
+      return true
+    default:
+      return false
     }
-    return true
   }
 
   /// Performs a simple dominance check without using the dominator tree.
