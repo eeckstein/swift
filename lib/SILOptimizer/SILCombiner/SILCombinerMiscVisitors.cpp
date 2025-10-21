@@ -168,20 +168,15 @@ SILInstruction *SILCombiner::visitSwitchEnumAddrInst(SwitchEnumAddrInst *SEAI) {
 
   // Convert switch_enum_addr -> br
   //
-  // If the only thing which writes to the address is an inject_enum_addr. We
-  // only perform these optimizations when we are not in OSSA since this
-  // eliminates an edge from the CFG and we want SILCombine in OSSA to never do
-  // that, so in the future we can invalidate less.
-  if (!SEAI->getFunction()->hasOwnership()) {
-    if (EnumElementDecl *EnumCase = getInjectEnumCaseTo(Addr)) {
-      SILBasicBlock *Dest = SEAI->getCaseDestination(EnumCase);
-      // If the only instruction which writes to Addr is an inject_enum_addr we
-      // know that there cannot be an enum payload.
-      assert(Dest->getNumArguments() == 0 &&
-             "didn't expect a payload argument");
-      Builder.createBranch(SEAI->getLoc(), Dest);
-      return eraseInstFromFunction(*SEAI);
-    }
+  // If the only thing which writes to the address is an inject_enum_addr.
+  if (EnumElementDecl *EnumCase = getInjectEnumCaseTo(Addr)) {
+    SILBasicBlock *Dest = SEAI->getCaseDestination(EnumCase);
+    // If the only instruction which writes to Addr is an inject_enum_addr we
+    // know that there cannot be an enum payload.
+    assert(Dest->getNumArguments() == 0 &&
+           "didn't expect a payload argument");
+    Builder.createBranch(SEAI->getLoc(), Dest);
+    return eraseInstFromFunction(*SEAI);
   }
 
   SILType Ty = Addr->getType();
