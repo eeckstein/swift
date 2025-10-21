@@ -94,15 +94,14 @@ public struct Cloner<Context: MutatingContext> {
   
   public mutating func cloneRecursively(globalInitValue: Value) -> Value {
     guard let cloned = cloneRecursively(value: globalInitValue, customGetCloned: { value, cloner in
-      switch value {
-      case is BeginAccessInst, is CopyValueInst:
-        // Skip access instructions, which might be generated for UnsafePointer globals which point to other globals.
-        let clonedOperand = cloner.cloneRecursively(globalInitValue: (value as! UnaryInstruction).operand.value)
-        cloner.recordFoldedValue(value, mappedTo: clonedOperand)
-        return .customValue(clonedOperand)
-      default:
+      guard let beginAccess = value as? BeginAccessInst else {
         return .defaultValue
       }
+      
+      // Skip access instructions, which might be generated for UnsafePointer globals which point to other globals.
+      let clonedOperand = cloner.cloneRecursively(globalInitValue: beginAccess.address)
+      cloner.recordFoldedValue(beginAccess, mappedTo: clonedOperand)
+      return .customValue(clonedOperand)
     }) else {
       fatalError("Clone recursively to global shouldn't bail.")
     }
