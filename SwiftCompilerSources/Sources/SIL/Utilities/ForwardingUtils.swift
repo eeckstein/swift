@@ -178,7 +178,7 @@ private struct VisitLifetimeIntroducers : ForwardingUseDefWalker {
     self.visitedValues = ValueSet(context)
   }
   
-  mutating func deinitialize() { visitedValues.deinitialize() }
+  func deinitialize() { visitedValues.deinitialize() }
 
   mutating func needWalk(for value: Value, _: Void) -> Bool {
     visitedValues.insert(value)
@@ -355,7 +355,7 @@ public struct NonEscapingClosureDefUseWalker {
     self.applyOperandStack = Stack(context)
   }
 
-  public mutating func deinitialize() {
+  public func deinitialize() {
     visitedValues.deinitialize()
     applyOperandStack.deinitialize()
   }

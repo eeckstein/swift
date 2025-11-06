@@ -157,7 +157,7 @@ public struct BasicBlockRange : CustomStringConvertible, NoReflectionChildren {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() {
+  public func deinitialize() {
     worklist.deinitialize()
     inExclusiveRange.deinitialize()
     wasInserted.deinitialize()

@@ -1228,7 +1228,7 @@ private extension ScopedInstruction {
       break
     }
     
-    var scope = InstructionRange(begin: self, ends: endInstructions, context)
+    let scope = InstructionRange(begin: self, ends: endInstructions, context)
     defer { scope.deinitialize() }
     
     // Instruction specific range related conditions

@@ -115,7 +115,7 @@ extension BorrowedFromInst : VerifiableInstruction {
     }
     gatherEnclosingValuesFromPredecessors(for: phi, in: &computedEVs, context)
 
-    var existingEVs = ValueSet(insertContentsOf: enclosingValues, context)
+    let existingEVs = ValueSet(insertContentsOf: enclosingValues, context)
     defer { existingEVs.deinitialize() }
 
     for computedEV in computedEVs {
@@ -210,7 +210,7 @@ private struct MutatingUsesWalker : AddressDefUseWalker {
     self.mutatingInstructions = InstructionSet(context)
   }
 
-  mutating func deinitialize() {
+  func deinitialize() {
     self.mutatingInstructions.deinitialize()
   }
 

@@ -19,7 +19,7 @@ public protocol IntrusiveSet : CustomStringConvertible, NoReflectionChildren {
   mutating func insert(_ element: Element) -> Bool
   mutating func erase(_ element: Element)
   func contains(_ element: Element) -> Bool
-  mutating func deinitialize()
+  func deinitialize()
 }
 
 /// A set of basic blocks.
@@ -62,7 +62,7 @@ public struct BasicBlockSet : IntrusiveSet {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() {
+  public func deinitialize() {
     context.freeBasicBlockSet(bridged)
   }
 }
@@ -121,7 +121,7 @@ public struct ValueSet : IntrusiveSet {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() {
+  public func deinitialize() {
     context.freeNodeSet(bridged)
   }
 }
@@ -171,7 +171,7 @@ public struct SpecificInstructionSet<InstType: Instruction> : IntrusiveSet {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() {
+  public func deinitialize() {
     context.freeNodeSet(bridged)
   }
 }
@@ -209,7 +209,7 @@ public struct SpecificInstructionSetWithCount<InstType: Instruction> : Intrusive
 
   public var description: String { underlyingSet.description }
 
-  public mutating func deinitialize() { underlyingSet.deinitialize() }
+  public func deinitialize() { underlyingSet.deinitialize() }
 }
 
 public typealias InstructionSet = SpecificInstructionSet<Instruction>
@@ -262,7 +262,7 @@ public struct OperandSet : IntrusiveSet {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() {
+  public func deinitialize() {
     context.freeOperandSet(bridged)
   }
 }

@@ -137,7 +137,10 @@ public struct Stack<Element> : CollectionLikeSequence {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() { removeAll() }
+  public func deinitialize() {
+    var copy = self
+    copy.removeAll()
+  }
 }
 
 public extension Stack {
@@ -267,7 +270,10 @@ public struct StackWithCount<Element> : CollectionLikeSequence {
   }
 
   /// TODO: once we have move-only types, make this a real deinit.
-  public mutating func deinitialize() { removeAll() }
+  public func deinitialize() {
+    var copy = self
+    copy.removeAll()
+  }
 }
 
 public extension StackWithCount {

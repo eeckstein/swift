@@ -113,7 +113,7 @@ private func updateBorrowedFrom(for phi: Phi, _ context: some MutatingContext) -
   gatherEnclosingValuesFromPredecessors(for: phi, in: &computedEVs, context)
 
   let borrowedFrom = phi.borrowedFrom!
-  var existingEVs = ValueSet(insertContentsOf: borrowedFrom.enclosingValues, context)
+  let existingEVs = ValueSet(insertContentsOf: borrowedFrom.enclosingValues, context)
   defer { existingEVs.deinitialize() }
 
   if computedEVs.allSatisfy({ existingEVs.contains($0) }) {

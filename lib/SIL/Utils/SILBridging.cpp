@@ -669,9 +669,8 @@ BridgedCloner::BridgedCloner(BridgedFunction emptyFunction, BridgedContext conte
   context.context->notifyNewCloner();
 }
 
-void BridgedCloner::destroy(BridgedContext context) {
+void BridgedCloner::destroy(BridgedContext context) const {
   delete cloner;
-  cloner = nullptr;
   context.context->notifyClonerDestroyed();
 }
 
@@ -728,9 +727,8 @@ BridgedTypeSubstCloner::BridgedTypeSubstCloner(BridgedFunction fromFunction, Bri
   context.context->notifyNewCloner();
 }
 
-void BridgedTypeSubstCloner::destroy(BridgedContext context) {
+void BridgedTypeSubstCloner::destroy(BridgedContext context) const {
   delete cloner;
-  cloner = nullptr;
   context.context->notifyClonerDestroyed();
 }
 

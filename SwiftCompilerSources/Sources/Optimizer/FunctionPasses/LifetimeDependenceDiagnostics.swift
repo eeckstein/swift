@@ -125,7 +125,7 @@ private func analyze(dependence: LifetimeDependence, _ context: FunctionPassCont
   }
 
   // Compute this dependence scope.
-  var range = dependence.computeRange(context)
+  let range = dependence.computeRange(context)
   defer { range?.deinitialize() }
 
   let diagnostics = DiagnoseDependence(dependence: dependence, range: range, context: context)

@@ -1575,7 +1575,7 @@ struct BridgedCloner {
   BridgedCloner(BridgedGlobalVar var, BridgedContext context);
   BridgedCloner(BridgedInstruction inst, BridgedContext context);
   BridgedCloner(BridgedFunction emptyFunction, BridgedContext context);
-  void destroy(BridgedContext context);
+  void destroy(BridgedContext context) const;
   SWIFT_IMPORT_UNSAFE BridgedFunction getCloned() const;
   SWIFT_IMPORT_UNSAFE BridgedBasicBlock getClonedBasicBlock(BridgedBasicBlock originalBasicBlock) const;
   void cloneFunctionBody(BridgedFunction originalFunction, BridgedBasicBlock clonedEntryBlock,
@@ -1594,7 +1594,7 @@ struct BridgedTypeSubstCloner {
 
   BridgedTypeSubstCloner(BridgedFunction fromFunction, BridgedFunction toFunction,
                          BridgedSubstitutionMap substitutions, BridgedContext context);
-  void destroy(BridgedContext context);
+  void destroy(BridgedContext context) const;
   void cloneFunctionBody() const;
   SWIFT_IMPORT_UNSAFE BridgedBasicBlock getClonedBasicBlock(BridgedBasicBlock originalBasicBlock) const;
   SWIFT_IMPORT_UNSAFE BridgedValue getClonedValue(BridgedValue v);

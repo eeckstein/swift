@@ -246,7 +246,7 @@ private extension LoadInst {
     let builder = Builder(before: self, context)
     let loadBorrow = builder.createLoadBorrow(fromAddress: address)
 
-    var liverange = InstructionRange(begin: self, ends: collectedUses.destroys, context)
+    let liverange = InstructionRange(begin: self, ends: collectedUses.destroys, context)
     defer { liverange.deinitialize() }
 
     replaceMoveWithBorrow(of: self, replacedBy: loadBorrow, liverange: liverange, collectedUses: collectedUses)

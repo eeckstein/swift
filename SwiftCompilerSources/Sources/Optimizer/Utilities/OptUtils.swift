@@ -1166,7 +1166,7 @@ func isInLoop(block startBlock: BasicBlock, _ context: FunctionPassContext) -> B
 }
 
 func cloneFunction(from originalFunction: Function, toEmpty targetFunction: Function, _ context: FunctionPassContext) {
-  var cloner = Cloner(cloneToEmptyFunction: targetFunction, context)
+  let cloner = Cloner(cloneToEmptyFunction: targetFunction, context)
   defer { cloner.deinitialize() }
   cloner.cloneFunctionBody(from: originalFunction)
 }
@@ -1176,7 +1176,7 @@ func cloneAndSpecializeFunction(from originalFunction: Function,
                                 substitutions: SubstitutionMap,
                                 _ context: FunctionPassContext
 ) {
-  var cloner = TypeSubstitutionCloner(fromFunction: originalFunction, toEmptyFunction: targetFunction,
+  let cloner = TypeSubstitutionCloner(fromFunction: originalFunction, toEmptyFunction: targetFunction,
                                       substitutions: substitutions, context)
   defer { cloner.deinitialize() }
   cloner.cloneFunctionBody()

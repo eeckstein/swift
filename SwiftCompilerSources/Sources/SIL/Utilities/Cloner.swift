@@ -52,7 +52,7 @@ public struct Cloner<Context: MutatingContext> {
     self.target = .function(cloneToEmptyFunction)
   }
 
-  public mutating func deinitialize() {
+  public func deinitialize() {
     bridged.destroy(context._bridged)
   }
 
@@ -179,7 +179,7 @@ public struct TypeSubstitutionCloner<Context: MutatingContext> {
     self.context = context
   }
 
-  public mutating func deinitialize() {
+  public func deinitialize() {
     bridged.destroy(context._bridged)
   }
 

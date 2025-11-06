@@ -510,11 +510,11 @@ enum AddressOwnershipLiveRange : CustomStringConvertible {
     switch self {
     case .liveOut, .global:
       break
-    case var .local(_, range):
+    case let .local(_, range):
       range.deinitialize()
-    case var .owned(_, range):
+    case let .owned(_, range):
       range.deinitialize()
-    case var .borrow(ranges):
+    case let .borrow(ranges):
       for idx in ranges.indices {
         ranges[idx].1.deinitialize()
       }

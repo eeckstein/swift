@@ -95,7 +95,7 @@ private func optimize(value: Value, _ context: FunctionPassContext) {
     return
   }
 
-  guard var minimalLiverange = InstructionRange(withLiverangeOf: value, ignoring: hoistableDestroys, context) else {
+  guard let minimalLiverange = InstructionRange(withLiverangeOf: value, ignoring: hoistableDestroys, context) else {
     return
   }
   defer { minimalLiverange.deinitialize() }
@@ -105,7 +105,7 @@ private func optimize(value: Value, _ context: FunctionPassContext) {
 
 private func selectHoistableDestroys(of value: Value, _ context: FunctionPassContext) -> (Bool, InstructionSet) {
   // Also includes liveranges of copied values and values stored to memory.
-  var forwardExtendedLiverange = InstructionRange(withForwardExtendedLiverangeOf: value, context)
+  let forwardExtendedLiverange = InstructionRange(withForwardExtendedLiverangeOf: value, context)
   defer { forwardExtendedLiverange.deinitialize() }
 
   let deadEndBlocks = context.deadEndBlocks

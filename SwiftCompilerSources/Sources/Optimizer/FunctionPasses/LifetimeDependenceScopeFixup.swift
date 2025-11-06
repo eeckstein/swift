@@ -628,7 +628,7 @@ extension ScopeExtension {
         break
       case var .addressRange(range):
         return range.deinitialize()
-      case var .valueRange(range):
+      case let .valueRange(range):
         return range.deinitialize()
       }
     }
