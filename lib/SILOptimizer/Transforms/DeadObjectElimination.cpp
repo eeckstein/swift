@@ -240,7 +240,10 @@ static DestructorEffects doesDestructorHaveSideEffects(AllocRefInstBase *ARI) {
         if (!rta)
           return DestructorEffects::Unknown;
         effects = DestructorEffects::DestroysTailElems;
-        if (rta->getOperand() == Self)
+        SILValue arrayRef = rta->getOperand();
+        if (auto *beginBorrow = dyn_cast<BeginBorrowInst>(arrayRef))
+          arrayRef = beginBorrow->getOperand();
+        if (arrayRef == Self)
           continue;
       }
 
