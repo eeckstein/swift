@@ -71,7 +71,6 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) {
   }
 
   var collectedUses = Uses(context)
-  defer { collectedUses.deinitialize() }
   if !collectedUses.collectUses(of: load) {
     return
   }
@@ -93,7 +92,6 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) {
   }
 
   var collectedUses = Uses(context)
-  defer { collectedUses.deinitialize() }
   if !collectedUses.collectUses(of: copy) {
     return
   }
@@ -110,7 +108,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) {
   remove(copy: copy, collectedUses: collectedUses, liverange: liverange)
 }
 
-private struct Uses {
+private struct Uses : ~Copyable {
   let context: FunctionPassContext
 
   // Operand of all forwarding instructions, which - if possible - are converted from "owned" to "guaranteed"
@@ -207,7 +205,7 @@ private struct Uses {
     usersInDeadEndBlocks.append(contentsOf: users)
   }
 
-  mutating func deinitialize() {
+  deinit {
     forwardingUses.deinitialize()
     destroys.deinitialize()
     nonDestroyingLiverangeExits.deinitialize()
@@ -241,7 +239,7 @@ private func mayWrite(
 }
 
 private extension LoadInst {
-  func replaceWithLoadBorrow(collectedUses: Uses) {
+  func replaceWithLoadBorrow(collectedUses: borrowing Uses) {
     let context = collectedUses.context
     let builder = Builder(before: self, context)
     let loadBorrow = builder.createLoadBorrow(fromAddress: address)
@@ -262,7 +260,7 @@ private extension LoadInst {
   }
 }
 
-private func remove(copy: CopyValueInst, collectedUses: Uses, liverange: InstructionRange) {
+private func remove(copy: CopyValueInst, collectedUses: borrowing Uses, liverange: InstructionRange) {
   let context = collectedUses.context
   replaceMoveWithBorrow(of: copy, replacedBy: copy.fromValue, liverange: liverange, collectedUses: collectedUses)
   copy.replace(with: copy.fromValue, context)
@@ -292,7 +290,7 @@ private func replaceMoveWithBorrow(
   of value: Value,
   replacedBy newValue: Value,
   liverange: InstructionRange,
-  collectedUses: Uses
+  collectedUses: borrowing Uses
 ) {
   guard let moveInst = value.singleMoveValueUser else {
     return
@@ -309,7 +307,7 @@ private func replaceMoveWithBorrow(
   createEndBorrows(for: bbi, atEndOf: liverange, collectedUses: collectedUses)
 }
 
-private func createEndBorrows(for beginBorrow: Value, atEndOf liverange: InstructionRange, collectedUses: Uses) {
+private func createEndBorrows(for beginBorrow: Value, atEndOf liverange: InstructionRange, collectedUses: borrowing Uses) {
   let context = collectedUses.context
 
   // There can be multiple destroys in a row in case of decomposing an aggregate, e.g.
