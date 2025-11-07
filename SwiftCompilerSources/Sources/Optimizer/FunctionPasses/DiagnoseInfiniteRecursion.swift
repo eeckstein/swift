@@ -106,7 +106,6 @@ private func analizeAndDiagnose(_ function: Function,
                                 _ context: FunctionPassContext) -> Bool
 {
   var analysis = Analysis(function: function, with: invariants, context)
-  defer { analysis.deinitialize() }
 
   analysis.compute()
 
@@ -232,7 +231,7 @@ private struct Invariants: Equatable {
 /// The basic idea is to see if there is a path from the entry block to a function return without
 /// going through an infinite recursive call.
 ///
-private struct Analysis {
+private struct Analysis : ~Copyable {
 
   /// All blocks which contain a recursive call.
   var haveRecursiveCall: BasicBlockSet
@@ -272,7 +271,7 @@ private struct Analysis {
     propagateReachingFunctionExit()
   }
 
-  mutating func deinitialize() {
+  deinit {
     haveRecursiveCall.deinitialize()
     haveInvariantCondition.deinitialize()
     reachingFunctionExit.deinitialize()
