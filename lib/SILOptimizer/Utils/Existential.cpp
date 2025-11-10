@@ -202,6 +202,9 @@ OpenedArchetypeInfo::OpenedArchetypeInfo(Operand &use) {
         openedVal = store->getSrc();
     }
   }
+  if (auto *sbi = dyn_cast<StoreBorrowInst>(openedVal)) {
+    openedVal = sbi->getSrc();
+  }
   if (auto *Open = dyn_cast<OpenExistentialAddrInst>(openedVal)) {
     OpenedArchetype = Open->getType().castTo<ExistentialArchetypeType>();
     OpenedArchetypeValue = Open;
