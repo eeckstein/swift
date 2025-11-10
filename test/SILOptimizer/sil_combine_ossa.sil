@@ -2705,11 +2705,8 @@ bb3:
   return %2 : $()
 }
 
-// We do not perform this optimization in SILCombine in OSSA since we would be
-// deleting an edge from the CFG.
-//
 // CHECK-LABEL: sil [ossa] @resilient_enum_case_propagation :
-// CHECK: switch_enum_addr
+// CHECK-NOT: switch_enum_addr
 // CHECK: } // end sil function 'resilient_enum_case_propagation'
 sil [ossa] @resilient_enum_case_propagation : $@convention(thin) () -> Builtin.Int64 {
 bb0:
@@ -4301,8 +4298,7 @@ bb0(%0 : @guaranteed $B):
 //
 // CHECK-LABEL: sil [ossa] @mark_dependence_base1_lexical1 : {{.*}} {
 // CHECK:       {{bb[0-9]+}}([[ADDR:%[^,]+]] : $*Builtin.Int64, [[INSTANCE:%[^,]+]] : @owned $B):
-// CHECK:         [[LIFETIME:%[^,]+]] = move_value [lexical] [[INSTANCE]]
-// CHECK:         [[OPTIONAL:%[^,]+]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[LIFETIME]]
+// CHECK:         [[OPTIONAL:%[^,]+]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[INSTANCE]]
 // CHECK:         [[DEPENDENT_ADDR:%[^,]+]] = mark_dependence [[ADDR]]
 // CHECK:         [[VALUE:%[^,]+]] = load [trivial] [[DEPENDENT_ADDR]]
 // CHECK:         return [[VALUE]]
