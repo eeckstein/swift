@@ -461,6 +461,8 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   // Optimize copies from a temporary (an "l-value") to a destination.
   P.addTempLValueElimination();
 
+  P.addLowerAddressInstructions();
+
   // Split up operations on stack-allocated aggregates (struct, tuple).
   if (OpLevel == OptimizationLevelKind::HighLevel) {
     P.addEarlySROA();
