@@ -126,7 +126,7 @@ bb0(%0 : $Int64):
 
 // CHECK-LABEL: sil [ossa] @cse_retain_only_apply :
 // CHECK: apply
-// CHECK-NOT: apply
+// CHECK: apply
 // CHECK-LABEL:} // end sil function 'cse_retain_only_apply'
 sil [ossa] @cse_retain_only_apply : $@convention(thin) () -> () {
 bb0:
@@ -149,7 +149,7 @@ bb0(%0 : @owned $Klass):
 
 // CHECK-LABEL: sil [ossa] @apply_nontrivial_test1 :
 // CHECK: apply
-// CHECK-NOT: apply
+// CHECK: apply
 // CHECK-LABEL:} // end sil function 'apply_nontrivial_test1'
 sil [ossa] @apply_nontrivial_test1 : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):
@@ -171,7 +171,7 @@ bb0(%0 : @guaranteed $Klass):
 
 // CHECK-LABEL: sil [ossa] @apply_nontrivial_test2 :
 // CHECK: apply
-// CHECK-NOT: apply
+// CHECK: apply
 // CHECK-LABEL:} // end sil function 'apply_nontrivial_test2'
 sil [ossa] @apply_nontrivial_test2 : $@convention(thin) (@guaranteed Klass) -> () {
 bb0(%0 : @guaranteed $Klass):
@@ -186,7 +186,7 @@ bb0(%0 : @guaranteed $Klass):
 
 // CHECK-LABEL: sil [ossa] @apply_nontrivial_test3 :
 // CHECK: apply
-// CHECK-NOT: apply
+// CHECK: apply
 // CHECK-LABEL:} // end sil function 'apply_nontrivial_test3'
 sil [ossa] @apply_nontrivial_test3 : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):

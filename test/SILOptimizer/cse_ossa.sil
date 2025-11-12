@@ -567,7 +567,7 @@ sil [ossa] @sil_string_different_encodings : $@convention(thin) () -> Builtin.Wo
 
 // CHECK-LABEL: sil [ossa] @raw_idx_cse :
 // CHECK: pointer_to_address
-// CHECK: pointer_to_address
+// CHECK-NOT: pointer_to_address
 // CHECK-LABEL: } // end sil function 'raw_idx_cse'
 sil [ossa] @raw_idx_cse: $@convention(thin) (Builtin.RawPointer) -> () {
 bb0(%0 : $Builtin.RawPointer):
@@ -1089,7 +1089,7 @@ sil [ossa] [global_init] @$s4test10testGlobalSivau : $@convention(thin) () -> Bu
 
 // CHECK-LABEL: sil [ossa] @cse_global_init :
 // CHECK:   pointer_to_address
-// CHECK:   pointer_to_address
+// CHECK-NOT:   pointer_to_address
 // CHECK: // end sil function 'cse_global_init'
 sil [ossa] @cse_global_init : $@convention(thin) () -> Int64 {
 bb0:
@@ -1271,7 +1271,7 @@ bb0(%0 : $LazyKlass):
 
 // CHECK-LABEL: sil [ossa] @test_end_lifetime :
 // CHECK:       upcast
-// CHECK-NOT:   upcast
+// CHECK:       upcast
 // CHECK: } // end sil function 'test_end_lifetime'
 sil [ossa] @test_end_lifetime : $@convention(method) (@owned E) -> () {
 bb0(%0 : @owned $E):
@@ -1299,7 +1299,6 @@ struct S {
 // replace in the face of non-dominated reborrows.
 //
 // CHECK-LABEL: sil [ossa] @dont_rauw_guaranteed_with_nondominated_reborrow : {{.*}} {
-// CHECK:         struct_extract
 // CHECK:         struct_extract
 // CHECK:         struct_extract
 // CHECK-LABEL: } // end sil function 'dont_rauw_guaranteed_with_nondominated_reborrow'

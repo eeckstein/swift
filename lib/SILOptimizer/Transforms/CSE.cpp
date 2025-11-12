@@ -88,6 +88,9 @@ template <> struct DenseMapInfo<SimpleValue> {
 
 SILValue tryLookThroughOwnershipInsts(const Operand *op) {
   auto opValue = op->get();
+  return opValue;
+
+/*
   auto opOwnership = op->getOperandOwnership();
 
   // Escaped values are dependent on the base value lifetime.
@@ -104,6 +107,7 @@ SILValue tryLookThroughOwnershipInsts(const Operand *op) {
   }
 
   return lookThroughOwnershipInsts(opValue);
+ */
 }
 
 namespace {
@@ -1101,6 +1105,7 @@ bool CSE::processNode(DominanceInfoNode *Node) {
           ++NumCSE;
           continue;
         }
+        /*
         // TODO: Support MultipleValueInstructionResult in OSSA RAUW utility and
         // extend it here as well
         if (!isa<SingleValueInstruction>(Inst))
@@ -1119,6 +1124,7 @@ bool CSE::processNode(DominanceInfoNode *Node) {
         nextI = helper.perform();
         Changed = true;
         ++NumCSE;
+        */
         continue;
       }
     }
