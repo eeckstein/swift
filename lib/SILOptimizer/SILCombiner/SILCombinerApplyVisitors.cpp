@@ -1533,6 +1533,8 @@ SILInstruction *SILCombiner::legacyVisitApplyInst(ApplyInst *AI) {
       callee = cee->getOperand();
     } else if (auto *mdi = dyn_cast<MarkDependenceInst>(callee)) {
       callee = mdi->getValue();
+    } else if (auto *cvi = dyn_cast<CopyValueInst>(callee)) {
+      callee = cvi->getOperand();
     } else {
       break;
     }
