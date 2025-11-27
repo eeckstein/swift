@@ -950,7 +950,7 @@ static ManagedValue emitBuiltinValueToBridgeObject(SILGenFunction &SGF,
   }
 
   SILValue result = SGF.B.createValueToBridgeObject(loc, args[0].getValue());
-  return SGF.emitManagedRValueWithCleanup(result);
+  return SGF.emitManagedCopy(loc, result);
 }
 
 // This should only accept as an operand type single-refcounted-pointer types,
