@@ -1015,12 +1015,16 @@ static bool isLazyPropertyGetter(ApplyInst *ai) {
   return false;
 }
 
-static bool hasCSEableOwnership(SILInstruction *inst) {
+static bool hasCSEableOwnership(SILInstruction *inst, SILInstruction *availableInst) {
   for (Operand &op : inst->getAllOperands()) {
     if (op.isLifetimeEnding())
       return false;
   }
   for (SILValue result : inst->getResults()) {
+    if (result->getOwnershipKind() == OwnershipKind::Owned)
+      return false;
+  }
+  for (SILValue result : availableInst->getResults()) {
     if (result->getOwnershipKind() == OwnershipKind::Owned)
       return false;
   }
@@ -1097,7 +1101,7 @@ bool CSE::processNode(DominanceInfoNode *Node) {
           ++NumCSE;
           continue;
         }
-        if (!Inst->getFunction()->hasOwnership() || hasCSEableOwnership(Inst)) {
+        if (!Inst->getFunction()->hasOwnership() || hasCSEableOwnership(Inst, AvailInst)) {
           Inst->replaceAllUsesPairwiseWith(AvailInst);
           nextI = std::next(Inst->getIterator());
           Inst->eraseFromParent();
