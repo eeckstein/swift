@@ -1,4 +1,3 @@
-// RUN: %target-swift-frontend -emit-sil -O -parse-as-library -enable-copy-propagation=false -Xllvm -sil-print-all -module-name=main %s 2>&1 | %FileCheck %s --check-prefixes CHECK,CHECK-NOCOPYPROP
 // RUN: %target-swift-frontend -emit-sil -O -parse-as-library -enable-lexical-lifetimes=false -Xllvm -sil-print-all -module-name=main %s 2>&1 | %FileCheck %s --check-prefixes CHECK,CHECK-COPYPROP
 
 // REQUIRES: swift_in_compiler
@@ -39,8 +38,7 @@ func getOwned() -> AnyObject
 // The first round of SemanticARCOpts/CopyPropagation must eliminate the
 // redundant move_value that was only needed for a lexical lifetime.
 
-// CHECK-NOCOPYPROP-LABEL: *** SIL function after {{.*}} (semantic-arc-opts)
-// CHECK-COPYPROP-LABEL: *** SIL function after {{.*}} (copy-propagation)
+// CHECK-COPYPROP-LABEL: *** SIL function after {{.*}} (simplification)
 // CHECK-LABEL: // testLexical()
 // CHECK: [[A:%.*]] = apply %{{.*}}()
 // CHECK: apply %{{.*}}([[A]])
