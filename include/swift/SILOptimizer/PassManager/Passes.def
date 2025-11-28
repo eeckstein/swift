@@ -126,8 +126,8 @@ PASS(ObjectOutliner, "object-outliner",
      "Outlining of Global Objects")
 PASS(DeinitDevirtualizer, "deinit-devirtualizer",
      "Devirtualizes destroys of non-copyable values")
-PASS(ReleaseDevirtualizer, "release-devirtualizer",
-     "SIL release Devirtualization")
+PASS(ClassDestroyDevirtualizer, "class-destroy-devirtualizer",
+     "Devirtualizes final destroys of classes")
 PASS(LetPropertyLowering, "let-property-lowering",
      "Lowers accesses to let properties of classes")
 PASS(FunctionStackProtection, "function-stack-protection",
