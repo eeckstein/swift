@@ -96,7 +96,6 @@ private func registerSwiftPasses() {
   registerPass(functionStackProtection, { functionStackProtection.run($0) })
   registerPass(assumeSingleThreadedPass, { assumeSingleThreadedPass.run($0) })
   registerPass(classDestroyDevirtualizerPass, { classDestroyDevirtualizerPass.run($0) })
-  registerPass(releaseDevirtualizerPass, { releaseDevirtualizerPass.run($0) })
   registerPass(simplificationPass, { simplificationPass.run($0) })
   registerPass(ononeSimplificationPass, { ononeSimplificationPass.run($0) })
   registerPass(lateOnoneSimplificationPass, { lateOnoneSimplificationPass.run($0) })
