@@ -798,7 +798,7 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   P.startPipeline("LowLevel,Function", true /*isFunctionPassPipeline*/);
 
   // Should be after FunctionSignatureOpts and before the last inliner.
-  P.addReleaseDevirtualizer();
+  P.addClassDestroyDevirtualizer();
 
   addFunctionPasses(P, OptimizationLevelKind::LowLevel);
 
