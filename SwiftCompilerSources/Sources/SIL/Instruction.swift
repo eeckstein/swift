@@ -1341,7 +1341,7 @@ final public class ExplicitCopyValueInst : SingleValueInstruction, CopyingInstru
 final public class UnownedCopyValueInst : SingleValueInstruction, CopyingInstruction {}
 final public class WeakCopyValueInst : SingleValueInstruction, CopyingInstruction {}
 
-final public class UncheckedOwnershipConversionInst : SingleValueInstruction {}
+final public class UncheckedOwnershipConversionInst : SingleValueInstruction, UnaryInstruction {}
 
 final public class MoveValueInst : SingleValueInstruction, UnaryInstruction {
   public var fromValue: Value { operand.value }

@@ -47,5 +47,6 @@ swift_compiler_sources(Optimizer
   SimplifyTypeValue.swift
   SimplifyUncheckedAddrCast.swift
   SimplifyUncheckedEnumData.swift
+  SimplifyUncheckedOwnershipConversion.swift
   SimplifyValueToBridgeObject.swift
   SimplifyWitnessMethod.swift)

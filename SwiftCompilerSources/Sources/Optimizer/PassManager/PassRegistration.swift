@@ -149,6 +149,7 @@ private func registerSwiftPasses() {
   registerForSILCombine(ApplyInst.self,             { run(ApplyInst.self, $0) })
   registerForSILCombine(TryApplyInst.self,          { run(TryApplyInst.self, $0) })
   registerForSILCombine(EndCOWMutationAddrInst.self, { run(EndCOWMutationAddrInst.self, $0) })
+  registerForSILCombine(UncheckedOwnershipConversionInst.self, { run(UncheckedOwnershipConversionInst.self, $0) })
 }
 
 private func registerSwiftAnalyses() {
