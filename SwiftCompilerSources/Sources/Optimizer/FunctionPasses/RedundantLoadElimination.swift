@@ -176,6 +176,36 @@ extension CopyAddrInst : LoadingInstruction {
   }
 }
 
+extension DestroyAddrInst : LoadingInstruction {
+  var address: Value { destroyedAddress }
+  var type: Type { address.type.objectType }
+  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
+  var loadOwnership: LoadInst.LoadOwnership { .take }
+
+  var ownership: Ownership {
+    if !parentFunction.hasOwnership {
+      return .none
+    }
+    // Regardless of if the copy is taking or copying, the loaded value is an owned value.
+    return .owned
+  }
+
+  var canLoadValue: Bool {
+    destroyedAddress.type.isLoadable(in: parentFunction) &&
+    !type.isTrivial(in: parentFunction)
+  }
+
+  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
+    let builder = Builder(before: self, context)
+    let load = builder.createLoad(fromAddress: destroyedAddress, ownership: .take)
+    builder.createDestroyValue(operand: load)
+    context.erase(instruction: self)
+    return load
+  }
+
+  func trySplit(_ context: FunctionPassContext) -> Bool { false }
+}
+
 private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int, _ context: FunctionPassContext) -> Bool {
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
