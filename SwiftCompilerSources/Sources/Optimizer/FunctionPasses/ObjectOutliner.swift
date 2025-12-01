@@ -55,8 +55,10 @@ import SIL
 let objectOutliner = FunctionPass(name: "object-outliner") {
   (function: Function, context: FunctionPassContext) in
 
-  if function.hasOwnership && !function.isSwift51RuntimeAvailable {
-    // Since Swift 5.1 global objects have immortal ref counts. And that's required for ownership.
+  guard function.hasOwnership,
+        // Since Swift 5.1 global objects have immortal ref counts. And that's required for global objects.
+        function.isSwift51RuntimeAvailable
+  else {
     return
   }
 
