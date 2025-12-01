@@ -70,7 +70,7 @@ private extension UnaryInstruction {
     let replacement = inst.operands[0].value
 
     if parentFunction.hasOwnership {
-      if !canEraseInst && replacement.ownership == .owned {
+      if !canEraseInst && (replacement.ownership == .owned || inst.ownership == .owned) {
         // We cannot add more uses to `replacement` without inserting a copy.
         return false
       }

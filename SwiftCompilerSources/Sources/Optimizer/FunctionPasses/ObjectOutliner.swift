@@ -453,8 +453,12 @@ private func rewriteUses(of startValue: Value, _ context: FunctionPassContext) {
       worklist.pushIfNotVisited(usersOf: refCast)
     case let moveValue as MoveValueInst:
       worklist.pushIfNotVisited(usersOf: moveValue)
-    case is DeallocRefInst, is DeallocStackRefInst:
-      context.erase(instruction: inst)
+    case let deallocRef as DeallocRefInst:
+      let builder = Builder(before: deallocRef, context)
+      builder.createEndLifetime(of: deallocRef.operand.value)
+      context.erase(instruction: deallocRef)
+    case let deallocStack as DeallocStackRefInst:
+      context.erase(instruction: deallocStack)
     default:
       break
     }
