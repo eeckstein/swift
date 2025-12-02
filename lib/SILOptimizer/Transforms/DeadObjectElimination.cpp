@@ -303,6 +303,14 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
   if (isa<DestroyAddrInst>(Inst))
     return true;
 
+  if (auto *load = dyn_cast<LoadInst>(Inst)) {
+    if (load->getOwnershipQualifier() == LoadOwnershipQualifier::Take &&
+        load->getSingleUse()) {
+      if (isa<DestroyValueInst>(load->getSingleUse()->getUser()))
+        return true;
+    }
+  }
+
   // We have already checked that we are storing into the pointer before we
   // added it to the worklist. Here, in the case we are allowing non-trivial
   // stores, check if the store's source is lexical, if so return false.
