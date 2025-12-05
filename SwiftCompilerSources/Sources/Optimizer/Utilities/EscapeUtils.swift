@@ -383,6 +383,12 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
         return walkUp(address: store.destination, path: path.with(addressStored: true))
       }
       return walkUp(address: store.destination, path: path)
+    case let storeAndBorrow as StoreAndBorrowInst:
+      let newPath = followLoads(at: path) ? path : path.with(addressStored: true)
+      if walkUp(address: storeAndBorrow.destination, path: newPath) == .abortWalk {
+        return .abortWalk
+      }
+      return walkDownUses(ofValue: storeAndBorrow, path: path)
     case is DestroyValueInst, is ReleaseValueInst, is StrongReleaseInst:
       if handleDestroy(of: operand.value, path: path) == .abortWalk {
         return .abortWalk
@@ -512,6 +518,19 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
     case let storeBorrow as StoreBorrowInst:
       assert(operand == storeBorrow.destinationOperand)
       return walkDownUses(ofAddress: storeBorrow, path: path)
+    case let storeAndBorrow as StoreAndBorrowInst:
+      assert(operand == storeAndBorrow.destinationOperand)
+      if path.followStores,
+         walkUp(value: storeAndBorrow.source, path: path) == .abortWalk
+      {
+        return .abortWalk
+      }
+      if followLoads(at: path),
+         walkDownUses(ofValue: storeAndBorrow, path: path.with(knownType: nil)) == .abortWalk
+      {
+        return .abortWalk
+      }
+      return .continueWalk
     case let copyAddr as CopyAddrInst:
       if !followLoads(at: path) {
         return .continueWalk
@@ -808,6 +827,15 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
                     path: path.with(followStores: true).with(knownType: nil))
     case let atp as AddressToPointerInst:
       return walkUp(address: atp.address, path: path.with(knownType: nil))
+    case let sab as StoreAndBorrowInst:
+      if !followLoads(at: path) {
+        return isEscaping
+      }
+      if walkUp(address: (def as! UnaryInstruction).operand.value,
+                path: path.with(followStores: true).with(knownType: nil)) == .abortWalk {
+        return .abortWalk
+      }
+      return walkUp(value: sab.source, path: path)
     default:
       return isEscaping
     }

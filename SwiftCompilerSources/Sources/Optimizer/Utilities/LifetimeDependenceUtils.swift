@@ -340,7 +340,7 @@ extension LifetimeDependence.Scope {
     assert(iter.next() == nil,
            "guaranteed phis not allowed when diagnosing lifetime dependence")
     switch beginBorrow {
-    case .beginBorrow, .loadBorrow:
+    case .beginBorrow, .loadBorrow, .storeAndBorrow:
       self = .borrowed(beginBorrow)
     case let .beginApply(value):
       self = .yield(value)
@@ -951,6 +951,8 @@ extension LifetimeDependenceDefUseWalker {
       return walkDownUses(of: bfi, using: operand)
     case let .storeBorrow(sbi):
       return walkDownAddressUses(of: sbi)
+    case let .storeAndBorrow(sabi):
+      return walkDownUses(of: sabi, using: operand)
     case let .beginApply(bai):
       // First, visit the uses of any non-Escapable yields. The yielded value may be copied and used outside the
       // coroutine scope.  Now, visit the uses of the begin_apply token. This adds the coroutine scope itself to the

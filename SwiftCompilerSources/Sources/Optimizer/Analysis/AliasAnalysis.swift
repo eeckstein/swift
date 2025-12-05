@@ -254,6 +254,9 @@ struct AliasAnalysis {
     case let storeBorrow as StoreBorrowInst:
       return memLoc.mayAlias(with: storeBorrow.destination, self) ? .init(write: true) : .noEffects
 
+    case let storeAndBorrow as StoreAndBorrowInst:
+      return memLoc.mayAlias(with: storeAndBorrow.destination, self) ? .init(write: true) : .noEffects
+
     case let mdi as MarkDependenceInst:
       if mdi.base.type.isAddress && memLoc.mayAlias(with: mdi.base, self) {
         return .init(read: true)
@@ -319,6 +322,13 @@ struct AliasAnalysis {
         // from where it loads the value. This includes "write" to prevent any optimization to change the
         // memory location after the load_borrow.
         if borrowEffects != .worstEffects && memLoc.mayAlias(with: loadBorrow.address, self) {
+          return .worstEffects
+        }
+        return borrowEffects
+      case let storeAndBorrow as StoreAndBorrowInst:
+        let borrowEffects = getBorrowEffects(of: endBorrow, on: memLoc)
+        // Same as `load_borrow`
+        if borrowEffects != .worstEffects && memLoc.mayAlias(with: storeAndBorrow.destination, self) {
           return .worstEffects
         }
         return borrowEffects
@@ -680,7 +690,7 @@ private enum ImmutableScope {
         }
 
         switch singleBorrowIntroducer {
-        case .beginBorrow, .loadBorrow, .reborrow:
+        case .beginBorrow, .loadBorrow, .storeAndBorrow, .reborrow:
           self = .borrow(singleBorrowIntroducer)
         case .functionArgument:
           self = .wholeFunction
@@ -702,10 +712,11 @@ private enum ImmutableScope {
       return beginAccess
     case .borrow(let beginBorrowValue):
       switch beginBorrowValue {
-        case .beginBorrow(let bbi): return bbi
-        case .loadBorrow(let lbi):  return lbi
-        case .reborrow(let phi):    return phi.borrowedFrom!
-        default:                    fatalError("unsupported BeginBorrowValue")
+        case .beginBorrow(let bbi):     return bbi
+        case .loadBorrow(let lbi):      return lbi
+        case .storeAndBorrow(let sabi): return sabi
+        case .reborrow(let phi):        return phi.borrowedFrom!
+        default:                        fatalError("unsupported BeginBorrowValue")
       }
     }
   }

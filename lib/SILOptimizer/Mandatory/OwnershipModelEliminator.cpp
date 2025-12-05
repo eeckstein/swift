@@ -131,6 +131,7 @@ struct OwnershipModelEliminatorVisitor
   bool visitLoadInst(LoadInst *li);
   bool visitStoreInst(StoreInst *si);
   bool visitStoreBorrowInst(StoreBorrowInst *si);
+  bool visitStoreAndBorrowInst(StoreAndBorrowInst *si);
   bool visitCopyValueInst(CopyValueInst *cvi);
   bool visitExplicitCopyValueInst(ExplicitCopyValueInst *cvi);
   bool visitExplicitCopyAddrInst(ExplicitCopyAddrInst *cai);
@@ -310,6 +311,21 @@ bool OwnershipModelEliminatorVisitor::visitStoreBorrowInst(
   // ensures that any uses of the interior pointer result of the store_borrow
   // are rewritten to be on the dest point.
   si->replaceAllUsesWith(si->getDest());
+  eraseInstruction(si);
+  return true;
+}
+
+bool OwnershipModelEliminatorVisitor::visitStoreAndBorrowInst(
+    StoreAndBorrowInst *si) {
+  withBuilder<void>(si, [&](SILBuilder &b, SILLocation loc) {
+    b.emitStoreValueOperation(loc, si->getSrc(), si->getDest(),
+                              StoreOwnershipQualifier::Unqualified);
+  });
+
+  // Then remove the qualified store after RAUWing si with its dest. This
+  // ensures that any uses of the interior pointer result of the store_borrow
+  // are rewritten to be on the dest point.
+  si->replaceAllUsesWith(si->getSrc());
   eraseInstruction(si);
   return true;
 }

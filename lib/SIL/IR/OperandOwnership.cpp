@@ -476,6 +476,13 @@ OperandOwnershipClassifier::visitStoreBorrowInst(StoreBorrowInst *i) {
   return OperandOwnership::TrivialUse;
 }
 
+OperandOwnership OperandOwnershipClassifier::visitStoreAndBorrowInst(StoreAndBorrowInst *i) {
+  if (getValue() != i->getSrc()) {
+    return OperandOwnership::TrivialUse;
+  }
+  return OperandOwnership::DestroyingConsume;
+}
+
 OperandOwnership
 OperandOwnershipClassifier::visitDropDeinitInst(DropDeinitInst *i) {
   return i->getType().isAddress() ? OperandOwnership::TrivialUse

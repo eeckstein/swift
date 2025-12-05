@@ -726,6 +726,11 @@ public struct Builder {
     return notifyNew(storeBorrow.getAs(StoreBorrowInst.self))
   }
 
+  public func createStoreAndBorrow(source: Value, destination: Value) -> StoreAndBorrowInst {
+    let storeAndBorrow = bridged.createStoreAndBorrow(source.bridged, destination.bridged)
+    return notifyNew(storeAndBorrow.getAs(StoreAndBorrowInst.self))
+  }
+
   public func createInitExistentialRef(instance: Value,
                                        existentialType: Type,
                                        formalConcreteType: CanonicalType,

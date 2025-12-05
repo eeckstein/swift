@@ -3003,6 +3003,15 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
         getLocalValue(Builder.maybeGetFunction(), ValID2, addrType));
     break;
   }
+  case SILInstructionKind::StoreAndBorrowInst: {
+    auto Ty = MF->getType(TyID);
+    SILType addrType = getSILType(Ty, (SILValueCategory)TyCategory, Fn);
+    SILType ValType = addrType.getObjectType();
+    ResultInst = Builder.createStoreAndBorrow(
+        Loc, getLocalValue(Builder.maybeGetFunction(), ValID, ValType),
+        getLocalValue(Builder.maybeGetFunction(), ValID2, addrType));
+    break;
+  }
   case SILInstructionKind::BeginAccessInst: {
     SILValue op = getLocalValue(
         Builder.maybeGetFunction(), ValID,

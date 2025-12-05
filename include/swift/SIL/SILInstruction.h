@@ -4952,6 +4952,24 @@ inline auto StoreBorrowInst::getEndBorrows() const -> EndBorrowRange {
   return getUsersOfType<EndBorrowInst>();
 }
 
+class StoreAndBorrowInst
+    : public InstructionBase<SILInstructionKind::StoreAndBorrowInst,
+                             SingleValueInstruction>,
+      public CopyLikeInstruction {
+  friend class SILBuilder;
+
+private:
+  FixedOperandList<2> Operands;
+  StoreAndBorrowInst(SILDebugLocation DebugLoc, SILValue Src, SILValue Dest);
+
+public:
+  SILValue getSrc() const { return Operands[Src].get(); }
+  SILValue getDest() const { return Operands[Dest].get(); }
+
+  ArrayRef<Operand> getAllOperands() const { return Operands.asArray(); }
+  MutableArrayRef<Operand> getAllOperands() { return Operands.asArray(); }
+};
+
 /// Represents the end of a borrow scope of a value %val from a
 /// value or address %src.
 ///

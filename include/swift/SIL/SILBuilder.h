@@ -1001,6 +1001,12 @@ public:
                       StoreBorrowInst(getSILDebugLocation(Loc), Src, DestAddr));
   }
 
+  StoreAndBorrowInst *createStoreAndBorrow(SILLocation Loc, SILValue Src,
+                                           SILValue DestAddr) {
+    return insert(new (getModule())
+                      StoreAndBorrowInst(getSILDebugLocation(Loc), Src, DestAddr));
+  }
+
   /// A helper function for emitting store_borrow in operations where one must
   /// handle both ossa and non-ossa code.
   ///

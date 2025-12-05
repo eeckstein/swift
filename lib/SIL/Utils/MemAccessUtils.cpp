@@ -2788,6 +2788,7 @@ void swift::visitAccessedAddress(SILInstruction *I,
 #include "swift/AST/ReferenceStorage.def"
   case SILInstructionKind::StoreInst:
   case SILInstructionKind::StoreBorrowInst:
+  case SILInstructionKind::StoreAndBorrowInst:
   case SILInstructionKind::PackElementSetInst:
     visitor(&I->getAllOperands()[StoreInst::Dest]);
     return;
@@ -2828,6 +2829,10 @@ void swift::visitAccessedAddress(SILInstruction *I,
         return;
       }
       if (auto *sbi = dyn_cast<StoreBorrowInst>(root)) {
+        visitor(&sbi->getOperandRef(StoreInst::Dest));
+        return;
+      }
+      if (auto *sbi = dyn_cast<StoreAndBorrowInst>(root)) {
         visitor(&sbi->getOperandRef(StoreInst::Dest));
         return;
       }

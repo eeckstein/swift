@@ -4926,7 +4926,8 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
 #define NEVER_OR_SOMETIMES_LOADABLE_CHECKED_REF_STORAGE(Name, ...)             \
   case SILInstructionKind::Store##Name##Inst:
 #include "swift/AST/ReferenceStorage.def"
-  case SILInstructionKind::StoreBorrowInst: {
+  case SILInstructionKind::StoreBorrowInst:
+  case SILInstructionKind::StoreAndBorrowInst: {
     UnresolvedValueName from;
     bool isRefStorage = false;
 #define NEVER_OR_SOMETIMES_LOADABLE_CHECKED_REF_STORAGE(Name, ...)             \
@@ -4959,6 +4960,12 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     if (Opcode == SILInstructionKind::StoreBorrowInst) {
       SILType valueTy = addrVal->getType().getObjectType();
       ResultVal = B.createStoreBorrow(
+          InstLoc, getLocalValue(from, valueTy, InstLoc, B), addrVal);
+      break;
+    }
+    if (Opcode == SILInstructionKind::StoreAndBorrowInst) {
+      SILType valueTy = addrVal->getType().getObjectType();
+      ResultVal = B.createStoreAndBorrow(
           InstLoc, getLocalValue(from, valueTy, InstLoc, B), addrVal);
       break;
     }

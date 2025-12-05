@@ -2050,6 +2050,11 @@ public:
     *this << getIDAndType(SI->getDest());
   }
 
+  void visitStoreAndBorrowInst(StoreAndBorrowInst *SI) {
+    *this << Ctx.getID(SI->getSrc()) << " to ";
+    *this << getIDAndType(SI->getDest());
+  }
+
   void visitEndBorrowInst(EndBorrowInst *EBI) {
     *this << getIDAndType(EBI->getOperand());
   }

@@ -849,6 +849,10 @@ extension Value {
         value = transition.operand.value
         continue
       }
+      if let storeAndBorrow = value as? StoreAndBorrowInst {
+        value = storeAndBorrow.source
+        continue
+      }
       return value
     }
   }

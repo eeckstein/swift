@@ -495,6 +495,11 @@ namespace {
       return X->getSrc() == RHS->getSrc() && X->getDest() == RHS->getDest();
     }
 
+    bool visitStoreAndBorrowInst(const StoreAndBorrowInst *RHS) {
+      auto *X = cast<StoreAndBorrowInst>(LHS);
+      return X->getSrc() == RHS->getSrc() && X->getDest() == RHS->getDest();
+    }
+
     bool visitStoreInst(const StoreInst *RHS) {
       auto *X = cast<StoreInst>(LHS);
       return X->getSrc() == RHS->getSrc() && X->getDest() == RHS->getDest() &&

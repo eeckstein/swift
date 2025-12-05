@@ -153,6 +153,7 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
   case beginBorrow(BeginBorrowInst)
   case borrowedFrom(BorrowedFromInst)
   case storeBorrow(StoreBorrowInst)
+  case storeAndBorrow(StoreAndBorrowInst)
   case beginApply(BeginApplyInst)
   case partialApply(PartialApplyInst)
   case markDependence(MarkDependenceInst)
@@ -166,6 +167,8 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
       self = .borrowedFrom(bfi)
     case let sbi as StoreBorrowInst:
       self = .storeBorrow(sbi)
+    case let sabi as StoreAndBorrowInst:
+      self = .storeAndBorrow(sabi)
     case let bai as BeginApplyInst:
       self = .beginApply(bai)
     case let pai as PartialApplyInst where !pai.mayEscape:
@@ -191,6 +194,8 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
       return bfi
     case .storeBorrow(let sbi):
       return sbi
+    case .storeAndBorrow(let sabi):
+      return sabi
     case .beginApply(let bai):
       return bai
     case .partialApply(let pai):
@@ -225,7 +230,7 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
         return nil
       }
       return mdi
-    case .beginBorrow, .storeBorrow, .beginApply, .partialApply, .startAsyncLet:
+    case .beginBorrow, .storeBorrow, .beginApply, .partialApply, .startAsyncLet, .storeAndBorrow:
       return nil
     }
   }
@@ -233,7 +238,7 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
   /// If this is valid, then visitScopeEndingOperands succeeds.
   public var scopedValue: Value? {
     switch self {
-    case .beginBorrow, .storeBorrow:
+    case .beginBorrow, .storeBorrow, .storeAndBorrow:
       return instruction as! SingleValueInstruction
     case let .borrowedFrom(bfi):
       let phi = bfi.borrowedPhi
@@ -274,7 +279,7 @@ public enum BorrowingInstruction : CustomStringConvertible, Hashable {
       return .abortWalk
     }
     switch self {
-    case .beginBorrow, .storeBorrow:
+    case .beginBorrow, .storeBorrow, .storeAndBorrow:
       return visitEndBorrows(value: val, context, visitor)
     case .borrowedFrom:
       return visitEndBorrows(value: val, context, visitor)
@@ -341,6 +346,7 @@ extension BorrowingInstruction {
 public enum BeginBorrowValue {
   case beginBorrow(BeginBorrowInst)
   case loadBorrow(LoadBorrowInst)
+  case storeAndBorrow(StoreAndBorrowInst)
   case beginApply(Value)
   case uncheckOwnershipConversion(UncheckedOwnershipConversionInst)
   case functionArgument(FunctionArgument)
@@ -352,6 +358,8 @@ public enum BeginBorrowValue {
       self = .beginBorrow(bbi)
     case let lbi as LoadBorrowInst:
       self = .loadBorrow(lbi)
+    case let sabi as StoreAndBorrowInst:
+      self = .storeAndBorrow(sabi)
     case let uoci as UncheckedOwnershipConversionInst where uoci.ownership == .guaranteed:
       self = .uncheckOwnershipConversion(uoci)
     case let arg as FunctionArgument where arg.ownership == .guaranteed:
@@ -371,6 +379,7 @@ public enum BeginBorrowValue {
     switch self {
     case .beginBorrow(let bbi): return bbi
     case .loadBorrow(let lbi): return lbi
+    case .storeAndBorrow(let sabi): return sabi
     case .beginApply(let v): return v
     case .uncheckOwnershipConversion(let uoci): return uoci
     case .functionArgument(let arg): return arg
@@ -380,7 +389,7 @@ public enum BeginBorrowValue {
 
   public init?(using operand: Operand) {
     switch operand.instruction {
-    case is BeginBorrowInst, is LoadBorrowInst:
+    case is BeginBorrowInst, is LoadBorrowInst, is StoreAndBorrowInst:
       let inst = operand.instruction as! SingleValueInstruction
       self = BeginBorrowValue(inst)!
     case is BranchInst:
@@ -400,6 +409,8 @@ public enum BeginBorrowValue {
     switch borrowInstruction {
     case let .beginBorrow(beginBorrow):
       self.init(beginBorrow)
+    case let .storeAndBorrow(storeAndBorrow):
+      self.init(storeAndBorrow)
     case let .borrowedFrom(borrowedFrom):
       // only returns non-nil if borrowedPhi is a reborrow
       self.init(borrowedFrom.borrowedPhi.value)
@@ -412,7 +423,7 @@ public enum BeginBorrowValue {
 
   public var hasLocalScope: Bool {
     switch self {
-    case .beginBorrow, .loadBorrow, .beginApply, .reborrow, .uncheckOwnershipConversion:
+    case .beginBorrow, .loadBorrow, .beginApply, .reborrow, .uncheckOwnershipConversion, .storeAndBorrow:
       return true
     case .functionArgument:
       return false
@@ -429,6 +440,8 @@ public enum BeginBorrowValue {
       return beginBorrow.operand
     case let .loadBorrow(loadBorrow):
       return loadBorrow.operand
+    case let .storeAndBorrow(storeAndBorrow):
+      return storeAndBorrow.sourceOperand
     case .beginApply, .functionArgument, .reborrow, .uncheckOwnershipConversion:
       return nil
     }
@@ -497,7 +510,7 @@ public final class EnclosingValueIterator : IteratorProtocol {
       case let .beginBorrow(bbi):
         // Gather the outer enclosing borrow scope.
         worklist.pushIfNotVisited(bbi.borrowedValue)
-      case .loadBorrow, .beginApply, .functionArgument, .uncheckOwnershipConversion:
+      case .loadBorrow, .beginApply, .functionArgument, .uncheckOwnershipConversion, .storeAndBorrow:
         // There is no enclosing value on this path.
         break
       case .reborrow(let phi):

@@ -1415,6 +1415,9 @@ public:
   void visitStoreBorrowInst(StoreBorrowInst *i) {
     llvm_unreachable("unimplemented");
   }
+  void visitStoreAndBorrowInst(StoreAndBorrowInst *i) {
+    llvm_unreachable("unimplemented");
+  }
   void visitBeginAccessInst(BeginAccessInst *i);
   void visitEndAccessInst(EndAccessInst *i);
   void visitBeginUnpairedAccessInst(BeginUnpairedAccessInst *i);

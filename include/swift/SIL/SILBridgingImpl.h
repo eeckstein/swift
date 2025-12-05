@@ -2842,6 +2842,11 @@ BridgedInstruction BridgedBuilder::createStoreBorrow(BridgedValue src, BridgedVa
                                         dst.getSILValue())};
 }
 
+BridgedInstruction BridgedBuilder::createStoreAndBorrow(BridgedValue src, BridgedValue dst) const {
+  return {unbridged().createStoreAndBorrow(regularLoc(), src.getSILValue(),
+                                           dst.getSILValue())};
+}
+
 BridgedInstruction BridgedBuilder::createInitExistentialRef(BridgedValue instance,
                                             BridgedType type,
                                             BridgedCanType formalConcreteType,

@@ -89,7 +89,7 @@ extension AddressUseVisitor {
   /// protocol methods above.
   mutating func classifyAddress(operand: Operand) -> WalkResult {
     switch operand.instruction {
-    case is BeginAccessInst, is LoadBorrowInst, is StoreBorrowInst:
+    case is BeginAccessInst, is LoadBorrowInst, is StoreBorrowInst, is StoreAndBorrowInst:
       return scopedAddressUse(of: operand)
 
     case is EndAccessInst, is EndApplyInst, is AbortApplyInst, is EndBorrowInst:

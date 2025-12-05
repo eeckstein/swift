@@ -252,6 +252,7 @@ public:
     BeginBorrow,
     BorrowedFrom,
     StoreBorrow,
+    StoreAndBorrow,
     BeginApply,
     Branch,
     Apply,
@@ -280,6 +281,8 @@ public:
       return Kind::BorrowedFrom;
     case SILInstructionKind::StoreBorrowInst:
       return Kind::StoreBorrow;
+    case SILInstructionKind::StoreAndBorrowInst:
+      return Kind::StoreAndBorrow;
     case SILInstructionKind::BeginApplyInst:
       return Kind::BeginApply;
     case SILInstructionKind::BranchInst:
@@ -408,6 +411,7 @@ struct BorrowingOperand {
     case BorrowingOperandKind::BeginBorrow:
     case BorrowingOperandKind::BorrowedFrom:
     case BorrowingOperandKind::StoreBorrow:
+    case BorrowingOperandKind::StoreAndBorrow:
     case BorrowingOperandKind::BeginApply:
     case BorrowingOperandKind::Apply:
     case BorrowingOperandKind::TryApply:

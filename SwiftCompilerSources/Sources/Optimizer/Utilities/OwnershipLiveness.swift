@@ -724,6 +724,13 @@ extension InteriorUseWalker: AddressUseVisitor {
       return sb.uses.filter(usersOfType: EndBorrowInst.self).walk {
         useVisitor($0)
       }
+    case let sab as StoreAndBorrowInst:
+      if handleInner(borrowed: sab) == .abortWalk {
+        return .abortWalk
+      }
+      return sab.uses.endingLifetime.walk {
+        useVisitor($0)
+      }
     case let load as LoadBorrowInst:
       if handleInner(borrowed: load) == .abortWalk {
         return .abortWalk

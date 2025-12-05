@@ -218,6 +218,20 @@ extension VectorBaseAddrInst : VerifiableInstruction {
   }
 }
 
+extension StoreAndBorrowInst : VerifiableInstruction {
+  func verify(_ context: VerifierContext) {
+    require(parentFunction.hasOwnership, "store_and_borrow is only allowed in OSSA", atInstruction: self)
+    require(source.type.isObject, "Can't store from an address source", atInstruction: self)
+    require(source.type.isLoadable(in: parentFunction) || !context.moduleHasLoweredAddresses,
+            "Can't store a non loadable type", atInstruction: self)
+    require(destination.type.isAddress, "Must store to an address destination", atInstruction: self)
+    require(destination.type.objectType == source.type, "store_and_borrow operand type and dest type mismatch",
+            atInstruction: self)
+    require(self.type == source.type, "store_and_borrow result type and source type mismatch",
+            atInstruction: self)
+  }
+}
+
 // Used to check if any instruction is mutating the memory location within the liverange of a `load_borrow`.
 // Note that it is not checking if an instruction _may_ mutate the memory, but it's checking if any instruction
 // _definitely_ will mutate the memory.

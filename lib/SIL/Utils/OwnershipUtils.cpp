@@ -582,6 +582,9 @@ void BorrowingOperandKind::print(llvm::raw_ostream &os) const {
   case Kind::StoreBorrow:
     os << "StoreBorrow";
     return;
+  case Kind::StoreAndBorrow:
+    os << "StoreAndBorrow";
+    return;
   case Kind::BeginApply:
     os << "BeginApply";
     return;
@@ -636,6 +639,7 @@ bool BorrowingOperand::hasEmptyRequiredEndingUses() const {
   case BorrowingOperandKind::BeginBorrow:
   case BorrowingOperandKind::BorrowedFrom:
   case BorrowingOperandKind::StoreBorrow:
+  case BorrowingOperandKind::StoreAndBorrow:
   case BorrowingOperandKind::BeginApply:
   case BorrowingOperandKind::BeginAsyncLet:
   case BorrowingOperandKind::PartialApplyStack:
@@ -686,6 +690,22 @@ bool BorrowingOperand::visitScopeEndingUses(
   case BorrowingOperandKind::StoreBorrow: {
     bool deadBorrow = true;
     for (auto *use : cast<StoreBorrowInst>(op->getUser())->getUses()) {
+      if (isa<EndBorrowInst>(use->getUser())) {
+        deadBorrow = false;
+        if (!visitScopeEnd(use))
+          return false;
+      }
+    }
+    // Note: special case for dead borrows. This is dangerous because it could
+    // cause unsuspecting clients to infinitely recurse.
+    if (deadBorrow) {
+      return visitUnknownUse(op);
+    }
+    return true;
+  }
+  case BorrowingOperandKind::StoreAndBorrow: {
+    bool deadBorrow = true;
+    for (auto *use : cast<StoreAndBorrowInst>(op->getUser())->getUses()) {
       if (isa<EndBorrowInst>(use->getUser())) {
         deadBorrow = false;
         if (!visitScopeEnd(use))
@@ -796,6 +816,7 @@ SILValue BorrowingOperand::getBorrowIntroducingUserResult() const {
   case BorrowingOperandKind::MarkDependenceNonEscaping:
   case BorrowingOperandKind::BeginAsyncLet:
   case BorrowingOperandKind::StoreBorrow:
+  case BorrowingOperandKind::StoreAndBorrow:
     return SILValue();
 
   case BorrowingOperandKind::BeginBorrow:
@@ -861,6 +882,7 @@ SILValue BorrowingOperand::getDependentUserResult() const {
   case BorrowingOperandKind::Invalid:
   case BorrowingOperandKind::BeginBorrow:
   case BorrowingOperandKind::StoreBorrow:
+  case BorrowingOperandKind::StoreAndBorrow:
   case BorrowingOperandKind::BeginApply:
   case BorrowingOperandKind::Branch:
   case BorrowingOperandKind::Apply:

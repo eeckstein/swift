@@ -211,7 +211,8 @@ TransitiveAddressWalker<Impl>::walk(SILValue projectedAddress) {
     // and do not need to check transitive uses of.
     if (isa<LoadInst>(user) || isa<CopyAddrInst>(user) ||
         isa<MarkUnresolvedMoveAddrInst>(user) || isIncidentalUse(user) ||
-        isa<StoreInst>(user) || isa<DestroyAddrInst>(user) ||
+        isa<StoreInst>(user) || isa<StoreAndBorrowInst>(user) ||
+        isa<DestroyAddrInst>(user) ||
         isa<AssignInst>(user) || isa<LoadUnownedInst>(user) ||
         isa<StoreUnownedInst>(user) || isa<EndApplyInst>(user) ||
         isa<LoadWeakInst>(user) || isa<StoreWeakInst>(user) ||

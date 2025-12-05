@@ -167,6 +167,12 @@ void DifferentiableActivityInfo::propagateVaried(
       propagateVariedInwardsThroughProjections(sbi, i);
     }
   }
+  else if (auto *sbi = dyn_cast<StoreAndBorrowInst>(inst)) {
+    if (isVaried(sbi->getSrc(), i)) {
+      setVariedAndPropagateToUsers(sbi, i);
+      propagateVariedInwardsThroughProjections(sbi->getDest(), i);
+    }
+  }
   // Handle `tuple_element_addr`.
   else if (auto *teai = dyn_cast<TupleElementAddrInst>(inst)) {
     if (isVaried(teai->getOperand(), i)) {

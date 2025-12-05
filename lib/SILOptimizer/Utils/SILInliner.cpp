@@ -1167,6 +1167,7 @@ InlineCost swift::instructionInlineCost(SILInstruction &I) {
   case SILInstructionKind::RefTailAddrInst:
   case SILInstructionKind::StoreInst:
   case SILInstructionKind::StoreBorrowInst:
+  case SILInstructionKind::StoreAndBorrowInst:
   case SILInstructionKind::StrongReleaseInst:
   case SILInstructionKind::BeginDeallocRefInst:
   case SILInstructionKind::StrongRetainInst:

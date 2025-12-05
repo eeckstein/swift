@@ -404,6 +404,9 @@ void MemoryLifetimeVerifier::initDataflowInBlock(SILBasicBlock *block,
       case SILInstructionKind::StoreInst:
         genBits(state, cast<StoreInst>(&I)->getDest());
         break;
+      case SILInstructionKind::StoreAndBorrowInst:
+        genBits(state, cast<StoreInst>(&I)->getDest());
+        break;
       case SILInstructionKind::StoreBorrowInst: {
         SILValue destAddr = cast<StoreBorrowInst>(&I)->getDest();
         genBits(state, destAddr);
@@ -709,6 +712,13 @@ void MemoryLifetimeVerifier::checkBlock(SILBasicBlock *block, Bits &bits) {
           case StoreOwnershipQualifier::Unqualified:
             llvm_unreachable("unqualified store shouldn't be in ownership SIL");
         }
+        requireNoStoreBorrowLocation(SI->getDest(), &I);
+        break;
+      }
+      case SILInstructionKind::StoreAndBorrowInst: {
+        auto *SI = cast<StoreAndBorrowInst>(&I);
+        requireBitsClear(bits & nonTrivialLocations, SI->getDest(), &I);
+        locations.setBits(bits, SI->getDest());
         requireNoStoreBorrowLocation(SI->getDest(), &I);
         break;
       }
