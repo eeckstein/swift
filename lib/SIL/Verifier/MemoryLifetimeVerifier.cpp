@@ -405,7 +405,7 @@ void MemoryLifetimeVerifier::initDataflowInBlock(SILBasicBlock *block,
         genBits(state, cast<StoreInst>(&I)->getDest());
         break;
       case SILInstructionKind::StoreAndBorrowInst:
-        genBits(state, cast<StoreInst>(&I)->getDest());
+        genBits(state, cast<StoreAndBorrowInst>(&I)->getDest());
         break;
       case SILInstructionKind::StoreBorrowInst: {
         SILValue destAddr = cast<StoreBorrowInst>(&I)->getDest();

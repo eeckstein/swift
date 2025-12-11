@@ -1595,3 +1595,92 @@ bb0:
   dealloc_stack %0
   return %8
 }
+
+// CHECK-LABEL: Escape information for store_and_borrow_forward1:
+// CHECK:       - :   %0 = alloc_ref $X
+// CHECK:       End function store_and_borrow_forward1
+sil [ossa] @store_and_borrow_forward1 : $@convention(thin) () -> () {
+bb0:
+  %0 = alloc_ref $X
+  %1 = alloc_stack $X
+  %2 = store_and_borrow %0 to %1
+  end_borrow %2
+  destroy_addr %1
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: Escape information for store_and_borrow_forward2:
+// CHECK:       return[]:   %0 = alloc_ref $X
+// CHECK:       End function store_and_borrow_forward2
+sil [ossa] @store_and_borrow_forward2 : $@convention(thin) () -> @owned X {
+bb0:
+  %0 = alloc_ref $X
+  %1 = alloc_stack $X
+  %2 = store_and_borrow %0 to %1
+  %3 = copy_value %2
+  end_borrow %2
+  destroy_addr %1
+  dealloc_stack %1
+  return %3
+}
+
+// CHECK-LABEL: Escape information for store_and_borrow_forward3:
+// CHECK:       arg0[]:   %1 = alloc_ref $X
+// CHECK:       End function store_and_borrow_forward3
+sil [ossa] @store_and_borrow_forward3 : $@convention(thin) () -> @out X {
+bb0(%0 : $*X):
+  %1 = alloc_ref $X
+  %2 = store_and_borrow %1 to %0
+  end_borrow %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: Escape information for store_and_borrow_backward1:
+// CHECK:       arg0[]:     %1 = alloc_ref $F
+// CHECK:       arg0[c0]:   %2 = alloc_ref $Y
+// CHECK:       End function store_and_borrow_backward1
+sil [ossa] @store_and_borrow_backward1 : $@convention(thin) () -> @out F {
+bb0(%0 : $*F):
+  %1 = alloc_ref $F
+  %2 = alloc_ref $Y
+  %3 = store_and_borrow %1 to %0
+  %4 = ref_element_addr %3 : $F, #F.y
+  store %2 to [init] %4
+  end_borrow %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: Escape information for store_and_borrow_backward2:
+// CHECK:       arg0[c0],arg1[c0]:     %2 = alloc_ref $Y
+// CHECK:       End function store_and_borrow_backward2
+sil [ossa] @store_and_borrow_backward2 : $@convention(thin) (@owned F) -> @out F {
+bb0(%0 : $*F, %1 : @owned $F):
+  %2 = alloc_ref $Y
+  %3 = store_and_borrow %1 to %0
+  %4 = ref_element_addr %3 : $F, #F.y
+  store %2 to [init] %4
+  end_borrow %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: Escape information for store_and_borrow_backward3:
+// CHECK:       arg0[c0],arg1[c0]:   %2 = alloc_ref $Y
+// CHECK:       End function store_and_borrow_backward3
+sil [ossa] @store_and_borrow_backward3 : $@convention(thin) (@owned F) -> @out F {
+bb0(%0 : $*F, %1 : @owned $F):
+  %2 = alloc_ref $Y
+  %3 = store_and_borrow %1 to %0
+  %4 = load_borrow %0
+  %5 = ref_element_addr %4 : $F, #F.y
+  store %2 to [init] %5
+  end_borrow %4
+  end_borrow %3
+  %r = tuple ()
+  return %r
+}
+

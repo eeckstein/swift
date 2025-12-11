@@ -831,8 +831,7 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
       if !followLoads(at: path) {
         return isEscaping
       }
-      if walkUp(address: (def as! UnaryInstruction).operand.value,
-                path: path.with(followStores: true).with(knownType: nil)) == .abortWalk {
+      if walkUp(address: sab.destination, path: path.with(followStores: true).with(knownType: nil)) == .abortWalk {
         return .abortWalk
       }
       return walkUp(value: sab.source, path: path)

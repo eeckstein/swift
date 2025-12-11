@@ -911,6 +911,34 @@ must outlive the lifetime of the stored value.
 Notionally, the outer borrow scope ensures that there's something to be
 addressed. The inner borrow scope provides the address to work with.
 
+### store_and_borrow
+
+```
+sil-instruction ::= 'store_and_borrow' sil-value 'to' sil-operand
+
+%2 = store_and_borrow %0 to %1 : $*T
+// $T must be a loadable type
+// %1 must be the address type of %0's type
+// %2 has the same type as %0
+```
+
+Stores the value `%0` to an uninitialized address `%1` and returns the
+immediately borrowed value from the memory location.
+This instruction is semantically equivalent to the instruction pair
+
+```
+  store %0 to [init] %1
+  %2 = load_borrow %1
+```
+
+The result of `store_and_borrow` creates a borrow scope. The end of scope
+is delimited by exactly one borrow-ending instruction, like
+[end_borrow](#end_borrow), along any path.
+Within the scope it is illegal to invalidate or store to `%0`.
+
+Note that unlike [begin_borrow](#begin_borrow), `store_and_borrow` does not
+borrow the source operand `%0` but ends its lifetime.
+
 ### begin_borrow
 
 ```
