@@ -1601,6 +1601,7 @@ bb0:
 // CHECK:       End function store_and_borrow_forward1
 sil [ossa] @store_and_borrow_forward1 : $@convention(thin) () -> () {
 bb0:
+  specify_test "escape_info"
   %0 = alloc_ref $X
   %1 = alloc_stack $X
   %2 = store_and_borrow %0 to %1
@@ -1616,6 +1617,7 @@ bb0:
 // CHECK:       End function store_and_borrow_forward2
 sil [ossa] @store_and_borrow_forward2 : $@convention(thin) () -> @owned X {
 bb0:
+  specify_test "escape_info"
   %0 = alloc_ref $X
   %1 = alloc_stack $X
   %2 = store_and_borrow %0 to %1
@@ -1631,6 +1633,7 @@ bb0:
 // CHECK:       End function store_and_borrow_forward3
 sil [ossa] @store_and_borrow_forward3 : $@convention(thin) () -> @out X {
 bb0(%0 : $*X):
+  specify_test "escape_info"
   %1 = alloc_ref $X
   %2 = store_and_borrow %1 to %0
   end_borrow %2
@@ -1644,6 +1647,7 @@ bb0(%0 : $*X):
 // CHECK:       End function store_and_borrow_backward1
 sil [ossa] @store_and_borrow_backward1 : $@convention(thin) () -> @out F {
 bb0(%0 : $*F):
+  specify_test "escape_info"
   %1 = alloc_ref $F
   %2 = alloc_ref $Y
   %3 = store_and_borrow %1 to %0
@@ -1659,6 +1663,7 @@ bb0(%0 : $*F):
 // CHECK:       End function store_and_borrow_backward2
 sil [ossa] @store_and_borrow_backward2 : $@convention(thin) (@owned F) -> @out F {
 bb0(%0 : $*F, %1 : @owned $F):
+  specify_test "escape_info"
   %2 = alloc_ref $Y
   %3 = store_and_borrow %1 to %0
   %4 = ref_element_addr %3 : $F, #F.y
@@ -1673,6 +1678,7 @@ bb0(%0 : $*F, %1 : @owned $F):
 // CHECK:       End function store_and_borrow_backward3
 sil [ossa] @store_and_borrow_backward3 : $@convention(thin) (@owned F) -> @out F {
 bb0(%0 : $*F, %1 : @owned $F):
+  specify_test "escape_info"
   %2 = alloc_ref $Y
   %3 = store_and_borrow %1 to %0
   %4 = load_borrow %0

@@ -1072,6 +1072,7 @@ private extension Instruction {
          is LoadInst,
          is LoadBorrowInst,
          is StoreInst,
+         is StoreAndBorrowInst,
          is CopyAddrInst,
          is BuiltinInst,
          is StoreBorrowInst,
