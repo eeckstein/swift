@@ -100,12 +100,16 @@ internal func testEmitIntoClient<T>(t: T) {
 // OPT: [[F7:%.*]] = function_ref @$s30pre_specialized_module_layouts20publicPrespecializedyyxlFyXl_Ts5 : $@convention(thin) (@guaranteed AnyObject) -> ()
 // OPT: [[A1:%.*]] = unchecked_ref_cast {{%.*}} : $SomeClass to $AnyObject
 // OPT: apply [[F7]]([[A1]]) : $@convention(thin) (@guaranteed AnyObject) -> ()
-// OPT: [[A2:%.*]] = unchecked_bitwise_cast [[P1]] : $ReferenceWrapperStruct to $AnyObject
+// OPT: [[S:%.*]] = alloc_stack $ReferenceWrapperStruct
+// OPT: store %0 to [[S]]
+// OPT: [[C:%.*]] = unchecked_addr_cast [[S]] : $*ReferenceWrapperStruct to $*AnyObject
+// OPT: [[A2:%.*]] = load [[C]]
 // OPT: apply [[F7]]([[A2]]) : $@convention(thin) (@guaranteed AnyObject) -> ()
 // OPT: [[A3:%.*]] = alloc_stack $OveralignedReferenceWrapperStruct
 // OPT: apply {{%.*}}<OveralignedReferenceWrapperStruct>([[A3]])
 // OPT-macosx: [[F8:%.*]] = function_ref @$s30pre_specialized_module_layouts20publicPrespecializedyyxlFBb_Ts5 : $@convention(thin) (@guaranteed Builtin.BridgeObject) -> ()
-// OPT-macosx: [[A4:%.*]] = unchecked_bitwise_cast [[P3]] : $Array<Int> to $Builtin.BridgeObject
+// OPT-macosx: [[UAC:%.*]] = unchecked_addr_cast {{.*}} : $*Array<Int> to $*Builtin.BridgeObject
+// OPT-macosx: [[A4:%.*]] = load [[UAC]]
 // OPT-macosx: apply [[F8]]([[A4]]) : $@convention(thin) (@guaranteed Builtin.BridgeObject) -> ()
 // OPT:   [[F10:%.*]] = function_ref @$s30pre_specialized_module_layouts20publicPrespecializedyyxlFBi8_Bv12__Ts5 : $@convention(thin) (Builtin.Vec12xInt8) -> ()
 // OPT:   [[A6:%.*]] = unchecked_trivial_bit_cast [[P4]] : $Stride96 to $Builtin.Vec12xInt8
@@ -182,15 +186,11 @@ public func usePrespecializedEntryPoints(wrapperStruct: ReferenceWrapperStruct, 
 
 // OPT: sil @$s22pre_specialize_layouts46usePrespecializedEntryPointsWithMarkerProtocol1ty0a20_specialized_module_C09SomeClassC_tF : $@convention(thin) (@guaranteed SomeClass) -> () {
 // OPT: bb0([[P1:%.*]] : $SomeClass):
-// OPT:   [[R1:%.*]] = alloc_stack $SomeClass
 // OPT:   [[F1:%.*]] = function_ref @$s30pre_specialized_module_layouts38publicPrespecializedWithMarkerProtocolyxxs8SendableRzlFyXl_Ts5 : $@convention(thin) (@guaranteed AnyObject) -> @owned AnyObject
-// OPT:   [[R2:%.*]] = unchecked_addr_cast [[R1]] : $*SomeClass to $*AnyObject
 // OPT:   [[A1:%.*]] = unchecked_ref_cast [[P1]] : $SomeClass to $AnyObject
 // OPT:   [[R3:%.*]] = apply [[F1]]([[A1]]) : $@convention(thin) (@guaranteed AnyObject) -> @owned AnyObject
-// OPT:   store [[R3]] to [[R2]] : $*AnyObject
 // OPT:   [[F2:%.*]] = function_ref @$s22pre_specialize_layouts7consumeyyxlF0a20_specialized_module_C09SomeClassC_Ttg5 : $@convention(thin) () -> ()
 // OPT:   apply [[F2]]() : $@convention(thin) () -> ()
-// OPT:   dealloc_stack [[R1]] : $*SomeClass
 // OPT: } // end sil function '$s22pre_specialize_layouts46usePrespecializedEntryPointsWithMarkerProtocol1ty0a20_specialized_module_C09SomeClassC_tF'
 public func usePrespecializedEntryPointsWithMarkerProtocol(t: SomeClass) {
   consume(publicPrespecializedWithMarkerProtocol(t))
@@ -205,8 +205,6 @@ public func usePrespecializedEntryPointsWithMarkerProtocol(t: SomeClass) {
 // OPT:   [[A1:%.*]] = unchecked_ref_cast {{%.*}} : $SomeClass to $AnyObject
 // OPT:   try_apply [[F3]]([[A1]]) : $@convention(thin) (@guaranteed AnyObject) -> (@owned AnyObject, @error any Error), normal [[BB1:bb.*]], error
 // OPT: [[BB1]]([[A2:%.*]] : $AnyObject):
-// OPT:   [[R1:%.*]] = unchecked_addr_cast {{%.*}} : $*SomeClass to $*AnyObject
-// OPT:   store [[A2]] to [[R1]] : $*AnyObject
 // OPT: } // end sil function '$s22pre_specialize_layouts34usePrespecializedThrowsEntryPointsyyKF'
 public func usePrespecializedThrowsEntryPoints() throws {
   consume(try publicPrespecializedThrows(1))
@@ -226,11 +224,17 @@ public func usePrespecializedThrowsEntryPoints() throws {
 // OPT:   apply [[F1]]([[R3]], [[R4]], [[A1]], [[A2]], [[P3]]) : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject, Int64) -> (@out AnyObject, Int64, @out AnyObject)
 // OPT-macosx:   [[R6:%.*]] = alloc_stack $Array<Float>
 // OPT-macosx:   [[R7:%.*]] = alloc_stack $Array<Int>
+// OPT-macosx:   [[S4:%.*]] = alloc_stack $Array<Int>
+// OPT-macosx:   store [[P4]] to [[S4]]
+// OPT-macosx:   [[S5:%.*]] = alloc_stack $Array<Float>
+// OPT-macosx:   store [[P5]] to [[S5]]
 // OPT-macosx:   [[F2:%.*]] = function_ref @$s30pre_specialized_module_layouts43publicPresepcializedMultipleIndirectResultsyq__s5Int64Vxtx_q_ADtr0_lFBb_BbTs5 : $@convention(thin) (@guaranteed Builtin.BridgeObject, @guaranteed Builtin.BridgeObject, Int64) -> (@out Builtin.BridgeObject, Int64, @out Builtin.BridgeObject)
 // OPT-macosx:   [[R8:%.*]] = unchecked_addr_cast [[R6]] : $*Array<Float> to $*Builtin.BridgeObject
 // OPT-macosx:   [[R9:%.*]] = unchecked_addr_cast [[R7]] : $*Array<Int> to $*Builtin.BridgeObject
-// OPT-macosx:   [[A3:%.*]] = unchecked_bitwise_cast [[P4]] : $Array<Int> to $Builtin.BridgeObject
-// OPT-macosx:   [[A4:%.*]] = unchecked_bitwise_cast [[P5]] : $Array<Float> to $Builtin.BridgeObject
+// OPT-macosx:   [[C3:%.*]] = unchecked_addr_cast [[S4]] : $*Array<Int> to $*Builtin.BridgeObject
+// OPT-macosx:   [[A3:%.*]] = load [[C3]]
+// OPT-macosx:   [[C4:%.*]] = unchecked_addr_cast [[S5]] : $*Array<Float> to $*Builtin.BridgeObject
+// OPT-macosx:   [[A4:%.*]] = load [[C4]]
 // OPT-macosx:   [[F2]]([[R8]], [[R9]], [[A3]], [[A4]], [[P3]]) : $@convention(thin) (@guaranteed Builtin.BridgeObject, @guaranteed Builtin.BridgeObject, Int64) -> (@out Builtin.BridgeObject, Int64, @out Builtin.BridgeObject)
 // OPT: } // end sil function '$s22pre_specialize_layouts40usePresepcializedMultipleIndirectResults___2xs2ysy0a20_specialized_module_C09SomeClassC_AA0m5OtherN0Cs5Int64VSaySiGSaySfGtF'
 public final class SomeOtherClass {}
