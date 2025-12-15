@@ -145,7 +145,7 @@ private protocol LoadingInstruction: Instruction {
   var kind: LoadKind { get }
   var canLoadValue: Bool { get }
   func trySplit(_ context: FunctionPassContext) -> Bool
-  func replace(withAvailableValue value: Value, liverangeExits: [Instruction], _ context: FunctionPassContext)
+  func replace(withAvailableValue value: Value, _ context: FunctionPassContext)
 }
 
 extension LoadInst : LoadingInstruction {
@@ -154,7 +154,7 @@ extension LoadInst : LoadingInstruction {
 
   fileprivate var kind: LoadKind { LoadKind(loadOwnership: loadOwnership) }
 
-  func replace(withAvailableValue value: Value, liverangeExits: [Instruction], _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     replace(with: value, context)
   }
 }
@@ -189,7 +189,7 @@ extension CopyAddrInst : LoadingInstruction {
     return true
   }
 
-  func replace(withAvailableValue value: Value, liverangeExits: [Instruction], _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
     builder.createStore(source: value, destination: destination, ownership: storeOwnership)
     context.erase(instruction: self)
@@ -215,7 +215,7 @@ extension DestroyAddrInst : LoadingInstruction {
     !type.isTrivial(in: parentFunction)
   }
 
-  func replace(withAvailableValue value: Value, liverangeExits: [Instruction], _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
     builder.createDestroyValue(operand: value)
     context.erase(instruction: self)
@@ -232,10 +232,7 @@ extension LoadBorrowInst : LoadingInstruction {
 
   fileprivate var kind: LoadKind { .borrow }
 
-  func replace(withAvailableValue value: Value, liverangeExits: [Instruction], _ context: FunctionPassContext) {
-    for exitInst in liverangeExits {
-      Builder(before: exitInst, context).createEndBorrow(of: value)
-    }
+  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     replace(with: value, context)
   }
 
@@ -572,8 +569,15 @@ private func replace(load: LoadingInstruction,
   // Make sure to keep dependencies valid after replacing the load
   let updatedNewValue = copyMarkDependencies(for: newValue, from: load, context)
 
-  load.replace(withAvailableValue: updatedNewValue, liverangeExits: liverangeExits, context)
-  
+  if load.kind == .borrow {
+    for exitInst in liverangeExits {
+      let builder = Builder(before: exitInst, context)
+      builder.createEndBorrow(of: ssaUpdater.getValue(inMiddleOf: exitInst.parentBlock))
+    }
+  }
+
+  load.replace(withAvailableValue: updatedNewValue, context)
+
   if needUpdateBorrowedFrom {
     updateBorrowedFrom(for: ssaUpdater.insertedPhis, context)
   }
@@ -610,7 +614,7 @@ private func provideValue(
       load.replace(with: copy, context)
       return loadBorrow
     case .viaStore(let store):
-      let builder = Builder(before: store, context)
+      let builder = Builder(after: store, context)
       if store.storeOwnership == .assign {
         builder.createDestroyAddr(address: store.destination)
       }
