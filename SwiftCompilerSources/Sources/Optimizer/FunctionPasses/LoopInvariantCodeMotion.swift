@@ -605,14 +605,15 @@ private extension AnalyzedInstructions {
         continue
       }
 
-      guard let projectionPath =  loadInst.operand.value.accessPath.getProjection(to: accessPath),
-            let splitLoads = loadInst.trySplit(alongPath: projectionPath, context) else {
-        newLoads.push(loadInst)
+      guard let projectionPath = loadInst.operand.value.accessPath.getProjection(to: accessPath),
+            loadInst.canSplit(alongPath: projectionPath)
+      else {
         return false
       }
-      
-      splitCounter += splitLoads.count
-      newLoads.append(contentsOf: splitLoads)
+      loadInst.split(alongPath: projectionPath, context) { splitLoad, _ in
+        newLoads.push(splitLoad)
+        splitCounter += 1
+      }
     }
 
     return true

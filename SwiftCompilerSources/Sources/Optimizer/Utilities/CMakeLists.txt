@@ -13,6 +13,7 @@ swift_compiler_sources(Optimizer
   FunctionSignatureTransforms.swift
   GenericSpecialization.swift
   LifetimeDependenceUtils.swift
+  LoadAndStoreSplitting.swift
   LocalVariableUtils.swift
   OptUtils.swift
   OwnershipLiveness.swift

@@ -144,7 +144,7 @@ private protocol LoadingInstruction: Instruction {
   var ownership: Ownership { get }
   var kind: LoadKind { get }
   var canLoadValue: Bool { get }
-  func trySplit(_ context: FunctionPassContext) -> Bool
+  func trySplitLoad(_ context: FunctionPassContext) -> Bool
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext)
 }
 
@@ -157,6 +157,8 @@ extension LoadInst : LoadingInstruction {
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     replace(with: value, context)
   }
+
+  func trySplitLoad(_ context: FunctionPassContext) -> Bool { trySplit(context) != nil }
 }
 
 extension CopyAddrInst : LoadingInstruction {
@@ -194,6 +196,8 @@ extension CopyAddrInst : LoadingInstruction {
     builder.createStore(source: value, destination: destination, ownership: storeOwnership)
     context.erase(instruction: self)
   }
+
+  func trySplitLoad(_ context: FunctionPassContext) -> Bool { trySplit(context) }
 }
 
 extension DestroyAddrInst : LoadingInstruction {
@@ -221,7 +225,7 @@ extension DestroyAddrInst : LoadingInstruction {
     context.erase(instruction: self)
   }
 
-  func trySplit(_ context: FunctionPassContext) -> Bool { false }
+  func trySplitLoad(_ context: FunctionPassContext) -> Bool { false }
 }
 
 extension LoadBorrowInst : LoadingInstruction {
@@ -236,7 +240,7 @@ extension LoadBorrowInst : LoadingInstruction {
     replace(with: value, context)
   }
 
-  func trySplit(_ context: FunctionPassContext) -> Bool { false }
+  func trySplitLoad(_ context: FunctionPassContext) -> Bool { false }
 }
 
 
@@ -255,7 +259,7 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
       case .redundant:
         // The new individual loads are inserted right before the current load and
         // will be optimized in the following loop iterations.
-        return load.trySplit(context)
+        return load.trySplitLoad(context)
     }
   }
 }
@@ -473,6 +477,9 @@ private func visit(instruction: Instruction,
       if load.kind == .borrow, !projection.isEmpty {
         return .bad
       }
+      if load.kind == .take, !precedingLoad.canSplit(alongPath: projection) {
+        return .bad
+      }
       return .available(.viaLoad(precedingLoad))
     }
     if accessPath.getMaterializableProjection(to: precedingLoadPath) != nil,
@@ -491,6 +498,9 @@ private func visit(instruction: Instruction,
     let precedingStorePath = precedingStore.destination.constantAccessPath
     if let projection = precedingStorePath.getMaterializableProjection(to: accessPath) {
       if load.kind == .borrow, !projection.isEmpty {
+        return .bad
+      }
+      if load.kind == .take, !precedingStore.canSplit(alongPath: projection) {
         return .bad
       }
       return .available(.viaStore(precedingStore))
@@ -599,11 +609,7 @@ private func provideValue(
     return availableValue.value.createProjectionAndCopy(path: projectionPath,
                                                         builder: availableValue.getBuilderForProjections(context))
   case .take:
-    if projectionPath.isEmpty {
-      return shrinkMemoryLifetime(to: availableValue, context)
-    } else {
-      return shrinkMemoryLifetimeAndSplit(to: availableValue, projectionPath: projectionPath, context)
-    }
+    return shrinkMemoryLifetimeAndSplit(to: availableValue, projectionPath: projectionPath, context)
   case .borrow:
     switch availableValue {
     case .viaLoad(let load):
@@ -726,17 +732,28 @@ private func shrinkMemoryLifetimeAndSplit(to availableValue: AvailableValue, pro
   switch availableValue {
   case .viaLoad(let availableLoad):
     assert(availableLoad.loadOwnership == .copy)
-    let builder = Builder(after: availableLoad, context)
-    let addr = availableLoad.address.createAddressProjection(path: projectionPath, builder: builder)
-    let valueToAdd = builder.createLoad(fromAddress: addr, ownership: .take)
-    availableLoad.trySplit(context)
-    return valueToAdd
+    var valueToAdd: Value? = nil
+    availableLoad.split(alongPath: projectionPath, context) { splitLoad, isProjectedLoad in
+      if isProjectedLoad {
+        assert(valueToAdd == nil)
+        splitLoad.set(ownership: .take, context)
+        valueToAdd = Builder(after: splitLoad, context).createCopyValue(operand: splitLoad)
+      }
+    }
+    return valueToAdd!
   case .viaStore(let availableStore):
-    let builder = Builder(after: availableStore, context)
-    let addr = availableStore.destination.createAddressProjection(path: projectionPath, builder: builder)
-    let valueToAdd = builder.createLoad(fromAddress: addr, ownership: .take)
-    availableStore.trySplit(context)
-    return valueToAdd
+    var valueToAdd: Value? = nil
+    availableStore.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
+      if isProjectedStore {
+        assert(valueToAdd == nil)
+        if splitStore.storeOwnership == .assign {
+          Builder(after: splitStore, context).createDestroyAddr(address: splitStore.destination)
+        }
+        valueToAdd = splitStore.source
+        context.erase(instruction: splitStore)
+      }
+    }
+    return valueToAdd!
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
   }
