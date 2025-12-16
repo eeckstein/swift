@@ -474,11 +474,13 @@ private func visit(instruction: Instruction,
   case let precedingLoad as LoadInst:
     let precedingLoadPath = precedingLoad.address.constantAccessPath
     if let projection = precedingLoadPath.getMaterializableProjection(to: accessPath) {
-      if load.kind == .borrow, !projection.isEmpty {
-        return .bad
-      }
-      if load.kind == .take, !precedingLoad.canSplit(alongPath: projection) {
-        return .bad
+      switch load.kind {
+      case .borrow, .take:
+        guard precedingLoad.canSplit(alongPath: projection) else {
+          return .bad
+        }
+      default:
+        break
       }
       return .available(.viaLoad(precedingLoad))
     }
@@ -497,11 +499,13 @@ private func visit(instruction: Instruction,
     }
     let precedingStorePath = precedingStore.destination.constantAccessPath
     if let projection = precedingStorePath.getMaterializableProjection(to: accessPath) {
-      if load.kind == .borrow, !projection.isEmpty {
-        return .bad
-      }
-      if load.kind == .take, !precedingStore.canSplit(alongPath: projection) {
-        return .bad
+      switch load.kind {
+      case .borrow, .take:
+        guard precedingStore.canSplit(alongPath: projection) else {
+          return .bad
+        }
+      default:
+        break
       }
       return .available(.viaStore(precedingStore))
     }
@@ -594,13 +598,14 @@ private func replace(load: LoadingInstruction,
 }
 
 private func provideValue(
-  for load: LoadingInstruction,
+  for redundantLoad: LoadingInstruction,
   from availableValue: AvailableValue,
   _ context: FunctionPassContext
 ) -> Value {
-  let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
+  let projectionPath = availableValue.address.constantAccessPath
+                         .getMaterializableProjection(to: redundantLoad.address.constantAccessPath)!
 
-  switch load.kind {
+  switch redundantLoad.kind {
   case .unqualified:
     return availableValue.value.createProjection(path: projectionPath,
                                                  builder: availableValue.getBuilderForProjections(context))
@@ -609,24 +614,64 @@ private func provideValue(
     return availableValue.value.createProjectionAndCopy(path: projectionPath,
                                                         builder: availableValue.getBuilderForProjections(context))
   case .take:
-    return shrinkMemoryLifetimeAndSplit(to: availableValue, projectionPath: projectionPath, context)
+    switch availableValue {
+    case .viaLoad(let load):
+      assert(load.loadOwnership == .copy)
+      var value: Value? = nil
+      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedLoad in
+        if isProjectedLoad {
+          assert(value == nil)
+          splitLoad.set(ownership: .take, context)
+          value = Builder(after: splitLoad, context).createCopyValue(operand: splitLoad)
+        }
+      }
+      return value!
+    case .viaStore(let store):
+      var value: Value? = nil
+      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          if splitStore.storeOwnership == .assign {
+            Builder(after: splitStore, context).createDestroyAddr(address: splitStore.destination)
+          }
+          value = splitStore.source
+          context.erase(instruction: splitStore)
+        }
+      }
+      return value!
+    case .viaCopyAddr:
+      fatalError("copy_addr must be lowered before shrinking lifetime")
+    }
   case .borrow:
     switch availableValue {
     case .viaLoad(let load):
       assert(load.loadOwnership == .copy)
-      let builder = Builder(before: load, context)
-      let loadBorrow = builder.createLoadBorrow(fromAddress: load.address)
-      let copy = builder.createCopyValue(operand: loadBorrow)
-      load.replace(with: copy, context)
-      return loadBorrow
-    case .viaStore(let store):
-      let builder = Builder(after: store, context)
-      if store.storeOwnership == .assign {
-        builder.createDestroyAddr(address: store.destination)
+      var value: Value? = nil
+      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedLoad in
+        if isProjectedLoad {
+          assert(value == nil)
+          let builder = Builder(before: splitLoad, context)
+          let loadBorrow = builder.createLoadBorrow(fromAddress: splitLoad.address)
+          let copy = builder.createCopyValue(operand: loadBorrow)
+          splitLoad.replace(with: copy, context)
+          value = loadBorrow
+        }
       }
-      let storeAndBorrow = builder.createStoreAndBorrow(source: store.source, destination: store.destination)
-      context.erase(instruction: store)
-      return storeAndBorrow
+      return value!
+    case .viaStore(let store):
+      var value: Value? = nil
+      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          let builder = Builder(after: splitStore, context)
+          if splitStore.storeOwnership == .assign {
+            builder.createDestroyAddr(address: splitStore.destination)
+          }
+          value = builder.createStoreAndBorrow(source: splitStore.source, destination: splitStore.destination)
+          context.erase(instruction: splitStore)
+        }
+      }
+      return value!
     case .viaCopyAddr:
       fatalError("copy_addr must be lowered")
     }
@@ -664,98 +709,6 @@ private struct MarkDependenceInserter : AddressUseDefWalker {
 
   mutating func rootDef(address: Value, path: UnusedWalkingPath) -> WalkResult {
     return .continueWalk
-  }
-}
-
-/// In case of a `load [take]` shrink lifetime of the value in memory back to the `availableValue`
-/// and return the (possibly projected) available value. For example:
-///
-///     store %1 to [assign] %addr
-///     ...
-///     %2 = load [take] %addr
-/// ->
-///     destroy_addr %addr
-///     ...
-///     // replace %2 with %1
-///
-private func shrinkMemoryLifetime(to availableValue: AvailableValue, _ context: FunctionPassContext) -> Value {
-  switch availableValue {
-  case .viaLoad(let availableLoad):
-    assert(availableLoad.loadOwnership == .copy)
-    let builder = Builder(after: availableLoad, context)
-    availableLoad.set(ownership: .take, context)
-    return builder.createCopyValue(operand: availableLoad)
-  case .viaStore(let availableStore):
-    let builder = Builder(after: availableStore, context)
-    let valueToAdd = availableStore.source
-    switch availableStore.storeOwnership {
-    case .assign:
-      builder.createDestroyAddr(address: availableStore.destination)
-      context.erase(instruction: availableStore)
-    case .initialize,
-         // It can be the case that e non-payload case is stored as trivial enum and the enum is loaded as [take], e.g.
-         //   %1 = enum $Optional<Class>, #Optional.none
-         //   store %1 to [trivial] %addr : $*Optional<Class>
-         //   %2 = load [take] %addr : $*Optional<Class>
-         .trivial:
-      context.erase(instruction: availableStore)
-    case .unqualified:
-      fatalError("unqualified store in ossa function?")
-    }
-    return valueToAdd
-  case .viaCopyAddr:
-    fatalError("copy_addr must be lowered before shrinking lifetime")
-  }
-}
-
-/// Like `shrinkMemoryLifetime`, but the available value must be projected.
-/// In this case we cannot just shrink the lifetime and reuse the available value.
-/// Therefore, we split the available load or store and load the projected available value.
-/// The inserted load can be optimized with the split value in the next iteration.
-///
-///     store %1 to [assign] %addr
-///     ...
-///     %2 = struct_element_addr %addr, #field1
-///     %3 = load [take] %2
-/// ->
-///     %f1 = struct_extract %1, #field1
-///     %fa1 = struct_element_addr %addr, #field1
-///     store %f1 to [assign] %fa1
-///     %f2 = struct_extract %1, #field2
-///     %fa2 = struct_element_addr %addr, #field2
-///     store %f2 to [assign] %fa2
-///     %1 = load [take] %fa1         // will be combined with `store %f1 to [assign] %fa1` in the next iteration
-///     ...
-///     // replace %3 with %1
-///
-private func shrinkMemoryLifetimeAndSplit(to availableValue: AvailableValue, projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> Value {
-  switch availableValue {
-  case .viaLoad(let availableLoad):
-    assert(availableLoad.loadOwnership == .copy)
-    var valueToAdd: Value? = nil
-    availableLoad.split(alongPath: projectionPath, context) { splitLoad, isProjectedLoad in
-      if isProjectedLoad {
-        assert(valueToAdd == nil)
-        splitLoad.set(ownership: .take, context)
-        valueToAdd = Builder(after: splitLoad, context).createCopyValue(operand: splitLoad)
-      }
-    }
-    return valueToAdd!
-  case .viaStore(let availableStore):
-    var valueToAdd: Value? = nil
-    availableStore.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
-      if isProjectedStore {
-        assert(valueToAdd == nil)
-        if splitStore.storeOwnership == .assign {
-          Builder(after: splitStore, context).createDestroyAddr(address: splitStore.destination)
-        }
-        valueToAdd = splitStore.source
-        context.erase(instruction: splitStore)
-      }
-    }
-    return valueToAdd!
-  case .viaCopyAddr:
-    fatalError("copy_addr must be lowered before shrinking lifetime")
   }
 }
 
