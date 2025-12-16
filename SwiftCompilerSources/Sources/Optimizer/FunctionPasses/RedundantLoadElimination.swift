@@ -510,6 +510,28 @@ private func visit(instruction: Instruction,
       return .transparent
     }
 
+  case let precedingLoad as LoadBorrowInst:
+    let precedingLoadPath = precedingLoad.address.constantAccessPath
+    if let projection = precedingLoadPath.getMaterializableProjection(to: accessPath) {
+      switch load.kind {
+      case .borrow, .take:
+        guard precedingLoad.canSplit(alongPath: projection) else {
+          return .bad
+        }
+      default:
+        break
+      }
+      return .available(.viaLoadBorrow(precedingLoad))
+    }
+    if accessPath.getMaterializableProjection(to: precedingLoadPath) != nil,
+       potentiallyRedundantSubpath == nil
+    {
+      potentiallyRedundantSubpath = precedingLoadPath
+    }
+    if load.kind != .take {
+      return .transparent
+    }
+
   case let precedingStore as StoreInst:
     if precedingStore.source is Undef {
       return .bad
@@ -681,6 +703,20 @@ private func provideValue(
         }
       }
       return value!
+    case .viaLoadBorrow(let load):
+      var value: Value? = nil
+      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          let lb = splitLoad as! LoadBorrowInst
+          let builder = Builder(after: lb, context)
+          let newLoad = builder.createLoad(fromAddress: lb.address, ownership: .take)
+          let beginBorrow = builder.createBeginBorrow(of: newLoad)
+          lb.replace(with: beginBorrow, context)
+          value = newLoad
+        }
+      }
+      return value!
     case .viaStore(let store):
       var value: Value? = nil
       store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
@@ -701,7 +737,7 @@ private func provideValue(
           assert(value == nil)
           let sab = splitStore as! StoreAndBorrowInst
           value = sab.source
-          let beginBorrow = Builder(after: splitStore, context).createBeginBorrow(of: sab)
+          let beginBorrow = Builder(after: sab, context).createBeginBorrow(of: sab)
           sab.replace(with: beginBorrow, context)
         }
       }
@@ -722,6 +758,23 @@ private func provideValue(
           let copy = builder.createCopyValue(operand: loadBorrow)
           splitLoad.replace(with: copy, context)
           value = loadBorrow
+        }
+      }
+      return value!
+    case .viaLoadBorrow(let load):
+      var liveBlocks = BasicBlockSet(context)
+      defer { liveBlocks.deinitialize() }
+      for end in load.uses.endingLifetime.users where liverange.inLiverange.contains(end) {
+        liveBlocks.insert(end.parentBlock)
+      }
+
+      var value: Value? = nil
+      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          let lb = splitLoad as! LoadBorrowInst
+          context.erase(instructions: lb.uses.endingLifetime.users.filter{ liveBlocks.contains($0.parentBlock) })
+          value = lb
         }
       }
       return value!
@@ -813,6 +866,7 @@ private enum DataflowResult {
 /// Either a `load` or `store` which is preceding the original load and provides the loaded value.
 private enum AvailableValue {
   case viaLoad(LoadInst)
+  case viaLoadBorrow(LoadBorrowInst)
   case viaStore(StoreInst)
   case viaStoreAndBorrow(StoreAndBorrowInst)
   case viaCopyAddr(CopyAddrInst)
@@ -820,6 +874,7 @@ private enum AvailableValue {
   var value: Value {
     switch self {
     case .viaLoad(let load):            return load
+    case .viaLoadBorrow(let load):      return load
     case .viaStore(let store):          return store.source
     case .viaStoreAndBorrow(let store): return store
     case .viaCopyAddr:                  fatalError("copy_addr must be lowered")
@@ -829,6 +884,7 @@ private enum AvailableValue {
   var address: Value {
     switch self {
     case .viaLoad(let load):            return load.address
+    case .viaLoadBorrow(let load):      return load.address
     case .viaStore(let store):          return store.destination
     case .viaStoreAndBorrow(let store): return store.destination
     case .viaCopyAddr(let copyAddr):    return copyAddr.destination
@@ -838,6 +894,7 @@ private enum AvailableValue {
   var instruction: Instruction {
     switch self {
     case .viaLoad(let load):            return load
+    case .viaLoadBorrow(let load):      return load
     case .viaStore(let store):          return store
     case .viaStoreAndBorrow(let store): return store
     case .viaCopyAddr(let copyAddr):    return copyAddr
@@ -847,6 +904,7 @@ private enum AvailableValue {
   func getBuilderForProjections(_ context: FunctionPassContext) -> Builder {
     switch self {
     case .viaLoad(let load):            return Builder(after: load, context)
+    case .viaLoadBorrow(let load):      return Builder(after: load, context)
     case .viaStore(let store):          return Builder(before: store, context)
     case .viaStoreAndBorrow(let store): return Builder(before: store, context)
     case .viaCopyAddr:                  fatalError("copy_addr must be lowered")

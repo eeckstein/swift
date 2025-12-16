@@ -1564,8 +1564,8 @@ bb0:
 }
 
 // CHECK-LABEL: sil [ossa] @dont_take_in_borrow_scope :
-// CHECK:         load [copy]
-// CHECK:         end_borrow
+// CHECK:         %1 = load_borrow %0
+// CHECK-NEXT:    %2 = copy_value %1
 // CHECK:         load [take]
 // CHECK-LABEL: } // end sil function 'dont_take_in_borrow_scope'
 sil [ossa] @dont_take_in_borrow_scope : $@convention(thin) (@in B) -> () {
@@ -1582,8 +1582,9 @@ bb0(%0 : $*B):
 }
 
 // CHECK-LABEL: sil [ossa] @copy_in_borrow_scope :
-// CHECK:         load [copy]
-// CHECK:         copy_value
+// CHECK:         %1 = load_borrow %0
+// CHECK-NEXT:    %2 = copy_value %1
+// CHECK-NEXT:    %3 = copy_value %2
 // CHECK:         end_borrow
 // CHECK-NOT:     load
 // CHECK-LABEL: } // end sil function 'copy_in_borrow_scope'
@@ -1956,6 +1957,24 @@ bb2:
 bb3:
   destroy_addr %1
   dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @load_borrow_to_load_borrow :
+// CHECK:         %1 = load_borrow %0
+// CHECK-NEXT:    %2 = apply undef(%1)
+// CHECK-NEXT:    %3 = apply undef(%1)
+// CHECK-NEXT:    end_borrow %1
+// CHECK-LABEL: } // end sil function 'load_borrow_to_load_borrow'
+sil [ossa] @load_borrow_to_load_borrow : $@convention(thin) (@inout B) -> () {
+bb0(%0 : $*B):
+  %1 = load_borrow %0
+  %2 = apply undef(%1) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %1
+  %4 = load_borrow %0
+  %5 = apply undef(%4) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %4
   %r = tuple ()
   return %r
 }
