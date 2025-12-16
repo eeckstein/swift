@@ -97,6 +97,93 @@ extension StoreInst {
   }
 }
 
+extension StoreAndBorrowInst {
+  @discardableResult
+  func trySplit(_ context: FunctionPassContext) -> [StoringInstruction]? {
+    guard allScopeEndsAreEndBorrows else {
+      return nil
+    }
+    let builder = Builder(after: self, context)
+    let type = source.type
+    let elementStores: [StoringInstruction]
+    if type.isStruct {
+      guard !(type.nominal as! StructDecl).hasUnreferenceableStorage,
+            type.getNominalFields(in: parentFunction) != nil
+      else {
+        return nil
+      }
+      let destructure = builder.createDestructureStruct(struct: source)
+      elementStores = destructure.results.enumerated().map { (idx, v) in
+        let destFieldAddr = builder.createStructElementAddr(structAddress: destination, fieldIndex: idx)
+        return createSplitStore(of: v, to: destFieldAddr, context, builder)
+      }
+    } else if type.isTuple {
+      let destructure = builder.createDestructureTuple(tuple: source)
+      elementStores = destructure.results.enumerated().map { (idx, v) in
+        let elementAddr = builder.createTupleElementAddr(tupleAddress: destination, elementIndex: idx)
+        return createSplitStore(of: v, to: elementAddr, context, builder)
+      }
+    } else {
+      return nil
+    }
+    context.erase(instruction: self)
+    return elementStores
+  }
+
+  func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
+    return allScopeEndsAreEndBorrows && source.type.canSplit(alongPath: projectionPath, in: parentFunction)
+  }
+
+  func split(alongPath projectionPath: SmallProjectionPath,
+             _ context: FunctionPassContext,
+             _ visitSplitStoreInst: (StoringInstruction, Bool) -> () = { store, isProjectedStore in }
+    ) {
+    if projectionPath.isEmpty {
+      visitSplitStoreInst(self, true)
+      return
+    }
+
+    guard let splitStores = trySplit(context) else {
+      fatalError("unsupported type to split")
+    }
+
+    let (_, projectionIndex, pathRemainder) = projectionPath.pop()
+
+    for (elementIdx, splitStore) in splitStores.enumerated() {
+      if elementIdx == projectionIndex {
+        switch splitStore {
+        case let store as StoreInst:
+          store.split(alongPath: pathRemainder, context, visitSplitStoreInst)
+        case let storeAndBorrow as StoreAndBorrowInst:
+          storeAndBorrow.split(alongPath: pathRemainder, context, visitSplitStoreInst)
+        default:
+          fatalError("wrong split store")
+        }
+      } else {
+        visitSplitStoreInst(splitStore, false)
+      }
+    }
+  }
+
+  private var allScopeEndsAreEndBorrows: Bool {
+    uses.endingLifetime.ignore(usersOfType: EndBorrowInst.self).isEmpty
+  }
+
+  private func createSplitStore(of value: Value, to address: Value,
+                                _ context: FunctionPassContext,
+                                _ builder: Builder
+  ) -> StoringInstruction {
+    if value.type.isTrivial(in: parentFunction) {
+      return builder.createStore(source: value, destination: address, ownership: .trivial)
+    }
+    let splitStore = builder.createStoreAndBorrow(source: value, destination: address)
+    for endBorrow in self.uses.endingLifetime.users {
+      Builder(before: endBorrow, context).createEndBorrow(of: splitStore)
+    }
+    return splitStore
+  }
+}
+
 extension LoadInst {
   @discardableResult
   func trySplit(_ context: FunctionPassContext) -> [LoadInst]? {

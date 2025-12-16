@@ -245,15 +245,19 @@ extension LoadBorrowInst : LoadingInstruction {
 
 
 private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int, _ context: FunctionPassContext) -> Bool {
-  switch load.isRedundant(complexityBudget: &complexityBudget, context) {
+  var liverange = Liverange(context)
+  defer { liverange.deinitialize() }
+  switch load.isRedundant(liverange: &liverange, complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues, let liverangeExits):
-    replace(load: load, with: availableValues, liverangeExits: liverangeExits, context)
+  case .redundant(let availableValues):
+    replace(load: load, with: availableValues, liverange: liverange, context)
     return true
   case .maybePartiallyRedundant(let subPath):
+    var liveRange2 = Liverange(context)
+    defer { liveRange2.deinitialize() }
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
-    switch load.isRedundant(at: subPath, complexityBudget: &complexityBudget, context) {
+    switch load.isRedundant(at: subPath, liverange: &liveRange2, complexityBudget: &complexityBudget, context) {
       case .notRedundant, .maybePartiallyRedundant:
         return false
       case .redundant:
@@ -261,6 +265,21 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
         // will be optimized in the following loop iterations.
         return load.trySplitLoad(context)
     }
+  }
+}
+
+private struct Liverange {
+  var exitBlocks: Stack<BasicBlock>
+  var inLiverange: InstructionSet
+
+  init(_ context: FunctionPassContext) {
+    exitBlocks = Stack(context)
+    inLiverange = InstructionSet(context)
+  }
+
+  mutating func deinitialize() {
+    exitBlocks.deinitialize()
+    inLiverange.deinitialize()
   }
 }
 
@@ -302,26 +321,24 @@ private extension LoadingInstruction {
     return true
   }
 
-  func isRedundant(complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
-    return isRedundant(at: address.constantAccessPath, complexityBudget: &complexityBudget, context)
+  func isRedundant(liverange: inout Liverange, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
+    return isRedundant(at: address.constantAccessPath, liverange: &liverange, complexityBudget: &complexityBudget, context)
   }
 
-  func isRedundant(at accessPath: AccessPath, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
+  func isRedundant(at accessPath: AccessPath, liverange: inout Liverange, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
 
     if self.previous == nil, self.parentBlock.predecessors.isEmpty {
       return .notRedundant
     }
 
-    var blockEndsInLiverange = Stack<BasicBlock>(context)
-    defer { blockEndsInLiverange.deinitialize() }
-    var inLiverange = InstructionSet(context)
-    defer { inLiverange.deinitialize() }
-
     var worklist = InstructionWorklist(context)
     defer { worklist.deinitialize() }
 
     worklist.pushPredecessors(of: self)
-    inLiverange.insert(self)
+    liverange.inLiverange.insert(self)
+
+    var blockEndsInLiverange = Stack<BasicBlock>(context)
+    defer { blockEndsInLiverange.deinitialize() }
 
     var potentiallyRedundantSubpath: AccessPath? = nil
     var availableValues = [AvailableValue]()
@@ -341,7 +358,7 @@ private extension LoadingInstruction {
                    context)
       {
       case .transparent:
-        inLiverange.insert(inst)
+        liverange.inLiverange.insert(inst)
         if inst.previous == nil {
           // We reached the function entry without finding an available value.
           if inst.parentBlock.predecessors.isEmpty ||
@@ -371,12 +388,20 @@ private extension LoadingInstruction {
       }
     }
 
+    let deadEndBlocks = context.deadEndBlocks
+    for block in blockEndsInLiverange {
+      for succ in block.successors {
+        if !liverange.inLiverange.contains(succ.instructions.first!), !deadEndBlocks.isDeadEnd(succ) {
+          liverange.exitBlocks.append(succ)
+        }
+      }
+    }
+
     switch self.kind {
-    case .unqualified, .trivial:
+    case .unqualified, .trivial, .borrow:
       break
 
     case .copy, .take:
-      let deadEndBlocks = context.deadEndBlocks
 
       // The liverange of the value has an "exit", i.e. a path which doesn't lead to the load,
       // it means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -399,13 +424,8 @@ private extension LoadingInstruction {
       //   bb2:
       //     end_borrow %b
       //
-      for block in blockEndsInLiverange {
-        if block.successors.contains(where: { succ in
-            !inLiverange.contains(succ.instructions.first!) && !deadEndBlocks.isDeadEnd(succ)
-          })
-        {
-          return DataflowResult(notRedundantWith: potentiallyRedundantSubpath)
-        }
+      guard liverange.exitBlocks.isEmpty else {
+        return DataflowResult(notRedundantWith: potentiallyRedundantSubpath)
       }
 
       // Handle a corner case: if the load is in an infinite loop, the liverange doesn't have an exit,
@@ -421,20 +441,17 @@ private extension LoadingInstruction {
       if deadEndBlocks.isDeadEnd(parentBlock) {
         return DataflowResult(notRedundantWith: potentiallyRedundantSubpath)
       }
-    case .borrow:
-      var liverangeExits = [Instruction]()
-      for block in blockEndsInLiverange {
-        for succ in block.successors {
-          let succInst = succ.instructions.first!
-          if !inLiverange.contains(succInst) && !context.deadEndBlocks.isDeadEnd(succ) {
-            liverangeExits.append(succInst)
-          }
-        }
-      }
-      return .redundant(availableValues, liverangeExits: liverangeExits)
     }
 
-    return .redundant(availableValues, liverangeExits: [])
+    for availableValue in availableValues {
+      if case .viaStoreAndBorrow(let store) = availableValue {
+        guard store.uses.endingLifetime.users.contains(where: { liverange.inLiverange.contains($0) }) else {
+          return .notRedundant
+        }
+      }
+    }
+
+    return .redundant(availableValues)
   }
 }
 
@@ -515,6 +532,28 @@ private func visit(instruction: Instruction,
       potentiallyRedundantSubpath = precedingStorePath
     }
 
+  case let precedingStore as StoreAndBorrowInst:
+    if precedingStore.source is Undef {
+      return .bad
+    }
+    let precedingStorePath = precedingStore.destination.constantAccessPath
+    if let projection = precedingStorePath.getMaterializableProjection(to: accessPath) {
+      switch load.kind {
+      case .borrow, .take:
+        guard precedingStore.canSplit(alongPath: projection) else {
+          return .bad
+        }
+      default:
+        break
+      }
+      return .available(.viaStoreAndBorrow(precedingStore))
+    }
+    if accessPath.getMaterializableProjection(to: precedingStorePath) != nil,
+       potentiallyRedundantSubpath == nil
+    {
+      potentiallyRedundantSubpath = precedingStorePath
+    }
+
   case let preceedingCopy as CopyAddrInst where preceedingCopy.canLoadValue:
     let copyPath = preceedingCopy.destination.constantAccessPath
     if copyPath.getMaterializableProjection(to: accessPath) != nil {
@@ -543,7 +582,7 @@ private func visit(instruction: Instruction,
 
 private func replace(load: LoadingInstruction,
                      with availableValues: [AvailableValue],
-                     liverangeExits: [Instruction],
+                     liverange: Liverange,
                      _ context: FunctionPassContext)
 {
   var ssaUpdater = SSAUpdater(function: load.parentFunction,
@@ -551,7 +590,7 @@ private func replace(load: LoadingInstruction,
 
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
     let block = availableValue.instruction.parentBlock
-    let availableValue = provideValue(for: load, from: availableValue, context)
+    let availableValue = provideValue(for: load, from: availableValue, liverange: liverange, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
   }
 
@@ -584,9 +623,24 @@ private func replace(load: LoadingInstruction,
   let updatedNewValue = copyMarkDependencies(for: newValue, from: load, context)
 
   if load.kind == .borrow {
-    for exitInst in liverangeExits {
-      let builder = Builder(before: exitInst, context)
-      builder.createEndBorrow(of: ssaUpdater.getValue(inMiddleOf: exitInst.parentBlock))
+    var haveEndBorrow = BasicBlockWorklist(context)
+    defer { haveEndBorrow.deinitialize() }
+    for availableValue in availableValues {
+      if case .viaStoreAndBorrow(let store) = availableValue {
+        haveEndBorrow.pushIfNotVisited(contentsOf: store.uses.endingLifetime.users.lazy.map{ $0.parentBlock })
+        while let b = haveEndBorrow.pop() {
+          if b != store.parentBlock {
+            haveEndBorrow.pushIfNotVisited(contentsOf: b.predecessors)
+          }
+        }
+      }
+    }
+
+    for exitBlock in liverange.exitBlocks {
+      if !haveEndBorrow.hasBeenPushed(exitBlock) {
+        let builder = Builder(atBeginOf: exitBlock, context)
+        builder.createEndBorrow(of: ssaUpdater.getValue(inMiddleOf: exitBlock))
+      }
     }
   }
 
@@ -600,6 +654,7 @@ private func replace(load: LoadingInstruction,
 private func provideValue(
   for redundantLoad: LoadingInstruction,
   from availableValue: AvailableValue,
+  liverange: Liverange,
   _ context: FunctionPassContext
 ) -> Value {
   let projectionPath = availableValue.address.constantAccessPath
@@ -639,6 +694,18 @@ private func provideValue(
         }
       }
       return value!
+    case .viaStoreAndBorrow(let store):
+      var value: Value? = nil
+      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          let sab = splitStore as! StoreAndBorrowInst
+          value = sab.source
+          let beginBorrow = Builder(after: splitStore, context).createBeginBorrow(of: sab)
+          sab.replace(with: beginBorrow, context)
+        }
+      }
+      return value!
     case .viaCopyAddr:
       fatalError("copy_addr must be lowered before shrinking lifetime")
     }
@@ -669,6 +736,23 @@ private func provideValue(
           }
           value = builder.createStoreAndBorrow(source: splitStore.source, destination: splitStore.destination)
           context.erase(instruction: splitStore)
+        }
+      }
+      return value!
+    case .viaStoreAndBorrow(let store):
+      var liveBlocks = BasicBlockSet(context)
+      defer { liveBlocks.deinitialize() }
+      for end in store.uses.endingLifetime.users where liverange.inLiverange.contains(end) {
+        liveBlocks.insert(end.parentBlock)
+      }
+
+      var value: Value? = nil
+      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
+        if isProjectedStore {
+          assert(value == nil)
+          let sab = splitStore as! StoreAndBorrowInst
+          context.erase(instructions: sab.uses.endingLifetime.users.filter{ liveBlocks.contains($0.parentBlock) })
+          value = sab
         }
       }
       return value!
@@ -714,7 +798,7 @@ private struct MarkDependenceInserter : AddressUseDefWalker {
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue], liverangeExits: [Instruction])
+  case redundant([AvailableValue])
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
@@ -730,37 +814,42 @@ private enum DataflowResult {
 private enum AvailableValue {
   case viaLoad(LoadInst)
   case viaStore(StoreInst)
+  case viaStoreAndBorrow(StoreAndBorrowInst)
   case viaCopyAddr(CopyAddrInst)
 
   var value: Value {
     switch self {
-    case .viaLoad(let load):   return load
-    case .viaStore(let store): return store.source
-    case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .viaLoad(let load):            return load
+    case .viaStore(let store):          return store.source
+    case .viaStoreAndBorrow(let store): return store
+    case .viaCopyAddr:                  fatalError("copy_addr must be lowered")
     }
   }
 
   var address: Value {
     switch self {
-    case .viaLoad(let load):         return load.address
-    case .viaStore(let store):       return store.destination
-    case .viaCopyAddr(let copyAddr): return copyAddr.destination
+    case .viaLoad(let load):            return load.address
+    case .viaStore(let store):          return store.destination
+    case .viaStoreAndBorrow(let store): return store.destination
+    case .viaCopyAddr(let copyAddr):    return copyAddr.destination
     }
   }
 
   var instruction: Instruction {
     switch self {
-    case .viaLoad(let load):         return load
-    case .viaStore(let store):       return store
-    case .viaCopyAddr(let copyAddr): return copyAddr
+    case .viaLoad(let load):            return load
+    case .viaStore(let store):          return store
+    case .viaStoreAndBorrow(let store): return store
+    case .viaCopyAddr(let copyAddr):    return copyAddr
     }
   }
 
   func getBuilderForProjections(_ context: FunctionPassContext) -> Builder {
     switch self {
-    case .viaLoad(let load):   return Builder(after: load, context)
-    case .viaStore(let store): return Builder(before: store, context)
-    case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .viaLoad(let load):            return Builder(after: load, context)
+    case .viaStore(let store):          return Builder(before: store, context)
+    case .viaStoreAndBorrow(let store): return Builder(before: store, context)
+    case .viaCopyAddr:                  fatalError("copy_addr must be lowered")
     }
   }
 }
