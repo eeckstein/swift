@@ -608,6 +608,8 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   } else
     P.addEarlyCodeMotion();
 
+  P.addRedundantLoadElimination();
+
   P.addRetainSinking();
   // Retain sinking does not sink all retains in one round.
   // Let it run one more time time, because it can be beneficial.
