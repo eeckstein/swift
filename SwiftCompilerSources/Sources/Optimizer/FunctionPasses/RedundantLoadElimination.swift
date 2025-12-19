@@ -444,10 +444,17 @@ private extension LoadingInstruction {
     }
 
     for availableValue in availableValues {
-      if case .viaStoreAndBorrow(let store) = availableValue {
+      switch availableValue {
+      case .viaStoreAndBorrow(let store):
         guard store.uses.endingLifetime.users.contains(where: { liverange.inLiverange.contains($0) }) else {
           return .notRedundant
         }
+      case .viaLoadBorrow(let load):
+        guard load.uses.endingLifetime.users.contains(where: { liverange.inLiverange.contains($0) }) else {
+          return .notRedundant
+        }
+      default:
+        break
       }
     }
 
@@ -607,6 +614,23 @@ private func replace(load: LoadingInstruction,
                      liverange: Liverange,
                      _ context: FunctionPassContext)
 {
+  var haveEndBorrow = BasicBlockWorklist(context)
+  defer { haveEndBorrow.deinitialize() }
+
+  for availableValue in availableValues {
+    switch availableValue {
+    case .viaLoadBorrow, .viaStore:
+      haveEndBorrow.pushIfNotVisited(contentsOf: availableValue.value.uses.endingLifetime.users.lazy.map{ $0.parentBlock })
+      while let b = haveEndBorrow.pop() {
+        if b != availableValue.instruction.parentBlock {
+          haveEndBorrow.pushIfNotVisited(contentsOf: b.predecessors)
+        }
+      }
+    default:
+      break
+    }
+  }
+
   var ssaUpdater = SSAUpdater(function: load.parentFunction,
                               type: load.type, ownership: load.ownership, context)
 
@@ -645,19 +669,6 @@ private func replace(load: LoadingInstruction,
   let updatedNewValue = copyMarkDependencies(for: newValue, from: load, context)
 
   if load.kind == .borrow {
-    var haveEndBorrow = BasicBlockWorklist(context)
-    defer { haveEndBorrow.deinitialize() }
-    for availableValue in availableValues {
-      if case .viaStoreAndBorrow(let store) = availableValue {
-        haveEndBorrow.pushIfNotVisited(contentsOf: store.uses.endingLifetime.users.lazy.map{ $0.parentBlock })
-        while let b = haveEndBorrow.pop() {
-          if b != store.parentBlock {
-            haveEndBorrow.pushIfNotVisited(contentsOf: b.predecessors)
-          }
-        }
-      }
-    }
-
     for exitBlock in liverange.exitBlocks {
       if !haveEndBorrow.hasBeenPushed(exitBlock) {
         let builder = Builder(atBeginOf: exitBlock, context)
@@ -906,7 +917,7 @@ private enum AvailableValue {
     case .viaLoad(let load):            return Builder(after: load, context)
     case .viaLoadBorrow(let load):      return Builder(after: load, context)
     case .viaStore(let store):          return Builder(before: store, context)
-    case .viaStoreAndBorrow(let store): return Builder(before: store, context)
+    case .viaStoreAndBorrow(let store): return Builder(after: store, context)
     case .viaCopyAddr:                  fatalError("copy_addr must be lowered")
     }
   }

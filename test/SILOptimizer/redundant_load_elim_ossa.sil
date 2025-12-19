@@ -65,6 +65,12 @@ struct B2 {
   init()
 }
 
+struct BI {
+  var a : B
+  var b : Int
+  init()
+}
+
 struct Agg2 {
   var t : (Builtin.Int64, Builtin.Int32)
 }
@@ -1979,3 +1985,165 @@ bb0(%0 : $*B):
   return %r
 }
 
+// CHECK-LABEL: sil [ossa] @nested_load_borrow :
+// We don't optimize this, yet.
+// CHECK:         load_borrow
+// CHECK:         load_borrow
+// CHECK-LABEL: } // end sil function 'nested_load_borrow'
+sil [ossa] @nested_load_borrow : $@convention(thin) (@inout B) -> () {
+bb0(%0 : $*B):
+  %4 = load_borrow %0
+  %5 = load_borrow %0
+  %6 = apply undef(%4) : $@convention(thin) (@guaranteed B) -> ()
+  %7 = apply undef(%5) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %5
+  end_borrow %4
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @nested_load_borrow :
+// CHECK:       bb0(%0 : $*B):
+// CHECK-NEXT:    load_borrow
+// CHECK-NOT:     load
+// CHECK:       bb3:
+// CHECK-NEXT:    load_borrow
+// CHECK-NOT:     load
+// CHECK-LABEL: } // end sil function 'nested_load_borrow'
+sil [ossa] @load_borrow_with_loop : $@convention(thin) (@inout B) -> () {
+bb0(%0 : $*B):
+  %1 = load [copy] %0
+  destroy_value %1
+  br bb1
+
+bb1:
+  cond_br undef, bb2, bb9
+
+bb2:
+  %5 = load_borrow %0
+  fix_lifetime %5
+  end_borrow %5
+  br bb3
+
+bb3:
+  %9 = load [copy] %0
+  destroy_value %9
+  cond_br undef, bb4, bb7
+
+bb4:
+  cond_br undef, bb5, bb6
+
+bb5:
+  %13 = load_borrow %0
+  fix_lifetime %13
+  end_borrow %13
+  br bb3
+
+bb6:
+  br bb8
+
+bb7:
+  br bb8
+
+bb8:
+  br bb1
+
+bb9:
+  %20 = tuple ()
+  return %20
+}
+
+// CHECK-LABEL: sil [ossa] @split_load_borrow :
+// CHECK:         %1 = struct_element_addr %0 : $BI, #BI.a
+// CHECK-NEXT:    %2 = load_borrow %1
+// CHECK-NEXT:    %3 = struct_element_addr %0 : $BI, #BI.b
+// CHECK-NEXT:    %4 = load [trivial] %3
+// CHECK-NEXT:    %5 = struct $BI (%2 : $B, %4 : $B)
+// CHECK-NEXT:    fix_lifetime %5
+// CHECK-NEXT:    %7 = struct_element_addr %0 : $BI, #BI.a
+// CHECK-NEXT:    fix_lifetime %2
+// CHECK-NEXT:    end_borrow %2
+// CHECK-LABEL: } // end sil function 'split_load_borrow'
+sil [ossa] @split_load_borrow : $@convention(thin) (@inout BI) -> () {
+bb0(%0 : $*BI):
+  %1 = load_borrow %0
+  fix_lifetime %1
+  end_borrow %1
+  %4 = struct_element_addr %0, #BI.a
+  %5 = load_borrow %4
+  fix_lifetime %5
+  end_borrow %5
+  %8 = tuple ()
+  return %8
+}
+
+// CHECK-LABEL: sil [ossa] @split_store_and_borrow :
+// CHECK:         (%2, %3) = destructure_struct %1
+// CHECK-NEXT:    %4 = struct_element_addr %0 : $*BI, #BI.a
+// CHECK-NEXT:    %5 = store_and_borrow %2 to %4
+// CHECK-NEXT:    %6 = struct_element_addr %0 : $*BI, #BI.b
+// CHECK-NEXT:    store %3 to [trivial] %6
+// CHECK-NEXT:    %8 = struct $BI (%5 : $B, %3 : $Int)
+// CHECK-NEXT:    fix_lifetime %8
+// CHECK-NEXT:    %10 = struct_element_addr %0 : $*BI, #BI.a
+// CHECK-NEXT:    fix_lifetime %5
+// CHECK-NEXT:    end_borrow %5
+// CHECK-LABEL: } // end sil function 'split_store_and_borrow'
+sil [ossa] @split_store_and_borrow : $@convention(thin) (@owned BI) -> @out BI {
+bb0(%0 : $*BI, %1 : @owned $BI):
+  %2 = store_and_borrow %1 to %0
+  fix_lifetime %2
+  end_borrow %2
+  %5 = struct_element_addr %0, #BI.a
+  %6 = load_borrow %5
+  fix_lifetime %6
+  end_borrow %6
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @update_borrowed_from_for_split_load_borrow :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:         = borrowed {{.*}} from [[B]]
+// CHECK-LABEL: } // end sil function 'update_borrowed_from_for_split_load_borrow'
+sil [ossa] @update_borrowed_from_for_split_load_borrow : $@convention(thin) (@inout BI) -> () {
+bb0(%0 : $*BI):
+  %1 = load_borrow %0
+  %2 = struct_extract %1, #BI.a
+  fix_lifetime %1
+  br bb1(%2)
+
+bb1(%4 : @guaranteed $B):
+  %5 = borrowed %4 from (%1)
+  fix_lifetime %5
+  end_borrow %1
+  %8 = struct_element_addr %0, #BI.a
+  %9 = load_borrow %8
+  fix_lifetime %8
+  end_borrow %9
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @update_borrowed_from_for_split_store_and_borrow :
+// CHECK:         [[B:%.*]] = store_and_borrow %2 to %4
+// CHECK:         = borrowed {{.*}} from [[B]]
+// CHECK-LABEL: } // end sil function 'update_borrowed_from_for_split_store_and_borrow'
+sil [ossa] @update_borrowed_from_for_split_store_and_borrow : $@convention(thin) (@owned BI) -> @out BI {
+bb0(%0 : $*BI, %1 : @owned $BI):
+  %2 = store_and_borrow %1 to %0
+  fix_lifetime %2
+  %3 = struct_extract %2, #BI.a
+  br bb1(%3)
+
+bb1(%4 : @guaranteed $B):
+  %5 = borrowed %4 from (%2)
+  fix_lifetime %5
+  end_borrow %2
+  %6 = struct_element_addr %0, #BI.a
+  %7 = load_borrow %6
+  fix_lifetime %7
+  end_borrow %7
+  %r = tuple ()
+  return %r
+}

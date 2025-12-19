@@ -105,7 +105,6 @@ extension StoreAndBorrowInst {
     }
     let builder = Builder(after: self, context)
     let type = source.type
-    let elementStores: [StoringInstruction]
     if type.isStruct {
       guard !(type.nominal as! StructDecl).hasUnreferenceableStorage,
             type.getNominalFields(in: parentFunction) != nil
@@ -113,21 +112,40 @@ extension StoreAndBorrowInst {
         return nil
       }
       let destructure = builder.createDestructureStruct(struct: source)
-      elementStores = destructure.results.enumerated().map { (idx, v) in
+      let elementStores = destructure.results.enumerated().map { (idx, v) in
         let destFieldAddr = builder.createStructElementAddr(structAddress: destination, fieldIndex: idx)
         return createSplitStore(of: v, to: destFieldAddr, context, builder)
       }
+      let newStruct = builder.createStruct(type: self.type, elements: elementStores.map {
+        switch $0 {
+        case let s as StoreInst:            return s.source
+        case let sab as StoreAndBorrowInst: return sab
+        default: fatalError("unknown element store")
+        }
+      })
+      context.erase(instructions: self.uses.users(ofType: EndBorrowInst.self))
+      self.replace(with: newStruct, context)
+      updateBorrowedFrom(for: Array(newStruct.uses.users(ofType: BorrowedFromInst.self).map{ $0.borrowedPhi }), context)
+      return elementStores
     } else if type.isTuple {
       let destructure = builder.createDestructureTuple(tuple: source)
-      elementStores = destructure.results.enumerated().map { (idx, v) in
+      let elementStores = destructure.results.enumerated().map { (idx, v) in
         let elementAddr = builder.createTupleElementAddr(tupleAddress: destination, elementIndex: idx)
         return createSplitStore(of: v, to: elementAddr, context, builder)
       }
-    } else {
-      return nil
+      let newTuple = builder.createTuple(type: self.type, elements: elementStores.map {
+        switch $0 {
+        case let s as StoreInst:            return s.source
+        case let sab as StoreAndBorrowInst: return sab
+        default: fatalError("unknown element store")
+        }
+      })
+      context.erase(instructions: self.uses.users(ofType: EndBorrowInst.self))
+      updateBorrowedFrom(for: Array(newTuple.uses.users(ofType: BorrowedFromInst.self).map{ $0.borrowedPhi }), context)
+      self.replace(with: newTuple, context)
+      return elementStores
     }
-    context.erase(instruction: self)
-    return elementStores
+    return nil
   }
 
   func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
@@ -267,7 +285,9 @@ extension LoadBorrowInst {
         return createSplitLoad(from: fieldAddr, context, builder)
       }
       let newStruct = builder.createStruct(type: self.type, elements: elements)
+      context.erase(instructions: self.uses.users(ofType: EndBorrowInst.self))
       self.replace(with: newStruct, context)
+      updateBorrowedFrom(for: Array(newStruct.uses.users(ofType: BorrowedFromInst.self).map{ $0.borrowedPhi }), context)
       return elements
     }
     if type.isTuple {
@@ -277,6 +297,8 @@ extension LoadBorrowInst {
         return createSplitLoad(from: fieldAddr, context, builder)
       }
       let newTuple = builder.createTuple(type: self.type, elements: elements)
+      context.erase(instructions: self.uses.users(ofType: EndBorrowInst.self))
+      updateBorrowedFrom(for: Array(newTuple.uses.users(ofType: BorrowedFromInst.self).map{ $0.borrowedPhi }), context)
       self.replace(with: newTuple, context)
       return elements
     }
