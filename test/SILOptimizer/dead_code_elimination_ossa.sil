@@ -564,3 +564,39 @@ bb2:
   br bb2
 }
 
+// CHECK-LABEL: sil [ossa] @store_and_borrow :
+// CHECK:         %2 = store_and_borrow
+// CHECK-NEXT:    end_borrow %2
+// CHECK-LABEL: } // end sil function store_and_borrow'
+sil [ossa] @store_and_borrow : $@convention(thin) (@owned C) -> () {
+bb0(%0 : @owned $C):
+  %1 = alloc_stack $C
+  %2 = store_and_borrow %0 to %1
+  cond_br undef, bb2, bb1
+
+bb1:
+  br bb3(%2)
+
+bb2:
+  br bb4(%2)
+
+
+bb3(%6 : @reborrow $C):
+  %7 = borrowed %6 from ()
+  end_borrow %7
+  br bb5
+
+
+bb4(%10 : @reborrow $C):
+  %11 = borrowed %10 from ()
+  end_borrow %11
+  br bb5
+
+bb5:
+  destroy_addr %1
+  dealloc_stack %1
+  %16 = tuple ()
+  return %16
+}
+
+

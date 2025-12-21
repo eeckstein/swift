@@ -912,6 +912,9 @@ void BorrowedValueKind::print(llvm::raw_ostream &os) const {
   case BorrowedValueKind::LoadBorrow:
     os << "LoadBorrowInst";
     return;
+  case BorrowedValueKind::StoreAndBorrow:
+    os << "StoreAndBorrowInst";
+    return;
   case BorrowedValueKind::Phi:
     os << "Phi";
     return;
@@ -949,6 +952,7 @@ bool BorrowedValue::visitLocalScopeEndingUses(
     llvm_unreachable("Should only call this with a local scope");
   case BorrowedValueKind::LoadBorrow:
   case BorrowedValueKind::BeginBorrow:
+  case BorrowedValueKind::StoreAndBorrow:
   case BorrowedValueKind::Phi:
   case BorrowedValueKind::BeginApplyToken:
     for (auto *use : lookThroughBorrowedFromUser(value)->getUses()) {
@@ -1851,6 +1855,7 @@ public:
             cast<BeginBorrowInst>(value)->getOperand(), visitor);
 
       case BorrowedValueKind::LoadBorrow:
+      case BorrowedValueKind::StoreAndBorrow:
       case BorrowedValueKind::SILFunctionArgument:
       case BorrowedValueKind::BeginApplyToken:
         // There is no enclosing def on this path.
@@ -2070,6 +2075,7 @@ protected:
       break;
     }
     case BorrowedValueKind::LoadBorrow:
+    case BorrowedValueKind::StoreAndBorrow:
     case BorrowedValueKind::SILFunctionArgument:
     case BorrowedValueKind::BeginApplyToken:
       // There is no enclosing def on this path.

@@ -483,6 +483,7 @@ public:
     Invalid = 0,
     LoadBorrow,
     BeginBorrow,
+    StoreAndBorrow,
     SILFunctionArgument,
     Phi,
     BeginApplyToken,
@@ -502,6 +503,8 @@ public:
       return Kind::LoadBorrow;
     case ValueKind::BeginBorrowInst:
       return Kind::BeginBorrow;
+    case ValueKind::StoreAndBorrowInst:
+      return Kind::StoreAndBorrow;
     case ValueKind::SILFunctionArgument:
       return Kind::SILFunctionArgument;
     case ValueKind::SILPhiArgument: {
@@ -542,6 +545,7 @@ public:
       llvm_unreachable("Using invalid case?!");
     case BorrowedValueKind::BeginBorrow:
     case BorrowedValueKind::LoadBorrow:
+    case BorrowedValueKind::StoreAndBorrow:
     case BorrowedValueKind::Phi:
     case BorrowedValueKind::BeginApplyToken:
       return true;
