@@ -436,15 +436,23 @@ private extension LoadingInstruction {
         worklist.pushPredecessors(of: inst)
       }
 
+      let deadEndBlocks = context.deadEndBlocks
+
       for i in availableValues.indices {
         let av = availableValues[i]
         switch av {
         case .viaStoreAndBorrow(let store, _):
+          if deadEndBlocks.isDeadEnd(self.parentBlock) {
+            return .notRedundant
+          }
           guard let bbs = getDeadEndBorrowBlocks(of: store, in: liverange) else {
             return .notRedundant
           }
           availableValues[i] = .viaStoreAndBorrow(store, deadEndBorrowBlocks: bbs)
         case .viaLoadBorrow(let load, _):
+          if deadEndBlocks.isDeadEnd(self.parentBlock) {
+            return .notRedundant
+          }
           guard let bbs = getDeadEndBorrowBlocks(of: load, in: liverange) else {
             return .notRedundant
           }
@@ -456,7 +464,6 @@ private extension LoadingInstruction {
 
       var endBorrowsToInsert = [BasicBlock]()
 
-      let deadEndBlocks = context.deadEndBlocks
       for block in blockEndsInLiverange {
         for succ in block.successors {
           if !liverange.contains(succ.instructions.first!), !deadEndBlocks.isDeadEnd(succ) {
@@ -479,20 +486,30 @@ private extension LoadingInstruction {
 private func getDeadEndBorrowBlocks(of value: Value, in liverange: InstructionSet) -> [BasicBlock]? {
   var deadEndBorrowBlocks = [BasicBlock]()
   for end in value.uses.endingLifetime.users {
-    if let next = end.next {
-      guard let endBorrow = end as? EndBorrowInst else {
-        return nil
-      }
-      if liverange.contains(next) {
-        deadEndBorrowBlocks.append(endBorrow.parentBlock)
-      }
-    } else {
-      if liverange.contains(end) {
+    if liverange.contains(nextOf: end) {
+      if end is EndBorrowInst {
+        deadEndBorrowBlocks.append(end.parentBlock)
+      } else {
         return nil
       }
     }
   }
   return deadEndBorrowBlocks
+}
+
+private extension InstructionSet {
+  func contains(nextOf inst: Instruction) -> Bool {
+    if let next = inst.next {
+      return contains(next)
+    } else {
+      for succ in inst.parentBlock.successors {
+        if contains(succ.instructions.first!) {
+          return true
+        }
+      }
+      return false
+    }
+  }
 }
 
 private enum InstructionKind {

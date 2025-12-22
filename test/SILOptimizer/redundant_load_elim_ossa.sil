@@ -2003,14 +2003,14 @@ bb0(%0 : $*B):
   return %r
 }
 
-// CHECK-LABEL: sil [ossa] @nested_load_borrow :
+// CHECK-LABEL: sil [ossa] @load_borrow_with_loop :
 // CHECK:       bb0(%0 : $*B):
 // CHECK-NEXT:    load_borrow
 // CHECK-NOT:     load
 // CHECK:       bb3:
 // CHECK-NEXT:    load_borrow
 // CHECK-NOT:     load
-// CHECK-LABEL: } // end sil function 'nested_load_borrow'
+// CHECK-LABEL: } // end sil function 'load_borrow_with_loop'
 sil [ossa] @load_borrow_with_loop : $@convention(thin) (@inout B) -> () {
 bb0(%0 : $*B):
   %1 = load [copy] %0
@@ -2055,13 +2055,13 @@ bb9:
 }
 
 // CHECK-LABEL: sil [ossa] @split_load_borrow :
-// CHECK:         %1 = struct_element_addr %0 : $BI, #BI.a
+// CHECK:         %1 = struct_element_addr %0 : $*BI, #BI.a
 // CHECK-NEXT:    %2 = load_borrow %1
-// CHECK-NEXT:    %3 = struct_element_addr %0 : $BI, #BI.b
+// CHECK-NEXT:    %3 = struct_element_addr %0 : $*BI, #BI.b
 // CHECK-NEXT:    %4 = load [trivial] %3
-// CHECK-NEXT:    %5 = struct $BI (%2 : $B, %4 : $B)
+// CHECK-NEXT:    %5 = struct $BI (%2 : $B, %4 : $Int)
 // CHECK-NEXT:    fix_lifetime %5
-// CHECK-NEXT:    %7 = struct_element_addr %0 : $BI, #BI.a
+// CHECK-NEXT:    %7 = struct_element_addr %0 : $*BI, #BI.a
 // CHECK-NEXT:    fix_lifetime %2
 // CHECK-NEXT:    end_borrow %2
 // CHECK-LABEL: } // end sil function 'split_load_borrow'
@@ -2105,7 +2105,7 @@ bb0(%0 : $*BI, %1 : @owned $BI):
 
 // CHECK-LABEL: sil [ossa] @update_borrowed_from_for_split_load_borrow :
 // CHECK:         [[B:%.*]] = load_borrow %1
-// CHECK:         = borrowed {{.*}} from [[B]]
+// CHECK:         = borrowed {{.*}} from ([[B]] : $B)
 // CHECK-LABEL: } // end sil function 'update_borrowed_from_for_split_load_borrow'
 sil [ossa] @update_borrowed_from_for_split_load_borrow : $@convention(thin) (@inout BI) -> () {
 bb0(%0 : $*BI):
@@ -2128,7 +2128,7 @@ bb1(%4 : @guaranteed $B):
 
 // CHECK-LABEL: sil [ossa] @update_borrowed_from_for_split_store_and_borrow :
 // CHECK:         [[B:%.*]] = store_and_borrow %2 to %4
-// CHECK:         = borrowed {{.*}} from [[B]]
+// CHECK:         = borrowed {{.*}} from ([[B]] : $B)
 // CHECK-LABEL: } // end sil function 'update_borrowed_from_for_split_store_and_borrow'
 sil [ossa] @update_borrowed_from_for_split_store_and_borrow : $@convention(thin) (@owned BI) -> @out BI {
 bb0(%0 : $*BI, %1 : @owned $BI):
@@ -2148,3 +2148,20 @@ bb1(%4 : @guaranteed $B):
   %r = tuple ()
   return %r
 }
+
+// Check that we don't crash
+// TODO: remove this test once we have complete lifetimes
+// CHECK-LABEL: sil [ossa] @missing_end_borrow_in_dead_end :
+// CHECK-LABEL: } // end sil function 'missing_end_borrow_in_dead_end'
+sil [ossa] @missing_end_borrow_in_dead_end : $@convention(thin) (@owned BI) -> () {
+bb0(%0 : @owned $BI):
+  %1 = alloc_stack $BI
+  %2 = store_and_borrow %0 to %1
+  %3 = struct_element_addr %1, #BI.a
+  %4 = load_borrow %3
+  fix_lifetime %4
+  end_borrow %4
+  %7 = apply undef(%2) : $@convention(method) (@guaranteed BI) -> Optional<Int>
+  unreachable
+}
+
