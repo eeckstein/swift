@@ -1690,3 +1690,73 @@ bb0(%0 : $*F, %1 : @owned $F):
   return %r
 }
 
+// CHECK-LABEL: Escape information for end_borrow_and_take_forward1:
+// CHECK:       - :   %0 = alloc_ref $X
+// CHECK:       End function end_borrow_and_take_forward1
+sil [ossa] @end_borrow_and_take_forward1 : $@convention(thin) () -> () {
+bb0:
+  specify_test "escape_info"
+  %0 = alloc_ref $X
+  %1 = alloc_stack $X
+  %2 = store_and_borrow %0 to %1
+  %3 = end_borrow_and_take %2 from %1
+  destroy_value %3
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: Escape information for end_borrow_and_take_forward2:
+// CHECK:       return[]:   %0 = alloc_ref $X
+// CHECK:       End function end_borrow_and_take_forward2
+sil [ossa] @end_borrow_and_take_forward2 : $@convention(thin) () -> @owned X {
+bb0:
+  specify_test "escape_info"
+  %0 = alloc_ref $X
+  %1 = alloc_stack $X
+  %2 = store_and_borrow %0 to %1
+  %3 = copy_value %2
+  %4 = end_borrow_and_take %2 from %1
+  destroy_value %4
+  dealloc_stack %1
+  return %3
+}
+
+// CHECK-LABEL: Escape information for end_borrow_and_take_backward1:
+// CHECK:       return[]:     %1 = alloc_ref $F
+// CHECK:       return[c0]:   %2 = alloc_ref $Y
+// CHECK:       End function end_borrow_and_take_backward1
+sil [ossa] @end_borrow_and_take_backward1 : $@convention(thin) () -> @owned F {
+bb0:
+  specify_test "escape_info"
+  %0 = alloc_stack $F
+  %1 = alloc_ref $F
+  %2 = alloc_ref $Y
+  %3 = store_and_borrow %1 to %0
+  %4 = end_borrow_and_take %3 from %0
+  %5 = begin_borrow %4
+  %6 = ref_element_addr %5, #F.y
+  store %2 to [init] %6
+  end_borrow %5
+  dealloc_stack %0
+  return %4
+}
+
+// CHECK-LABEL: Escape information for end_borrow_and_take_backward2:
+// CHECK:       arg0[c0],return[c0]:     %2 = alloc_ref $Y
+// CHECK:       End function end_borrow_and_take_backward2
+sil [ossa] @end_borrow_and_take_backward2 : $@convention(thin) (@owned F) -> @owned F {
+bb0(%0 : @owned $F):
+  specify_test "escape_info"
+  %1 = alloc_stack $F
+  %2 = alloc_ref $Y
+  %3 = store_and_borrow %0 to %1
+  %4 = end_borrow_and_take %3 from %1
+  %5 = begin_borrow %4
+  %6 = ref_element_addr %5, #F.y
+  store %2 to [init] %6
+  end_borrow %5
+  dealloc_stack %1
+  return %4
+}
+

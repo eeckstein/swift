@@ -4988,6 +4988,33 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
 
     break;
   }
+  case SILInstructionKind::EndBorrowAndTakeInst: {
+    UnresolvedValueName borrow;
+    Identifier fromToken;
+    SILValue addrVal;
+    SourceLoc fromLoc, addrLoc;
+    if (parseValueName(borrow) ||
+        parseSILIdentifier(fromToken, fromLoc, diag::expected_tok_in_sil_instr,
+                           "from") ||
+        parseTypedValueRef(addrVal, addrLoc, B) ||
+        parseSILDebugLocation(InstLoc, B))
+      return true;
+
+    if (fromToken.str() != "from") {
+      P.diagnose(fromLoc, diag::expected_tok_in_sil_instr, "from");
+      return true;
+    }
+
+    if (!addrVal->getType().isAddress()) {
+      P.diagnose(addrLoc, diag::sil_operand_not_address, "address",
+                 OpcodeName);
+      return true;
+    }
+    SILType valueTy = addrVal->getType().getObjectType();
+    ResultVal = B.createEndBorrowAndTake(
+        InstLoc, getLocalValue(borrow, valueTy, InstLoc, B), addrVal);
+    break;
+  }
   case SILInstructionKind::AllocPackInst: {
     SILType Ty;
     if (parseSILType(Ty))

@@ -1686,6 +1686,11 @@ final public class StoreAndBorrowInst : SingleValueInstruction, StoringInstructi
   public var scopeEndingOperands: LazyFilterSequence<UseList> { uses.endingLifetime }
 }
 
+final public class EndBorrowAndTakeInst : SingleValueInstruction {
+  public var borrow: Value { operands[0].value }
+  public var address: Value { operands[1].value }
+}
+
 final public class BeginAccessInst : SingleValueInstruction, UnaryInstruction {
   // The raw values must match SILAccessKind.
   public enum AccessKind: Int {

@@ -1622,7 +1622,24 @@ bb0(%0 : $*X, %1 : $*X, %2 : @owned $X):
   return %5
 }
 
-
+// CHECK-LABEL: @test_end_borrow_and_take
+// CHECK:      PAIR #2.
+// CHECK-NEXT:     %4 = end_borrow_and_take %3 from %2 : $*X
+// CHECK-NEXT:   %0 = argument of bb0 : $*X
+// CHECK-NEXT:   r=0,w=0
+// CHECK:      PAIR #3.
+// CHECK-NEXT:     %4 = end_borrow_and_take %3 from %2 : $*X
+// CHECK-NEXT:     %2 = alloc_stack $X
+// CHECK-NEXT:   r=1,w=1
+sil [ossa] @test_end_borrow_and_take : $@convention(thin) (@inout X, @owned X) -> @owned X {
+bb0(%0 : $*X, %1 : @owned $X):
+  specify_test "memory_effects"
+  %2 = alloc_stack $X
+  %3 = store_and_borrow %1 to %2
+  %4 = end_borrow_and_take %3 from %2
+  dealloc_stack %2
+  return %4
+}
 
 // CHECK-LABEL: @test_end_borrow1
 // CHECK:      PAIR #0.

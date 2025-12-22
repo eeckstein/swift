@@ -2477,7 +2477,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case SILInstructionKind::MarkUnresolvedMoveAddrInst:
   case SILInstructionKind::StoreInst:
   case SILInstructionKind::StoreBorrowInst:
-  case SILInstructionKind::StoreAndBorrowInst: {
+  case SILInstructionKind::StoreAndBorrowInst:
+  case SILInstructionKind::EndBorrowAndTakeInst: {
     SILValue operand, value;
     unsigned Attr = 0;
     if (SI.getKind() == SILInstructionKind::StoreInst) {
@@ -2514,6 +2515,9 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     } else if (auto *SABI = dyn_cast<StoreAndBorrowInst>(&SI)) {
       operand = SABI->getDest();
       value = SABI->getSrc();
+    } else if (auto *ebat = dyn_cast<EndBorrowAndTakeInst>(&SI)) {
+      operand = ebat->getAddress();
+      value = ebat->getBorrow();
     } else {
       llvm_unreachable("switch out of sync");
     }

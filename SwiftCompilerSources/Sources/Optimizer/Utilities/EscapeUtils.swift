@@ -389,6 +389,8 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
         return .abortWalk
       }
       return walkDownUses(ofValue: storeAndBorrow, path: path)
+    case let ebat as EndBorrowAndTakeInst:
+      return walkDownUses(ofValue: ebat, path: path)
     case is DestroyValueInst, is ReleaseValueInst, is StrongReleaseInst:
       if handleDestroy(of: operand.value, path: path) == .abortWalk {
         return .abortWalk
@@ -531,6 +533,8 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
         return .abortWalk
       }
       return .continueWalk
+    case let ebat as EndBorrowAndTakeInst:
+      break
     case let copyAddr as CopyAddrInst:
       if !followLoads(at: path) {
         return .continueWalk
@@ -835,6 +839,8 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
         return .abortWalk
       }
       return walkUp(value: sab.source, path: path)
+    case let ebat as EndBorrowAndTakeInst:
+      return walkUp(value: ebat.borrow, path: path)
     default:
       return isEscaping
     }

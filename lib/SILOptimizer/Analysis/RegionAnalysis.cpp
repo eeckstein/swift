@@ -3803,6 +3803,11 @@ PartitionOpTranslator::visitStoreAndBorrowInst(StoreAndBorrowInst *sbi) {
 }
 
 TranslationSemantics
+PartitionOpTranslator::visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *ebat) {
+  ABORT("end_borrow_and_take should not appear at this point");
+}
+
+TranslationSemantics
 PartitionOpTranslator::visitAllocStackInst(AllocStackInst *asi) {
   // Before we do anything, see if asi is Sendable or if it is non-Sendable,
   // that it is from a var decl. In both cases, we can just return assign fresh

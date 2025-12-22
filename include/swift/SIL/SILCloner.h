@@ -1497,6 +1497,20 @@ void SILCloner<ImplClass>::visitStoreAndBorrowInst(StoreAndBorrowInst *Inst) {
 }
 
 template <typename ImplClass>
+void SILCloner<ImplClass>::visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *Inst) {
+  getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
+  if (!getBuilder().hasOwnership()) {
+    mapValue(Inst, getOpValue(Inst->getBorrow()));
+    return;
+  }
+
+  recordClonedInstruction(
+      Inst, getBuilder().createEndBorrowAndTake(getOpLocation(Inst->getLoc()),
+                                                getOpValue(Inst->getBorrow()),
+                                                getOpValue(Inst->getAddress())));
+}
+
+template <typename ImplClass>
 void SILCloner<ImplClass>::visitEndBorrowInst(EndBorrowInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
 

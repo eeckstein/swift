@@ -2055,6 +2055,11 @@ public:
     *this << getIDAndType(SI->getDest());
   }
 
+  void visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *ebat) {
+    *this << Ctx.getID(ebat->getBorrow()) << " from ";
+    *this << getIDAndType(ebat->getAddress());
+  }
+
   void visitEndBorrowInst(EndBorrowInst *EBI) {
     *this << getIDAndType(EBI->getOperand());
   }

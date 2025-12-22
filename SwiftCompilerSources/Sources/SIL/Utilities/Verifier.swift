@@ -232,6 +232,21 @@ extension StoreAndBorrowInst : VerifiableInstruction {
   }
 }
 
+extension EndBorrowAndTakeInst : VerifiableInstruction {
+  func verify(_ context: VerifierContext) {
+    require(parentFunction.hasOwnership, "end_borrow_and_take is only allowed in OSSA", atInstruction: self)
+    require(borrow.type.isObject, "Borrow operand of end_borrow_and_take must not be an address", atInstruction: self)
+    require(borrow.type.isLoadable(in: parentFunction) || !context.moduleHasLoweredAddresses,
+            "end_borrow_and_take requires a loadable type", atInstruction: self)
+    require(address.type.isAddress,
+            "address operand of end_borrow_and_take must have an address type", atInstruction: self)
+    require(address.type.objectType == borrow.type,
+            "end_borrow_and_take borrow type and address type mismatch", atInstruction: self)
+    require(self.type == borrow.type,
+            "borrow result type and borrow operand type mismatch", atInstruction: self)
+  }
+}
+
 // Used to check if any instruction is mutating the memory location within the liverange of a `load_borrow`.
 // Note that it is not checking if an instruction _may_ mutate the memory, but it's checking if any instruction
 // _definitely_ will mutate the memory.

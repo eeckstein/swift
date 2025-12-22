@@ -4970,6 +4970,30 @@ public:
   MutableArrayRef<Operand> getAllOperands() { return Operands.asArray(); }
 };
 
+class EndBorrowAndTakeInst
+    : public InstructionBase<SILInstructionKind::EndBorrowAndTakeInst,
+                             SingleValueInstruction> {
+  friend class SILBuilder;
+
+private:
+  FixedOperandList<2> Operands;
+
+  EndBorrowAndTakeInst(SILDebugLocation debugLoc, SILValue borrow, SILValue address);
+
+public:
+
+  enum {
+    BorrowOp = 0,
+    AddressOp = 1
+  };
+
+  SILValue getBorrow() const { return Operands[BorrowOp].get(); }
+  SILValue getAddress() const { return Operands[AddressOp].get(); }
+
+  ArrayRef<Operand> getAllOperands() const { return Operands.asArray(); }
+  MutableArrayRef<Operand> getAllOperands() { return Operands.asArray(); }
+};
+
 /// Represents the end of a borrow scope of a value %val from a
 /// value or address %src.
 ///

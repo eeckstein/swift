@@ -1829,6 +1829,26 @@ bb0(%0 : @owned $B, %1 : $Builtin.Int32):
   return %9
 }
 
+// CHECK-LABEL: sil [ossa] @look_through_end_borrow_and_take :
+// CHECK:         return %1
+// CHECK-LABEL: } // end sil function 'look_through_end_borrow_and_take'
+sil [ossa] @look_through_end_borrow_and_take : $@convention(thin) (@owned B, Builtin.Int32) -> Builtin.Int32 {
+bb0(%0 : @owned $B, %1 : $Builtin.Int32):
+  %2 = begin_borrow %0
+  %3 = ref_element_addr %2, #B.i
+  store %1 to [trivial] %3
+  end_borrow %2
+  %6 = alloc_stack $B
+  %7 = store_and_borrow %0 to %6
+  %8 = end_borrow_and_take %7 from %6
+  %9 = begin_borrow %8
+  %10 = ref_element_addr %9, #B.i
+  %11 = load [trivial] %10
+  end_borrow %9
+  destroy_value %8
+  dealloc_stack %6
+  return %11
+}
 
 // CHECK-LABEL: sil [ossa] @load_borrow_simple :
 // CHECK:         destroy_addr %1

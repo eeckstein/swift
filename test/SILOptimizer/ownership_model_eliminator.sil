@@ -85,6 +85,25 @@ bb0(%0 : $*Builtin.NativeObject):
   return %3 : $()
 }
 
+// CHECK-LABEL: sil @store_and_borrow :
+// CHECK:         %1 = alloc_stack $C
+// CHECK-NEXT:    store %0 to %1
+// CHECK-NEXT:    fix_lifetime %1
+// CHECK-NEXT:    fix_lifetime %0
+// CHECK-NEXT:    dealloc_stack %1
+// CHECK-NEXT:    return %0
+// CHECK:       } // end sil function 'store_and_borrow'
+sil [ossa] @store_and_borrow : $@convention(thin) (@owned C) -> @owned C {
+bb0(%0 : @owned $C):
+  %1 = alloc_stack $C
+  %2 = store_and_borrow %0 to %1
+  fix_lifetime %1
+  fix_lifetime %2
+  %4 = end_borrow_and_take %2 from %1
+  dealloc_stack %1
+  return %4
+}
+
 sil @opaque_function : $@convention(thin) () -> ()
 
 // CHECK-LABEL: sil @copy_value_destroy_value : $@convention(thin) (@owned Builtin.NativeObject) -> @owned Builtin.NativeObject {

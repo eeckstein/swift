@@ -2818,6 +2818,11 @@ void swift::visitAccessedAddress(SILInstruction *I,
       visitor(singleOperand);
     return;
   }
+  case SILInstructionKind::EndBorrowAndTakeInst: {
+    auto ebat = cast<EndBorrowAndTakeInst>(I);
+    visitor(&ebat->getOperandRef(EndBorrowAndTakeInst::AddressOp));
+    return;
+  }
   case SILInstructionKind::EndBorrowInst: {
     auto *ebi = cast<EndBorrowInst>(I);
     SmallVector<SILValue, 4> roots;

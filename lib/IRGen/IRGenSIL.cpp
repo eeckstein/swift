@@ -1416,7 +1416,10 @@ public:
     llvm_unreachable("unimplemented");
   }
   void visitStoreAndBorrowInst(StoreAndBorrowInst *i) {
-    llvm_unreachable("unimplemented");
+    llvm_unreachable("should not exist after ownership lowering");
+  }
+  void visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *i) {
+    llvm_unreachable("should not exist after ownership lowering");
   }
   void visitBeginAccessInst(BeginAccessInst *i);
   void visitEndAccessInst(EndAccessInst *i);

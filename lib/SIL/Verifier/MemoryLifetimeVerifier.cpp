@@ -413,6 +413,11 @@ void MemoryLifetimeVerifier::initDataflowInBlock(SILBasicBlock *block,
         registerStoreBorrowLocation(destAddr);
         break;
       }
+      case SILInstructionKind::EndBorrowAndTakeInst: {
+        auto *ebat = cast<EndBorrowAndTakeInst>(&I);
+        killBits(state, ebat->getAddress());
+        break;
+      }
       case SILInstructionKind::CopyAddrInst: {
         auto *CAI = cast<CopyAddrInst>(&I);
         if (CAI->isTakeOfSrc())
@@ -720,6 +725,13 @@ void MemoryLifetimeVerifier::checkBlock(SILBasicBlock *block, Bits &bits) {
         requireBitsClear(bits & nonTrivialLocations, SI->getDest(), &I);
         locations.setBits(bits, SI->getDest());
         requireNoStoreBorrowLocation(SI->getDest(), &I);
+        break;
+      }
+      case SILInstructionKind::EndBorrowAndTakeInst: {
+        auto *ebat = cast<EndBorrowAndTakeInst>(&I);
+        requireBitsSet(bits, ebat->getAddress(), &I);
+        locations.clearBits(bits, ebat->getAddress());
+        requireNoStoreBorrowLocation(ebat->getAddress(), &I);
         break;
       }
       case SILInstructionKind::StoreBorrowInst: {

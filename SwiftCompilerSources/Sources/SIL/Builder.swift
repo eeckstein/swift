@@ -731,6 +731,11 @@ public struct Builder {
     return notifyNew(storeAndBorrow.getAs(StoreAndBorrowInst.self))
   }
 
+  public func createEndBorrowAndTake(borrow: Value, address: Value) -> EndBorrowAndTakeInst {
+    let ebat = bridged.createEndBorrowAndTake(borrow.bridged, address.bridged)
+    return notifyNew(ebat.getAs(EndBorrowAndTakeInst.self))
+  }
+
   public func createInitExistentialRef(instance: Value,
                                        existentialType: Type,
                                        formalConcreteType: CanonicalType,

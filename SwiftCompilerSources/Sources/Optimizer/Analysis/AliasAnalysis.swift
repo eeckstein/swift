@@ -257,6 +257,9 @@ struct AliasAnalysis {
     case let storeAndBorrow as StoreAndBorrowInst:
       return memLoc.mayAlias(with: storeAndBorrow.destination, self) ? .init(write: true) : .noEffects
 
+    case let ebat as EndBorrowAndTakeInst:
+      return memLoc.mayAlias(with: ebat.address, self) ? .worstEffects : .noEffects
+
     case let mdi as MarkDependenceInst:
       if mdi.base.type.isAddress && memLoc.mayAlias(with: mdi.base, self) {
         return .init(read: true)
@@ -1073,6 +1076,7 @@ private extension Instruction {
          is LoadBorrowInst,
          is StoreInst,
          is StoreAndBorrowInst,
+         is EndBorrowAndTakeInst,
          is CopyAddrInst,
          is BuiltinInst,
          is StoreBorrowInst,

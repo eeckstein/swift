@@ -853,6 +853,10 @@ extension Value {
         value = storeAndBorrow.source
         continue
       }
+      if let ebat = value as? EndBorrowAndTakeInst {
+        value = ebat.borrow
+        continue
+      }
       return value
     }
   }

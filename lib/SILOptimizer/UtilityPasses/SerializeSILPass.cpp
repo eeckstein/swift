@@ -192,6 +192,7 @@ static bool hasOpaqueArchetype(TypeExpansionContext context,
   case SILInstructionKind::BorrowedFromInst:
   case SILInstructionKind::StoreBorrowInst:
   case SILInstructionKind::StoreAndBorrowInst:
+  case SILInstructionKind::EndBorrowAndTakeInst:
   case SILInstructionKind::BeginAccessInst:
   case SILInstructionKind::MoveOnlyWrapperToCopyableAddrInst:
   case SILInstructionKind::MoveOnlyWrapperToCopyableBoxInst:

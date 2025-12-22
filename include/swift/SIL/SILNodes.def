@@ -549,6 +549,8 @@ ABSTRACT_VALUE_AND_INST(SingleValueInstruction, ValueBase, SILInstruction)
                     SILInstruction, MayWrite, DoesNotRelease)
   SINGLE_VALUE_INST(StoreAndBorrowInst, store_and_borrow,
                     SILInstruction, MayWrite, DoesNotRelease)
+  SINGLE_VALUE_INST(EndBorrowAndTakeInst, end_borrow_and_take,
+                    SILInstruction, MayWrite, DoesNotRelease)
   // begin_access may trap. Trapping is unordered with respect to memory access,
   // and with respect to other traps, but it is still conservatively considered
   // a side effect.

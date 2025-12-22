@@ -132,6 +132,7 @@ struct OwnershipModelEliminatorVisitor
   bool visitStoreInst(StoreInst *si);
   bool visitStoreBorrowInst(StoreBorrowInst *si);
   bool visitStoreAndBorrowInst(StoreAndBorrowInst *si);
+  bool visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *ebat);
   bool visitCopyValueInst(CopyValueInst *cvi);
   bool visitExplicitCopyValueInst(ExplicitCopyValueInst *cvi);
   bool visitExplicitCopyAddrInst(ExplicitCopyAddrInst *cai);
@@ -327,6 +328,12 @@ bool OwnershipModelEliminatorVisitor::visitStoreAndBorrowInst(
   // are rewritten to be on the dest point.
   si->replaceAllUsesWith(si->getSrc());
   eraseInstruction(si);
+  return true;
+}
+
+bool OwnershipModelEliminatorVisitor::visitEndBorrowAndTakeInst(EndBorrowAndTakeInst *ebat) {
+  ebat->replaceAllUsesWith(ebat->getBorrow());
+  eraseInstruction(ebat);
   return true;
 }
 

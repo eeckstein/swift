@@ -2847,6 +2847,10 @@ BridgedInstruction BridgedBuilder::createStoreAndBorrow(BridgedValue src, Bridge
                                            dst.getSILValue())};
 }
 
+BridgedInstruction BridgedBuilder::createEndBorrowAndTake(BridgedValue borrow, BridgedValue address) const {
+  return {unbridged().createEndBorrowAndTake(regularLoc(), borrow.getSILValue(), address.getSILValue())};
+}
+
 BridgedInstruction BridgedBuilder::createInitExistentialRef(BridgedValue instance,
                                             BridgedType type,
                                             BridgedCanType formalConcreteType,

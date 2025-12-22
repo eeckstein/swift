@@ -212,6 +212,7 @@ TransitiveAddressWalker<Impl>::walk(SILValue projectedAddress) {
     if (isa<LoadInst>(user) || isa<CopyAddrInst>(user) ||
         isa<MarkUnresolvedMoveAddrInst>(user) || isIncidentalUse(user) ||
         isa<StoreInst>(user) || isa<StoreAndBorrowInst>(user) ||
+        isa<EndBorrowAndTakeInst>(user) ||
         isa<DestroyAddrInst>(user) ||
         isa<AssignInst>(user) || isa<LoadUnownedInst>(user) ||
         isa<StoreUnownedInst>(user) || isa<EndApplyInst>(user) ||

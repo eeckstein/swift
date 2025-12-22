@@ -1293,6 +1293,11 @@ StoreAndBorrowInst::StoreAndBorrowInst(SILDebugLocation DebugLoc, SILValue Src,
     : InstructionBase(DebugLoc, Dest->getType().getObjectType()),
       Operands(this, Src, Dest) {}
 
+EndBorrowAndTakeInst::EndBorrowAndTakeInst(SILDebugLocation debugLoc,
+                                           SILValue borrow, SILValue address)
+    : InstructionBase(debugLoc, borrow->getType()),
+      Operands(this, borrow, address) {}
+
 StringRef swift::getSILAccessKindName(SILAccessKind kind) {
   switch (kind) {
   case SILAccessKind::Init: return "init";

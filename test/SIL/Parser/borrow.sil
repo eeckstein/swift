@@ -111,14 +111,15 @@ bb1(%2 : @guaranteed $FakeOptional<C>):
 }
 
 // CHECK-LABEL: sil [ossa] @store_and_borrow :
-// CHECK:         %2 = store_and_borrow %0 to %1
+// CHECK:         %2 = store_and_borrow %0 to %1 : $*Builtin.NativeObject
+// CHECK-NEXT:    %3 = end_borrow_and_take %2 from %1 : $*Builtin.NativeObject
 // CHECK:       } // end sil function 'store_and_borrow'
 sil [ossa] @store_and_borrow : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %1 = alloc_stack $Builtin.NativeObject
   %2 = store_and_borrow %0 to %1
-  end_borrow %2
-  destroy_addr %1
+  %3 = end_borrow_and_take %2 from %1
+  destroy_value %3
   dealloc_stack %1
   %6 = tuple ()
   return %6
