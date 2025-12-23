@@ -1,0 +1,32 @@
+// RUN: %target-sil-opt %s -simplification -simplify-instruction=store_and_borrow | %FileCheck %s
+
+import Builtin
+import Swift
+
+class C {}
+
+// CHECK-LABEL: sil [ossa] @remove_dead :
+// CHECK:         store %1 to [init] %0
+// CHECK-NEXT:    %3 = tuple ()
+// CHECK:       } // end sil function 'remove_dead'
+sil [ossa] @remove_dead : $@convention(thin) (@owned C) -> @out C {
+bb0(%0: $*C, %1 : @owned $C):
+  %2 = store_and_borrow %1 to %0
+  debug_value %2, var, name "x"
+  end_borrow %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_alive :
+// CHECK:         %2 = store_and_borrow %1 to %0
+// CHECK-NEXT:    fix_lifetime %2
+// CHECK:       } // end sil function 'dont_remove_alive'
+sil [ossa] @dont_remove_alive : $@convention(thin) (@owned C) -> @out C {
+bb0(%0: $*C, %1 : @owned $C):
+  %2 = store_and_borrow %1 to %0
+  fix_lifetime %2
+  end_borrow %2
+  %r = tuple ()
+  return %r
+}

@@ -38,6 +38,7 @@ swift_compiler_sources(Optimizer
   SimplifyPointerToAddress.swift
   SimplifyRefCasts.swift
   SimplifyRetainReleaseValue.swift
+  SimplifyStoreAndBorrow.swift
   SimplifyStrongRetainRelease.swift
   SimplifyStruct.swift
   SimplifyStructExtract.swift
