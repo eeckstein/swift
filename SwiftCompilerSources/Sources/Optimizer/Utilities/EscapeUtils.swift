@@ -533,7 +533,7 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
         return .abortWalk
       }
       return .continueWalk
-    case let ebat as EndBorrowAndTakeInst:
+    case is EndBorrowAndTakeInst:
       break
     case let copyAddr as CopyAddrInst:
       if !followLoads(at: path) {

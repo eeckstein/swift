@@ -559,6 +559,7 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   // Promote stack allocations to values and eliminate redundant
   // loads.
   P.addMem2Reg();
+  P.addCOWOpts();
   P.addPerformanceConstantPropagation();
   //  Do a round of CFG simplification, followed by peepholes, then
   //  more CFG simplification.
@@ -582,6 +583,7 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   } else {
     P.addRedundantLoadElimination();
   }
+  P.addSimplification();
   // Optimize copies created during RLE.
   P.addSemanticARCOpts();
   P.addCopyToBorrowOptimization();

@@ -2201,3 +2201,18 @@ bb0(%0 : @owned $BI):
   unreachable
 }
 
+// CHECK-LABEL: sil [ossa] @copy_addr_take_trivial :
+// CHECK:         %2 = alloc_stack $Int
+// CHECK-NEXT:    store %1 to [trivial] %2
+// CHECK-NEXT:    store %1 to [trivial] %0
+// CHECK-LABEL: } // end sil function 'copy_addr_take_trivial'
+sil [ossa] @copy_addr_take_trivial : $@convention(thin) (Int) -> @out Int {
+bb0(%0 : $*Int, %1 : $Int):
+  %2 = alloc_stack $Int
+  store %1 to [trivial] %2
+  copy_addr [take] %2 to [init] %0
+  dealloc_stack %2
+  %r = tuple ()
+  return %r
+}
+

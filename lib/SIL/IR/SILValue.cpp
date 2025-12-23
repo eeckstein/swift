@@ -462,8 +462,15 @@ llvm::raw_ostream &swift::operator<<(llvm::raw_ostream &os,
 //===----------------------------------------------------------------------===//
 
 void Operand::updateReborrowFlags() {
-  if (!isa<BranchInst>(getUser()) &&
-      getOperandOwnership() == OperandOwnership::EndBorrow) {
+  if (isa<SILUndef>(get()))
+    return;
+
+  if (auto *bi = dyn_cast<BranchInst>(getUser())) {
+    if (bi->getDestBB()->getNumArguments() > getOperandNumber() &&
+        getOperandOwnership() == OperandOwnership::Reborrow) {
+      swift::updateReborrowFlags(get());
+    }
+  } else if (getOperandOwnership() == OperandOwnership::EndBorrow) {
     swift::updateReborrowFlags(get());
   }
 }

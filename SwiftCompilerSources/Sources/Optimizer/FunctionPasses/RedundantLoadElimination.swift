@@ -201,7 +201,7 @@ extension CopyAddrInst : LoadingInstruction {
 
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
-    if isTakeOfSource {
+    if loadOwnership == .take {
       let ebat = builder.createEndBorrowAndTake(borrow: value, address: source)
       let v = copyMarkDependencies(for: ebat, address: source, using: Builder(after: ebat, context))
       builder.createStore(source: v, destination: destination, ownership: storeOwnership)

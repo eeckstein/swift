@@ -148,6 +148,10 @@ bool COWOptsPass::optimizeBeginCOW(BeginCOWMutationInst *BCM) {
           endCOWMutationInsts.push_back(ECM);
       } else if (auto *urc = dyn_cast<UncheckedRefCastInst>(v)) {
         workList.push_back(urc->getOperand());
+      } else if (auto *sab = dyn_cast<StoreAndBorrowInst>(v)) {
+        workList.push_back(sab->getSrc());
+      } else if (auto *ebat = dyn_cast<EndBorrowAndTakeInst>(v)) {
+        workList.push_back(ebat->getBorrow());
       } else {
         return false;
       }
@@ -188,13 +192,14 @@ bool COWOptsPass::optimizeBeginCOW(BeginCOWMutationInst *BCM) {
       SILInstruction *inst = instWorkList.pop_back_val();
       for (;;) {
         if (potentialEscapePoints.contains(inst)) {
-          if (auto *store = dyn_cast<StoreInst>(inst)) {
+          if (isa<StoreInst>(inst) || isa<StoreAndBorrowInst>(inst)) {
             // Don't immediately bail on a store instruction. Instead, remember
             // it and check if it interferes with any (potential) load.
-            if (storeAddrsFound.insert(store->getDest())) {
+            SILValue destAddr = inst->getOperand(CopyLikeInstruction::Dest);
+            if (storeAddrsFound.insert(destAddr)) {
               LLVM_DEBUG(llvm::dbgs() << "Found store escape, record: ");
               LLVM_DEBUG(inst->dump());
-              storeAddrs.push_back(store->getDest());
+              storeAddrs.push_back(destAddr);
               numStoresFound += 1;
             }
           } else {

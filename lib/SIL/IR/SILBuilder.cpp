@@ -699,6 +699,12 @@ EndBorrowInst *SILBuilder::createEndBorrow(SILLocation loc, SILValue borrowedVal
                     EndBorrowInst(getSILDebugLocation(loc), borrowedValue));
 }
 
+EndBorrowAndTakeInst *SILBuilder::createEndBorrowAndTake(SILLocation Loc, SILValue borrowedValue,
+                                                         SILValue address) {
+  updateReborrowFlags(borrowedValue);
+  return insert(new (getModule())
+                    EndBorrowAndTakeInst(getSILDebugLocation(Loc), borrowedValue, address));
+}
 
 SILPhiArgument *SILBuilder::createSwitchOptional(
                                 SILLocation loc, SILValue operand,
