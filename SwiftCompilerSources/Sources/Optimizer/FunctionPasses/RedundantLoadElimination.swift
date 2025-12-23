@@ -155,7 +155,15 @@ extension LoadInst : LoadingInstruction {
   fileprivate var kind: LoadKind { LoadKind(loadOwnership: loadOwnership) }
 
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
-    replace(with: value, context)
+    if loadOwnership == .take {
+      let builder = Builder(before: self, context)
+      let ebat = builder.createEndBorrowAndTake(borrow: value, address: self.address)
+      let v = copyMarkDependencies(for: ebat, address: address, using: Builder(after: ebat, context))
+      replace(with: v, context)
+    } else {
+      let v = copyMarkDependencies(for: value, address: address, using: Builder(before: self, context))
+      replace(with: v, context)
+    }
   }
 
   func trySplitLoad(_ context: FunctionPassContext) -> Bool { trySplit(context) != nil }
@@ -193,7 +201,14 @@ extension CopyAddrInst : LoadingInstruction {
 
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
-    builder.createStore(source: value, destination: destination, ownership: storeOwnership)
+    if isTakeOfSource {
+      let ebat = builder.createEndBorrowAndTake(borrow: value, address: source)
+      let v = copyMarkDependencies(for: ebat, address: source, using: Builder(after: ebat, context))
+      builder.createStore(source: v, destination: destination, ownership: storeOwnership)
+    } else {
+      let v = copyMarkDependencies(for: value, address: source, using: Builder(before: self, context))
+      builder.createStore(source: v, destination: destination, ownership: storeOwnership)
+    }
     context.erase(instruction: self)
   }
 
@@ -221,7 +236,9 @@ extension DestroyAddrInst : LoadingInstruction {
 
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
-    builder.createDestroyValue(operand: value)
+    let ebat = builder.createEndBorrowAndTake(borrow: value, address: address)
+    let v = copyMarkDependencies(for: ebat, address: address, using: Builder(after: ebat, context))
+    builder.createDestroyValue(operand: v)
     context.erase(instruction: self)
   }
 
@@ -235,7 +252,8 @@ extension LoadBorrowInst : LoadingInstruction {
   fileprivate var kind: LoadKind { .borrow }
 
   func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
-    replace(with: value, context)
+    let v = copyMarkDependencies(for: value, address: address, using: Builder(before: self, context))
+    replace(with: v, context)
   }
 
   func trySplitLoad(_ context: FunctionPassContext) -> Bool { false }
@@ -270,11 +288,6 @@ private extension LoadingInstruction {
     }
     switch variant {
     case .mandatory, .mandatoryInGlobalInit:
-      if kind == .take {
-        // load [take] would require to shrinkMemoryLifetime. But we don't want to do this in the mandatory
-        // pipeline to not shrink or remove an alloc_stack which is relevant for debug info.
-        return false
-      }
       switch address.accessBase {
       case .box, .stack, .global:
         break
@@ -370,10 +383,10 @@ private extension LoadingInstruction {
     }
 
     switch self.kind {
-    case .unqualified, .trivial, .borrow:
+    case .unqualified, .trivial, .borrow, .take:
       break
 
-    case .copy, .take:
+    case .copy:
 
       // The liverange of the value has an "exit", i.e. a path which doesn't lead to the load,
       // it means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -420,7 +433,7 @@ private extension LoadingInstruction {
       }
     }
 
-    if let loadBorrow = self as? LoadBorrowInst {
+    if self is LoadBorrowInst || kind == .take {
       for availableValue in availableValues {
         switch availableValue {
         case .viaLoadBorrow, .viaStoreAndBorrow:
@@ -429,7 +442,11 @@ private extension LoadingInstruction {
           break
         }
       }
-      worklist.pushIfNotVisited(contentsOf: loadBorrow.uses.endingLifetime.users)
+      if let loadBorrow = self as? LoadBorrowInst {
+        worklist.pushIfNotVisited(contentsOf: loadBorrow.uses.endingLifetime.users)
+      } else if kind == .take {
+        worklist.pushIfNotVisited(self)
+      }
 
       while let inst = worklist.pop() {
         liverange.insert(inst)
@@ -471,12 +488,17 @@ private extension LoadingInstruction {
           }
         }
       }
-      guard let debs = getDeadEndBorrowBlocks(of: loadBorrow, in: liverange) else {
-        return .notRedundant
+      if let loadBorrow = self as? LoadBorrowInst {
+        guard let debs = getDeadEndBorrowBlocks(of: loadBorrow, in: liverange) else {
+          return .notRedundant
+        }
+        return .redundant(AvailableValues(values: availableValues,
+                                          endBorrowsToInsert: endBorrowsToInsert,
+                                          deadEndBorrowBlocksOfLoad: debs))
       }
       return .redundant(AvailableValues(values: availableValues,
                                         endBorrowsToInsert: endBorrowsToInsert,
-                                        deadEndBorrowBlocksOfLoad: debs))
+                                        deadEndBorrowBlocksOfLoad: []))
     }
 
     return .redundant(AvailableValues(values: availableValues, endBorrowsToInsert: [], deadEndBorrowBlocksOfLoad: []))
@@ -537,14 +559,8 @@ private func visit(instruction: Instruction,
     }
     fallthrough
   case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst:
-    // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
-    // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
-    // instructions prevent that the `load [take]` will illegally mutate memory which is protected
-    // from mutation by the scope.
-    if load.kind != .take {
-      return .transparent
-    }
-    
+    return .transparent
+
   case let precedingLoad as LoadInst:
     let precedingLoadPath = precedingLoad.address.constantAccessPath
     if let projection = precedingLoadPath.getMaterializableProjection(to: accessPath) {
@@ -563,9 +579,9 @@ private func visit(instruction: Instruction,
     {
       potentiallyRedundantSubpath = precedingLoadPath
     }
-    if load.kind != .take {
-      return .transparent
-    }
+    // Note that if this is a `load [take]` it cannot alias, because it would destroy the value in memory
+    // before the redundant load is loading it.
+    return .transparent
 
   case let precedingLoad as LoadBorrowInst:
     let precedingLoadPath = precedingLoad.address.constantAccessPath
@@ -585,9 +601,7 @@ private func visit(instruction: Instruction,
     {
       potentiallyRedundantSubpath = precedingLoadPath
     }
-    if load.kind != .take {
-      return .transparent
-    }
+    return .transparent
 
   case let precedingStore as StoreInst:
     if precedingStore.source is Undef {
@@ -645,16 +659,8 @@ private func visit(instruction: Instruction,
   default:
     break
   }
-  if load.kind == .take {
-    // In case of `take`, don't allow reading instructions in the liverange.
-    // Otherwise we cannot shrink the memory liverange afterwards.
-    if instruction.mayReadOrWrite(address: load.address, context.aliasAnalysis) {
-      return .bad
-    }
-  } else {
-    if instruction.mayWrite(toAddress: load.address, context.aliasAnalysis) {
-      return .bad
-    }
+  if instruction.mayWrite(toAddress: load.address, context.aliasAnalysis) {
+    return .bad
   }
   return .transparent
 }
@@ -664,7 +670,9 @@ private func replace(load: LoadingInstruction,
                      _ context: FunctionPassContext)
 {
   var ssaUpdater = SSAUpdater(function: load.parentFunction,
-                              type: load.type, ownership: load.ownership, context)
+                              type: load.type,
+                              ownership: load.kind == .take ? .guaranteed : load.ownership,
+                              context)
 
   var concreteAvailableValues = [Value]()
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
@@ -704,16 +712,9 @@ private func replace(load: LoadingInstruction,
     newValue = ssaUpdater.getValue(inMiddleOf: load.parentBlock)
   }
 
-  let needUpdateBorrowedFrom = load.ownership == .guaranteed
-  
-  // Make sure to keep dependencies valid after replacing the load
-  let updatedNewValue = copyMarkDependencies(for: newValue, from: load, context)
+  load.replace(withAvailableValue: newValue, context)
 
-  load.replace(withAvailableValue: updatedNewValue, context)
-
-  if needUpdateBorrowedFrom {
-    updateBorrowedFrom(for: ssaUpdater.insertedPhis, context)
-  }
+  updateBorrowedFrom(for: ssaUpdater.insertedPhis, context)
 }
 
 private func provideValue(
@@ -732,64 +733,7 @@ private func provideValue(
     // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
     return availableValue.value.createProjectionAndCopy(path: projectionPath,
                                                         builder: availableValue.getBuilderForProjections(context))
-  case .take:
-    switch availableValue {
-    case .viaLoad(let load):
-      assert(load.loadOwnership == .copy)
-      var value: Value? = nil
-      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedLoad in
-        if isProjectedLoad {
-          assert(value == nil)
-          splitLoad.set(ownership: .take, context)
-          value = Builder(after: splitLoad, context).createCopyValue(operand: splitLoad)
-        }
-      }
-      return value!
-    case .viaLoadBorrow(let load, let deadEndBorrowBlocks):
-      assert(deadEndBorrowBlocks.isEmpty)
-      var value: Value? = nil
-      load.split(alongPath: projectionPath, context) { splitLoad, isProjectedStore in
-        if isProjectedStore {
-          assert(value == nil)
-          let lb = splitLoad as! LoadBorrowInst
-          let builder = Builder(after: lb, context)
-          let newLoad = builder.createLoad(fromAddress: lb.address, ownership: .take)
-          let beginBorrow = builder.createBeginBorrow(of: newLoad)
-          lb.replace(with: beginBorrow, context)
-          value = newLoad
-        }
-      }
-      return value!
-    case .viaStore(let store):
-      var value: Value? = nil
-      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
-        if isProjectedStore {
-          assert(value == nil)
-          if splitStore.storeOwnership == .assign {
-            Builder(after: splitStore, context).createDestroyAddr(address: splitStore.destination)
-          }
-          value = splitStore.source
-          context.erase(instruction: splitStore)
-        }
-      }
-      return value!
-    case .viaStoreAndBorrow(let store, let deadEndBorrowBlocks):
-      assert(deadEndBorrowBlocks.isEmpty)
-      var value: Value? = nil
-      store.split(alongPath: projectionPath, context) { splitStore, isProjectedStore in
-        if isProjectedStore {
-          assert(value == nil)
-          let sab = splitStore as! StoreAndBorrowInst
-          value = sab.source
-          let beginBorrow = Builder(after: sab, context).createBeginBorrow(of: sab)
-          sab.replace(with: beginBorrow, context)
-        }
-      }
-      return value!
-    case .viaCopyAddr:
-      fatalError("copy_addr must be lowered before shrinking lifetime")
-    }
-  case .borrow:
+  case .borrow, .take:
     switch availableValue {
     case .viaLoad(let load):
       assert(load.loadOwnership == .copy)
@@ -868,20 +812,18 @@ private func removeEndBorrows(of value: Value, in blocks: [BasicBlock], _ contex
 ///     %4 = mark_dependence %3 on %0
 ///     // replace %3 with %4
 ///
-private func copyMarkDependencies(for newValue: Value, from load: LoadingInstruction, _ context: FunctionPassContext) -> Value {
-  var inserter = MarkDependenceInserter(value: newValue, load: load, context: context)
-  _ = inserter.walkUp(address: load.address, path: UnusedWalkingPath())
+private func copyMarkDependencies(for newValue: Value, address: Value, using builder: Builder) -> Value {
+  var inserter = MarkDependenceInserter(value: newValue, builder: builder)
+  _ = inserter.walkUp(address: address, path: UnusedWalkingPath())
   return inserter.value
 }
 
 private struct MarkDependenceInserter : AddressUseDefWalker {
   var value: Value
-  let load: LoadingInstruction
-  let context: FunctionPassContext
+  let builder: Builder
 
   mutating func walkUp(address: Value, path: UnusedWalkingPath) -> WalkResult {
     if let mdi = address as? MarkDependenceInst {
-      let builder = Builder(before: load, context)
       value = builder.createMarkDependence(value: value, base: mdi.base, kind: mdi.dependenceKind)
     }
     return walkUpDefault(address: address, path: path)

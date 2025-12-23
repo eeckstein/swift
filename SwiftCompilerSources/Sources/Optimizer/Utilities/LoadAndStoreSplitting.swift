@@ -60,6 +60,9 @@ extension StoreInst {
   }
 
   func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
+    if projectionPath.isEmpty {
+      return true
+    }
     return source.type.canSplit(alongPath: projectionPath, in: parentFunction)
   }
 
@@ -149,6 +152,9 @@ extension StoreAndBorrowInst {
   }
 
   func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
+    if projectionPath.isEmpty {
+      return true
+    }
     return allScopeEndsAreEndBorrows && source.type.canSplit(alongPath: projectionPath, in: parentFunction)
   }
 
@@ -239,6 +245,9 @@ extension LoadInst {
   }
 
   func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
+    if projectionPath.isEmpty {
+      return true
+    }
     return type.canSplit(alongPath: projectionPath, in: parentFunction)
   }
 
@@ -306,6 +315,9 @@ extension LoadBorrowInst {
   }
 
   func canSplit(alongPath projectionPath: SmallProjectionPath) -> Bool {
+    if projectionPath.isEmpty {
+      return true
+    }
     return allScopeEndsAreEndBorrows && type.canSplit(alongPath: projectionPath, in: parentFunction)
   }
 

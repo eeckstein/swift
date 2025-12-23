@@ -342,9 +342,11 @@ bb0(%0 : $Agg1):
 // CHECK-LABEL: sil [ossa] @store_promotion :
 // CHECK:         %1 = alloc_box
 // CHECK-NEXT:    project_box
-// CHECK-NEXT:    [[C:%.*]] = copy_value %0
+// CHECK-NEXT:    [[SB:%.*]] = store_and_borrow %0
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[SB]]
+// CHECK-NEXT:    [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK-NEXT:    destroy_value [[EB]]
 // CHECK-NEXT:    destroy_value [[C]]
-// CHECK-NEXT:    destroy_value %0
 // CHECK-NEXT:    destroy_value %1
 // CHECK-NEXT:    tuple
 // CHECK-LABEL: } // end sil function 'store_promotion'
@@ -1289,8 +1291,10 @@ bb0(%0 : $*Builtin.Int64, %1 : @guaranteed $Builtin.NativeObject):
 }
 
 // CHECK-LABEL: sil [ossa] @insert_mark_dependence :
+// CHECK:         [[SB:%.*]] = store_and_borrow %0
 // CHECK:         mark_dependence
-// CHECK:         [[MD:%.*]] = mark_dependence %0 : $B on %1
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         [[MD:%.*]] = mark_dependence [[EB]] : $B on %1
 // CHECK:         return [[MD]]
 // CHECK-LABEL: } // end sil function 'insert_mark_dependence'
 sil [ossa] @insert_mark_dependence : $@convention(thin) (@owned B, @guaranteed B) -> @owned B {
@@ -1304,9 +1308,11 @@ bb0(%0 : @owned $B, %1 : @guaranteed $B):
 }
 
 // CHECK-LABEL: sil [ossa] @insert_two_mark_dependences :
+// CHECK:         [[SB:%.*]] = store_and_borrow %0
 // CHECK:         mark_dependence
 // CHECK:         mark_dependence
-// CHECK:         [[MD1:%.*]] = mark_dependence %0 : $B on %2
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         [[MD1:%.*]] = mark_dependence [[EB]] : $B on %2
 // CHECK:         [[MD2:%.*]] = mark_dependence [[MD1]] : $B on %1
 // CHECK:         return [[MD2]]
 // CHECK-LABEL: } // end sil function 'insert_two_mark_dependences'
@@ -1555,9 +1561,9 @@ bb0(%0 : $Builtin.RawPointer, %1 : $A2):
 
 // CHECK-LABEL: sil [ossa] @store_trivial_load_non_trivial_enum
 // CHECK:         %0 = enum $Optional<B>, #Optional.none!enumelt
-// CHECK-NOT:     store 
-// CHECK-NOT:     load 
-// CHECK:         return %0
+// CHECK:         [[SB:%.*]] = store_and_borrow %0
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         return [[EB]]
 // CHECK-LABEL: } // end sil function 'store_trivial_load_non_trivial_enum'
 sil [ossa] @store_trivial_load_non_trivial_enum : $@convention(thin) () -> @owned Optional<B> {
 bb0:
@@ -1572,7 +1578,9 @@ bb0:
 // CHECK-LABEL: sil [ossa] @dont_take_in_borrow_scope :
 // CHECK:         %1 = load_borrow %0
 // CHECK-NEXT:    %2 = copy_value %1
-// CHECK:         load [take]
+// CHECK:         apply {{%[0-9]+}}(%2)
+// CHECK:         [[EB:%.*]] = end_borrow_and_take %1
+// CHECK:         apply {{%[0-9]+}}([[EB]])
 // CHECK-LABEL: } // end sil function 'dont_take_in_borrow_scope'
 sil [ossa] @dont_take_in_borrow_scope : $@convention(thin) (@in B) -> () {
 bb0(%0 : $*B):
@@ -1663,8 +1671,9 @@ bb0(%0 : $*B, %1 : $*B):
 
 // CHECK-LABEL: sil [ossa] @copy_addr_load_take :
 // CHECK:         [[LD:%.*]] = load [copy]
-// CHECK-NOT:     copy_addr
-// CHECK:         return [[LD]]
+// CHECK:         [[SB:%.*]] = store_and_borrow [[LD]]
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         return [[EB]]
 // CHECK-LABEL: } // end sil function 'copy_addr_load_take'
 sil [ossa] @copy_addr_load_take : $@convention(thin) (@in_guaranteed B) -> @owned B {
 bb0(%0 : $*B):
@@ -1743,7 +1752,9 @@ bb0(%0 : $UInt64):
 // CHECK:         [[E:%.*]] = enum
 // CHECK:         [[S:%.*]] = struct $S ([[E]] : $Optional<String>)
 // CHECK:         [[F:%.*]] = struct_extract [[S]] : $S, #S.e
-// CHECK:         return [[F]]
+// CHECK:         [[SB:%.*]] = store_and_borrow [[F]]
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         return [[EB]]
 // CHECK-LABEL: } // end sil function 'struct_of_optional_none'
 sil [ossa] @struct_of_optional_none : $@convention(thin) () -> @owned Optional<String> {
 bb0:
@@ -1761,7 +1772,9 @@ bb0:
 // CHECK:         [[E:%.*]] = enum
 // CHECK:         [[T:%.*]] = tuple ([[E]] : $Optional<String>, %0 : $Int)
 // CHECK:         [[F:%.*]] = tuple_extract [[T]] : $(Optional<String>, Int), 0
-// CHECK:         return [[F]]
+// CHECK:         [[SB:%.*]] = store_and_borrow [[F]]
+// CHECK:         [[EB:%.*]] = end_borrow_and_take [[SB]]
+// CHECK:         return [[EB]]
 // CHECK-LABEL: } // end sil function 'tuple_of_optional_none'
 sil [ossa] @tuple_of_optional_none : $@convention(thin) (Int) -> @owned Optional<String> {
 bb0(%0 : $Int):
@@ -1960,7 +1973,10 @@ bb0(%0 : $*B2):
 // CHECK:         %2 = store_and_borrow %0
 // CHECK:       bb2:
 // CHECK-NEXT:    apply undef(%2)
-// CHECK-NEXT:    end_borrow %2
+// CHECK:       bb3([[P:%.*]] : @reborrow $B):
+// CHECK-NEXT:    [[BF:%.*]] = borrowed [[P]] : $B from ()
+// CHECK-NEXT:    [[EB:%.*]] = end_borrow_and_take [[BF]]
+// CHECK-NEXT:    destroy_value [[EB]]
 // CHECK-LABEL: } // end sil function 'store_and_borrow_with_exit'
 sil [ossa] @store_and_borrow_with_exit : $@convention(thin) (@owned B) -> () {
 bb0(%0 : @owned $B):

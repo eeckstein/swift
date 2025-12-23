@@ -462,7 +462,8 @@ llvm::raw_ostream &swift::operator<<(llvm::raw_ostream &os,
 //===----------------------------------------------------------------------===//
 
 void Operand::updateReborrowFlags() {
-  if (isa<EndBorrowInst>(getUser())) {
+  if (!isa<BranchInst>(getUser()) &&
+      getOperandOwnership() == OperandOwnership::EndBorrow) {
     swift::updateReborrowFlags(get());
   }
 }
