@@ -16,16 +16,16 @@ let storeAndBorrowOptimization = FunctionPass(name: "store-and-borrow-optimizati
     (function: Function, context: FunctionPassContext) in
 
   for inst in function.instructions {
-    if let sab = inst as? StoreAndBorrowInst {
-      optimize(storeAndBorrow: sab, context)
+    if let ebat = inst as? EndBorrowAndTakeInst {
+      optimize(endBorrowAndTake: ebat, context)
     }
   }
 }
 
-private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPassContext) {
+private func optimize(endBorrowAndTake: EndBorrowAndTakeInst, _ context: FunctionPassContext) {
   var worklist = ValueWorklist(context)
   defer { worklist.deinitialize() }
-  worklist.pushIfNotVisited(storeAndBorrow)
+  worklist.pushIfNotVisited(endBorrowAndTake.borrow)
 
   var startInsts = InstructionSet(context)
   defer { startInsts.deinitialize() }
@@ -35,6 +35,8 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
 
   var storeAndBorrows = Stack<StoreAndBorrowInst>(context)
   defer { storeAndBorrows.deinitialize() }
+  var loadBorrows = Stack<LoadBorrowInst>(context)
+  defer { loadBorrows.deinitialize() }
   var borrowedFroms = Stack<BorrowedFromInst>(context)
   defer { borrowedFroms.deinitialize() }
   var endBorrowAndTakes = Stack<EndBorrowAndTakeInst>(context)
@@ -45,6 +47,9 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
     case let sab as StoreAndBorrowInst:
       storeAndBorrows.append(sab)
       startInsts.insert(sab)
+    case let lb as LoadBorrowInst where lb.address.accessBase == endBorrowAndTake.address.accessBase:
+      loadBorrows.append(lb)
+      startInsts.insert(lb)
     case let bb as BorrowedFromInst:
       borrowedFroms.append(bb)
       for incoming in bb.borrowedPhi.incomingValues {
@@ -85,7 +90,7 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
     {
       return
     }
-    if inst.mayReadOrWrite(address: storeAndBorrow.destination, aliasAnalysis) {
+    if inst.mayReadOrWrite(address: endBorrowAndTake.address, aliasAnalysis) {
       return
     }
     liverange.pushPredecessors(of: inst)
@@ -104,6 +109,22 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
       context)
   }
 
+  // Create new borrow scopes for each StoreAndBorrowInst
+  for sab in storeAndBorrows {
+    // Create a new borrow scope for the source value
+    let builder = Builder(before: sab, context)
+    let beginBorrow = builder.createBeginBorrow(of: sab.source)
+    sab.replace(with: beginBorrow, context)
+  }
+
+  for lb in loadBorrows {
+    let builder = Builder(before: lb, context)
+    let newLoad = builder.createLoad(fromAddress: lb.address, ownership: .take)
+    let beginBorrow = builder.createBeginBorrow(of: newLoad)
+    lb.replace(with: beginBorrow, context)
+  }
+
+
   for bf in borrowedFroms {
     for branchOp in bf.borrowedPhi.incomingOperands {
       let branch = branchOp.instruction as! BranchInst
@@ -112,8 +133,8 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
 
       let newArg: Value
       switch branchOp.value {
-      case let sab as StoreAndBorrowInst:
-        newArg = sab.source
+      case let bb as BeginBorrowInst:
+        newArg = bb.borrowedValue
       case let bf as BorrowedFromInst:
         newArg = bf.parentBlock.arguments[bf.borrowedPhi.value.index + 1]
       default:
@@ -134,26 +155,18 @@ private func optimize(storeAndBorrow: StoreAndBorrowInst, _ context: FunctionPas
     let ownedValue: Value
     let borrowedValue: Value
     switch ebat.borrow {
-    case let sab as StoreAndBorrowInst:
-      ownedValue = sab.source
-      borrowedValue = sab
+    case let bb as BeginBorrowInst:
+      ownedValue = bb.borrowedValue
+      borrowedValue = bb
     case let bf as BorrowedFromInst:
       ownedValue = bf.parentBlock.arguments[bf.borrowedPhi.value.index + 1]
       borrowedValue = bf
     default:
-      fatalError("unknown source of phi argument")
+      fatalError("unknown source of end_borrow_and_take")
     }
     let builder = Builder(before: ebat, context)
     builder.createEndBorrow(of: borrowedValue)
     ebat.replace(with: ownedValue, context)
-  }
-
-  // Create new borrow scopes for each StoreAndBorrowInst
-  for sab in storeAndBorrows {
-    // Create a new borrow scope for the source value
-    let builder = Builder(before: sab, context)
-    let beginBorrow = builder.createBeginBorrow(of: sab.source)
-    sab.replace(with: beginBorrow, context)
   }
 
   updateBorrowedFrom(for: borrowedFroms.map{ $0.borrowedPhi }, context)

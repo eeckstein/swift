@@ -10,13 +10,13 @@ class C {
   @_hasStorage let i: Int
 }
 
-// CHECK-LABEL: sil [ossa] @remove_simple :
+// CHECK-LABEL: sil [ossa] @store_and_borrow :
 // CHECK:         %2 = begin_borrow %0
 // CHECK:         %3 = ref_element_addr %2
 // CHECK:         end_borrow %2
 // CHECK:         return %0
-// CHECK:       } // end sil function 'remove_simple'
-sil [ossa] @remove_simple : $@convention(thin) (@owned C) -> @owned C {
+// CHECK:       } // end sil function 'store_and_borrow'
+sil [ossa] @store_and_borrow : $@convention(thin) (@owned C) -> @owned C {
 bb0(%0 : @owned $C):
   %1 = alloc_stack $C
   %2 = store_and_borrow %0 to %1
@@ -26,6 +26,23 @@ bb0(%0 : @owned $C):
   %6 = end_borrow_and_take %2 from %1
   dealloc_stack %1
   return %6
+}
+
+// CHECK-LABEL: sil [ossa] @load_borrow :
+// CHECK:         %1 = load [take] %0
+// CHECK:         %2 = begin_borrow %1
+// CHECK:         %3 = ref_element_addr %2
+// CHECK:         end_borrow %2
+// CHECK:         return %1
+// CHECK:       } // end sil function 'load_borrow'
+sil [ossa] @load_borrow : $@convention(thin) (@in C) -> @owned C {
+bb0(%0 : $*C):
+  %1 = load_borrow %0
+  %2 = ref_element_addr %1, #C.i
+  %3 = load [trivial] %2
+  fix_lifetime %3
+  %5 = end_borrow_and_take %1 from %0
+  return %5
 }
 
 // CHECK-LABEL: sil [ossa] @phi_arguments :
