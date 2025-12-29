@@ -89,6 +89,8 @@ PASS(EarlyRedundantLoadElimination, "early-redundant-load-elimination",
      "Early Redundant Load Elimination")
 PASS(RedundantLoadElimination, "redundant-load-elimination",
      "Redundant Load Elimination")
+PASS(StoreAndBorrowOptimization, "store-and-borrow-optimization",
+     "Optimizes store_and_borrow instructions")
 PASS(DeadAccessScopeElimination, "dead-access-scope-elimination",
      "Removes dead, non-conflicting access scopes")
 PASS(DeadStoreElimination, "dead-store-elimination",

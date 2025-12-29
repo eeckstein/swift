@@ -41,6 +41,7 @@ swift_compiler_sources(Optimizer
   RedundantLoadElimination.swift
   SimplificationPasses.swift
   StackPromotion.swift
+  StoreAndBorrowOptimization.swift
   StripObjectHeaders.swift
   TempLValueElimination.swift
   TempRValueElimination.swift

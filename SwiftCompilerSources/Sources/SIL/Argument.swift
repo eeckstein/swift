@@ -30,6 +30,11 @@ public class Argument : Value, Hashable {
     return parentBlock.arguments.firstIndex(of: self)!
   }
 
+  public func set(ownership: Ownership, _ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    bridged.setOwnership(ownership._bridged)
+  }
+
   public var isReborrow: Bool { bridged.isReborrow() }
 
   public func set(reborrow: Bool, _ context: some MutatingContext) {

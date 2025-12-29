@@ -99,6 +99,7 @@ private func registerSwiftPasses() {
   registerPass(deadAccessScopeElimination, { deadAccessScopeElimination.run($0) })
   registerPass(deadStoreElimination, { deadStoreElimination.run($0) })
   registerPass(redundantLoadElimination, { redundantLoadElimination.run($0) })
+  registerPass(storeAndBorrowOptimization, { storeAndBorrowOptimization.run($0) })
   registerPass(mandatoryRedundantLoadElimination, { mandatoryRedundantLoadElimination.run($0) })
   registerPass(earlyRedundantLoadElimination, { earlyRedundantLoadElimination.run($0) })
   registerPass(deinitDevirtualizer, { deinitDevirtualizer.run($0) })

@@ -660,6 +660,10 @@ BridgedBasicBlock BridgedArgument::getParent() const {
   return {getArgument()->getParent()};
 }
 
+void BridgedArgument::setOwnership(BridgedValue::Ownership ownership) const {
+  getArgument()->setOwnershipKind(BridgedValue::unbridge(ownership));
+}
+
 bool BridgedArgument::isReborrow() const { return getArgument()->isReborrow(); }
 void BridgedArgument::setReborrow(bool reborrow) const {
   getArgument()->setReborrow(reborrow);
