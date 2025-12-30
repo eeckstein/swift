@@ -145,7 +145,7 @@ private protocol LoadingInstruction: Instruction {
   var kind: LoadKind { get }
   var canLoadValue: Bool { get }
   func trySplitLoad(_ context: FunctionPassContext) -> Bool
-  func replace(withAvailableValue value: Value, _ context: FunctionPassContext)
+  func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext)
 }
 
 extension LoadInst : LoadingInstruction {
@@ -154,7 +154,7 @@ extension LoadInst : LoadingInstruction {
 
   fileprivate var kind: LoadKind { LoadKind(loadOwnership: loadOwnership) }
 
-  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext) {
     if loadOwnership == .take {
       let builder = Builder(before: self, context)
       let ebat = builder.createEndBorrowAndTake(borrow: value, address: self.address)
@@ -199,7 +199,7 @@ extension CopyAddrInst : LoadingInstruction {
     return true
   }
 
-  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
     if loadOwnership == .take {
       let ebat = builder.createEndBorrowAndTake(borrow: value, address: source)
@@ -234,7 +234,7 @@ extension DestroyAddrInst : LoadingInstruction {
     !type.isTrivial(in: parentFunction)
   }
 
-  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
     let ebat = builder.createEndBorrowAndTake(borrow: value, address: address)
     let v = copyMarkDependencies(for: ebat, address: address, using: Builder(after: ebat, context))
@@ -251,8 +251,25 @@ extension LoadBorrowInst : LoadingInstruction {
 
   fileprivate var kind: LoadKind { .borrow }
 
-  func replace(withAvailableValue value: Value, _ context: FunctionPassContext) {
+  func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext) {
     let v = copyMarkDependencies(for: value, address: address, using: Builder(before: self, context))
+    if !hasSameAccessBase {
+      var worklist = SpecificInstructionWorklist<SingleValueInstruction>(context)
+      defer { worklist.deinitialize() }
+      worklist.pushIfNotVisited(self)
+      while let svi = worklist.pop() {
+        if !svi.uses.notEndingLifetime.isEmpty {
+          let builder = Builder(after: svi, context)
+          let md = builder.createMarkDependence(value: svi, base: self.address, kind: .Escaping)
+          svi.uses.ignore(user: md).notEndingLifetime.replaceAll(with: md, context)
+        }
+        for use in svi.uses.endingLifetime {
+          if let branch = use.instruction as? BranchInst {
+            worklist.pushIfNotVisited(Phi(branch.getArgument(for: use))!.borrowedFrom!)
+          }
+        }
+      }
+    }
     replace(with: v, context)
   }
 
@@ -675,7 +692,12 @@ private func replace(load: LoadingInstruction,
                               context)
 
   var concreteAvailableValues = [Value]()
+  var hasSameAccessBase = false
+  let accessBase = load.address.accessBase
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
+    if availableValue.address.accessBase == accessBase {
+      hasSameAccessBase = true
+    }
     let block = availableValue.instruction.parentBlock
     let concreteValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(concreteValue, in: block)
@@ -712,7 +734,7 @@ private func replace(load: LoadingInstruction,
     newValue = ssaUpdater.getValue(inMiddleOf: load.parentBlock)
   }
 
-  load.replace(withAvailableValue: newValue, context)
+  load.replace(withAvailableValue: newValue, hasSameAccessBase: hasSameAccessBase, context)
 
   updateBorrowedFrom(for: ssaUpdater.insertedPhis, context)
 }

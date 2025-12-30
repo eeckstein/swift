@@ -324,6 +324,19 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
             (!store->getFunction()->hasOwnership() || !storeSrc->isLexical()));
   }
 
+  if (auto *store = dyn_cast<StoreAndBorrowInst>(Inst)) {
+    for (Operand *use : store->getUses()) {
+      if (use->isLifetimeEnding()) {
+        if (!isa<EndBorrowInst>(use->getUser()))
+          return false;
+      }
+    }
+    return true;
+  }
+
+  if (isa<MarkDependenceInst>(Inst))
+    return true;
+
   // Conceptually this instruction has no side-effects.
   if (isa<InitExistentialAddrInst>(Inst))
     return true;
@@ -476,6 +489,9 @@ hasUnremovableUsers(SILInstruction *allocation, UserList *Users,
       return true;
     }
 
+    if (isa<StoreAndBorrowInst>(I) || isa<MarkDependenceInst>(I))
+      continue;
+
     // At this point, we can remove the instruction as long as all of its users
     // can be removed as well. Scan its users and add them to the worklist for
     // recursive processing.
@@ -492,6 +508,16 @@ hasUnremovableUsers(SILInstruction *allocation, UserList *Users,
                                     << *SI);
             return true;
           }
+
+        if (auto *sab = dyn_cast<StoreAndBorrowInst>(User)) {
+          if (Op->get() == sab->getSrc())
+            return true;
+        }
+
+        if (auto *md = dyn_cast<MarkDependenceInst>(User)) {
+          if (Op->get() == md->getValue() || !Op->get()->getType().isAddress())
+            return true;
+        }
 
         // Otherwise, add normal instructions to the worklist for processing.
         Worklist.push_back(User);
@@ -926,6 +952,52 @@ DeadObjectElimination::buildDIExpression(SILInstruction *current) {
   return {};
 }
 
+static bool fixUsers(UserList usersToRemove) {
+  // In ossa, we are going to delete the dead element store and insert a
+  // destroy_value of the store's source. This is shortening the store's
+  // source lifetime. Check if there was a pointer escape of the store's
+  // source, if so bail out.
+  for (auto *user : usersToRemove) {
+    if (auto *store = dyn_cast<StoreInst>(user)) {
+      if (store->getOwnershipQualifier() != StoreOwnershipQualifier::Trivial &&
+          findPointerEscape(store->getSrc())) {
+        return false;
+      }
+    }
+    if (auto *store = dyn_cast<StoreAndBorrowInst>(user)) {
+      if (findPointerEscape(store->getSrc())) {
+        return false;
+      }
+    }
+  }
+  for (auto *user : usersToRemove) {
+    if (auto *store = dyn_cast<StoreInst>(user)) {
+      if (store->getOwnershipQualifier() != StoreOwnershipQualifier::Trivial) {
+        SILBuilderWithScope(store).createDestroyValue(store->getLoc(),
+                                                      store->getSrc());
+      }
+      continue;
+    }
+    if (auto *store = dyn_cast<StoreAndBorrowInst>(user)) {
+      SILBuilderWithScope builder(store);
+      auto *beginBorrow = builder.createBeginBorrow(store->getLoc(), store->getSrc());
+      store->replaceAllUsesWith(beginBorrow);
+      for (Operand *use : beginBorrow->getUses()) {
+        if (auto *endBorrow = dyn_cast<EndBorrowInst>(use->getUser())) {
+          SILBuilderWithScope endBuilder(std::next(endBorrow->getIterator()));
+          endBuilder.createDestroyValue(endBorrow->getLoc(), store->getSrc());
+        }
+      }
+      continue;
+    }
+    if (auto *md = dyn_cast<MarkDependenceInst>(user)) {
+      md->replaceAllUsesWith(md->getValue());
+      continue;
+    }
+  }
+  return true;
+}
+
 bool DeadObjectElimination::processAllocRef(AllocRefInstBase *ARI) {
   // Ok, we have an alloc_ref. Check the cache to see if we have already
   // computed the destructor behavior for its SILType.
@@ -979,28 +1051,8 @@ bool DeadObjectElimination::processAllocRef(AllocRefInstBase *ARI) {
   }
 
   if (ARI->getFunction()->hasOwnership()) {
-    // In ossa, we are going to delete the dead element store and insert a
-    // destroy_value of the store's source. This is shortening the store's
-    // source lifetime. Check if there was a pointer escape of the store's
-    // source, if so bail out.
-    for (auto *user : UsersToRemove) {
-      auto *store = dyn_cast<StoreInst>(user);
-      if (!store ||
-          store->getOwnershipQualifier() == StoreOwnershipQualifier::Trivial)
-        continue;
-      if (findPointerEscape(store->getSrc())) {
-        return false;
-      }
-    }
-    for (auto *user : UsersToRemove) {
-      auto *store = dyn_cast<StoreInst>(user);
-      if (!store ||
-          store->getOwnershipQualifier() == StoreOwnershipQualifier::Trivial) {
-        continue;
-      }
-      SILBuilderWithScope(store).createDestroyValue(store->getLoc(),
-                                                    store->getSrc());
-    }
+    if (!fixUsers(UsersToRemove))
+      return false;
   }
 
   // Remove the AllocRef and all of its users.
@@ -1030,27 +1082,8 @@ bool DeadObjectElimination::processAllocStack(AllocStackInst *ASI) {
     salvageDebugInfo(I);
 
   if (ASI->getFunction()->hasOwnership()) {
-    for (auto *user : UsersToRemove) {
-      auto *store = dyn_cast<StoreInst>(user);
-      if (!store ||
-          store->getOwnershipQualifier() == StoreOwnershipQualifier::Trivial)
-        continue;
-      // In ossa, we are going to delete the dead store and insert a
-      // destroy_value of the store's source. This is shortening the store's
-      // source lifetime. Check if there was a pointer escape of the store's
-      // source, if so bail out.
-      if (findPointerEscape(store->getSrc())) {
-        return false;
-      }
-    }
-    for (auto *user : UsersToRemove) {
-      auto *store = dyn_cast<StoreInst>(user);
-      if (!store ||
-          store->getOwnershipQualifier() == StoreOwnershipQualifier::Trivial)
-        continue;
-      SILBuilderWithScope(store).createDestroyValue(store->getLoc(),
-                                                    store->getSrc());
-    }
+    if (!fixUsers(UsersToRemove))
+      return false;
   }
 
   // Remove the AllocRef and all of its users.

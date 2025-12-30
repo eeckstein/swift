@@ -179,6 +179,10 @@ extension Sequence where Element == Operand {
     return self.lazy.filter { $0.endsLifetime }
   }
 
+  public var notEndingLifetime: LazyFilterSequence<Self> {
+    return self.lazy.filter { !$0.endsLifetime }
+  }
+
   public var users: LazyMapSequence<Self, Instruction> {
     return self.lazy.map { $0.instruction }
   }
