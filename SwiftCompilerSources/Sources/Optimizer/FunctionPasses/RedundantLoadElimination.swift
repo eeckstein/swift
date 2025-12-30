@@ -254,21 +254,9 @@ extension LoadBorrowInst : LoadingInstruction {
   func replace(withAvailableValue value: Value, hasSameAccessBase: Bool, _ context: FunctionPassContext) {
     let v = copyMarkDependencies(for: value, address: address, using: Builder(before: self, context))
     if !hasSameAccessBase {
-      var worklist = SpecificInstructionWorklist<SingleValueInstruction>(context)
-      defer { worklist.deinitialize() }
-      worklist.pushIfNotVisited(self)
-      while let svi = worklist.pop() {
-        if !svi.uses.notEndingLifetime.isEmpty {
-          let builder = Builder(after: svi, context)
-          let md = builder.createMarkDependence(value: svi, base: self.address, kind: .Escaping)
-          svi.uses.ignore(user: md).notEndingLifetime.replaceAll(with: md, context)
-        }
-        for use in svi.uses.endingLifetime {
-          if let branch = use.instruction as? BranchInst {
-            worklist.pushIfNotVisited(Phi(branch.getArgument(for: use))!.borrowedFrom!)
-          }
-        }
-      }
+      let builder = Builder(after: self, context)
+      let md = builder.createMarkDependence(value: self, base: self.address, kind: .Escaping)
+      uses.ignore(user: md).notEndingLifetime.replaceAll(with: md, context)
     }
     replace(with: v, context)
   }
@@ -506,6 +494,13 @@ private extension LoadingInstruction {
         }
       }
       if let loadBorrow = self as? LoadBorrowInst {
+        let accessBase = loadBorrow.address.accessBase
+        if !availableValues.contains(where: { $0.address.accessBase == accessBase }),
+           !loadBorrow.uses.endingLifetime.ignore(usersOfType: EndBorrowInst.self).isEmpty
+        {
+          return .notRedundant
+        }
+
         guard let debs = getDeadEndBorrowBlocks(of: loadBorrow, in: liverange) else {
           return .notRedundant
         }
