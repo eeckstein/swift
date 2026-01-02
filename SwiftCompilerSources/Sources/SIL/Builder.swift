@@ -460,8 +460,8 @@ public struct Builder {
   }
 
   @discardableResult
-  public func createDestroyValue(operand: Value) -> DestroyValueInst {
-    return notifyNew(bridged.createDestroyValue(operand.bridged).getAs(DestroyValueInst.self))
+  public func createDestroyValue(operand: Value, isDeadEnd: Bool = false) -> DestroyValueInst {
+    return notifyNew(bridged.createDestroyValue(operand.bridged, isDeadEnd).getAs(DestroyValueInst.self))
   }
 
   @discardableResult

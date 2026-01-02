@@ -19,6 +19,10 @@ struct DominatorTree {
   func getChildren(of block: BasicBlock) -> DomChildren {
     return DomChildren(bridgedDomTree: bridged, bb: block)
   }
+
+  func getParent(of block: BasicBlock) -> BasicBlock? {
+    bridged.getParent(block.bridged).block
+  }
 }
 
 struct DomChildren: BridgedRandomAccessCollection {

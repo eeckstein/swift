@@ -116,12 +116,19 @@ struct BridgedDomTree {
   BRIDGED_INLINE bool dominates(BridgedBasicBlock dominating, BridgedBasicBlock dominated) const;
   BRIDGED_INLINE SwiftInt getNumberOfChildren(BridgedBasicBlock bb) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedBasicBlock getChildAt(BridgedBasicBlock bb, SwiftInt index) const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE OptionalBridgedBasicBlock getParent(BridgedBasicBlock block) const;
 };
 
 struct BridgedPostDomTree {
   swift::PostDominanceInfo * _Nonnull pdi;
 
   BRIDGED_INLINE bool postDominates(BridgedBasicBlock dominating, BridgedBasicBlock dominated) const;
+};
+
+struct BridgedOptimizerUtilities {
+  typedef void (* _Nonnull UpdateFunctionFn)(BridgedContext, BridgedFunction);
+
+  static void registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn);
 };
 
 struct BridgedLoopTree {

@@ -33,6 +33,7 @@
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
 #include "swift/SILOptimizer/Utils/InstructionDeleter.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 
 using namespace swift;
 
@@ -109,11 +110,6 @@ struct SILGenCleanup : SILModuleTransform {
   void run() override;
 
   bool fixupBorrowAccessors(SILFunction *function);
-  bool completeOSSALifetimes(SILFunction *function);
-  template <typename Range>
-  bool completeLifetimesInRange(Range const &range,
-                                OSSACompleteLifetime &completion,
-                                BasicBlockSet &completed);
 };
 
 // Iterate over `iterator` until finding a block in `include` and not in
@@ -312,110 +308,13 @@ bool SILGenCleanup::fixupBorrowAccessors(SILFunction *function) {
   return true;
 }
 
-bool SILGenCleanup::completeOSSALifetimes(SILFunction *function) {
-  if (!getModule()->getOptions().OSSACompleteLifetimes)
-    return false;
-
-  LLVM_DEBUG(llvm::dbgs() << "Completing lifetimes in " << function->getName()
-                          << "\n");
-
-  BasicBlockWorklist deadends(function);
-  DeadEndBlocks *deba = getAnalysis<DeadEndBlocksAnalysis>()->get(function);
-  for (auto &block : *function) {
-    if (deba->isDeadEnd(&block))
-      deadends.push(&block);
-  }
-
-  if (deadends.empty()) {
-    // There are no dead-end blocks, so there are no lifetimes to complete.
-    // (SILGen may emit incomplete lifetimes, but not underconsumed lifetimes.)
-    return false;
-  }
-
-  // Lifetimes must be completed in unreachable blocks that are reachable via
-  // backwards walk from dead-end blocks.  First, check whether there are any
-  // unreachable blocks.
-  ReachableBlocks reachableBlocks(function);
-  reachableBlocks.compute();
-  StackList<SILBasicBlock *> roots(function);
-  if (!reachableBlocks.hasUnreachableBlocks()) {
-    // There are no blocks that are unreachable from the entry block.  Thus
-    // every block will be completed when completing the post-order of the
-    // entry block.
-    roots.push_back(function->getEntryBlock());
-  } else {
-    // There are unreachable blocks.  Determine the roots that can be reached
-    // when walking from the unreachable blocks.
-    collectReachableRoots(function, deadends, roots);
-  }
-
-  bool changed = false;
-  OSSACompleteLifetime completion(function, *deba,
-                                  OSSACompleteLifetime::ExtendTrivialVariable);
-  BasicBlockSet completed(function);
-  for (auto *root : roots) {
-    if (root == function->getEntryBlock()) {
-      assert(!completed.contains(root));
-      // When completing from the entry block, prefer the PostOrderAnalysis so
-      // the result is cached.
-      PostOrderFunctionInfo *postOrder =
-          getAnalysis<PostOrderAnalysis>()->get(function);
-      changed |= completeLifetimesInRange(postOrder->getPostOrder(), completion,
-                                          completed);
-    }
-    if (completed.contains(root)) {
-      // This block has already been completed in some other post-order
-      // traversal.  Thus the entire post-order rooted at it has already been
-      // completed.
-      continue;
-    }
-    changed |= completeLifetimesInRange(
-        make_range(po_begin(root), po_end(root)), completion, completed);
-  }
-  function->verifyOwnership(/*deadEndBlocks=*/nullptr);
-  return changed;
-}
-
-template <typename Range>
-bool SILGenCleanup::completeLifetimesInRange(Range const &range,
-                                             OSSACompleteLifetime &completion,
-                                             BasicBlockSet &completed) {
-  bool changed = false;
-  for (auto *block : range) {
-    if (!completed.insert(block))
-      continue;
-    LLVM_DEBUG(llvm::dbgs()
-               << "Completing lifetimes in bb" << block->getDebugID() << "\n");
-    for (SILInstruction &inst : reverse(*block)) {
-      for (auto result : inst.getResults()) {
-        LLVM_DEBUG(llvm::dbgs() << "completing " << result << "\n");
-        if (completion.completeOSSALifetime(
-                result, OSSACompleteLifetime::Boundary::Availability) ==
-            LifetimeCompletion::WasCompleted) {
-          LLVM_DEBUG(llvm::dbgs() << "\tcompleted!\n");
-          changed = true;
-        }
-      }
-    }
-    for (SILArgument *arg : block->getArguments()) {
-      LLVM_DEBUG(llvm::dbgs() << "completing " << *arg << "\n");
-      assert(!arg->isReborrow() && "reborrows not legal at this SIL stage");
-      if (completion.completeOSSALifetime(
-              arg, OSSACompleteLifetime::Boundary::Availability) ==
-          LifetimeCompletion::WasCompleted) {
-        LLVM_DEBUG(llvm::dbgs() << "\tcompleted!\n");
-        changed = true;
-      }
-    }
-  }
-  return changed;
-}
-
 void SILGenCleanup::run() {
   auto &module = *getModule();
   for (auto &function : module) {
     if (!function.isDefinition())
       continue;
+
+    getPassManager()->getSwiftPassInvocation()->initializeNestedSwiftPassInvocation(&function);
 
     PrettyStackTraceSILFunction stackTrace("silgen cleanup", &function);
 
@@ -423,7 +322,9 @@ void SILGenCleanup::run() {
                << "\nRunning SILGenCleanup on " << function.getName() << "\n");
 
     bool changed = fixupBorrowAccessors(&function);
-    changed |= completeOSSALifetimes(&function);
+    completeAllLifetimes(getPassManager(), &function);
+    function.verifyOwnership(/*deadEndBlocks=*/nullptr);
+
     DeadEndBlocks deadEndBlocks(&function);
     SILGenCanonicalize sgCanonicalize(deadEndBlocks);
 
@@ -441,6 +342,8 @@ void SILGenCleanup::run() {
       auto invalidKind = SILAnalysis::InvalidationKind::Instructions;
       invalidateAnalysis(&function, invalidKind);
     }
+ 
+    getPassManager()->getSwiftPassInvocation()->deinitializeNestedSwiftPassInvocation();
   }
 }
 

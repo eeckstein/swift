@@ -93,6 +93,13 @@ BridgedBasicBlock BridgedDomTree::getChildAt(BridgedBasicBlock bb, SwiftInt inde
   return {di->getNode(bb.unbridged())->begin()[index]->getBlock()};
 }
 
+OptionalBridgedBasicBlock BridgedDomTree::getParent(BridgedBasicBlock block) const {
+  if (auto *parentNode = di->getNode(block.unbridged())->getIDom()) {
+    return {parentNode->getBlock()};
+  }
+  return {nullptr};
+}
+
 bool BridgedPostDomTree::postDominates(BridgedBasicBlock dominating, BridgedBasicBlock dominated) const {
   return pdi->dominates(dominating.unbridged(), dominated.unbridged());
 }

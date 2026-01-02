@@ -2610,8 +2610,9 @@ BridgedInstruction BridgedBuilder::createCopyAddr(BridgedValue from, BridgedValu
       swift::IsTake_t(takeSource), swift::IsInitialization_t(initializeDest))};
 }
 
-BridgedInstruction BridgedBuilder::createDestroyValue(BridgedValue op) const {
-  return {unbridged().createDestroyValue(regularLoc(), op.getSILValue())};
+BridgedInstruction BridgedBuilder::createDestroyValue(BridgedValue op, bool isDeadEnd) const {
+  return {unbridged().createDestroyValue(regularLoc(), op.getSILValue(), swift::DontPoisonRefs,
+                                         swift::IsDeadEnd_t(isDeadEnd))};
 }
 
 BridgedInstruction BridgedBuilder::createDestroyAddr(BridgedValue op) const {

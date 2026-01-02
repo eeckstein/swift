@@ -1960,6 +1960,12 @@ void BridgedUtilities::registerPhiUpdater(UpdateFunctionFn updateAllGuaranteedPh
   replacePhisWithIncomingValuesFunction = replacePhisWithIncomingValuesFn;
 }
 
+static BridgedOptimizerUtilities::UpdateFunctionFn completeAllLifetimesFunction;
+
+void BridgedOptimizerUtilities::registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn) {
+  completeAllLifetimesFunction = completeAllLifetimesFn;
+}
+
 void swift::updateAllGuaranteedPhis(SILPassManager *pm, SILFunction *f) {
   if (updateAllGuaranteedPhisFunction)
     updateAllGuaranteedPhisFunction({pm->getSwiftPassInvocation()}, {f});
@@ -2000,4 +2006,9 @@ bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
       return true;
   }
   return false;
+}
+
+void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f) {
+  if (completeAllLifetimesFunction)
+    completeAllLifetimesFunction({pm->getSwiftPassInvocation()}, {f});
 }
