@@ -1435,6 +1435,7 @@ public:
 
     if (Changed) {
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+      Fun->setNeedBreakInfiniteLoops(false);
     }
   }
 };

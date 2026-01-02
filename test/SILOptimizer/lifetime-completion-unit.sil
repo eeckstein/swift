@@ -361,6 +361,26 @@ bb2:
   unreachable
 }
 
+// CHECK-LABEL: sil [ossa] @store_borrow2 :
+// CHECK:       bb2:
+// CHECK-NEXT:    unreachable
+// CHECK-LABEL: } // end sil function 'store_borrow2'
+sil [ossa] @store_borrow2 : $@convention(thin) (@guaranteed C) -> () {
+bb0(%instance : @guaranteed $C):
+  specify_test "lifetime_completion"
+  %addr = alloc_stack $C
+  %token = store_borrow %instance to %addr
+  end_borrow %token
+  cond_br undef, bb1, bb2
+
+bb1:
+  dealloc_stack %addr
+  %retval = tuple ()
+  return %retval
+
+bb2:
+  unreachable
+}
 // CHECK-LABEL: sil [ossa] @load_borrow_of_store_borrow_1 : {{.*}} {
 // CHECK:         [[TOKEN:%[^,]+]] = store_borrow
 // CHECK:         [[LOAD:%[^,]+]] = load_borrow [[TOKEN]]

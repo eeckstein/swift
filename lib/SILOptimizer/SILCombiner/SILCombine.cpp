@@ -34,6 +34,7 @@
 #include "swift/SILOptimizer/PassManager/PassManager.h"
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/CanonicalizeInstruction.h"
+#include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/DebugOptUtils.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
 #include "swift/SILOptimizer/Utils/OSSACanonicalizeGuaranteed.h"
@@ -697,6 +698,11 @@ class SILCombine : public SILFunctionTransform {
       updateAllGuaranteedPhis(getPassManager(), getFunction());
       // Invalidate everything.
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+
+      if (getFunction()->needBreakInfiniteLoops())
+        breakInfiniteLoops(getPassManager(), getFunction());
+      if (getFunction()->needCompleteLifetimes())
+        completeAllLifetimes(getPassManager(), getFunction());
     }
   }
 };

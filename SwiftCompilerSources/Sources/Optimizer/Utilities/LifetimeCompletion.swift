@@ -26,7 +26,7 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
   context.updateAnalysis()
   let dominatorTree = context.dominatorTree
 
-  var blocksToComplete = IterableBasicBlockSet(context)
+  var blocksToComplete = BasicBlockSet(context)
   defer { blocksToComplete.deinitialize() }
 
   worklist.pushIfNotVisited(function.entryBlock)
@@ -44,8 +44,10 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
     }
   }
 
+  let blocks = dominatorTree.dominanceOrder(startingAt: function.entryBlock) { blocksToComplete.contains($0) }
+
   // Process blocks in reverse dominance order.
-  for block in blocksToComplete {
+  for block in blocks.reversed() {
     for inst in block.instructions.reversed() {
       for result in inst.results {
         completeLifetime(of: result, context)
@@ -58,6 +60,10 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
 }
 
 func completeLifetime(of value: Value, _ context: FunctionPassContext) {
+
+  var endBlocks = BasicBlockSet(context)
+  defer { endBlocks.deinitialize() }
+
   let valueToComplete: Value
   switch value.ownership {
   case .owned:
@@ -75,16 +81,14 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
       return
     }
   case .none:
-    guard value is StoreBorrowInst else {
+    guard let sb = value as? StoreBorrowInst else {
       return
     }
-    valueToComplete = value
+    endBlocks.insert(contentsOf: sb.uses.users(ofType: EndBorrowInst.self).lazy.map { $0.parentBlock })
+    valueToComplete = sb
   case .unowned:
     return
   }
-
-  var endBlocks = BasicBlockSet(context)
-  defer { endBlocks.deinitialize() }
 
   endBlocks.insert(contentsOf: valueToComplete.uses.endingLifetime.lazy.map { $0.instruction.parentBlock })
 

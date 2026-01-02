@@ -23,6 +23,23 @@ struct DominatorTree {
   func getParent(of block: BasicBlock) -> BasicBlock? {
     bridged.getParent(block.bridged).block
   }
+
+  func dominanceOrder(startingAt startBlock: BasicBlock, filter: (BasicBlock) -> Bool) -> [BasicBlock] {
+    guard filter(startBlock) else {
+      return []
+    }
+
+    var order = [BasicBlock]()
+    order.append(startBlock)
+
+    var idx = 0
+    while idx < order.count {
+      let block = order[idx]
+      idx += 1
+      order.append(contentsOf: getChildren(of: block).lazy.filter(filter))
+    }
+    return order
+  }
 }
 
 struct DomChildren: BridgedRandomAccessCollection {
