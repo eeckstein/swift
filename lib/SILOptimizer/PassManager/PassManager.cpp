@@ -1455,10 +1455,10 @@ void SwiftPassInvocation::finishedFunctionPassRun() {
   ASSERT(function && transform && "not running a function pass");
   ASSERT((changeNotifications & SILContext::NotificationKind::FunctionTables) == 0
          && "a function pass must not change function tables");
-  if (changeNotifications != SILContext::NotificationKind::Nothing) {
-    passManager->invalidateAnalysis(function, (SILAnalysis::InvalidationKind)changeNotifications);
-  }
-  changeNotifications = SILContext::NotificationKind::Nothing;
+  ASSERT(!function->needBreakInfiniteLoops() && "didn't break infinite loops");
+  ASSERT(!function->needCompleteLifetimes() && "didn't complete lifetimes");
+
+  updateAnalysis();
 
   insertedPhisBySSAUpdater.clear();
   if (ssaUpdater) {
@@ -1469,6 +1469,13 @@ void SwiftPassInvocation::finishedFunctionPassRun() {
   function = nullptr;
   transform = nullptr;
   verifyEverythingIsCleared();
+}
+
+void SwiftPassInvocation::updateAnalysis() {
+  if (changeNotifications != SILContext::NotificationKind::Nothing) {
+    passManager->invalidateAnalysis(function, (SILAnalysis::InvalidationKind)changeNotifications);
+  }
+  changeNotifications = SILContext::NotificationKind::Nothing;
 }
 
 void SwiftPassInvocation::startInstructionPassRun(SILInstruction *inst) {

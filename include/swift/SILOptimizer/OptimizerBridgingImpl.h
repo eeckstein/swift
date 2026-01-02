@@ -170,6 +170,10 @@ void BridgedPassContext::notifyDependencyOnBodyOf(BridgedFunction otherFunction)
   invocation->getPassManager()->setDependingOnCalleeBodies();
 }
 
+void BridgedPassContext::updateAnalysis() const {
+  invocation->updateAnalysis();
+}
+
 bool BridgedPassContext::hadError() const {
   return invocation->getPassManager()->getModule()->getASTContext().hadError();
 }
@@ -319,6 +323,14 @@ void BridgedPassContext::notifyInvalidatedStackNesting() const {
 
 bool BridgedPassContext::getNeedFixStackNesting() const {
   return invocation->getNeedFixStackNesting();
+}
+
+bool BridgedPassContext::getNeedBreakInfiniteLoops() const {
+  return invocation->getFunction()->needBreakInfiniteLoops();
+}
+
+bool BridgedPassContext::getNeedCompleteLifetimes() const {
+  return invocation->getFunction()->needCompleteLifetimes();
 }
 
 bool BridgedPassContext::continueWithNextSubpassRun(OptionalBridgedInstruction inst) const {

@@ -129,6 +129,7 @@ struct BridgedOptimizerUtilities {
   typedef void (* _Nonnull UpdateFunctionFn)(BridgedContext, BridgedFunction);
 
   static void registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn);
+  static void registerControlFlowUtils(UpdateFunctionFn breakInfiniteLoopsFn);
 };
 
 struct BridgedLoopTree {
@@ -148,6 +149,8 @@ struct BridgedPassContext {
 
   BRIDGED_INLINE bool hadError() const;
   BRIDGED_INLINE void notifyDependencyOnBodyOf(BridgedFunction otherFunction) const;
+
+  BRIDGED_INLINE void updateAnalysis() const;
 
   // Analysis
 
@@ -224,11 +227,14 @@ struct BridgedPassContext {
   SwiftInt getStaticStride(BridgedType type) const;
   bool canMakeStaticObjectReadOnly(BridgedType type) const;
 
-  // Stack nesting
+  // Stack nesting and other notifications
 
   BRIDGED_INLINE void notifyInvalidatedStackNesting() const;
   BRIDGED_INLINE bool getNeedFixStackNesting() const;
   void fixStackNesting(BridgedFunction function) const;
+
+  BRIDGED_INLINE bool getNeedBreakInfiniteLoops() const;
+  BRIDGED_INLINE bool getNeedCompleteLifetimes() const;
 
   // Access SIL module data structures
 

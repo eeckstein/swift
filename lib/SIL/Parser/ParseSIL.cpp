@@ -7526,6 +7526,8 @@ bool SILParserState::parseDeclSIL(Parser &P) {
         if (M.hasUnresolvedLocalArchetypeDefinitions())
           llvm_unreachable(
               "All forward definitions of local archetypes should be resolved");
+        FunctionState.F->setNeedBreakInfiniteLoops(false);
+        FunctionState.F->setNeedCompleteLifetimes(false);
       }
     }
 

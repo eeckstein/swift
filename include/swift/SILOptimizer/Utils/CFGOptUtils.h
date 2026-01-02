@@ -37,6 +37,7 @@ namespace swift {
 class DominanceInfo;
 class SILLoop;
 class SILLoopInfo;
+class SILPassManager;
 
 /// Adds a new argument to an edge between a branch and a destination
 /// block. Allows for user injected callbacks via \p callbacks.
@@ -212,6 +213,8 @@ bool isTrapNoReturnFunction(SILFunction *f);
 /// TODO:
 bool findAllNonFailureExitBBs(SILFunction *f,
                               llvm::TinyPtrVector<SILBasicBlock *> &bbs);
+
+void breakInfiniteLoops(SILPassManager *pm, SILFunction *f);
 
 } // end namespace swift
 

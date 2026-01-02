@@ -81,3 +81,13 @@ private extension BasicBlock {
     return false
   }
 }
+
+func registerControlFlowUtils() {
+  BridgedOptimizerUtilities.registerControlFlowUtils(
+    { (bridgedCtxt: BridgedContext, bridgedFunction: BridgedFunction) in
+      let context = FunctionPassContext(_bridged: bridgedCtxt)
+      let function = bridgedFunction.function;
+      breakInfiniteLoops(in: function, context)
+    }
+  )
+}

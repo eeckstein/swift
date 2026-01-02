@@ -21,6 +21,7 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
   var worklist = BasicBlockWorklist(context)
   defer { worklist.deinitialize() }
 
+  context.updateAnalysis()
   let dominatorTree = context.dominatorTree
 
   var blocksToComplete = IterableBasicBlockSet(context)

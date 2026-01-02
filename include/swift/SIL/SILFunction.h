@@ -478,6 +478,9 @@ private:
   /// within a module by the MandatoryOptimizations pass.
   unsigned IsPerformanceConstraint : 1;
 
+  unsigned NeedBreakInfiniteLoops : 1;
+  unsigned NeedCompleteLifetimes : 1;
+
   static void
   validateSubclassScope(SubclassScope scope, IsThunk_t isThunk,
                         const GenericSpecializationInformation *genericInfo) {
@@ -1106,6 +1109,30 @@ public:
     IsPerformanceConstraint = flag;
   }
 
+  bool needBreakInfiniteLoops() {
+    if (NeedBreakInfiniteLoops) {
+      NeedBreakInfiniteLoops = false;
+      return true;
+    }
+    return false;
+  }
+
+  void setNeedBreakInfiniteLoops(bool flag = true) {
+    NeedBreakInfiniteLoops = flag;
+  }
+
+  bool needCompleteLifetimes() {
+    if (NeedCompleteLifetimes) {
+      NeedCompleteLifetimes = false;
+      return true;
+    }
+    return false;
+  }
+
+  void setNeedCompleteLifetimes(bool flag = true) {
+    NeedCompleteLifetimes = flag;
+  }
+
   /// \returns True if the function is optimizable (i.e. not marked as no-opt),
   ///          or is raw SIL (so that the mandatory passes still run).
   bool shouldOptimize() const;
@@ -1534,6 +1561,8 @@ public:
   /// Removes and destroys \p BB;
   void eraseBlock(SILBasicBlock *BB) {
     assert(BB->getParent() == this);
+    if (hasOwnership())
+      setNeedBreakInfiniteLoops();
     BlockList.erase(BB);
   }
 

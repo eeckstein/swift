@@ -122,7 +122,9 @@ public:
 
   /// Called by the SILCombiner when the instruction pass has finished.
   void finishedInstructionPassRun();
-  
+
+  void updateAnalysis();
+
   void beginVerifyFunction(SILFunction *function);
   void endVerifyFunction();
 

@@ -3978,10 +3978,15 @@ namespace {
 class SimplifyCFGPass : public SILFunctionTransform {
 public:
   void run() override {
-    if (SimplifyCFG(*getFunction(), *this, getOptions().VerifyAll,
-                    /*EnableJumpThread=*/false)
+    SILFunction *f = getFunction();
+    if (SimplifyCFG(*f, *this, getOptions().VerifyAll, /*EnableJumpThread=*/false)
             .run())
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+
+    if (f->needBreakInfiniteLoops())
+      breakInfiniteLoops(getPassManager(), f);
+    if (f->needBreakInfiniteLoops())
+      breakInfiniteLoops(getPassManager(), f);
   }
 };
 } // end anonymous namespace

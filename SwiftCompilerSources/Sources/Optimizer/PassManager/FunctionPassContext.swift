@@ -52,6 +52,10 @@ struct FunctionPassContext : MutatingContext {
     return LoopTree(bridged: bridgedLT, context: self)
   }
 
+  func updateAnalysis() {
+    bridgedPassContext.updateAnalysis()
+  }
+
   func notifyNewFunction(function: Function, derivedFrom: Function) {
     bridgedPassContext.addFunctionToPassManagerWorklist(function.bridged, derivedFrom.bridged)
   }
@@ -219,6 +223,12 @@ struct FunctionPassContext : MutatingContext {
       notifyInstructionsChanged()
     }
   }
+
+  var needFixStackNesting: Bool { bridgedPassContext.getNeedFixStackNesting() }
+
+  var needBreakInfiniteLoops: Bool { bridgedPassContext.getNeedBreakInfiniteLoops() }
+
+  var needCompleteLifetimes: Bool { bridgedPassContext.getNeedCompleteLifetimes() }
 
   func fixStackNesting(in function: Function) {
     bridgedPassContext.fixStackNesting(function.bridged)
