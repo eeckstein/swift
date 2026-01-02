@@ -81,6 +81,7 @@ struct DiagnosticDeadFunctionEliminator : SILFunctionTransform {
     }
 
     invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+    fn->setNeedCompleteLifetimes(false);
   }
 };
 

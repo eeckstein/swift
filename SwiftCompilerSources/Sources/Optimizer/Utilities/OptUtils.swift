@@ -1236,6 +1236,7 @@ func cloneFunction(from originalFunction: Function, toEmpty targetFunction: Func
   var cloner = Cloner(cloneToEmptyFunction: targetFunction, context)
   defer { cloner.deinitialize() }
   cloner.cloneFunctionBody(from: originalFunction)
+  context.setNeedCompleteLifetimes(to: false)
 }
 
 func cloneAndSpecializeFunction(from originalFunction: Function,
@@ -1247,6 +1248,7 @@ func cloneAndSpecializeFunction(from originalFunction: Function,
                                       substitutions: substitutions, context)
   defer { cloner.deinitialize() }
   cloner.cloneFunctionBody()
+  context.setNeedCompleteLifetimes(to: false)
 }
 
 let destroyBarrierTest = FunctionTest("destroy_barrier") { function, arguments, context in

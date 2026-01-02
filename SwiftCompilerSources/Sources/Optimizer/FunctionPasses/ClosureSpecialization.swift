@@ -427,6 +427,7 @@ private struct SpecializationInfo {
         defer { cloner.deinitialize() }
 
         cloneAndSpecializeFunctionBody(using: &cloner)
+        specializedContext.setNeedCompleteLifetimes(to: false)
       })
 
     context.notifyNewFunction(function: specializedFunction, derivedFrom: callee)
