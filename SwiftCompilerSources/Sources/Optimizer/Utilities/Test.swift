@@ -57,6 +57,7 @@ public func registerOptimizerTests() {
     breakInfiniteLoopsTest,
     getAutoDiffSpecializationInfoTest,
     interiorLivenessTest,
+    lifetimeComletionTest,
     lifetimeDependenceRootTest,
     lifetimeDependenceScopeTest,
     lifetimeDependenceUseTest,

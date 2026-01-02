@@ -50,11 +50,7 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
       }
     }
     for arg in block.arguments {
-      if let phi = Phi(arg), let borrowedFrom = phi.borrowedFrom {
-        completeLifetime(of: borrowedFrom, context)
-      } else {
-        completeLifetime(of: arg, context)
-      }
+      completeLifetime(of: arg, context)
     }
   }
 }
@@ -69,13 +65,19 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
       return
     }
     switch beginBorrow {
-    case .beginBorrow(let bbi): valueToComplete = bbi
-    case .loadBorrow(let lbi):  valueToComplete = lbi
-    case .reborrow(let phi):    valueToComplete = phi.borrowedFrom!
-    case .beginApply, .uncheckOwnershipConversion, .functionArgument:
+    case .beginBorrow, .loadBorrow, .beginApply:
+      valueToComplete = value
+    case .reborrow(let phi):
+      valueToComplete = phi.borrowedFrom!
+    case .uncheckOwnershipConversion, .functionArgument:
       return
     }
-  case .none, .unowned:
+  case .none:
+    guard value is StoreBorrowInst else {
+      return
+    }
+    valueToComplete = value
+  case .unowned:
     return
   }
 
@@ -95,7 +97,7 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
     if let unreachable = block.terminator as? UnreachableInst {
       let builder = Builder(before: unreachable, context)
       if valueToComplete.ownership == .owned {
-        builder.createDestroyValue(operand: valueToComplete)
+        builder.createDestroyValue(operand: valueToComplete, isDeadEnd: true)
       } else {
         builder.createEndBorrow(of: valueToComplete)
       }
@@ -113,4 +115,14 @@ func registerLifetimeCompletion() {
       completeLifetimes(in: function, context)
     }
   )
+}
+
+//===--------------------------------------------------------------------===//
+//                              Tests
+//===--------------------------------------------------------------------===//
+
+let lifetimeComletionTest = FunctionTest("lifetime_completion") {
+  function, arguments, context in
+
+  completeLifetimes(in: function, context)
 }
