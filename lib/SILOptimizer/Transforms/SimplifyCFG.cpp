@@ -3985,8 +3985,8 @@ public:
 
     if (f->needBreakInfiniteLoops())
       breakInfiniteLoops(getPassManager(), f);
-    if (f->needBreakInfiniteLoops())
-      breakInfiniteLoops(getPassManager(), f);
+    if (f->needCompleteLifetimes())
+      completeAllLifetimes(getPassManager(), f);
   }
 };
 } // end anonymous namespace
@@ -4000,10 +4000,15 @@ namespace {
 class JumpThreadSimplifyCFGPass : public SILFunctionTransform {
 public:
   void run() override {
-    if (SimplifyCFG(*getFunction(), *this, getOptions().VerifyAll,
-                    /*EnableJumpThread=*/true)
+    SILFunction *f = getFunction();
+    if (SimplifyCFG(*f, *this, getOptions().VerifyAll, /*EnableJumpThread=*/true)
             .run())
       invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+
+    if (f->needBreakInfiniteLoops())
+      breakInfiniteLoops(getPassManager(), f);
+    if (f->needCompleteLifetimes())
+      completeAllLifetimes(getPassManager(), f);
   }
 };
 } // end anonymous namespace

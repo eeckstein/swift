@@ -14,6 +14,8 @@ import SIL
 import OptimizerBridging
 
 func breakInfiniteLoops(in function: Function, _ context: FunctionPassContext) {
+  context.setNeedBreakInfiniteLoops(to: false)
+
   guard function.hasOwnership else {
     // The algorithm relies on not having critical edges in the CFG.
     return

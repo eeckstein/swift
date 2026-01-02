@@ -82,6 +82,10 @@ public:
 
   virtual ~SwiftPassInvocation();
 
+  SwiftPassInvocation *getCurrent() {
+    return nestedSwiftPassInvocation ? nestedSwiftPassInvocation : this;
+  }
+
   SILPassManager *getPassManager() const { return passManager; }
   
   SILTransform *getTransform() const { return transform; }

@@ -234,7 +234,9 @@ struct BridgedPassContext {
   void fixStackNesting(BridgedFunction function) const;
 
   BRIDGED_INLINE bool getNeedBreakInfiniteLoops() const;
+  BRIDGED_INLINE void setNeedBreakInfiniteLoops(bool value) const;
   BRIDGED_INLINE bool getNeedCompleteLifetimes() const;
+  BRIDGED_INLINE void setNeedCompleteLifetimes(bool value) const;
 
   // Access SIL module data structures
 

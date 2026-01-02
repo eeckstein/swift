@@ -364,7 +364,9 @@ void swift::mergeBasicBlockWithSingleSuccessor(SILBasicBlock *BB,
   // Move the instruction from the successor block to the current block.
   BB->spliceAtEnd(succBB);
 
+  bool needBreakInfiniteLoops = BB->getParent()->needBreakInfiniteLoops();
   succBB->eraseFromParent();
+  BB->getParent()->setNeedBreakInfiniteLoops(needBreakInfiniteLoops);
 }
 
 //===----------------------------------------------------------------------===//

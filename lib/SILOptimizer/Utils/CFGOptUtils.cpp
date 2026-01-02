@@ -605,5 +605,5 @@ void BridgedOptimizerUtilities::registerControlFlowUtils(UpdateFunctionFn breakI
 
 void swift::breakInfiniteLoops(SILPassManager *pm, SILFunction *f) {
   if (breakInfiniteLoopsFunction)
-    breakInfiniteLoopsFunction({pm->getSwiftPassInvocation()}, {f});
+    breakInfiniteLoopsFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
 }

@@ -57,7 +57,7 @@ extension Function {
       }
     }
 
-    if hasOwnership {
+    if hasOwnership, isDefinition {
       if context.silStage == .canonical {
         verifyNoUnreachableBlocks(context)
       }

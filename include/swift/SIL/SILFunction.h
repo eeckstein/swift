@@ -1109,25 +1109,13 @@ public:
     IsPerformanceConstraint = flag;
   }
 
-  bool needBreakInfiniteLoops() {
-    if (NeedBreakInfiniteLoops) {
-      NeedBreakInfiniteLoops = false;
-      return true;
-    }
-    return false;
-  }
+  bool needBreakInfiniteLoops() const { return NeedBreakInfiniteLoops; }
 
   void setNeedBreakInfiniteLoops(bool flag = true) {
     NeedBreakInfiniteLoops = flag;
   }
 
-  bool needCompleteLifetimes() {
-    if (NeedCompleteLifetimes) {
-      NeedCompleteLifetimes = false;
-      return true;
-    }
-    return false;
-  }
+  bool needCompleteLifetimes() const { return NeedCompleteLifetimes; }
 
   void setNeedCompleteLifetimes(bool flag = true) {
     NeedCompleteLifetimes = flag;

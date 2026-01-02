@@ -1968,7 +1968,7 @@ void BridgedOptimizerUtilities::registerLifetimeCompletion(UpdateFunctionFn comp
 
 void swift::updateAllGuaranteedPhis(SILPassManager *pm, SILFunction *f) {
   if (updateAllGuaranteedPhisFunction)
-    updateAllGuaranteedPhisFunction({pm->getSwiftPassInvocation()}, {f});
+    updateAllGuaranteedPhisFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
 }
 
 void swift::updateGuaranteedPhis(SILPassManager *pm, ArrayRef<SILPhiArgument *> phis) {
@@ -1979,7 +1979,7 @@ void swift::updateGuaranteedPhis(SILPassManager *pm, ArrayRef<SILPhiArgument *> 
   for (SILPhiArgument *phi : phis) {
     bridgedPhis.push_back({phi});
   }
-  updateGuaranteedPhisFunction({pm->getSwiftPassInvocation()}, ArrayRef(bridgedPhis));
+  updateGuaranteedPhisFunction({pm->getSwiftPassInvocation()->getCurrent()}, ArrayRef(bridgedPhis));
 }
 
 void swift::replacePhisWithIncomingValues(SILPassManager *pm, ArrayRef<SILPhiArgument *> phis) {
@@ -1990,7 +1990,7 @@ void swift::replacePhisWithIncomingValues(SILPassManager *pm, ArrayRef<SILPhiArg
   for (SILPhiArgument *phi : phis) {
     bridgedPhis.push_back({phi});
   }
-  replacePhisWithIncomingValuesFunction({pm->getSwiftPassInvocation()}, ArrayRef(bridgedPhis));
+  replacePhisWithIncomingValuesFunction({pm->getSwiftPassInvocation()->getCurrent()}, ArrayRef(bridgedPhis));
 }
 
 bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
@@ -2010,5 +2010,5 @@ bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
 
 void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f) {
   if (completeAllLifetimesFunction)
-    completeAllLifetimesFunction({pm->getSwiftPassInvocation()}, {f});
+    completeAllLifetimesFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
 }

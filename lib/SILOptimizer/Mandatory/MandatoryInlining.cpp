@@ -24,6 +24,7 @@
 #include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/Devirtualize.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILInliner.h"
 #include "swift/SILOptimizer/Utils/SILOptFunctionBuilder.h"
 #include "swift/SILOptimizer/Utils/StackNesting.h"
@@ -1030,6 +1031,18 @@ runOnFunctionRecursively(SILOptFunctionBuilder &FuncBuilder, SILPassManager *pm,
     StackNesting::fixNesting(F);
     changedFunctions.insert(F);
   }
+
+  pm->getSwiftPassInvocation()->initializeNestedSwiftPassInvocation(F);
+
+  if (F->needBreakInfiniteLoops())
+    breakInfiniteLoops(pm, F);
+
+  if (F->needCompleteLifetimes()) {
+    pm->invalidateAnalysis(F, SILAnalysis::InvalidationKind::FunctionBody);
+    completeAllLifetimes(pm, F);
+  }
+
+  pm->getSwiftPassInvocation()->deinitializeNestedSwiftPassInvocation();
 
   // Keep track of full inlined functions so we don't waste time recursively
   // reprocessing them.

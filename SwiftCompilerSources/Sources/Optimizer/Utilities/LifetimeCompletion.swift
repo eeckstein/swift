@@ -14,6 +14,8 @@ import SIL
 import OptimizerBridging
 
 func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
+  context.setNeedCompleteLifetimes(to: false)
+
   guard function.hasOwnership else {
     return
   }

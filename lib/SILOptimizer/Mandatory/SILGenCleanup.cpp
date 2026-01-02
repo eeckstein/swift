@@ -28,6 +28,7 @@
 #include "swift/SILOptimizer/Analysis/DeadEndBlocksAnalysis.h"
 #include "swift/SILOptimizer/Analysis/PostOrderAnalysis.h"
 #include "swift/SILOptimizer/PassManager/Transforms.h"
+#include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/BasicBlockOptUtils.h"
 #include "swift/SILOptimizer/Utils/CanonicalizeInstruction.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
@@ -111,42 +112,6 @@ struct SILGenCleanup : SILModuleTransform {
 
   bool fixupBorrowAccessors(SILFunction *function);
 };
-
-// Iterate over `iterator` until finding a block in `include` and not in
-// `exclude`.
-SILBasicBlock *
-findFirstBlock(SILFunction *function, SILFunction::iterator &iterator,
-               llvm::function_ref<bool(SILBasicBlock *)> include,
-               llvm::function_ref<bool(SILBasicBlock *)> exclude) {
-  while (iterator != function->end()) {
-    auto *block = &*iterator;
-    iterator = std::next(iterator);
-    if (!include(block))
-      continue;
-    if (exclude(block))
-      continue;
-    return block;
-  }
-  return nullptr;
-}
-
-// Walk backward from `from` following first predecessors until finding the
-// first already-reached block.
-SILBasicBlock *findFirstLoop(SILFunction *function, SILBasicBlock *from) {
-  BasicBlockSet path(function);
-  auto *current = from;
-  while (auto *block = current) {
-    current = nullptr;
-    if (!path.insert(block)) {
-      return block;
-    }
-    if (block->pred_empty()) {
-      return nullptr;
-    }
-    current = *block->getPredecessorBlocks().begin();
-  }
-  llvm_unreachable("finished function-exiting loop!?");
-}
 
 /*  SILGen may produce a borrow accessor result from within a local borrow
  * scope. Such as:
@@ -243,6 +208,7 @@ void SILGenCleanup::run() {
                << "\nRunning SILGenCleanup on " << function.getName() << "\n");
 
     bool changed = fixupBorrowAccessors(&function);
+    breakInfiniteLoops(getPassManager(), &function);
     completeAllLifetimes(getPassManager(), &function);
     function.verifyOwnership(/*deadEndBlocks=*/nullptr);
 

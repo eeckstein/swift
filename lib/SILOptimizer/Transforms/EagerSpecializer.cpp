@@ -40,6 +40,7 @@
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/Generics.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILOptFunctionBuilder.h"
 #include "llvm/Support/Debug.h"
 
@@ -898,6 +899,9 @@ void EagerSpecializerTransform::run() {
   // calls and branches.
   if (Changed) {
     invalidateAnalysis(SILAnalysis::InvalidationKind::FunctionBody);
+
+    if (F.needCompleteLifetimes())
+      completeAllLifetimes(getPassManager(), &F);
   }
 
   // As specializations are created, the non-exported attributes should be

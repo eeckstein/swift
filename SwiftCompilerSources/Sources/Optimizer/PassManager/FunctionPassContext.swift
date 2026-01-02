@@ -228,7 +228,11 @@ struct FunctionPassContext : MutatingContext {
 
   var needBreakInfiniteLoops: Bool { bridgedPassContext.getNeedBreakInfiniteLoops() }
 
+  func setNeedBreakInfiniteLoops(to value: Bool) { bridgedPassContext.setNeedBreakInfiniteLoops(value) }
+
   var needCompleteLifetimes: Bool { bridgedPassContext.getNeedCompleteLifetimes() }
+
+  func setNeedCompleteLifetimes(to value: Bool) { bridgedPassContext.setNeedCompleteLifetimes(value) }
 
   func fixStackNesting(in function: Function) {
     bridgedPassContext.fixStackNesting(function.bridged)

@@ -70,6 +70,7 @@ public:
     GenericCloner SC(FuncBuilder, F, ReInfo, ParamSubs,
                      NewName, Callback);
     SC.populateCloned();
+    SC.getCloned()->setNeedCompleteLifetimes(false);
     return SC.getCloned();
   }
 
