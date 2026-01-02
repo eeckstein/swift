@@ -106,6 +106,8 @@ void TestRunner::run() {
     printTestLifetime(/*begin=*/false, /*index=*/index, /*size=*/size, name,
                       argumentStrings);
   }
+  getFunction()->setNeedBreakInfiniteLoops(false);
+  getFunction()->setNeedCompleteLifetimes(false);
 }
 
 //===----------------------------------------------------------------------===//

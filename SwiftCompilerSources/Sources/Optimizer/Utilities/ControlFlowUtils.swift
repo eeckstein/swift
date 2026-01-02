@@ -14,7 +14,7 @@ import SIL
 import OptimizerBridging
 
 func breakInfiniteLoops(in function: Function, _ context: FunctionPassContext) {
-  if !function.hasOwnership {
+  guard function.hasOwnership else {
     // The algorithm relies on not having critical edges in the CFG.
     return
   }
@@ -59,26 +59,26 @@ private func breakInfiniteLoop(startingAt startBlock: BasicBlock, _ context: Fun
     fatalError("back-edge of a loop must be a branch instruction")
   }
 
-  let deadEndBlock = context.createBlock(after: block)
-  Builder(atBeginOf: deadEndBlock, context).createUnreachable()
+  let backEdgeBlock = context.createBlock(after: block)
+  Builder(atEndOf: backEdgeBlock, location: branch.location, context).createBranch(to: branch.targetBlock)
+
+  let deadEndBlock = context.createBlock(after: backEdgeBlock)
+  Builder(atEndOf: deadEndBlock, location: branch.location, context).createUnreachable()
 
   let builder = Builder(before: branch, context)
   let trueValue = builder.createBuiltin(name: "infinite_loop_true_condition",
                                         type: context.getBuiltinIntegerType(bitWidth: 1),
                                         arguments: [])
-  builder.createCondBranch(condition: trueValue, trueBlock: branch.targetBlock, falseBlock: deadEndBlock)
+  builder.createCondBranch(condition: trueValue, trueBlock: backEdgeBlock, falseBlock: deadEndBlock)
+  context.erase(instruction: branch)
   return deadEndBlock
 }
 
 private extension BasicBlock {
   func isEntryToInfiniteLoopRegion(_ noInfiniteLoops: BasicBlockWorklist) -> Bool {
-    if !noInfiniteLoops.hasBeenPushed(self),
-       let pred = singlePredecessor,
-       noInfiniteLoops.hasBeenPushed(pred)
-    {
-      return true
-    }
-    return false
+    return !noInfiniteLoops.hasBeenPushed(self) &&
+           (predecessors.contains{ noInfiniteLoops.hasBeenPushed($0) } ||
+            predecessors.isEmpty)
   }
 }
 
@@ -90,4 +90,14 @@ func registerControlFlowUtils() {
       breakInfiniteLoops(in: function, context)
     }
   )
+}
+
+//===--------------------------------------------------------------------===//
+//                              Tests
+//===--------------------------------------------------------------------===//
+
+let breakInfiniteLoopsTest = FunctionTest("break_infinite_loops") {
+  function, arguments, context in
+
+  breakInfiniteLoops(in: function, context)
 }

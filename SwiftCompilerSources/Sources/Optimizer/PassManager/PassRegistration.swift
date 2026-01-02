@@ -155,5 +155,6 @@ private func registerSwiftAnalyses() {
 }
 
 private func registerOptimizerUtilities() {
+  registerControlFlowUtils()
   registerLifetimeCompletion()
 }
