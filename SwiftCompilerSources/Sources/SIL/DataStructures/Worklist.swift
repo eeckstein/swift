@@ -130,6 +130,13 @@ extension BasicBlockWorklist {
       pushIfNotVisited(contentsOf: block.predecessors)
     }
   }
+
+  public mutating func transitivelyAddBlockWithSuccessors(startingAt startBlock: BasicBlock) {
+    pushIfNotVisited(startBlock)
+    while let block = pop() {
+      pushIfNotVisited(contentsOf: block.successors)
+    }
+  }
 }
 
 extension InstructionWorklist {
