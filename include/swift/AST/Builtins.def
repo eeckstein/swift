@@ -699,6 +699,8 @@ BUILTIN_MISC_OPERATION(StaticReport, "staticReport", "", Special)
 /// Returns the selected assertion configuration.
 BUILTIN_MISC_OPERATION(AssertConf, "assert_configuration", "n", Special)
 
+BUILTIN_MISC_OPERATION(InfiniteLoopTrueCondition, "infinite_loop_true_condition", "", None)
+
 /// Ifdef has type () -> Bool.
 BUILTIN_MISC_OPERATION(Ifdef, "ifdef", "n", Special)
 

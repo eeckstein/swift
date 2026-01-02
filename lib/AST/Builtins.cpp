@@ -1993,6 +1993,11 @@ static ValueDecl *getAssertConfOperation(ASTContext &C, Identifier Id) {
   return getBuiltinFunction(Id, {}, Int32Ty);
 }
 
+static ValueDecl *getInfiniteLoopTrueConditionOperation(ASTContext &C, Identifier Id) {
+  // () -> Int1
+  return getBuiltinFunction(Id, {}, BuiltinIntegerType::get(1, C));
+}
+
 static ValueDecl *getFixLifetimeOperation(ASTContext &C, Identifier Id) {
   // <T> T -> ()
   BuiltinFunctionBuilder builder(C);
@@ -3229,6 +3234,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
   case BuiltinValueKind::AssertConf:
     return getAssertConfOperation(Context, Id);
       
+  case BuiltinValueKind::InfiniteLoopTrueCondition:
+    return getInfiniteLoopTrueConditionOperation(Context, Id);
+
   case BuiltinValueKind::FixLifetime:
     return getFixLifetimeOperation(Context, Id);
 
