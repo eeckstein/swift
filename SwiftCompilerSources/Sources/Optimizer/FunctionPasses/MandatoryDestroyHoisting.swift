@@ -246,7 +246,10 @@ private extension Stack where Element == Instruction {
     var users = Stack<Instruction>(context)
 
     var visitor = InteriorUseWalker(definingValue: value, ignoreEscape: false, visitInnerUses: true, context) {
-      if $0.instruction is DestroyValueInst, $0.value == value {
+      if let destroy = $0.instruction as? DestroyValueInst,
+         !destroy.isDeadEnd,
+         $0.value == value
+      {
         return .continueWalk
       }
       users.append($0.instruction)
