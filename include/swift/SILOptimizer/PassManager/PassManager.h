@@ -83,7 +83,7 @@ public:
   virtual ~SwiftPassInvocation();
 
   SwiftPassInvocation *getCurrent() {
-    return nestedSwiftPassInvocation ? nestedSwiftPassInvocation : this;
+    return nestedSwiftPassInvocation ? nestedSwiftPassInvocation->getCurrent() : this;
   }
 
   SILPassManager *getPassManager() const { return passManager; }
@@ -136,13 +136,13 @@ public:
   bool getNeedFixStackNesting() const { return needFixStackNesting; }
 
   SwiftPassInvocation *initializeNestedSwiftPassInvocation(SILFunction *newFunction) {
-    assert(!nestedSwiftPassInvocation && "Nested Swift pass invocation already initialized");
+    ASSERT(!nestedSwiftPassInvocation && "Nested Swift pass invocation already initialized");
     nestedSwiftPassInvocation = new SwiftPassInvocation(passManager, transform, newFunction);
     return nestedSwiftPassInvocation;
   }
 
   void deinitializeNestedSwiftPassInvocation() {
-    assert(nestedSwiftPassInvocation && "Nested Swift pass invocation not initialized");
+    ASSERT(nestedSwiftPassInvocation && "Nested Swift pass invocation not initialized");
     nestedSwiftPassInvocation->finishedFunctionPassRun();
     delete nestedSwiftPassInvocation;
     nestedSwiftPassInvocation = nullptr;

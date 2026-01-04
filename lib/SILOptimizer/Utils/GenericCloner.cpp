@@ -22,12 +22,40 @@
 #include "swift/SIL/SILModule.h"
 #include "swift/SIL/SILValue.h"
 #include "swift/SIL/ScopedAddressUtils.h"
+#include "swift/SILOptimizer/Utils/BasicBlockOptUtils.h"
+#include "swift/SILOptimizer/Utils/CFGOptUtils.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILOptFunctionBuilder.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 
 using namespace swift;
+
+SILFunction *
+GenericCloner::cloneFunction(SILOptFunctionBuilder &FuncBuilder,
+                             SILFunction *F,
+                             const ReabstractionInfo &ReInfo,
+                             SubstitutionMap ParamSubs,
+                             StringRef NewName,
+                             CloneCollector::CallbackType Callback) {
+  // Clone and specialize the function.
+  GenericCloner SC(FuncBuilder, F, ReInfo, ParamSubs,
+                   NewName, Callback);
+  SC.populateCloned();
+  SILFunction *cloned = SC.getCloned();
+  cloned->setNeedCompleteLifetimes(false);
+  if (SC.unreachableInserted) {
+    auto *invocation = FuncBuilder.getPassManager().getSwiftPassInvocation()->getCurrent();
+    invocation->initializeNestedSwiftPassInvocation(cloned);
+    removeUnreachableBlocks(*cloned);
+    breakInfiniteLoops(&FuncBuilder.getPassManager(), cloned);
+    completeAllLifetimes(&FuncBuilder.getPassManager(), cloned);
+    invocation->deinitializeNestedSwiftPassInvocation();
+  }
+  cloned->setNeedCompleteLifetimes(false);
+  return cloned;
+}
 
 /// Create a new empty function with the correct arguments and a unique name.
 SILFunction *GenericCloner::createDeclaration(
@@ -252,6 +280,7 @@ void GenericCloner::postFixUp(SILFunction *f) {
     applyBlock->split(std::next(SILBasicBlock::iterator(apply)));
     getBuilder().setInsertionPoint(applyBlock);
     getBuilder().createUnreachable(apply->getLoc());
+    unreachableInserted = true;
   }
 
   SmallVector<SILBasicBlock *, 4> discoveredBlocks;
