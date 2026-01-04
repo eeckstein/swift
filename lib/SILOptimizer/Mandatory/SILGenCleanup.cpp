@@ -207,6 +207,7 @@ void SILGenCleanup::run() {
     LLVM_DEBUG(llvm::dbgs()
                << "\nRunning SILGenCleanup on " << function.getName() << "\n");
 
+    removeUnreachableBlocks(function);
     bool changed = fixupBorrowAccessors(&function);
     breakInfiniteLoops(getPassManager(), &function);
     completeAllLifetimes(getPassManager(), &function);

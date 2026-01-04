@@ -573,6 +573,7 @@ bool CrossModuleOptimization::canSerializeFunction(
     }
   }
   M.reclaimUnresolvedLocalArchetypeDefinitions();
+  function->setNeedCompleteLifetimes(false);
 
   canSerializeFlags[function] = true;
   return true;
@@ -912,6 +913,7 @@ void CrossModuleOptimization::serializeFunction(SILFunction *function,
   }
 
   M.reclaimUnresolvedLocalArchetypeDefinitions();
+  function->setNeedCompleteLifetimes(false);
 }
 
 /// Prepare \p inst for serialization.

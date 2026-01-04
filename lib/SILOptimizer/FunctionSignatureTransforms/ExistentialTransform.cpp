@@ -649,6 +649,8 @@ void ExistentialTransform::createExistentialSpecializedFunction() {
   populateThunkBody();
 
   assert(F->getDebugScope()->Parent != NewF->getDebugScope()->Parent);
+  F->setNeedBreakInfiniteLoops(false);
+  NewF->setNeedCompleteLifetimes(false);
 
   LLVM_DEBUG(llvm::dbgs() << "After ExistentialSpecializer Pass\n"; F->dump();
              NewF->dump(););

@@ -65,6 +65,8 @@ void MapOpaqueArchetypes::replace() {
   // Insert the new entry block at the beginning.
   fn.moveBlockBefore(clonedEntryBlock, fn.begin());
   removeUnreachableBlocks(fn);
+  fn.setNeedBreakInfiniteLoops(false);
+  fn.setNeedCompleteLifetimes(false);
 }
 
 static bool opaqueArchetypeWouldChange(TypeExpansionContext context,

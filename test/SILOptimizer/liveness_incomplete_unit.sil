@@ -72,34 +72,6 @@ bb0(%0 : @guaranteed $C):
   unreachable
 }
 
-// A single instruction occurs twice on the same liveness
-// boundary. Once as a last use, and once as a dead def.
-// This is a particularly problematic corner case.
-//
-// CHECK-LABEL: testDeadSelfKill: multidef_liveness
-// CHECK: MultiDef lifetime analysis:
-// CHECK: def value: %1 = argument of bb1 : $C
-// CHECK: def value: [[V:%.*]] = move_value %1 : $C
-// CHECK: bb1: LiveWithin
-// CHECK: lifetime-ending user:   [[V]] = move_value %1 : $C
-// CHECK: last user:   [[V]] = move_value %1 : $C
-// CHECK: dead def:   [[V]] = move_value %1 : $C
-sil [ossa] @testDeadSelfKill : $@convention(thin) () -> () {
-bb0:
-  br bb3
-
-bb1(%1 : @owned $C):
-  specify_test "multidef_liveness @trace[0] @trace[1]"
-  debug_value [trace] %1 : $C
-  %2 = move_value %1 : $C
-  debug_value [trace] %2 : $C
-  unreachable
-
-bb3:
-  %99 = tuple()
-  return %99 : $()
-}
-
 sil @genericReturn : $@convention(thin) <τ_0_0> (@guaranteed C) -> @out τ_0_0
 
 // The store_borrow scope has an inner load_borrow scope, which is

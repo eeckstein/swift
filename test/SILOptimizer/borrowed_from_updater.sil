@@ -66,23 +66,6 @@ bb1(%phi : @guaranteed $FakeOptional<C>):
   return %retval : $()
 }
 
-// CHECK-LABEL: sil [ossa] @introducer_unreachable : $@convention(thin) () -> () {
-// CHECK:       bb1([[A:%.*]] : @guaranteed $C):
-// CHECK-NEXT:    [[B:%.*]] = borrowed [[A]] : $C from ()
-// CHECK:       } // end sil function 'introducer_unreachable'
-sil [ossa] @introducer_unreachable : $@convention(thin) () -> () {
-bb0:
-  specify_test "update_borrowed_from"
-  br bb2
-
-bb1(%phiCycle : @guaranteed $C):
-  br bb1(%phiCycle : $C)
-
-bb2:
-  %retval = tuple ()
-  return %retval : $()
-}
-
 // %reborrow introduces multiple borrow scopes. But it should only appear
 // in the list once.
 

@@ -58,9 +58,7 @@ extension Function {
     }
 
     if hasOwnership, isDefinition {
-      if context.silStage == .canonical {
-        verifyNoUnreachableBlocks(context)
-      }
+      verifyNoUnreachableBlocks(context)
       verifyNoInfiniteLoops(context)
     }
   }
