@@ -1852,6 +1852,7 @@ static FunctionTest SimplifyCFGSimplifySwitchEnumUnreachableBlocks(
                   /*EnableJumpThread=*/false)
           .simplifySwitchEnumUnreachableBlocks(
               cast<SwitchEnumInst>(arguments.takeInstruction()));
+      removeUnreachableBlocks(function);
     });
 } // end namespace swift::test
 
@@ -2162,6 +2163,7 @@ static FunctionTest SimplifyCFGSwitchEnumOnObjcClassOptional(
                   /*EnableJumpThread=*/false)
           .simplifySwitchEnumOnObjcClassOptional(
               cast<SwitchEnumInst>(arguments.takeInstruction()));
+      removeUnreachableBlocks(function);
     });
 } // end namespace swift::test
 
@@ -2241,6 +2243,7 @@ static FunctionTest SimplifyCFGSimplifySwitchEnumBlock(
                   /*EnableJumpThread=*/false)
           .simplifySwitchEnumBlock(
               cast<SwitchEnumInst>(arguments.takeInstruction()));
+      removeUnreachableBlocks(function);
     });
 } // end namespace swift::test
 
@@ -2690,6 +2693,7 @@ static FunctionTest SimplifyCFGSimplifyTermWithIdenticalDestBlocks(
       SimplifyCFG(function, *passToRun, /*VerifyAll=*/false,
                   /*EnableJumpThread=*/false)
           .simplifyTermWithIdenticalDestBlocks(arguments.takeBlock());
+      removeUnreachableBlocks(function);
     });
 } // end namespace swift::test
 
@@ -2937,6 +2941,7 @@ static FunctionTest SimplifyCFGCanonicalizeSwitchEnum(
       SimplifyCFG(function, *passToRun, /*VerifyAll=*/false,
                   /*EnableJumpThread=*/false)
           .canonicalizeSwitchEnums();
+      removeUnreachableBlocks(function);
     });
 } // end namespace swift::test
 
