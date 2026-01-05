@@ -562,6 +562,7 @@ SILFunction *ClosureCloner::constructClonedFunction(
   ClosureCloner cloner(funcBuilder, origF, serializedKind, clonedName,
                        promotableIndices, resilienceExpansion);
   cloner.populateCloned();
+  cloner.getCloned()->setNeedCompleteLifetimes(false);
   return cloner.getCloned();
 }
 
