@@ -800,7 +800,7 @@ exit:
 sil [ossa] @dead_arg_debug_dead_end : $@convention(thin) (@owned C) -> () {
 entry(%c : @owned $C):
   debug_value %c : $C
-  specify_test "ossa_canonicalize_lifetime true false true %c"
+  specify_test "ossa_canonicalize_lifetime false false true %c"
   unreachable
 }
 

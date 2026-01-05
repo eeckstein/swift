@@ -305,8 +305,7 @@ bool areUsesWithinLexicalValueLifetime(SILValue, ArrayRef<Operand *>);
 
 /// Whether the provided uses lie within the current liveness of the
 /// specified value.
-bool areUsesWithinValueLifetime(SILValue value, ArrayRef<Operand *> uses,
-                                DeadEndBlocks *deBlocks);
+bool areUsesWithinValueLifetime(SILValue value, ArrayRef<Operand *> uses);
 
 /// A utility composed ontop of OwnershipFixupContext that knows how to replace
 /// a single use of a value with another value with a different ownership. We

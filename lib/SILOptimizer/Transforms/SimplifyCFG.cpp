@@ -1745,11 +1745,18 @@ bool SimplifyCFG::simplifyCondBrBlock(CondBranchInst *BI) {
 
 // Does this basic block consist of only an "unreachable" instruction?
 static bool isOnlyUnreachable(SILBasicBlock *BB) {
-  auto *Term = BB->getTerminator();
-  if (!isa<UnreachableInst>(Term))
-    return false;
-
-  return (&*BB->begin() == BB->getTerminator());
+  for (SILInstruction &inst : *BB) {
+    switch (inst.getKind()) {
+    case SILInstructionKind::EndBorrowInst:
+    case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
+    case SILInstructionKind::UnreachableInst:
+      break;
+    default:
+      return false;
+    }
+  }
+  return true;
 }
 
 

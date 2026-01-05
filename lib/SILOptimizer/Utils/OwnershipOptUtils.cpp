@@ -444,8 +444,7 @@ bool OwnershipRAUWHelper::mayIntroduceUnoptimizableCopies() {
     return false;
   }
 
-  if (areUsesWithinValueLifetime(newValue, ctx->guaranteedUsePoints,
-                                 &ctx->deBlocks)) {
+  if (areUsesWithinValueLifetime(newValue, ctx->guaranteedUsePoints)) {
     return false;
   }
   return true;
@@ -470,8 +469,7 @@ bool swift::areUsesWithinLexicalValueLifetime(SILValue value,
   return false;
 }
 
-bool swift::areUsesWithinValueLifetime(SILValue value, ArrayRef<Operand *> uses,
-                                       DeadEndBlocks *deBlocks) {
+bool swift::areUsesWithinValueLifetime(SILValue value, ArrayRef<Operand *> uses) {
   assert(value->getFunction()->hasOwnership());
 
   if (value->getOwnershipKind() == OwnershipKind::None) {
@@ -498,7 +496,7 @@ bool swift::areUsesWithinValueLifetime(SILValue value, ArrayRef<Operand *> uses,
   SSAPrunedLiveness liveness(value->getFunction());
   liveness.initializeDef(value);
   liveness.computeSimple();
-  return liveness.areUsesWithinBoundary(uses, deBlocks);
+  return liveness.areUsesWithinBoundary(uses);
 }
 
 //===----------------------------------------------------------------------===//

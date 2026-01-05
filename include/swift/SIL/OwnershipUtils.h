@@ -642,8 +642,7 @@ struct BorrowedValue {
   /// \p deadEndBlocks is optional during transition. It will be completely
   /// removed in an upcoming commit.
   template <typename Instructions>
-  bool areWithinExtendedScope(Instructions insts,
-                              DeadEndBlocks *deadEndBlocks) const;
+  bool areWithinExtendedScope(Instructions insts) const;
 
   /// Returns true if \p uses are completely within this borrow introducer's
   /// local scope.

@@ -248,9 +248,8 @@ bb3:
 }
 
 
-// This case does not get optimized because the some block has instructions other than unreachable
 // CHECK-LABEL: sil [ossa] @test_simplify_switch_enum_unreachable3 :
-// CHECK: switch_enum
+// CHECK-NOT:     switch_enum
 // CHECK-LABEL: } // end sil function 'test_simplify_switch_enum_unreachable3'
 sil [ossa] @test_simplify_switch_enum_unreachable3 : $@convention(thin) (@owned Klass) -> () {
 bb0(%0 : @owned $Klass):

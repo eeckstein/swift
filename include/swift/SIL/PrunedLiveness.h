@@ -731,12 +731,11 @@ public:
   /// Whether all \p insts are between this def and the liveness boundary;
   /// \p deadEndBlocks is optional.
   template <typename Instructions>
-  bool areWithinBoundary(Instructions insts,
-                         DeadEndBlocks *deadEndBlocks) const {
+  bool areWithinBoundary(Instructions insts) const {
     assert(asImpl().isInitialized());
 
     for (auto *inst : insts) {
-      if (!isWithinBoundary(inst, deadEndBlocks))
+      if (!isWithinBoundary(inst))
         return false;
     }
     return true;
