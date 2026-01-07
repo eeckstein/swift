@@ -855,6 +855,7 @@ bb8:
 // CHECK:      bb1:
 // CHECK-NEXT:   destroy_value [[C]]
 // CHECK:      bb2:
+// CHECK-NEXT:   destroy_value [dead_end] [[C]]
 // CHECK-NEXT:   unreachable
 // CHECK: } // end sil function 'ignore_unreachable_simple'
 sil [ossa] @ignore_unreachable_simple : $@convention(thin) (@in_guaranteed NonTrivialStruct) -> () {

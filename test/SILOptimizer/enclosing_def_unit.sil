@@ -237,6 +237,7 @@ bb2:
   br bb1(%reborrow_outer : $C, %first2 : $C)
 
 bb3:
+  end_borrow %borrow
   unreachable
 }
 

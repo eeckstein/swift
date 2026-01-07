@@ -625,6 +625,7 @@ bb0:
 
 bb1:
   dealloc_stack %stack : $*Builtin.Int16
+  end_borrow %token
   unreachable
 
 bb2:

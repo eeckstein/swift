@@ -104,6 +104,7 @@ bb0(%0 : $*NonTrivialStruct):
   cond_br undef, bb1, bb2
 
 bb1:
+  destroy_value [dead_end] %val1
   unreachable
 
 bb2:
@@ -274,6 +275,7 @@ bb0(%0 : $*NonTrivialStruct):
   cond_br undef, bb1, bb2
 
 bb1:
+  destroy_value [dead_end] %val1
   unreachable
 
 bb2:
@@ -528,6 +530,7 @@ bb0(%0 : $*NonTrivialStruct):
   cond_br undef, bb1, bb2
 
 bb1:
+  destroy_value [dead_end] %val1
   unreachable
 
 bb2:
@@ -740,6 +743,7 @@ bb0(%0 : $*NonTrivialStruct):
   cond_br undef, bb1, bb2
 
 bb1:
+  destroy_value [dead_end] %val1
   unreachable
 
 bb2:
