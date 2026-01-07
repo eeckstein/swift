@@ -335,13 +335,19 @@ private extension LoadingInstruction {
 }
 
 private func replace(load: LoadingInstruction, with availableValues: [AvailableValue], _ context: FunctionPassContext) {
+  let ownership = load.ownership
   var ssaUpdater = SSAUpdater(function: load.parentFunction,
-                              type: load.type, ownership: load.ownership, context)
+                              type: load.type, ownership: ownership, context)
+
+  var toComplete = [Value]()
 
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
     let block = availableValue.instruction.parentBlock
     let availableValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
+    if ownership == .owned {
+      toComplete.append(availableValue)
+    }
   }
 
   let newValue: Value
@@ -373,6 +379,15 @@ private func replace(load: LoadingInstruction, with availableValues: [AvailableV
   insertMarkDependencies(for: originalLoad, context)
 
   originalLoad.replace(with: newValue, context)
+
+  if ownership == .owned {
+    for v in toComplete {
+      completeLifetime(of: v, context)
+    }
+    for phi in ssaUpdater.insertedPhis {
+      completeLifetime(of: phi.value, context)
+    }
+  }
 }
 
 private func provideValue(
