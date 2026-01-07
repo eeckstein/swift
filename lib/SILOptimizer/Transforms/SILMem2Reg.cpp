@@ -2112,18 +2112,15 @@ void MemoryToRegisters::removeSingleBlockAllocation(AllocStackInst *asi) {
 
   auto *deadEndBlocks = deadEndBlocksAnalysis->get(function);
 
-  if (!deadEndBlocks->isDeadEnd(parentBlock)) {
-    // We may have incomplete lifetimes for enum locations on trivial paths.
-    // After promoting them, complete lifetime here.
-    ASSERT(asi->getElementType().isOrHasEnum());
-    OSSACompleteLifetime completion(function, *deadEndBlocks,
-                                    OSSACompleteLifetime::IgnoreTrivialVariable,
-                                    /*forceLivenessVerification=*/false,
-                                    /*nonDestroyingEnd=*/true);
-    completion.completeOSSALifetime(
-        runningVals->value.replacement(asi, nullptr),
-        OSSACompleteLifetime::Boundary::Liveness);
-  }
+  // We may have incomplete lifetimes for enum locations on trivial paths.
+  // After promoting them, complete lifetime here.
+  OSSACompleteLifetime completion(function, *deadEndBlocks,
+                                  OSSACompleteLifetime::IgnoreTrivialVariable,
+                                  /*forceLivenessVerification=*/false,
+                                  /*nonDestroyingEnd=*/true);
+  completion.completeOSSALifetime(
+      runningVals->value.replacement(asi, nullptr),
+      OSSACompleteLifetime::Boundary::Liveness);
 }
 
 void MemoryToRegisters::collectStoredValues(AllocStackInst *asi,
@@ -2223,6 +2220,7 @@ bool MemoryToRegisters::promoteAllocation(AllocStackInst *alloc,
 
   // Remove write-only AllocStacks.
   if (isWriteOnlyAllocation(alloc) && !alloc->getType().isOrHasEnum() &&
+      !deadEndBlocksAnalysis->get(alloc->getFunction())->isDeadEnd(alloc->getParent()) &&
       !lexicalLifetimeEnsured(alloc)) {
     LLVM_DEBUG(llvm::dbgs() << "*** Deleting store-only AllocStack: "<< *alloc);
     deleter.forceDeleteWithUsers(alloc);
