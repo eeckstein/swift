@@ -1731,11 +1731,6 @@ public:
   void verifyMemoryLifetime(CalleeCache *calleeCache,
                             DeadEndBlocks *deadEndBlocks);
 
-  /// Verifies ownership of the function.
-  /// Since we don't have complete lifetimes everywhere, computes DeadEndBlocks
-  /// and calls verifyOwnership(DeadEndBlocks *deadEndBlocks)
-  void verifyOwnership() const;
-
   /// Run the SIL ownership verifier to check that all values with ownership
   /// have a linear lifetime. Regular OSSA invariants are checked separately in
   /// normal SIL verification.
@@ -1745,7 +1740,7 @@ public:
   /// NOTE: The ownership verifier is run when performing normal IR
   /// verification, so this verification can be viewed as a subset of
   /// SILFunction::verify(checkLinearLifetimes=true).
-  void verifyOwnership(DeadEndBlocks *deadEndBlocks) const;
+  void verifyOwnership(DeadEndBlocks *deadEndBlocks = nullptr) const;
 
   /// Verify that all non-cond-br critical edges have been split.
   ///
