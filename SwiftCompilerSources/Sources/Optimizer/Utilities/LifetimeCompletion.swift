@@ -73,7 +73,7 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
       return
     }
     switch beginBorrow {
-    case .beginBorrow, .loadBorrow:
+    case .beginBorrow, .loadBorrow, .uncheckOwnershipConversion:
       valueToComplete = value
     case .beginApply(let v):
       let ba = v.definingInstruction as! BeginApplyInst
@@ -83,7 +83,7 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
       valueToComplete = v
     case .reborrow(let phi):
       valueToComplete = phi.borrowedFrom!
-    case .uncheckOwnershipConversion, .functionArgument:
+    case .functionArgument:
       return
     }
   case .none:

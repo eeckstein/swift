@@ -3,6 +3,7 @@
 sil_stage canonical
 
 import Builtin
+import Swift
 
 class C {}
 
@@ -598,5 +599,26 @@ bb0:
   %6 = function_ref @use_klass : $@convention(thin) (@guaranteed Klass) -> ()
   %7 = apply %6(%5) : $@convention(thin) (@guaranteed Klass) -> ()
   unreachable
+}
+
+// CHECK-LABEL: sil [ossa] @unchecked_ownership_conversion :
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow %3
+// CHECK-LABEL: } // end sil function 'unchecked_ownership_conversion'
+sil [ossa] @unchecked_ownership_conversion : $@convention(thin) (Unmanaged<AnyObject>) -> () {
+bb0(%0 : $Unmanaged<AnyObject>):
+  specify_test "lifetime_completion"
+  %1 = struct_extract %0, #Unmanaged._value
+  %2 = unmanaged_to_ref %1 to $AnyObject
+  %3 = unchecked_ownership_conversion %2, @unowned to @guaranteed
+  cond_br undef, bb1, bb2
+
+bb1:
+  unreachable
+
+bb2:
+  end_borrow %3
+  %r = tuple ()
+  return %r
 }
 
