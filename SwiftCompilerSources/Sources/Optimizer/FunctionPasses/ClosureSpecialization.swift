@@ -695,6 +695,7 @@ private func addMissingDestroysAtFunctionExits(for clonedArguments: [Value], _ c
     Builder.insertCleanupAtFunctionExits(of: valueToDestroy.parentFunction, context) { builder in
       builder.createDestroyValue(operand: valueToDestroy)
     }
+    completeLifetime(of: valueToDestroy, context)
   }
 }
 
