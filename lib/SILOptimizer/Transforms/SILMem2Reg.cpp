@@ -1806,7 +1806,7 @@ void StackAllocationPromoter::run(BasicBlockSetVector &livePhiBlocks) {
   // value form after mem2reg, they will end up with incomplete ossa lifetimes.
   // Use the lifetime completion utility to complete such lifetimes.
   // First, collect the stored values to complete.
-  if (asi->getType().isOrHasEnum()) {
+  if (function->hasOwnership() && !asi->getType().isTrivial(*function)) {
     for (auto *block : livePhiBlocks) {
       SILPhiArgument *argument = cast<SILPhiArgument>(
           block->getArgument(block->getNumArguments() - 1));
