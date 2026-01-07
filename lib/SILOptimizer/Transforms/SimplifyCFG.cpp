@@ -1750,6 +1750,7 @@ static bool isOnlyUnreachable(SILBasicBlock *BB) {
     case SILInstructionKind::EndBorrowInst:
     case SILInstructionKind::DestroyValueInst:
     case SILInstructionKind::EndLifetimeInst:
+    case SILInstructionKind::DeallocStackInst:
     case SILInstructionKind::UnreachableInst:
       break;
     default:
@@ -1790,13 +1791,12 @@ bool SimplifyCFG::simplifySwitchEnumUnreachableBlocks(SwitchEnumInst *SEI) {
   LLVM_DEBUG(llvm::dbgs() << "remove unreachable case " << *SEI);
 
   if (!Dest) {
-    addToWorklist(SEI->getParent());
-    SILBuilderWithScope(SEI).createUnreachable(SEI->getLoc());
-    for (auto &succ : SEI->getSuccessors()) {
-      succ.getBB()->removeDeadBlock();
-    }
-    SEI->eraseFromParent();
-    return true;
+    if (Count == 0)
+      return false;
+    // If all successors end in unreachable, pick the first one.
+    auto enumCase = SEI->getCase(0);
+    Element = enumCase.first;
+    Dest = enumCase.second;
   }
 
   if (Dest->args_empty()) {
@@ -2542,17 +2542,12 @@ static bool isTryApplyOfConvertFunction(TryApplyInst *TAI,
 static bool isTryApplyWithUnreachableError(TryApplyInst *TAI,
                                            SILValue &Callee,
                                            SILType &CalleeType) {
-  SILBasicBlock *ErrorBlock = TAI->getErrorBB();
-  TermInst *Term = ErrorBlock->getTerminator();
-  if (!isa<UnreachableInst>(Term))
-    return false;
-  
-  if (&*ErrorBlock->begin() != Term)
-    return false;
-  
-  Callee = TAI->getCallee();
-  CalleeType = TAI->getSubstCalleeSILType();
-  return true;
+  if (isOnlyUnreachable(TAI->getErrorBB())) {
+    Callee = TAI->getCallee();
+    CalleeType = TAI->getSubstCalleeSILType();
+    return true;
+  }
+  return false;
 }
 
 bool SimplifyCFG::simplifyTryApplyBlock(TryApplyInst *TAI) {
