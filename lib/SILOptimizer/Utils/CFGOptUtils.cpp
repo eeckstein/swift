@@ -604,6 +604,10 @@ void BridgedOptimizerUtilities::registerControlFlowUtils(UpdateFunctionFn breakI
 }
 
 void swift::breakInfiniteLoops(SILPassManager *pm, SILFunction *f) {
-  if (breakInfiniteLoopsFunction)
+  if (breakInfiniteLoopsFunction) {
     breakInfiniteLoopsFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
+  } else {
+    // If SwiftCompilerSources are not enabled or in SourceKit unit tests
+    f->setNeedBreakInfiniteLoops(false);
+  }
 }

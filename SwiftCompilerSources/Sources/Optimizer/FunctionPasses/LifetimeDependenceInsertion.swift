@@ -41,6 +41,12 @@ let lifetimeDependenceInsertionPass = FunctionPass(
       insertResultDependencies(for: dependentApply, context)
     }
   }
+  if context.needBreakInfiniteLoops {
+    breakInfiniteLoops(in: function, context)
+  }
+  if context.needCompleteLifetimes {
+    completeLifetimes(in: function, context)
+  }
 }
 
 /// An apply that produces a non-escapable value, linking it to a parent value.

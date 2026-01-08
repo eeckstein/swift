@@ -2001,6 +2001,10 @@ bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
 }
 
 void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f) {
-  if (completeAllLifetimesFunction)
+  if (completeAllLifetimesFunction) {
     completeAllLifetimesFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
+  } else {
+    // If SwiftCompilerSources are not enabled or in SourceKit unit tests
+    f->setNeedCompleteLifetimes(false);
+  }
 }

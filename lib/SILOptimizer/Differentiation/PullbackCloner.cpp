@@ -38,6 +38,7 @@
 #include "swift/SIL/Projection.h"
 #include "swift/SIL/TypeSubstCloner.h"
 #include "swift/SILOptimizer/PassManager/PrettyStackTrace.h"
+#include "swift/SILOptimizer/Utils/OwnershipOptUtils.h"
 #include "swift/SILOptimizer/Utils/SILOptFunctionBuilder.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallSet.h"
@@ -2848,6 +2849,13 @@ bool PullbackCloner::Implementation::run() {
   }
   builder.createReturn(pbLoc, joinElements(retElts, builder, pbLoc));
 
+  if (!errorOccurred) {
+    auto *pm = &getContext().getPassManager();
+    pm->getSwiftPassInvocation()->initializeNestedSwiftPassInvocation(&pullback);
+    completeAllLifetimes(pm, &pullback);
+    pm->getSwiftPassInvocation()->deinitializeNestedSwiftPassInvocation();
+  }
+
 #ifndef NDEBUG
   bool leakFound = false;
   // Ensure all temporaries have been cleaned up.
@@ -2879,6 +2887,7 @@ bool PullbackCloner::Implementation::run() {
              << "Generated " << (isSemanticMemberAcc ? "semantic member accessor" : "normal")
              << " pullback for " << original.getName() << ":\n"
              << pullback);
+
   return errorOccurred;
 }
 
