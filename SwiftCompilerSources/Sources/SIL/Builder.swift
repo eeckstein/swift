@@ -475,6 +475,11 @@ public struct Builder {
   }
 
   @discardableResult
+  public func createExtendLifetime(of value: Value) -> ExtendLifetimeInst {
+    return notifyNew(bridged.createExtendLifetime(value.bridged).getAs(ExtendLifetimeInst.self))
+  }
+
+  @discardableResult
   public func createDebugValue(value: Value, debugVariable: DebugVariableInstruction.DebugVariable) -> DebugValueInst {
     return notifyNew(bridged.createDebugValue(value.bridged, debugVariable).getAs(DebugValueInst.self))
   }

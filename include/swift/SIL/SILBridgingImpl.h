@@ -2623,6 +2623,10 @@ BridgedInstruction BridgedBuilder::createEndLifetime(BridgedValue op) const {
   return {unbridged().createEndLifetime(regularLoc(), op.getSILValue())};
 }
 
+BridgedInstruction BridgedBuilder::createExtendLifetime(BridgedValue op) const {
+  return {unbridged().createExtendLifetime(regularLoc(), op.getSILValue())};
+}
+
 BridgedInstruction BridgedBuilder::createDebugValue(BridgedValue op,
                                                     BridgedSILDebugVariable var) const {
   return {unbridged().createDebugValue(regularLoc(), op.getSILValue(), var.unbridge())};

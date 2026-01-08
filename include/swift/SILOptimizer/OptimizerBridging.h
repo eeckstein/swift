@@ -127,8 +127,9 @@ struct BridgedPostDomTree {
 
 struct BridgedOptimizerUtilities {
   typedef void (* _Nonnull UpdateFunctionFn)(BridgedContext, BridgedFunction);
+  typedef void (* _Nonnull UpdateLifetimeFunctionFn)(BridgedContext, BridgedFunction, bool);
 
-  static void registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn);
+  static void registerLifetimeCompletion(UpdateLifetimeFunctionFn completeAllLifetimesFn);
   static void registerControlFlowUtils(UpdateFunctionFn breakInfiniteLoopsFn);
 };
 

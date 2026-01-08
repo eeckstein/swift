@@ -1952,9 +1952,9 @@ void BridgedUtilities::registerPhiUpdater(UpdateFunctionFn updateAllGuaranteedPh
   replacePhisWithIncomingValuesFunction = replacePhisWithIncomingValuesFn;
 }
 
-static BridgedOptimizerUtilities::UpdateFunctionFn completeAllLifetimesFunction;
+static BridgedOptimizerUtilities::UpdateLifetimeFunctionFn completeAllLifetimesFunction;
 
-void BridgedOptimizerUtilities::registerLifetimeCompletion(UpdateFunctionFn completeAllLifetimesFn) {
+void BridgedOptimizerUtilities::registerLifetimeCompletion(UpdateLifetimeFunctionFn completeAllLifetimesFn) {
   completeAllLifetimesFunction = completeAllLifetimesFn;
 }
 
@@ -2000,9 +2000,9 @@ bool swift::hasOwnershipOperandsOrResults(SILInstruction *inst) {
   return false;
 }
 
-void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f) {
+void swift::completeAllLifetimes(SILPassManager *pm, SILFunction *f, bool includeTrivialVars) {
   if (completeAllLifetimesFunction) {
-    completeAllLifetimesFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f});
+    completeAllLifetimesFunction({pm->getSwiftPassInvocation()->getCurrent()}, {f}, includeTrivialVars);
   } else {
     // If SwiftCompilerSources are not enabled or in SourceKit unit tests
     f->setNeedCompleteLifetimes(false);

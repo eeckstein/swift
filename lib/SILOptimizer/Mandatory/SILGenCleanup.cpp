@@ -210,7 +210,7 @@ void SILGenCleanup::run() {
     removeUnreachableBlocks(function);
     bool changed = fixupBorrowAccessors(&function);
     breakInfiniteLoops(getPassManager(), &function);
-    completeAllLifetimes(getPassManager(), &function);
+    completeAllLifetimes(getPassManager(), &function, /*includeTrivialVars=*/ true);
     function.verifyOwnership(/*deadEndBlocks=*/nullptr);
 
     DeadEndBlocks deadEndBlocks(&function);

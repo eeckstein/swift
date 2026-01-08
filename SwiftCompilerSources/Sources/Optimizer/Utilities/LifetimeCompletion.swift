@@ -13,7 +13,7 @@
 import SIL
 import OptimizerBridging
 
-func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
+func completeLifetimes(in function: Function, includeTrivialVars: Bool = false, _ context: FunctionPassContext) {
   context.setNeedCompleteLifetimes(to: false)
 
   guard function.hasOwnership else {
@@ -50,16 +50,16 @@ func completeLifetimes(in function: Function, _ context: FunctionPassContext) {
   for block in blocks.reversed() {
     for inst in block.instructions.reversed() {
       for result in inst.results {
-        completeLifetime(of: result, context)
+        completeLifetime(of: result, includeTrivialVars: includeTrivialVars, context)
       }
     }
     for arg in block.arguments {
-      completeLifetime(of: arg, context)
+      completeLifetime(of: arg, includeTrivialVars: includeTrivialVars, context)
     }
   }
 }
 
-func completeLifetime(of value: Value, _ context: FunctionPassContext) {
+func completeLifetime(of value: Value, includeTrivialVars: Bool = false, _ context: FunctionPassContext) {
 
   var endBlocks = BasicBlockSet(context)
   defer { endBlocks.deinitialize() }
@@ -87,11 +87,19 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
       return
     }
   case .none:
-    guard let sb = value as? StoreBorrowInst else {
+    switch value {
+    case let sb as StoreBorrowInst:
+      endBlocks.insert(contentsOf: sb.uses.users(ofType: EndBorrowInst.self).lazy.map { $0.parentBlock })
+      valueToComplete = sb
+    case let mv as MoveValueInst where includeTrivialVars && mv.isFromVarDecl:
+      endBlocks.insert(contentsOf: mv.uses.users(ofType: ExtendLifetimeInst.self).lazy.map { $0.parentBlock })
+      valueToComplete = mv
+    case let ba as BeginAccessInst:
+      endBlocks.insert(contentsOf: ba.uses.users(ofType: EndAccessInst.self).lazy.map { $0.parentBlock })
+      valueToComplete = ba
+    default:
       return
     }
-    endBlocks.insert(contentsOf: sb.uses.users(ofType: EndBorrowInst.self).lazy.map { $0.parentBlock })
-    valueToComplete = sb
   case .unowned:
     return
   }
@@ -108,10 +116,24 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
     }
     if let unreachable = block.terminator as? UnreachableInst {
       let builder = Builder(before: unreachable, context)
-      if valueToComplete.ownership == .owned {
+      switch valueToComplete.ownership {
+      case .owned:
         builder.createDestroyValue(operand: valueToComplete, isDeadEnd: true)
-      } else {
+      case .guaranteed:
         builder.createEndBorrow(of: valueToComplete)
+      case .none:
+        switch valueToComplete {
+        case let sb as StoreBorrowInst:
+          builder.createEndBorrow(of: sb)
+        case let ba as BeginAccessInst:
+          builder.createEndAccess(beginAccess: ba)
+        case let mv as MoveValueInst:
+          builder.createExtendLifetime(of: mv)
+        default:
+          fatalError("wrong value to complete")
+        }
+      case .unowned:
+        fatalError("wrong ownership")
       }
     } else {
       liveBlocks.pushIfNotVisited(contentsOf: block.successors)
@@ -121,10 +143,10 @@ func completeLifetime(of value: Value, _ context: FunctionPassContext) {
 
 func registerLifetimeCompletion() {
   BridgedOptimizerUtilities.registerLifetimeCompletion(
-    { (bridgedCtxt: BridgedContext, bridgedFunction: BridgedFunction) in
+    { (bridgedCtxt: BridgedContext, bridgedFunction: BridgedFunction, includeTrivialVars: Bool) in
       let context = FunctionPassContext(_bridged: bridgedCtxt)
       let function = bridgedFunction.function;
-      completeLifetimes(in: function, context)
+      completeLifetimes(in: function, includeTrivialVars: includeTrivialVars, context)
     }
   )
 }
