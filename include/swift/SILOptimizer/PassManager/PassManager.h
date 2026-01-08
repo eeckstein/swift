@@ -70,10 +70,6 @@ class SwiftPassInvocation : public SILContext {
   void endPass();
 
 public:
-  SwiftPassInvocation(SILPassManager *passManager, SILFunction *function,
-                         SILCombiner *silCombiner) :
-    SILContext(function), passManager(passManager), silCombiner(silCombiner) {}
-
   SwiftPassInvocation(SILPassManager *passManager, SILTransform *transform,
                       SILFunction *function) :
     SILContext(function), passManager(passManager), transform(transform) {}
@@ -93,6 +89,10 @@ public:
   SILFunction *getFunction() const { return function; }
 
   irgen::IRGenModule *getIRGenModule();
+
+  void injectSILCombiner(SILCombiner *combiner) {
+    silCombiner = combiner;
+  }
 
   /// The top-level API to erase an instruction, called from the Swift pass.
   void eraseInstruction(SILInstruction *inst, bool salvageDebugInfo) override;

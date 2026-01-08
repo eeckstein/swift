@@ -1437,7 +1437,7 @@ void SwiftPassInvocation::finishedModulePassRun() {
   ASSERT(!function && transform && "not running a module pass");
   if (changeNotifications != 0) {
     ASSERT((changeNotifications & ~SILContext::NotificationKind::FunctionTables) == 0
-           && "a module pass must change the SIL of a function");
+           && "a module pass must not change the SIL of a function");
     passManager->invalidateFunctionTables();
     changeNotifications = SILContext::NotificationKind::Nothing;
   }
@@ -1447,6 +1447,7 @@ void SwiftPassInvocation::finishedModulePassRun() {
 
 void SwiftPassInvocation::startFunctionPassRun(SILFunctionTransform *transform) {
   ASSERT(!this->function && !this->transform && "a pass is already running");
+  ASSERT(!silCombiner && "didn't clear silCombiner backlink");
   this->transform = transform;
   this->function = transform->getFunction();
 }
@@ -1468,6 +1469,7 @@ void SwiftPassInvocation::finishedFunctionPassRun() {
 
   function = nullptr;
   transform = nullptr;
+  silCombiner = nullptr;
   verifyEverythingIsCleared();
 }
 
