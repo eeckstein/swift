@@ -774,8 +774,10 @@ static bool simplifyBlocksWithCallsToNoReturn(SILBasicBlock &BB,
     // If we have an instruction that is an end_borrow, ignore it. This
     // happens when passing a guaranteed argument through generic code paths
     // to no return functions.
-    if (isa<EndBorrowInst>(currInst))
+    if (isa<EndBorrowInst>(currInst) || isa<EndAccessInst>(currInst) ||
+        isa<EndLifetimeInst>(currInst)) {
       return false;
+    }
 
     // If we have an ignored use whose operand is our no return call, ignore it.
     if (auto *i = dyn_cast<IgnoredUseInst>(currInst)) {

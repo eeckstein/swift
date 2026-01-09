@@ -469,7 +469,7 @@ bb2:
 // CHECK-LABEL: sil [ossa] @begin_access : {{.*}} {
 // CHECK:         [[TOKEN:%[^,]+]] = begin_access
 // CHECK:       bb2:
-// xCHECK-NEXT:    end_access [[TOKEN]]
+// CHECK-NEXT:    end_access [[TOKEN]]
 // CHECK-NEXT:    unreachable
 // CHECK-LABEL: } // end sil function 'begin_access'
 sil [ossa] @begin_access : $@convention(thin) (@guaranteed C) -> () {
@@ -498,7 +498,7 @@ bb2:
 // CHECK:       [[DIE]]:
 // CHECK-NEXT:    end_borrow [[BORROW]]
 // CHECK-NEXT:    end_borrow [[LOAD]]
-// xCHECK-NEXT:    end_access [[ACCESS]]
+// CHECK-NEXT:    end_access [[ACCESS]]
 // CHECK-NEXT:    unreachable
 // CHECK-LABEL: } // end sil function 'load_borrow_of_begin_access'
 sil [ossa] @load_borrow_of_begin_access : $@convention(thin) (@in_guaranteed C) -> () {

@@ -62,7 +62,7 @@ extension CondFailInst : OnoneSimplifiable, SILCombineSimplifiable {
 private extension Instruction {
   var isUnreachableOrEndingLifetime: Bool {
     switch self {
-    case is EndBorrowInst, is DestroyValueInst, is EndLifetimeInst, is DeallocStackInst,
+    case is EndBorrowInst, is DestroyValueInst, is EndLifetimeInst, is DeallocStackInst, is EndAccessInst,
          is UnreachableInst:
       return true
     default:

@@ -1699,9 +1699,8 @@ bb0(%0 : $Int):
 }
 
 // CHECK-LABEL: sil [ossa] @complete_lifetime1 :
-// CHECK:         %2 = copy_value %1
-// CHECK:       bb1:
-// CHECK-NEXT:    destroy_value [dead_end] %2
+// This is not optimized, yet
+// CHECK:         load [copy]
 // CHECK-LABEL: } // end sil function 'complete_lifetime1'
 sil [ossa] @complete_lifetime1 : $@convention(thin) (@inout B) -> () {
 bb0(%0 : $*B):
@@ -1722,9 +1721,8 @@ bb2:
 }
 
 // CHECK-LABEL: sil [ossa] @complete_lifetime2 :
-// CHECK:       bb3([[PHI:%.*]] : @owned $B):
-// CHECK:       bb4:
-// CHECK-NEXT:    destroy_value [dead_end] [[PHI]]
+// This is not optimized, yet
+// CHECK:         load [copy]
 // CHECK-LABEL: } // end sil function 'complete_lifetime2'
 sil [ossa] @complete_lifetime2 : $@convention(thin) (@inout B) -> () {
 bb0(%0 : $*B):
