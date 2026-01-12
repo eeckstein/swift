@@ -493,7 +493,7 @@ collectStackClosureLifetimeEnds(SmallVectorImpl<SILInstruction *> &lifetimeEnds,
                                 SILValue v) {
   for (Operand *consume : v->getConsumingUses()) {
     SILInstruction *consumer = consume->getUser();
-    if (isa<DestroyValueInst>(consumer)) {
+    if (isa<DestroyValueInst>(consumer) || isa<EndLifetimeInst>(consumer)) {
       lifetimeEnds.push_back(consumer);
       continue;
     }
@@ -1208,7 +1208,7 @@ static SILInstruction *getOnlyDestroy(CopyBlockWithoutEscapingInst *cb) {
       return nullptr;
 
     if (isa<DestroyValueInst>(inst) || isa<ReleaseValueInst>(inst) ||
-        isa<StrongReleaseInst>(inst)) {
+        isa<StrongReleaseInst>(inst) || isa<EndLifetimeInst>(inst)) {
       onlyDestroy = inst;
       continue;
     }

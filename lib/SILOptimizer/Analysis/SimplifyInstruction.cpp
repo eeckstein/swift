@@ -303,6 +303,7 @@ static SILValue simplifyDeadCast(SingleValueInstruction *Cast) {
   for (Operand *op : Cast->getUses()) {
     switch (op->getUser()->getKind()) {
       case SILInstructionKind::DestroyValueInst:
+      case SILInstructionKind::EndLifetimeInst:
         break;
       case SILInstructionKind::StrongReleaseInst:
       case SILInstructionKind::StrongRetainInst:

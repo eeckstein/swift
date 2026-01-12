@@ -264,7 +264,7 @@ void SelectEnforcement::analyzeUsesOfBox(SingleValueInstruction *source) {
     // Ignore certain other uses that do not capture the value.
     if (isa<StrongRetainInst>(user) || isa<StrongReleaseInst>(user) ||
         isa<DestroyValueInst>(user) || isa<DeallocBoxInst>(user) ||
-        isa<EndBorrowInst>(user))
+        isa<EndBorrowInst>(user) || isa<EndLifetimeInst>(user))
       continue;
 
     // Treat everything else as an escape.
@@ -541,6 +541,7 @@ void SelectEnforcement::updateCapture(AddressCapture capture) {
     case SILInstructionKind::StrongReleaseInst:
     case SILInstructionKind::DebugValueInst:
     case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
     case SILInstructionKind::RetainValueInst:
     case SILInstructionKind::ReleaseValueInst:
     case SILInstructionKind::EndBorrowInst:

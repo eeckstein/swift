@@ -112,15 +112,15 @@ private func selectHoistableDestroys(of value: Value, _ context: FunctionPassCon
   var foundDestroys = false
   var hoistableDestroys = InstructionSet(context)
 
-  for use in value.uses {
-    if let destroy = use.instruction as? DestroyValueInst,
+  for user in value.uses.users {
+    if user.isDestroyOrEndLifetime,
        // We can hoist all destroys for which another copy of the value is alive at the destroy.
-       forwardExtendedLiverange.contains(destroy),
+       forwardExtendedLiverange.contains(user),
        // TODO: once we have complete OSSA lifetimes we don't need to handle dead-end blocks.
-       !deadEndBlocks.isDeadEnd(destroy.parentBlock)
+       !deadEndBlocks.isDeadEnd(user.parentBlock)
     {
       foundDestroys = true
-      hoistableDestroys.insert(destroy)
+      hoistableDestroys.insert(user)
     }
   }
   return (foundDestroys, hoistableDestroys)

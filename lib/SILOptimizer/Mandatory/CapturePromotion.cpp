@@ -852,7 +852,8 @@ getPartialApplyArgMutationsAndEscapes(PartialApplyInst *pai,
   SmallVector<Operand *, 32> incrementalCaptureCausingUses;
   for (auto *use : boxArg->getUses()) {
     if (isa<StrongReleaseInst>(use->getUser()) ||
-        isa<DestroyValueInst>(use->getUser()))
+        isa<DestroyValueInst>(use->getUser()) ||
+        isa<EndLifetimeInst>(use->getUser()))
       continue;
 
     if (auto *pbi = dyn_cast<ProjectBoxInst>(use->getUser())) {

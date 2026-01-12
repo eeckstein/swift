@@ -435,7 +435,7 @@ extension LocalVariableAccessWalker : ForwardingDefUseWalker {
       return walkDownUses(of: transition.ownershipResult, using: operand)
     case is DestroyValueInst:
       visit(LocalVariableAccess(.store, operand))
-    case is DeallocBoxInst:
+    case is DeallocBoxInst, is EndLifetimeInst:
       break
     case let markDep as MarkDependenceInst:
       assert(markDep.baseOperand == operand)
@@ -638,7 +638,7 @@ struct LocalVariableAccessBlockMap {
     //
     // TODO: SIL verify that owned boxes are never forwarded.
     let deallocations = accessMap.allocation.uses.lazy.filter {
-      $0.instruction is Deallocation || $0.instruction is DestroyValueInst
+      $0.instruction is Deallocation || $0.instruction is DestroyValueInst || $0.instruction is EndLifetimeInst
     }
     for dealloc in deallocations {
       let block = dealloc.instruction.parentBlock

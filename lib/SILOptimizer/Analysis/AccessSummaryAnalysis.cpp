@@ -223,6 +223,7 @@ static bool hasExpectedUsesOfNoEscapePartialApply(Operand *partialApplyUse) {
   case SILInstructionKind::DestroyNotEscapedClosureInst:
   case SILInstructionKind::StoreInst:
   case SILInstructionKind::DestroyValueInst:
+  case SILInstructionKind::EndLifetimeInst:
     // @block_storage is passed by storing it to the stack. We know this is
     // still nonescaping simply because our original argument convention is
     // @inout_aliasable. In this SIL, both store and destroy_value are users

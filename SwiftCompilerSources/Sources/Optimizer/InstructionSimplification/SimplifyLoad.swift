@@ -227,9 +227,9 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
 
   private func loadedValueIsDead(_ context: SimplifyContext) -> Bool {
     if context.preserveDebugInfo {
-      return !uses.contains { !($0.instruction is DestroyValueInst) }
+      return uses.users.allSatisfy { $0.isDestroyOrEndLifetime }
     } else {
-      return !uses.ignoreDebugUses.contains { !($0.instruction is DestroyValueInst) }
+      return uses.ignoreDebugUses.users.allSatisfy { $0.isDestroyOrEndLifetime }
     }
   }
 }

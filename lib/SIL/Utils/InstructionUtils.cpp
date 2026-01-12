@@ -464,7 +464,7 @@ bool swift::onlyUsedByAssignOrInit(PartialApplyInst *PAI) {
       continue;
     }
 
-    if (isa<DestroyValueInst>(user)) {
+    if (isa<DestroyValueInst>(user) || isa<EndLifetimeInst>(user)) {
       continue;
     }
 

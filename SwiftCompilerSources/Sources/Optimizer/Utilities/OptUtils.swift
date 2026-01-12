@@ -635,6 +635,7 @@ extension Instruction {
     }
   }
 
+  var isDestroyOrEndLifetime: Bool { self is DestroyValueInst || self is EndLifetimeInst }
 }
 
 // Match the pattern:

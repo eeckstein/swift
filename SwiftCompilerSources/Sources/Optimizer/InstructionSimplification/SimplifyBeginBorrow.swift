@@ -133,7 +133,7 @@ private func tryReplaceCopy(
 ///   %2 = struct_extract %1     // a chain of forwarding instructions
 ///   // ... uses of %2
 ///   end_borrow %1
-///   destroy_value %1           // the only other use of %0 beside begin_borrow
+///   destroy_value %0           // the only other use of %0 beside begin_borrow
 /// ```
 /// with
 /// ```
@@ -177,12 +177,12 @@ private extension Value {
   }
 
   func isDestroyed(after nonDestroyUser: Instruction) -> Bool {
-    return uses.singleUser(notOfType: DestroyValueInst.self) == nonDestroyUser &&
+    return uses.users.filter { !$0.isDestroyOrEndLifetime }.singleElement == nonDestroyUser &&
            nonDestroyUser.dominates(destroysOf: self)
   }
 
   func replaceAllDestroys(with replacement: Value, _ context: SimplifyContext) {
-    uses.filter(usersOfType: DestroyValueInst.self).replaceAll(with: replacement, context)
+    uses.filter{ $0.instruction.isDestroyOrEndLifetime }.replaceAll(with: replacement, context)
   }
 }
 
@@ -194,8 +194,8 @@ private extension Instruction {
       // The value and instruction are in the same block. All uses are dominated by both.
       return true
     }
-    let destroys = value.uses.filter(usersOfType: DestroyValueInst.self)
-    return destroys.allSatisfy({ $0.instruction.parentBlock == parentBlock})
+    let destroys = value.uses.users.filter{ $0.isDestroyOrEndLifetime }
+    return destroys.allSatisfy({ $0.parentBlock == parentBlock})
   }
 }
 

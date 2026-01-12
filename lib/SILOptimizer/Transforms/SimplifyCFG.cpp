@@ -3958,6 +3958,7 @@ bool SimplifyCFG::simplifyProgramTerminationBlock(SILBasicBlock *BB) {
     case SILInstructionKind::StrongReleaseInst:
     case SILInstructionKind::ReleaseValueInst:
     case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
     case SILInstructionKind::DestroyAddrInst:
       break;
     default:

@@ -679,7 +679,8 @@ SILCombiner::recursivelyCollectARCUsers(UserListTy &Uses, ValueBase *Value) {
   for (auto *Use : Value->getUses()) {
     SILInstruction *Inst = Use->getUser();
     if (isa<RefCountingInst>(Inst) || isa<DestroyValueInst>(Inst) ||
-        isa<DebugValueInst>(Inst) || isa<EndBorrowInst>(Inst)) {
+        isa<DebugValueInst>(Inst) || isa<EndBorrowInst>(Inst) ||
+        isa<EndLifetimeInst>(Inst)) {
       Uses.push_back(Inst);
       continue;
     }

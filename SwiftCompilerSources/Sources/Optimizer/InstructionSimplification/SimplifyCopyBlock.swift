@@ -51,7 +51,7 @@ private func hasValidUses(block: Value) -> Bool {
       if partialApply.canClosureArgumentEscape(closure: use) {
         return false
       }
-    case is EndBorrowInst, is DestroyValueInst:
+    case is EndBorrowInst, is DestroyValueInst, is EndLifetimeInst:
       break
     default:
       return false
@@ -76,7 +76,7 @@ private func replaceBlock(_ block: Value, with original: Value, _ context: Simpl
       } else {
         use.set(to: original, context)
       }
-    case is EndBorrowInst, is DestroyValueInst:
+    case is EndBorrowInst, is DestroyValueInst, is EndLifetimeInst:
       context.erase(instruction: use.instruction)
     default:
       fatalError("unhandled use")

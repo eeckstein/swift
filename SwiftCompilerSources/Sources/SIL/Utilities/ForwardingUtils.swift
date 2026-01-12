@@ -370,7 +370,7 @@ public struct NonEscapingClosureDefUseWalker {
     case is FullApplySite:
       applyOperandStack.push(operand)
       return .continueWalk
-    case is MarkDependenceInst, is FixLifetimeInst, is DestroyValueInst:
+    case is MarkDependenceInst, is FixLifetimeInst, is DestroyValueInst, is EndLifetimeInst:
       return .continueWalk
     default:
       if operand.instruction.isIncidentalUse {

@@ -270,7 +270,8 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
   }
   if (isa<EndInitLetRefInst>(Inst) || isa<BeginDeallocRefInst>(Inst) ||
       isa<FixLifetimeInst>(Inst) || isa<EndBorrowInst>(Inst) ||
-      isa<UpcastInst>(Inst) || isa<UncheckedRefCastInst>(Inst))
+      isa<UpcastInst>(Inst) || isa<UncheckedRefCastInst>(Inst) ||
+      isa<EndLifetimeInst>(Inst))
     return true;
 
   // It is ok to eliminate various retains/releases. We are either removing
@@ -612,7 +613,7 @@ recursivelyCollectInteriorUses(ValueBase *DefInst,
     // Lifetime endpoints that don't allow the address to escape.
     if (isa<RefCountingInst>(User) || isa<DebugValueInst>(User) ||
         isa<FixLifetimeInst>(User) || isa<DestroyValueInst>(User) ||
-        isa<EndBorrowInst>(User)) {
+        isa<EndBorrowInst>(User) || isa<EndLifetimeInst>(User)) {
       AllUsers.insert(User);
       continue;
     }

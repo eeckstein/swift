@@ -128,7 +128,7 @@ bool ArrayAllocation::recursivelyCollectUses(ValueBase *Def, bool isInInitSectio
     auto *User = Opd->getUser();
     // Ignore reference counting and debug instructions.
     if (isa<RefCountingInst>(User) || isa<DestroyValueInst>(User) ||
-        isa<DebugValueInst>(User))
+        isa<EndLifetimeInst>(User) || isa<DebugValueInst>(User))
       continue;
 
     if (BeginBorrowInst *beginBorrow = dyn_cast<BeginBorrowInst>(User)) {

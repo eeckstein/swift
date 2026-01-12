@@ -236,6 +236,8 @@ bb2:
 // CHECK-LABEL: sil [ossa] @dead_end_block :
 // CHECK:       bb0(%0 : @owned $String):
 // CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK-NEXT:    unreachable
 // CHECK:       } // end sil function 'dead_end_block'
 sil [ossa] @dead_end_block : $@convention(thin) (@owned String) -> () {
 bb0(%0 : @owned $String):
@@ -246,13 +248,17 @@ bb1:
   %r = tuple ()
   return %r
 bb2:
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @dead_end_block_with_use :
 // CHECK:       bb1:
 // CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK-NEXT:    fix_lifetime %0
+// CHECK-NEXT:    end_lifetime %0
+// CHECK-NEXT:    debug_step
 // CHECK:       } // end sil function 'dead_end_block_with_use'
 sil [ossa] @dead_end_block_with_use : $@convention(thin) (@owned String) -> () {
 bb0(%0 : @owned $String):
@@ -264,13 +270,17 @@ bb1:
   return %r
 bb2:
   fix_lifetime %0
-  destroy_value [dead_end] %0
+  debug_step
+  end_lifetime %0
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @dead_end_block_with_inner_use :
 // CHECK:         end_borrow %1
 // CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK:         end_borrow %1
+// CHECK-NEXT:    end_lifetime %0
 // CHECK:       } // end sil function 'dead_end_block_with_inner_use'
 sil [ossa] @dead_end_block_with_inner_use : $@convention(thin) (@owned String) -> () {
 bb0(%0 : @owned $String):
@@ -285,31 +295,31 @@ bb1:
 bb2:
   fix_lifetime %1
   end_borrow %1
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @dead_end_with_no_destroy :
 // CHECK:       bb0(%0 : @owned $String):
 // CHECK-NEXT:    fix_lifetime
-// CHECK-NEXT:    destroy_value [dead_end] %0
+// CHECK-NEXT:    end_lifetime %0
 // CHECK-NEXT:    unreachable
 // CHECK:       } // end sil function 'dead_end_with_no_destroy'
 sil [ossa] @dead_end_with_no_destroy : $@convention(thin) (@owned String) -> () {
 bb0(%0 : @owned $String):
   fix_lifetime %0
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @dead_end_with_no_use :
 // CHECK:       bb0(%0 : @owned $String):
-// CHECK-NEXT:    destroy_value [dead_end] %0
+// CHECK-NEXT:    end_lifetime %0
 // CHECK-NEXT:    unreachable
 // CHECK:       } // end sil function 'dead_end_with_no_use'
 sil [ossa] @dead_end_with_no_use : $@convention(thin) (@owned String) -> () {
 bb0(%0 : @owned $String):
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 

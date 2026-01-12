@@ -464,7 +464,7 @@ private struct ExtendableScope {
     // LifetimeDependenceUseDefWalker.
     guard owner.type.isEscapable(in: owner.parentFunction),
           VariableScopeInstruction(owner.definingInstruction) == nil,
-          owner.uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst }) else {
+          owner.uses.endingLifetime.allSatisfy({ $0.instruction.isDestroyOrEndLifetime }) else {
       return nil
     }
     self.introducer = .owned(owner)
