@@ -332,31 +332,6 @@ bb0(%0 : @owned  $Klass):
   return %11
 }
 
-// CHECK-LABEL: sil [ossa] @incomplete_liferange_at_unreachable :
-// CHECK:       bb2:
-// CHECK-NOT:     destroy_value %0
-// CHECK:       } // end sil function 'incomplete_liferange_at_unreachable'
-sil [ossa] @incomplete_liferange_at_unreachable : $@convention(thin) (@owned Klass, Int) -> @owned S {
-bb0(%0 : @owned $Klass, %1 : $Int):
-  %2 = copy_value %0
-  %3 = alloc_stack $Klass
-  %4 = store_borrow %0 to %3
-  cond_br undef, bb1, bb2
-bb1:
-  end_borrow %4
-  dealloc_stack %3
-  destroy_value %0
-  %14 = move_value %2
-  %15 = struct $S (%14, %1)
-  return %15
-bb2:
-  end_borrow %4
-  dealloc_stack %3
-  destroy_value [dead_end] %2
-  destroy_value [dead_end] %0
-  unreachable
-}
-
 // CHECK-LABEL: sil [ossa] @partial_apply_liferange :
 // CHECK:         %3 = convert_function %2
 // CHECK-NEXT:    destroy_value %3
@@ -395,11 +370,53 @@ bb1:
 bb2:
   %10 = begin_borrow %1
   end_borrow %10
-  destroy_value [dead_end] %2
-  destroy_value [dead_end] %1
+  debug_step
+  end_lifetime %2
+  end_lifetime %1
   unreachable
 }
 
+// CHECK-LABEL: sil [ossa] @handle_end_lifetime :
+// CHECK:         %1 = copy_value %0
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       } // end sil function 'handle_end_lifetime'
+sil [ossa] @handle_end_lifetime : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %1 = copy_value %0
+  cond_br undef, bb1, bb2
+bb1:
+  destroy_value %0
+  return %1
+bb2:
+  end_lifetime %1
+  end_lifetime %0
+  unreachable
+}
+
+// CHECK-LABEL: sil [ossa] @destroy_value_vs_end_lifetime :
+// CHECK:       bb1:
+// CHECK-NEXT:    fix_lifetime
+// CHECK-NEXT:    destroy_value %0
+// CHECK-NEXT:    debug_step
+// CHECK:       bb2:
+// CHECK-NEXT:    end_lifetime %0
+// CHECK-NEXT:    debug_step
+// CHECK:       } // end sil function 'destroy_value_vs_end_lifetime'
+sil [ossa] @destroy_value_vs_end_lifetime : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %1 = copy_value %0
+  cond_br undef, bb1, bb2
+bb1:
+  fix_lifetime %0
+  debug_step
+  destroy_value %0
+  return %1
+bb2:
+  debug_step
+  end_lifetime %1
+  end_lifetime %0
+  unreachable
+}
 
 public struct Wrapper {
   var _k: Klass

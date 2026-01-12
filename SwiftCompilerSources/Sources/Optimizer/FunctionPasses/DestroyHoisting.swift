@@ -108,16 +108,13 @@ private func selectHoistableDestroys(of value: Value, _ context: FunctionPassCon
   var forwardExtendedLiverange = InstructionRange(withForwardExtendedLiverangeOf: value, context)
   defer { forwardExtendedLiverange.deinitialize() }
 
-  let deadEndBlocks = context.deadEndBlocks
   var foundDestroys = false
   var hoistableDestroys = InstructionSet(context)
 
   for user in value.uses.users {
-    if user.isDestroyOrEndLifetime,
-       // We can hoist all destroys for which another copy of the value is alive at the destroy.
-       forwardExtendedLiverange.contains(user),
-       // TODO: once we have complete OSSA lifetimes we don't need to handle dead-end blocks.
-       !deadEndBlocks.isDeadEnd(user.parentBlock)
+    // We can hoist all destroys for which another copy of the value is alive at the destroy.
+    if (user is DestroyValueInst && forwardExtendedLiverange.contains(user)) ||
+        user is EndLifetimeInst
     {
       foundDestroys = true
       hoistableDestroys.insert(user)
@@ -131,9 +128,15 @@ private func hoistDestroys(of value: Value,
                            restrictingTo hoistableDestroys: inout InstructionSet,
                            _ context: FunctionPassContext)
 {
-  createNewDestroys(for: value, atEndPointsOf: minimalLiverange, reusing: &hoistableDestroys, context)
+  var destroyRange = BasicBlockRange(begin: value.parentBlock, context)
+  defer { destroyRange.deinitialize() }
+  destroyRange.insert(contentsOf: value.uses.users(ofType: DestroyValueInst.self).map { $0.parentBlock })
 
-  createNewDestroys(for: value, atExitPointsOf: minimalLiverange, reusing: &hoistableDestroys, context)
+  createNewDestroys(for: value, atEndPointsOf: minimalLiverange, reusing: &hoistableDestroys,
+                    destroyRange: destroyRange, context)
+
+  createNewDestroys(for: value, atExitPointsOf: minimalLiverange, reusing: &hoistableDestroys,
+                    destroyRange: destroyRange, context)
 
   removeDestroys(of: value, restrictingTo: hoistableDestroys, context)
 }
@@ -142,14 +145,13 @@ private func createNewDestroys(
   for value: Value,
   atEndPointsOf liverange: InstructionRange,
   reusing hoistableDestroys: inout InstructionSet,
+  destroyRange: BasicBlockRange,
   _ context: FunctionPassContext
 ) {
-  let deadEndBlocks = context.deadEndBlocks
-
   for endInst in liverange.ends {
     if !endInst.endsLifetime(of: value) {
       Builder.insert(after: endInst, context) { builder in
-        builder.createDestroy(of: value, reusing: &hoistableDestroys, notIn: deadEndBlocks)
+        builder.createDestroy(of: value, reusing: &hoistableDestroys, destroyRange: destroyRange)
       }
     }
   }
@@ -159,13 +161,12 @@ private func createNewDestroys(
   for value: Value,
   atExitPointsOf liverange: InstructionRange,
   reusing hoistableDestroys: inout InstructionSet,
+  destroyRange: BasicBlockRange,
   _ context: FunctionPassContext
 ) {
-  let deadEndBlocks = context.deadEndBlocks
-
   for exitBlock in liverange.exitBlocks {
     let builder = Builder(atBeginOf: exitBlock, context)
-    builder.createDestroy(of: value, reusing: &hoistableDestroys, notIn: deadEndBlocks)
+    builder.createDestroy(of: value, reusing: &hoistableDestroys, destroyRange: destroyRange)
   }
 }
 
@@ -174,11 +175,9 @@ private func removeDestroys(
   restrictingTo hoistableDestroys: InstructionSet,
   _ context: FunctionPassContext
 ) {
-  for use in value.uses {
-    if let destroy = use.instruction as? DestroyValueInst,
-       hoistableDestroys.contains(destroy)
-    {
-      context.erase(instruction: destroy)
+  for user in value.users {
+    if user.isDestroyOrEndLifetime, hoistableDestroys.contains(user) {
+      context.erase(instruction: user)
     }
   }
 }
@@ -195,15 +194,6 @@ private extension InstructionRange {
       return .continueWalk
     }
     defer { visitor.deinitialize() }
-
-    // This is important to visit begin_borrows which don't have an end_borrow in dead-end blocks.
-    // TODO: we can remove this once we have complete lifetimes.
-    visitor.innerScopeHandler = {
-      if let inst = $0.definingInstruction {
-        liverange.insert(inst)
-      }
-      return .continueWalk
-    }
 
     guard visitor.visitUses() == .continueWalk else {
       liverange.deinitialize()
@@ -303,17 +293,18 @@ private func isTakeOrDestroy(
 private extension Builder {
   func createDestroy(of value: Value,
                      reusing hoistableDestroys: inout InstructionSet,
-                     notIn deadEndBlocks: DeadEndBlocksAnalysis) {
+                     destroyRange: BasicBlockRange) {
     guard case .before(let insertionPoint) = insertionPoint else {
       fatalError("unexpected kind of insertion point")
-    }
-    if deadEndBlocks.isDeadEnd(insertionPoint.parentBlock) {
-      return
     }
     if hoistableDestroys.contains(insertionPoint) {
       hoistableDestroys.erase(insertionPoint)
     } else {
-      createDestroyValue(operand: value)
+      if destroyRange.inclusiveRangeContains(insertionPoint.parentBlock) {
+        createDestroyValue(operand: value)
+      } else {
+        createEndLifetime(of: value)
+      }
     }
   }
 }
