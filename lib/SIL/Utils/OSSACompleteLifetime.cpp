@@ -78,15 +78,18 @@ static SILInstruction *endOSSALifetime(SILValue value,
   if (end == OSSACompleteLifetime::LifetimeEnd::Loop) {
     return builder.createExtendLifetime(loc, value);
   }
-  auto isDeadEnd = IsDeadEnd_t(deb.isDeadEnd(builder.getInsertionBB()));
   if (value->getOwnershipKind() == OwnershipKind::Owned) {
+    bool isDeadEnd = deb.isDeadEnd(builder.getInsertionBB());
     if (value->getType().is<SILBoxType>()) {
-      return builder.createDeallocBox(loc, value, isDeadEnd);
+      if (isDeadEnd) {
+        return builder.createEndLifetime(loc, value);
+      }
+      return builder.createDeallocBox(loc, value);
     }
-    if (nonDestroyingEnd && !isDeadEnd) {
+    if (nonDestroyingEnd || isDeadEnd) {
       return builder.createEndLifetime(loc, value);
     } else {
-      return builder.createDestroyValue(loc, value, DontPoisonRefs, isDeadEnd);
+      return builder.createDestroyValue(loc, value, DontPoisonRefs);
     }
   }
   if (auto scopedAddress = ScopedAddressValue(value)) {

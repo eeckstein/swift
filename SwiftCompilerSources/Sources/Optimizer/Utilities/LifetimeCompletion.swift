@@ -118,7 +118,7 @@ func completeLifetime(of value: Value, includeTrivialVars: Bool = false, _ conte
       let builder = Builder(before: unreachable, context)
       switch valueToComplete.ownership {
       case .owned:
-        builder.createDestroyValue(operand: valueToComplete, isDeadEnd: true)
+        builder.createEndLifetime(of: valueToComplete)
       case .guaranteed:
         builder.createEndBorrow(of: valueToComplete)
       case .none:

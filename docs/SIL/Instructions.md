@@ -461,7 +461,7 @@ Only valid in Lowered SIL.
 ### dealloc_box
 
 ```
-sil-instruction ::= 'dealloc_box' '[dead_end]'? sil-operand
+sil-instruction ::= 'dealloc_box' sil-operand
 
 dealloc_box %0 : $@box T
 ```
@@ -474,10 +474,6 @@ behavior results.
 This does not destroy the boxed value. The contents of the value must
 have been fully uninitialized or destroyed before `dealloc_box` is
 applied.
-
-The optional `dead_end` attribute specifies that this instruction was
-created during lifetime completion and is eligible for deletion during
-OSSA lowering.
 
 ### project_box
 
@@ -3253,7 +3249,7 @@ This instruction is _not_ available in OSSA.
 ### destroy_value
 
 ```
-sil-instruction ::= 'destroy_value' '[dead_end]'? '[poison]'? sil-operand
+sil-instruction ::= 'destroy_value' '[poison]'? sil-operand
 
 destroy_value %0 : $A
 ```
@@ -3272,10 +3268,6 @@ the preferred forms.
 For aggregate types, especially enums, it is typically both easier and
 more efficient to reason about aggregate destroys than it is to reason
 about destroys of the subobjects.
-
-The optional `dead_end` attribute specifies that this instruction was
-created during lifetime completion and is eligible for deletion during
-OSSA lowering.
 
 ### autorelease_value
 

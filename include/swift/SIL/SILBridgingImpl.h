@@ -1384,10 +1384,6 @@ bool BridgedInstruction::EndCOWMutationInst_doKeepUnique() const {
   return getAs<swift::EndCOWMutationInst>()->doKeepUnique();
 }
 
-bool BridgedInstruction::DestroyValueInst_isDeadEnd() const {
-  return getAs<swift::DestroyValueInst>()->isDeadEnd();
-}
-
 SwiftInt BridgedInstruction::EnumInst_caseIndex() const {
   return getAs<swift::EnumInst>()->getCaseIndex();
 }
@@ -1661,10 +1657,6 @@ void BridgedInstruction::CopyAddrInst_setIsTakeOfSrc(bool isTakeOfSrc) const {
 void BridgedInstruction::CopyAddrInst_setIsInitializationOfDest(bool isInitializationOfDest) const {
   return getAs<swift::CopyAddrInst>()->setIsInitializationOfDest(
       isInitializationOfDest ? swift::IsInitialization : swift::IsNotInitialization);
-}
-
-bool BridgedInstruction::DeallocBoxInst_isDeadEnd() const {
-  return getAs<swift::DeallocBoxInst>()->isDeadEnd();
 }
 
 bool BridgedInstruction::ExplicitCopyAddrInst_isTakeOfSrc() const {
@@ -2610,9 +2602,8 @@ BridgedInstruction BridgedBuilder::createCopyAddr(BridgedValue from, BridgedValu
       swift::IsTake_t(takeSource), swift::IsInitialization_t(initializeDest))};
 }
 
-BridgedInstruction BridgedBuilder::createDestroyValue(BridgedValue op, bool isDeadEnd) const {
-  return {unbridged().createDestroyValue(regularLoc(), op.getSILValue(), swift::DontPoisonRefs,
-                                         swift::IsDeadEnd_t(isDeadEnd))};
+BridgedInstruction BridgedBuilder::createDestroyValue(BridgedValue op) const {
+  return {unbridged().createDestroyValue(regularLoc(), op.getSILValue(), swift::DontPoisonRefs)};
 }
 
 BridgedInstruction BridgedBuilder::createDestroyAddr(BridgedValue op) const {

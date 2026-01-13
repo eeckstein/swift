@@ -685,11 +685,6 @@ final public class UnmanagedAutoreleaseValueInst : RefCountingInst {}
 final public class DestroyValueInst : Instruction, UnaryInstruction {
   public var destroyedValue: Value { operand.value }
 
-  /// True if this `destroy_value` is inside a dead-end block is only needed to formally
-  /// end the lifetime of its operand.
-  /// Such `destroy_value` instructions are lowered to no-ops.
-  public var isDeadEnd: Bool { bridged.DestroyValueInst_isDeadEnd() }
-
   public override var mayCallFunction: Bool { true }
 }
 
@@ -732,9 +727,7 @@ final public class DeallocRefInst : Instruction, UnaryInstruction, Deallocation 
 
 final public class DeallocPartialRefInst : Instruction, Deallocation {}
 
-final public class DeallocBoxInst : Instruction, UnaryInstruction, Deallocation {
-  public var isDeadEnd: Bool { bridged.DeallocBoxInst_isDeadEnd() }
-}
+final public class DeallocBoxInst : Instruction, UnaryInstruction, Deallocation {}
 
 final public class DeallocExistentialBoxInst : Instruction, UnaryInstruction, Deallocation {}
 

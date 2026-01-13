@@ -1456,15 +1456,14 @@ public:
   }
 
   DestroyValueInst *createDestroyValue(SILLocation Loc, SILValue operand,
-                                       PoisonRefs_t poisonRefs = DontPoisonRefs,
-                                       IsDeadEnd_t isDeadEnd = IsntDeadEnd) {
+                                       PoisonRefs_t poisonRefs = DontPoisonRefs) {
     ASSERT(getFunction().hasOwnership());
     ASSERT(isLoadableOrOpaque(operand->getType()));
     ASSERT(!operand->getType().isTrivial(getFunction()) &&
            "Should not be passing trivial values to this api. Use instead "
            "emitDestroyValueOperation");
     return insert(new (getModule()) DestroyValueInst(
-        getSILDebugLocation(Loc), operand, poisonRefs, isDeadEnd));
+        getSILDebugLocation(Loc), operand, poisonRefs));
   }
 
   MoveValueInst *createMoveValue(
@@ -2475,10 +2474,9 @@ public:
     return insert(new (getModule()) DeallocPartialRefInst(
         getSILDebugLocation(Loc), operand, metatype));
   }
-  DeallocBoxInst *createDeallocBox(SILLocation Loc, SILValue operand,
-                                   IsDeadEnd_t isDeadEnd = IsntDeadEnd) {
+  DeallocBoxInst *createDeallocBox(SILLocation Loc, SILValue operand) {
     return insert(new (getModule()) DeallocBoxInst(getSILDebugLocation(Loc),
-                                                   operand, isDeadEnd));
+                                                   operand));
   }
   DeallocExistentialBoxInst *createDeallocExistentialBox(SILLocation Loc,
                                                          CanType concreteType,

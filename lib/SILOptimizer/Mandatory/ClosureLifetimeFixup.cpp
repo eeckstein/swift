@@ -1055,9 +1055,11 @@ static bool tryExtendLifetimeToLastUse(
   insertAfterClosureUser(
       singleUser, [closureCopy, deadEndBlocks](SILBuilder &builder) {
         auto loc = RegularLocation(builder.getInsertionPointLoc());
-        auto isDeadEnd = IsDeadEnd_t(
-            deadEndBlocks->isDeadEnd(builder.getInsertionPoint()->getParent()));
-        builder.createDestroyValue(loc, closureCopy, DontPoisonRefs, isDeadEnd);
+        if (deadEndBlocks->isDeadEnd(builder.getInsertionPoint()->getParent())) {
+          builder.createEndLifetime(loc, closureCopy);
+        } else {
+          builder.createDestroyValue(loc, closureCopy, DontPoisonRefs);
+        }
       });
 
   // Closure User may not be post-dominating the previously created copy_value.

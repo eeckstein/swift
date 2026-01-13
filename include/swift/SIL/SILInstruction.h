@@ -9203,11 +9203,6 @@ class UnownedCopyValueInst
   };
 #include "swift/AST/ReferenceStorage.def"
 
-enum IsDeadEnd_t : bool {
-  IsntDeadEnd = false,
-  IsDeadEnd = true,
-};
-
 class DestroyValueInst
     : public UnaryInstructionBase<SILInstructionKind::DestroyValueInst,
                                   NonValueInstruction> {
@@ -9215,10 +9210,9 @@ class DestroyValueInst
   USE_SHARED_UINT8;
 
   DestroyValueInst(SILDebugLocation DebugLoc, SILValue operand,
-                   PoisonRefs_t poisonRefs, IsDeadEnd_t isDeadEnd)
+                   PoisonRefs_t poisonRefs)
       : UnaryInstructionBase(DebugLoc, operand) {
     sharedUInt8().DestroyValueInst.poisonRefs = poisonRefs;
-    sharedUInt8().DestroyValueInst.deadEnd = isDeadEnd;
   }
 
 public:
@@ -9246,10 +9240,6 @@ public:
   /// If the value being destroyed is a stack allocation of a nonescaping
   /// closure, then return the PartialApplyInst that allocated the closure.
   PartialApplyInst *getNonescapingClosureAllocation() const;
-
-  IsDeadEnd_t isDeadEnd() const {
-    return IsDeadEnd_t(sharedUInt8().DestroyValueInst.deadEnd);
-  }
 };
 
 class MoveValueInst
@@ -9882,17 +9872,9 @@ class DeallocBoxInst
 
   USE_SHARED_UINT8;
 
-public:
-  IsDeadEnd_t isDeadEnd() const {
-    return IsDeadEnd_t(sharedUInt8().DeallocBoxInst.deadEnd);
-  }
-
 private:
-  DeallocBoxInst(SILDebugLocation DebugLoc, SILValue operand,
-                 IsDeadEnd_t isDeadEnd)
-      : UnaryInstructionBase(DebugLoc, operand) {
-    sharedUInt8().DeallocBoxInst.deadEnd = isDeadEnd;
-  }
+  DeallocBoxInst(SILDebugLocation DebugLoc, SILValue operand)
+      : UnaryInstructionBase(DebugLoc, operand) {}
 };
 
 /// Deallocate memory allocated for a boxed existential container created by

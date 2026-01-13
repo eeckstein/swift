@@ -780,9 +780,6 @@ extension LifetimeDependenceDefUseWalker {
       return leafUse(of: operand)
 
     case let destroy as DestroyValueInst:
-      if destroy.isDeadEnd {
-        return .continueWalk
-      }
       return leafUse(of: operand)
 
     case is EndLifetimeInst:

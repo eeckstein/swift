@@ -3464,14 +3464,11 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
   }
   case SILInstructionKind::DestroyValueInst: {
     PoisonRefs_t poisonRefs = DontPoisonRefs;
-    IsDeadEnd_t isDeadEnd = IsntDeadEnd;
     StringRef attributeName;
     SourceLoc attributeLoc;
     while (parseSILOptional(attributeName, attributeLoc, *this)) {
       if (attributeName == "poison")
         poisonRefs = PoisonRefs;
-      else if (attributeName == "dead_end")
-        isDeadEnd = IsDeadEnd;
       else {
         P.diagnose(attributeLoc, diag::sil_invalid_attribute_for_instruction,
                    attributeName, "destroy_value");
@@ -3480,7 +3477,7 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     }
     if (parseTypedValueRef(Val, B) || parseSILDebugLocation(InstLoc, B))
       return true;
-    ResultVal = B.createDestroyValue(InstLoc, Val, poisonRefs, isDeadEnd);
+    ResultVal = B.createDestroyValue(InstLoc, Val, poisonRefs);
     break;
   }
   case SILInstructionKind::BeginCOWMutationInst: {
@@ -5168,12 +5165,10 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     break;
   }
   case SILInstructionKind::DeallocBoxInst: {
-    bool isDeadEnd = false;
-    if (parseSILOptional(isDeadEnd, *this, "dead_end") ||
-        parseTypedValueRef(Val, B) || parseSILDebugLocation(InstLoc, B))
+    if (parseTypedValueRef(Val, B) || parseSILDebugLocation(InstLoc, B))
       return true;
 
-    ResultVal = B.createDeallocBox(InstLoc, Val, IsDeadEnd_t(isDeadEnd));
+    ResultVal = B.createDeallocBox(InstLoc, Val);
     break;
   }
     case SILInstructionKind::ValueMetatypeInst:
