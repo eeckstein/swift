@@ -349,6 +349,7 @@ getConcreteValueOfExistentialBox(AllocExistentialBoxInst *existentialBox,
     case SILInstructionKind::StrongRetainInst:
     case SILInstructionKind::StrongReleaseInst:
     case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
     case SILInstructionKind::EndBorrowInst:
       break;
     case SILInstructionKind::CopyValueInst:
@@ -899,6 +900,7 @@ static bool useDoesNotKeepValueAlive(const SILInstruction *inst) {
   case SILInstructionKind::StrongRetainInst:
   case SILInstructionKind::StrongReleaseInst:
   case SILInstructionKind::DestroyValueInst:
+  case SILInstructionKind::EndLifetimeInst:
   case SILInstructionKind::RetainValueInst:
   case SILInstructionKind::ReleaseValueInst:
   case SILInstructionKind::DebugValueInst:
@@ -1150,7 +1152,8 @@ bool swift::tryDeleteDeadClosure(SingleValueInstruction *closure,
       SILInstruction *user = use->getUser();
       if (isa<DeallocStackInst>(user)
           || isa<DebugValueInst>(user)
-          || isa<DestroyValueInst>(user)) {
+          || isa<DestroyValueInst>(user)
+          || isa<EndLifetimeInst>(user)) {
         deleteInsts.push_back(user);
       } else if (!deadMarkDependenceUser(user, deleteInsts)) {
         return false;
@@ -1488,6 +1491,7 @@ swift::findLocalApplySites(FunctionRefBaseInst *fri) {
     case SILInstructionKind::RetainValueInst:
     case SILInstructionKind::ReleaseValueInst:
     case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
     // A partial_apply [stack] is deallocated with a dealloc_stack.
     case SILInstructionKind::DeallocStackInst:
       continue;

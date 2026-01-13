@@ -3382,7 +3382,7 @@ void swift::trySpecializeApplyOfGeneric(
         continue;
       }
       // Ignore destroy_value.
-      if (isa<DestroyValueInst>(User))
+      if (isa<DestroyValueInst>(User) || isa<EndLifetimeInst>(User))
         continue;
       // Ignore older ref count instructions.
       if (isa<RefCountingInst>(User))
