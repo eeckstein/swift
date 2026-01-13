@@ -246,7 +246,7 @@ private struct CollectedEffects {
       is DebugValueInst, is KeyPathInst, is FixLifetimeInst,
       is EndApplyInst, is AbortApplyInst,
       is EndCOWMutationInst, is UnconditionalCheckedCastInst,
-      is CondFailInst:
+      is CondFailInst, is EndLifetimeInst:
       break
 
     case is BeginCOWMutationInst, is IsUniqueInst:

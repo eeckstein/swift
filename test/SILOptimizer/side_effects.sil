@@ -1315,6 +1315,16 @@ bb0(%0 : $@callee_guaranteed () -> ()):
   return %1 : $Builtin.Int1
 }
 
+// CHECK-LABEL: sil [ossa] @test_end_lifetime :
+// CHECK-NEXT:  [global: ]
+// CHECK-NEXT:  {{^[^[]}}
+// CHECK-LABEL: } // end sil function 'test_end_lifetime'
+sil [ossa] @test_end_lifetime : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  end_lifetime %0
+  unreachable
+}
+
 // These tests are adapted from the test case in rdar://155870190
 sil @test_effect_attribute_no_barrier : $@convention(thin) () -> () {
   [global: ]
