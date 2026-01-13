@@ -322,9 +322,9 @@ bb3(%25 : @owned $any Error):
   throw %25 : $any Error
 
 bb4(%29 : @owned $any Error):
-  destroy_value [dead_end] %29
-  destroy_value [dead_end] %15
-  destroy_value [dead_end] %13
+  end_lifetime %29
+  end_lifetime %15
+  end_lifetime %13
   unreachable
 }
 
@@ -410,7 +410,7 @@ bb2(%19 : @owned $any Error):
 // CHECK:       {{bb[0-9]+}}
 // CHECK:         destroy_value [[NOTHROWER_COPY]]
 // CHECK:       {{bb[0-9]+}}
-// CHECK:         destroy_value [dead_end] [[NOTHROWER_COPY]]
+// CHECK:         end_lifetime [[NOTHROWER_COPY]]
 // CHECK-LABEL: } // end sil function 'testRethrowingNonthrowing'
 sil [ossa] @testRethrowingNonthrowing : $@convention(thin) () -> () {
 bb0:
@@ -427,8 +427,8 @@ bb1(%val : $Int):
   return %8 : $()                                 
 
 bb2(%error : @owned $any Error):                     
-  destroy_value [dead_end] %error : $any Error       
-  destroy_value [dead_end] %nonescaping_nothrower : $@noescape @callee_guaranteed () -> (Int, @error any Error) 
+  end_lifetime %error : $any Error       
+  end_lifetime %nonescaping_nothrower : $@noescape @callee_guaranteed () -> (Int, @error any Error) 
   unreachable                                     
 } 
 

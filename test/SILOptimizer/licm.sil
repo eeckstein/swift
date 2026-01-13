@@ -2249,7 +2249,7 @@ bb1:
   cond_br undef, bb2, bb3
 
 bb2:
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 
 bb3:

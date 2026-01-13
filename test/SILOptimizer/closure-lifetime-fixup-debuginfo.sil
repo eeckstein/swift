@@ -40,8 +40,8 @@ bb1(%result : $()):
   return %retval : $(), scope 2
 
 bb2(%83 : @owned $any Error):
-  destroy_value [dead_end] %83
-  destroy_value [dead_end] %noescape
-  destroy_value [dead_end] %converted
+  end_lifetime %83
+  end_lifetime %noescape
+  end_lifetime %converted
   unreachable , scope 2
 }

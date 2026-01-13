@@ -59,7 +59,7 @@ exit:
 // CHECK: bb0(%0 : @owned $C):
 // CHECK:   cond_br undef, bb1, bb2
 // CHECK: bb2:
-// CHECK-NEXT:   destroy_value [dead_end] %0 : $C
+// CHECK-NEXT:   end_lifetime %0 : $C
 // CHECK-NEXT:   unreachable
 // CHECK: } // end sil function 'lexicalOwnedArg'
 // CHECK-LABEL: end running test 1 of 1 on lexicalOwnedArg: ossa_complete_lifetime with: @argument
@@ -130,7 +130,7 @@ bb3:
 
 // CHECK-LABEL: sil [ossa] @enumTest_no_destroy : $@convention(method) (@guaranteed E<C>) -> () {
 // CHECK:       bb2(%{{[0-9]+}} : @guaranteed $C):
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-NEXT:    unreachable
 // CHECK:       bb3:
 // CHECK:         end_lifetime
@@ -285,7 +285,7 @@ bb0(%0 : @owned $C):
 // CHECK:       [[TO_DIE_1]]:
 // CHECK:         br [[TO_DIE_11:bb[0-9]+]]
 // CHECK:       [[TO_DIE_11]]:
-// CHECK:         destroy_value [dead_end] [[VALUE]]
+// CHECK:         end_lifetime [[VALUE]]
 // CHECK:         br [[DIE:bb[0-9]+]]
 // CHECK:       [[TO_DIE_2]]:
 // CHECK:         br [[DIE]]
@@ -342,7 +342,7 @@ exit:
 // CHECK:       [[BACKEDGE]]:
 // CHECK:         br [[HEADER]]
 // CHECK:       [[TO_DIE_1]]:
-// CHECK:         destroy_value [dead_end] [[LEXICAL]]
+// CHECK:         end_lifetime [[LEXICAL]]
 // CHECK:         br [[DIE:bb[0-9]+]]
 // CHECK:       [[TO_DIE_2]]:
 // CHECK:         br [[DIE]]
@@ -401,7 +401,7 @@ exit:
 // CHECK:       [[TO_BODY]]:
 // CHECK:         br [[BODY:bb[0-9]+]]
 // CHECK:       [[PREHEADER]]:
-// CHECK:         destroy_value [dead_end] [[VALUE]]
+// CHECK:         end_lifetime [[VALUE]]
 // CHECK:         br [[HEADER:bb[0-9]+]]
 // CHECK:       [[HEADER]]:
 // CHECK:         br [[BODY]]
@@ -789,7 +789,7 @@ struct Wrapper {
 // CHECK-LABEL: sil [ossa] @testOwnedMarkDepNonEscAddressValue : {{.*}} {
 // CHECK: end_borrow
 // CHECK: mark_dependence [nonescaping]
-// CHECK: destroy_value [dead_end] %0
+// CHECK: end_lifetime %0
 // CHECK-LABEL: } // end sil function 'testOwnedMarkDepNonEscAddressValue'
 // CHECK-LABEL: end running test {{.*}} on testOwnedMarkDepNonEscAddressValue: ossa_complete_lifetime
 sil [ossa] @testOwnedMarkDepNonEscAddressValue : $@convention(thin) (@owned Wrapper, @inout Klass) -> () {

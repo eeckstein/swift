@@ -849,7 +849,7 @@ bb4:
 // CHECK:         %1 = apply
 // CHECK-NEXT:    %2 = begin_borrow %1
 // CHECK-NEXT:    end_borrow %2
-// CHECK-NEXT:    destroy_value [dead_end] %1
+// CHECK-NEXT:    end_lifetime %1
 // CHECK-NEXT:    unreachable
 // CHECK-LABEL: } // end sil function 'testDeadBorrow'
 sil hidden [ossa] @testDeadBorrow : $@convention(thin) () -> () {
@@ -861,8 +861,8 @@ bb0:
   %6 = copy_value %0 : $C
   %7 = begin_borrow %6 : $C
   end_borrow %7
-  destroy_value [dead_end] %6
-  destroy_value [dead_end] %0
+  end_lifetime %6
+  end_lifetime %0
   unreachable
 }
 

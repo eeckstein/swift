@@ -533,8 +533,8 @@ bb0:
   end_borrow %2 : $NativeObjectPair
   %func = function_ref @unreachable_guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
   apply %func(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
-  destroy_value [dead_end] %4
-  destroy_value [dead_end] %1
+  end_lifetime %4
+  end_lifetime %1
   unreachable
 }
 
@@ -558,7 +558,7 @@ bb0:
   end_borrow %2 : $NativeObjectPair
   %func = function_ref @unreachable_guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
   apply %func(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
-  destroy_value [dead_end] %4
+  end_lifetime %4
   unreachable
 }
 
@@ -574,7 +574,7 @@ bb0(%0 : @guaranteed $NativeObjectPair):
   %4 = copy_value %3 : $Builtin.NativeObject
   %func = function_ref @unreachable_guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
   apply %func(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
-  destroy_value [dead_end] %4
+  end_lifetime %4
   unreachable
 }
 
@@ -592,9 +592,9 @@ bb0(%0 : @owned $NativeObjectPair):
   %3 = copy_value %2 : $Builtin.NativeObject
   %func = function_ref @unreachable_guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
   apply %func(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
-  destroy_value [dead_end] %3
+  end_lifetime %3
   end_borrow %1
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
@@ -1257,8 +1257,8 @@ bb2(%2 : @owned ${ var Builtin.NativeObject }):
   %4 = load [copy] %3 : $*Builtin.NativeObject
   %user = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   apply %user(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
-  destroy_value [dead_end] %4
-  destroy_value [dead_end] %2
+  end_lifetime %4
+  end_lifetime %2
   unreachable
 }
 
@@ -1521,7 +1521,7 @@ some(%obj : @owned $AnyObject):
     br die
 
 die:
-    destroy_value [dead_end] %opt
+    end_lifetime %opt
     unreachable
 
 none:
@@ -1586,11 +1586,11 @@ bb4:
     br bb6
 
 bb5(%error1 : @owned $Error):
-    destroy_value [dead_end] %error1
+    end_lifetime %error1
     end_borrow %obj_borrow
-    destroy_value [dead_end] %obj
+    end_lifetime %obj
     end_borrow %opt_borrow
-    destroy_value [dead_end] %opt
+    end_lifetime %opt
     br bb6
 
 bb6:

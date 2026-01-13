@@ -835,7 +835,7 @@ bb0:
 // CHECK-LABEL: sil [ossa] @dead_end_only_store_lexical :
 // CHECK-NOT:     alloc_stack
 // CHECK:         %1 = move_value [lexical] %0
-// CHECK:         destroy_value [dead_end] %1
+// CHECK:         end_lifetime %1
 // CHECK-LABEL: } // end sil function 'dead_end_only_store_lexical'
 sil [ossa] @dead_end_only_store_lexical : $@convention(thin) (@owned C) -> () {
 bb0(%0 : @owned $C):
@@ -846,7 +846,7 @@ bb0(%0 : @owned $C):
 
 // CHECK-LABEL: sil [ossa] @dead_end_only_store_non_lexical :
 // CHECK-NOT:     alloc_stack
-// CHECK:         destroy_value [dead_end] %0
+// CHECK:         end_lifetime %0
 // CHECK-LABEL: } // end sil function 'dead_end_only_store_non_lexical'
 sil [ossa] @dead_end_only_store_non_lexical : $@convention(thin) (@owned C) -> () {
 bb0(%0 : @owned $C):

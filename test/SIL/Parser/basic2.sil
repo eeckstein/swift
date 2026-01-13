@@ -365,15 +365,15 @@ bb1:
   extend_lifetime %k : $Klass
   br bb2
 bb2:
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @test_destroy_value : {{.*}} {
 // CHECK:         destroy_value
 // CHECK:         destroy_value [poison]
-// CHECK:         destroy_value [dead_end]
-// CHECK:         destroy_value [poison] [dead_end]
+// CHECK:         end_lifetime
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'test_destroy_value'
 sil [ossa] @test_destroy_value : $@convention(thin) () -> () {
 entry:
@@ -397,11 +397,11 @@ bad:
   cond_br undef, bleft, bright
 bleft:
   %k3 = apply %getKlass() : $@convention(thin) () -> (@owned Klass)
-  destroy_value [dead_end] %k3 : $Klass
+  end_lifetime %k3 : $Klass
   unreachable
 bright:
   %k4 = apply %getKlass() : $@convention(thin) () -> (@owned Klass)
-  destroy_value [poison] [dead_end] %k4 : $Klass
+  end_lifetime %k4 : $Klass
   unreachable
 }
 

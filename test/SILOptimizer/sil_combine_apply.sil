@@ -1059,7 +1059,7 @@ bb2:
   br bb1
 
 bb3:
-  destroy_value [dead_end] %4
+  end_lifetime %4
   unreachable
 }
 

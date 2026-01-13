@@ -1081,7 +1081,7 @@ bb7:
   br bb6
 
 bb8(%err : @owned $Error):
-  destroy_value [dead_end] %err
+  end_lifetime %err
   unreachable
 }
 
@@ -1517,7 +1517,7 @@ bb3:
 
 bb4:
   end_borrow %2
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 
 bb5:
@@ -1549,14 +1549,14 @@ bb7:
   end_borrow %14
   end_borrow %12
   end_borrow %2
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 
 bb8:
   end_borrow %6
   dealloc_stack %5
   end_borrow %2
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 
 bb9:

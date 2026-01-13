@@ -619,7 +619,7 @@ entry:
 
 left:
   end_borrow %lifetime
-  destroy_value [dead_end] %instance
+  end_lifetime %instance
   unreachable
 
 right:

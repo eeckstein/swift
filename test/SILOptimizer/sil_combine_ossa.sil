@@ -222,7 +222,7 @@ bb2a:
 bb2:
   %9 = function_ref @exit : $@convention(thin) () -> Never // ret.exit : () -> ()
   %10 = apply %9() : $@convention(thin) () -> Never
-  destroy_value [dead_end] %5
+  end_lifetime %5
   unreachable
 }
 
@@ -3655,7 +3655,7 @@ bb3:
 bb4:
   %20 = integer_literal $Builtin.Int1, -1
   cond_fail %20 : $Builtin.Int1
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 }
 
@@ -3692,7 +3692,7 @@ bb1:
 bb2:
   %20 = integer_literal $Builtin.Int1, -1
   cond_fail %20 : $Builtin.Int1
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 }
 
@@ -3729,7 +3729,7 @@ bb1:
 bb2:
   %20 = integer_literal $Builtin.Int1, -1
   cond_fail %20 : $Builtin.Int1
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 }
 
@@ -4957,7 +4957,7 @@ bb0(%0 : @guaranteed $AnyObject):
   cond_br undef, bb3, bb4 
 
 bb3:
-  destroy_value [dead_end] %cast
+  end_lifetime %cast
   unreachable
 
 bb4:
@@ -5053,7 +5053,7 @@ bb1(%result : @owned $Builtin.NativeObject):
   return %result : $Builtin.NativeObject
 
 bb2(%error : @owned $Error):
-  destroy_value [dead_end] %error
+  end_lifetime %error
   unreachable
 }
 
@@ -5608,7 +5608,7 @@ bb2:
   br bb5
 
 bb3:
-  destroy_value [dead_end] %11
+  end_lifetime %11
   unreachable
 
 bb4:
@@ -5643,7 +5643,7 @@ bb2:
   %10 = integer_literal $Builtin.Int1, -1
   cond_fail %10, "Insufficient space allocated to copy string contents"
   end_borrow %2
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 

@@ -130,11 +130,11 @@ bb0(%0 : @owned $Builtin.NativeObject):
 // CHECK:         cond_br undef, [[BLEFT:bb[0-9]+]], [[BRIGHT:bb[0-9]+]]
 // CHECK:       [[BRIGHT]]:
 // CHECK:         %3 = apply %0()
-// CHECK:         destroy_value [poison] [dead_end] %3
+// CHECK:         end_lifetime %3
 // CHECK:         unreachable
 // CHECK:       [[BLEFT]]:
 // CHECK:         %6 = apply %0()
-// CHECK:         destroy_value [dead_end] %6
+// CHECK:         end_lifetime %6
 // CHECK:         unreachable
 // CHECK:       [[GOOD]]:
 // CHECK:         cond_br undef, [[GLEFT:bb[0-9]+]], [[GRIGHT:bb[0-9]+]]
@@ -170,11 +170,11 @@ bad:
   cond_br undef, bleft, bright
 bleft:
   %k3 = apply %getC() : $@convention(thin) () -> (@owned C)
-  destroy_value [dead_end] %k3 : $C
+  end_lifetime %k3 : $C
   unreachable
 bright:
   %k4 = apply %getC() : $@convention(thin) () -> (@owned C)
-  destroy_value [poison] [dead_end] %k4 : $C
+  end_lifetime %k4 : $C
   unreachable
 }
 
@@ -221,7 +221,7 @@ bb1:
   extend_lifetime %k : $Builtin.NativeObject
   br bb2
 bb2:
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 

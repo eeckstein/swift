@@ -607,7 +607,7 @@ bb3:
 
 bb4:
   end_borrow %8
-  destroy_value [dead_end] %7
+  end_lifetime %7
   unreachable
 
 bb5:

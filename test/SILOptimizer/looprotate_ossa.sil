@@ -633,7 +633,7 @@ bb11:
 
 bb12:
   end_borrow %8
-  destroy_value [dead_end] %4
+  end_lifetime %4
   unreachable 
 
 bb13:
@@ -700,7 +700,7 @@ bb11:
 bb12:
   end_borrow %8
   end_borrow %6
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable 
 
 bb13:
@@ -735,7 +735,7 @@ bb2:
 
 bb3:
   end_borrow %3
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 
 bb4:

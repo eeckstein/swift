@@ -236,7 +236,7 @@ entry(%instance : @owned $C):
   cond_br undef, die, destroy
 
 die:
-  destroy_value [dead_end] %instance
+  end_lifetime %instance
   unreachable
 
 destroy:
@@ -269,7 +269,7 @@ die:
   br rlydie
 
 rlydie:
-  destroy_value [dead_end] %instance
+  end_lifetime %instance
   unreachable
 
 destroy:
@@ -300,7 +300,7 @@ entry(%instance : @owned $C):
 
 die:
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %instance
+  end_lifetime %instance
   unreachable
 
 destroy:
@@ -343,7 +343,7 @@ destroy:
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_1
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_1 : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_1'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_1
 sil [ossa] @preserve_dead_end_1 : $@convention(thin) () -> () {
@@ -355,13 +355,13 @@ entry:
 
   %c = apply %get() : $@convention(thin) () -> @owned C
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c :  $C
+  end_lifetime %c :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_2
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_2 : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_2'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_2
 sil [ossa] @preserve_dead_end_2 : $@convention(thin) () -> () {
@@ -378,13 +378,13 @@ entry:
   apply %borrow(%c2) : $@convention(thin) (@guaranteed C) -> ()
 
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_3
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_3 : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_3'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_3
 sil [ossa] @preserve_dead_end_3 : $@convention(thin) () -> () {
@@ -403,13 +403,13 @@ entry:
 
 die:
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_4
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_4 : {{.*}} {
-// CHECK-NOT:     destroy_value [dead_end]
+// CHECK-NOT:     end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_4'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_4
 sil [ossa] @preserve_dead_end_4 : $@convention(thin) () -> () {
@@ -433,13 +433,13 @@ exit:
 
 die:
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_5
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_5 : {{.*}} {
-// CHECK-NOT:     destroy_value [dead_end]
+// CHECK-NOT:     end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_5'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_5
 sil [ossa] @preserve_dead_end_5 : $@convention(thin) () -> () {
@@ -456,13 +456,13 @@ entry:
 
   apply %barrier() : $@convention(thin) () -> ()
   destroy_value %c : $C
-  destroy_value [dead_end] %c5 :  $C
+  end_lifetime %c5 :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_6
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_6 : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_6'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_6
 sil [ossa] @preserve_dead_end_6 : $@convention(thin) () -> () {
@@ -480,18 +480,18 @@ entry:
   cond_br undef, die1, die2
 
 die1:
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 
 die2:
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on preserve_dead_end_7
 // CHECK-LABEL: sil [ossa] @preserve_dead_end_7 : {{.*}} {
-// CHECK-NOT:     destroy_value [dead_end]
+// CHECK-NOT:     end_lifetime
 // CHECK-LABEL: } // end sil function 'preserve_dead_end_7'
 // CHECK-LABEL: end running test {{.*}} on preserve_dead_end_7
 sil [ossa] @preserve_dead_end_7 : $@convention(thin) () -> () {
@@ -514,7 +514,7 @@ die1:
 
 die2:
   apply %barrier() : $@convention(thin) () -> ()
-  destroy_value [dead_end] %c2 :  $C
+  end_lifetime %c2 :  $C
   unreachable
 }
 
@@ -804,7 +804,7 @@ sil [ossa] @dead_arg_debug_dead_end : $@convention(thin) (@owned C) -> () {
 entry(%c : @owned $C):
   debug_value %c : $C
   specify_test "ossa_canonicalize_lifetime false false true %c"
-  destroy_value [dead_end] %c
+  end_lifetime %c
   unreachable
 }
 
@@ -836,7 +836,7 @@ bb3:
   %takeC = function_ref @takeC : $@convention(thin) (@owned C) -> ()
   apply %takeC(%copy) : $@convention(thin) (@owned C) -> ()
   end_borrow %reborrow
-  destroy_value [dead_end] %instance2
+  end_lifetime %instance2
   unreachable
 }
 
@@ -880,7 +880,7 @@ exit:
 
 // CHECK-LABEL: begin running test {{.*}} on consume_copy_before_use_in_dead_end
 // CHECK-LABEL: sil [ossa] @consume_copy_before_use_in_dead_end : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'consume_copy_before_use_in_dead_end'
 // CHECK-LABEL: end running test {{.*}} on consume_copy_before_use_in_dead_end
 sil [ossa] @consume_copy_before_use_in_dead_end : $@convention(thin) (@owned C) -> () {
@@ -904,13 +904,13 @@ die:
   apply undef(%reload) : $@convention(thin) (@guaranteed C) -> ()
   end_borrow %reload
   end_borrow %token
-  destroy_value [dead_end] %copy
+  end_lifetime %copy
   unreachable
 }
 
 // CHECK-LABEL: begin running test {{.*}} on consume_copy_before_use_in_dead_end_2
 // CHECK-LABEL: sil [ossa] @consume_copy_before_use_in_dead_end_2 : {{.*}} {
-// CHECK:         destroy_value [dead_end]
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'consume_copy_before_use_in_dead_end_2'
 // CHECK-LABEL: end running test {{.*}} on consume_copy_before_use_in_dead_end_2
 sil [ossa] @consume_copy_before_use_in_dead_end_2 : $@convention(thin) (@owned C) -> () {
@@ -934,7 +934,7 @@ die:
   apply undef(%reload) : $@convention(thin) (@guaranteed C) -> ()
   end_borrow %reload
   end_borrow %token
-  destroy_value [dead_end] %copy
+  end_lifetime %copy
   unreachable
 }
 
@@ -984,7 +984,7 @@ entry(%c : @owned $C):
   %takeC = function_ref @takeC : $@convention(thin) (@owned C) -> ()
   apply %takeC(%cc) : $@convention(thin) (@owned C) -> ()
   %run = function_ref @run : $@convention(thin) () -> Never
-  destroy_value [dead_end] %c
+  end_lifetime %c
   unreachable
 }
 

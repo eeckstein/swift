@@ -429,7 +429,7 @@ entry(%c : @owned $C):
   cond_br undef, die, exit
 
 die:
-  destroy_value [dead_end] %c : $C
+  end_lifetime %c : $C
   unreachable
 
 exit:

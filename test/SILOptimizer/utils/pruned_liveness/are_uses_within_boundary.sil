@@ -23,7 +23,7 @@ entry(%k : @owned $Klass):
   uses: @instruction[0].operand[0]
   """
 
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 
@@ -140,7 +140,7 @@ die:
   uses: @block.instruction[3].operand[0]
   """
   
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 
@@ -170,7 +170,7 @@ die:
   uses: @block.instruction[2].operand[0]
   """
   
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 
@@ -201,7 +201,7 @@ die:
   uses: @block.instruction[1].operand[0]
   """
   
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }
 
@@ -261,6 +261,6 @@ die:
   uses: @block.instruction[1].operand[0]
   """
   
-  destroy_value [dead_end] %k
+  end_lifetime %k
   unreachable
 }

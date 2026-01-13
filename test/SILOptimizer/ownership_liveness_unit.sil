@@ -702,11 +702,11 @@ bb3(%10 : @reborrow $D, %11 : @reborrow $D):
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb3 : $D
 // CHECK-NEXT: bb3: LiveOut
 // CHECK-NEXT: bb4: LiveWithin
-// CHECK-NEXT: lifetime-ending user:   destroy_value [dead_end]
+// CHECK-NEXT: lifetime-ending user:   end_lifetime
 // CHECK-NEXT: regular user:   end_borrow %{{.*}} : $D
 // CHECK-NEXT: regular user:   br bb4(%{{.*}} : $D)
 // CHECK-NEXT: Complete liveness
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerAdjacentReborrow1: interior_liveness with: %outer3
 
 // CHECK-LABEL: testInnerAdjacentReborrow1: interior_liveness_swift with: %outer3
@@ -714,12 +714,12 @@ bb3(%10 : @reborrow $D, %11 : @reborrow $D):
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb4 : $D
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb3 : $D
 // CHECK-NEXT: begin:      %{{.*}} = borrowed %{{.*}} : $D from
-// CHECK-NEXT: ends:       destroy_value [dead_end]
+// CHECK-NEXT: ends:       end_lifetime
 // CHECK-NEXT: exits:
 // CHECK-NEXT: interiors:  end_borrow
 // CHECK-NEXT:             %{{.*}} = borrowed %{{.*}} : $D from (%{{.*}} : $D, %0 : $D)
 // CHECK-NEXT:             %{{.*}} = borrowed %{{.*}} : $D from (%0 : $D, %{{.*}} : $D)
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerAdjacentReborrow1: interior_liveness_swift with: %outer3
 sil [ossa] @testInnerAdjacentReborrow1 : $@convention(thin) (@guaranteed D) -> () {
 bb0(%0 : @guaranteed $D):
@@ -747,7 +747,7 @@ bb4(%14 : @reborrow $D):
   %17 = load [copy] %16
   destroy_value %17
   end_borrow %15
-  destroy_value [dead_end] %outer3
+  end_lifetime %outer3
   unreachable 
 }
 
@@ -756,11 +756,11 @@ bb4(%14 : @reborrow $D):
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb3 : $D
 // CHECK-NEXT: bb3: LiveOut
 // CHECK-NEXT: bb4: LiveWithin
-// CHECK-NEXT: lifetime-ending user:   destroy_value [dead_end]
+// CHECK-NEXT: lifetime-ending user:   end_lifetime
 // CHECK-NEXT: regular user:   end_borrow %{{.*}} : $D
 // CHECK-NEXT: regular user:   br bb4(%{{.*}} : $D)
 // CHECK-NEXT: Complete liveness
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerAdjacentReborrow2: interior_liveness with: %outer3
 
 // CHECK-LABEL: testInnerAdjacentReborrow2: interior_liveness_swift with: %outer3
@@ -768,12 +768,12 @@ bb4(%14 : @reborrow $D):
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb4 : $D
 // CHECK-NEXT: Inner scope: %{{.*}} = argument of bb3 : $D
 // CHECK-NEXT: begin:      {{.*}} borrowed {{.*}} from
-// CHECK-NEXT: ends:       destroy_value [dead_end]
+// CHECK-NEXT: ends:       end_lifetime
 // CHECK-NEXT: exits:
 // CHECK-NEXT: interiors:  end_borrow
 // CHECK-NEXT:             %{{.*}} = borrowed %{{.*}} : $D from (%{{.*}} : $D, %0 : $D)
 // CHECK-NEXT:             %{{.*}} = borrowed %{{.*}} : $D from (%0 : $D, %{{.*}} : $D)
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerAdjacentReborrow2: interior_liveness_swift with: %outer3
 sil [ossa] @testInnerAdjacentReborrow2 : $@convention(thin) (@guaranteed D) -> () {
 bb0(%0 : @guaranteed $D):
@@ -801,25 +801,25 @@ bb4(%14 : @reborrow $D):
   %17 = load [copy] %16
   destroy_value %17
   end_borrow %15
-  destroy_value [dead_end] %outer3
+  end_lifetime %outer3
   unreachable 
 }
 
 // CHECK-LABEL: testInnerNonAdjacentReborrow: interior_liveness with: %outer3
 // CHECK: Interior liveness: [[DEF:%.*]] = argument of bb3 : $D
 // CHECK-NOT:  Inner scope
-// CHECK:      destroy_value [dead_end]
+// CHECK:      end_lifetime
 // CHECK:      Complete liveness
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerNonAdjacentReborrow: interior_liveness with: %outer3
 
 // CHECK-LABEL: testInnerNonAdjacentReborrow: interior_liveness_swift with: %outer3
 // CHECK: Interior liveness: %{{.*}} = argument of bb3 : $D
 // CHECK-NEXT: begin:      {{.*}} borrowed
-// CHECK-NEXT: ends:       destroy_value [dead_end]
+// CHECK-NEXT: ends:       end_lifetime
 // CHECK-NEXT: exits:
 // CHECK-NEXT: interiors:
-// CHECK-NEXT: last user:   destroy_value [dead_end]
+// CHECK-NEXT: last user:   end_lifetime
 // CHECK-NEXT: testInnerNonAdjacentReborrow: interior_liveness_swift with: %outer3
 sil [ossa] @testInnerNonAdjacentReborrow : $@convention(thin) (@guaranteed D) -> () {
 bb0(%0 : @guaranteed $D):
@@ -847,7 +847,7 @@ bb4(%14 : @reborrow $D):
   %17 = load [copy] %16
   destroy_value %17
   end_borrow %15
-  destroy_value [dead_end] %outer3
+  end_lifetime %outer3
   unreachable 
 }
 
@@ -908,7 +908,7 @@ bb4(%18 : @guaranteed $D):
   %21 = load [copy] %20
   destroy_value %21
   end_borrow %14
-  destroy_value [dead_end] %10
+  end_lifetime %10
   unreachable 
 }
 
@@ -969,7 +969,7 @@ bb4(%18 : @guaranteed $D):
   %21 = load [copy] %20
   destroy_value %21
   end_borrow %14
-  destroy_value [dead_end] %10
+  end_lifetime %10
   unreachable 
 }
 
@@ -1016,7 +1016,7 @@ bb4(%18 : @guaranteed $D):
   %21 = load [copy] %20
   destroy_value %21
   end_borrow %14
-  destroy_value [dead_end] %10
+  end_lifetime %10
   unreachable 
 }
 
@@ -1972,8 +1972,8 @@ bb0(%0 : @owned $Wrapper):
   %4 = function_ref @use_klass : $@convention(thin) (@guaranteed Klass) -> ()
   %5 = apply %4(%3) : $@convention(thin) (@guaranteed Klass) -> ()
   end_borrow %1
-  destroy_value [dead_end] %copy
-  destroy_value [dead_end] %0
+  end_lifetime %copy
+  end_lifetime %0
   unreachable
 }
 
@@ -2019,9 +2019,9 @@ bb0:
   %copy = copy_value %5
   %6 = function_ref @use_klass : $@convention(thin) (@guaranteed Klass) -> ()
   %7 = apply %6(%copy) : $@convention(thin) (@guaranteed Klass) -> ()
-  destroy_value [dead_end] %copy
+  end_lifetime %copy
   end_borrow %3
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 }
 

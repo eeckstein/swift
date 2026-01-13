@@ -36,7 +36,7 @@ failure(%error : @owned $any Error):
   end_borrow %o_borrow : $Outer
   destroy_value %error : $any Error
   end_apply %token as $()
-  destroy_value [dead_end] %o_copy : $Outer
-  destroy_value [dead_end] %i_copy
+  end_lifetime %o_copy : $Outer
+  end_lifetime %i_copy
   unreachable
 }

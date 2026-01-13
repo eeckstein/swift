@@ -30,11 +30,11 @@ sil [ossa] @end_borrow_1_addr_alloc_stack : $@convention(thin) () -> () {
 // CHECK:       SIL verification failed: a dead_end destroy_value must be in a dead-end block
 // CHECK:       Verifying instruction:
 // CHECK:            [[ARGUMENT:%[^,]+]] = argument
-// CHECK:       ->   destroy_value [dead_end] [[ARGUMENT]]
+// CHECK:       ->   end_lifetime [[ARGUMENT]]
 // CHECK-LABEL: End Error in function destroy_value_dead_end
 sil [ossa] @destroy_value_dead_end : $@convention(thin) (@owned C) -> () {
 entry(%c : @owned $C):
-  destroy_value [dead_end] %c : $C
+  end_lifetime %c : $C
   %retval = tuple()
   return %retval : $()
 }

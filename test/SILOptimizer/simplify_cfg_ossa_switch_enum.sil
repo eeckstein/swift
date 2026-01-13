@@ -301,12 +301,12 @@ bb0(%0 : @owned $Klass):
 
 bb2:
   end_borrow %b
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 
 bb1(%3 : @guaranteed $Klass):
   end_borrow %b
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
@@ -342,7 +342,7 @@ bb0(%0 : @owned $Klass):
 
 bb2:
   end_borrow %b
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 
 bb1(%3 : @guaranteed $Klass):

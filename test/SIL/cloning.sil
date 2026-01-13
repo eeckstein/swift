@@ -224,18 +224,18 @@ exit:
 bad:
   cond_br undef, bleft, bright
 bleft:
-  destroy_value [dead_end] %x : $X
+  end_lifetime %x : $X
   unreachable
 bright:
-  destroy_value [poison] [dead_end] %x : $X
+  end_lifetime %x : $X
   unreachable
 }
 
 // CHECK-LABEL: sil [ossa] @caller_destroy_value : {{.*}} {
 // CHECK:         destroy_value
 // CHECK:         destroy_value [poison]
-// CHECK:         destroy_value [dead_end]
-// CHECK:         destroy_value [poison] [dead_end]
+// CHECK:         end_lifetime
+// CHECK:         end_lifetime
 // CHECK-LABEL: } // end sil function 'caller_destroy_value'
 sil [ossa] @caller_destroy_value : $@convention(thin) (@owned X) -> () {
 entry(%x : @owned $X):

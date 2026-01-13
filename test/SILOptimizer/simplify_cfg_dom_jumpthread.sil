@@ -558,7 +558,7 @@ bb5(%11 : @guaranteed $E2):
 bb6:
   fix_lifetime %6 : $E2
   end_borrow %6
-  destroy_value [dead_end] %5
+  end_lifetime %5
   unreachable
 }
 

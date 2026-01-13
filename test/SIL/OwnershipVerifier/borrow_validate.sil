@@ -668,7 +668,7 @@ bb1:
 
 bb2:
   end_borrow %1
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 

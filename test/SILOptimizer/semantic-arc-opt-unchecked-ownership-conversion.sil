@@ -134,7 +134,7 @@ bb0(%0 : @owned $Klass):
   %func = function_ref @unowned_klass_user : $@convention(thin) (Klass) -> ()
   apply %func(%2) : $@convention(thin) (Klass) -> ()
   end_borrow %1
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 }
 
@@ -155,7 +155,7 @@ bb1:
 
 bb2:
   end_borrow %1
-  destroy_value [dead_end] %0
+  end_lifetime %0
   unreachable
 
 bb3:
@@ -209,7 +209,7 @@ bb0(%0 : @guaranteed $Klass):
   %2 = unchecked_ownership_conversion %1 : $Klass, @owned to @unowned
   %func = function_ref @unowned_klass_user : $@convention(thin) (Klass) -> ()
   apply %func(%2) : $@convention(thin) (Klass) -> ()
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 }
 
@@ -229,7 +229,7 @@ bb1:
   br bb3
 
 bb2:
-  destroy_value [dead_end] %1
+  end_lifetime %1
   unreachable
 
 bb3:

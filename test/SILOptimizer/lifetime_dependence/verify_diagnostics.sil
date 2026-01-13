@@ -378,8 +378,8 @@ bb1(%void : $()):
   return %99
 
 bb2(%error : @owned $any Error):
-  destroy_value [dead_end] %error
-  destroy_value [dead_end] %md
+  end_lifetime %error
+  end_lifetime %md
   unreachable
 }
 
@@ -415,8 +415,8 @@ bb3(%void : $()):
   return %99
 
 bb4(%error : @owned $any Error):
-  destroy_value [dead_end] %error
-  destroy_value [dead_end] %md
+  end_lifetime %error
+  end_lifetime %md
   br bb5
 
 bb5:

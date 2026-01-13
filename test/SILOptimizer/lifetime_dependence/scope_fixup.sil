@@ -570,7 +570,7 @@ bb0(%0 : @owned $NCContainer):
 // CHECK:   ({{.*}}, [[TOKEN:%[0-9]+]]) = begin_apply %{{.*}}(%0) : $@yield_once @convention(method) (@guaranteed C) -> @yields @guaranteed Optional<NCWrapper>
 // CHECK:   switch_enum %{{.*}}, case #Optional.some!enumelt: bb2, case #Optional.none!enumelt: bb1
 // CHECK: bb1:
-// CHECK:   destroy_value [dead_end]
+// CHECK:   end_lifetime
 // CHECK:   end_borrow [[TOKEN]]
 // CHECK:   unreachable
 // CHECK: bb2(%{{.*}} : @guaranteed $NCWrapper):
@@ -596,7 +596,7 @@ bb0(%0 : @guaranteed $C):
 bb1:
   end_borrow %10
   end_borrow %9
-  destroy_value [dead_end] %6
+  end_lifetime %6
   end_borrow %4
   unreachable
 

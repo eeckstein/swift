@@ -205,7 +205,7 @@ bb3:
 // CHECK-NEXT:    end_init_let_ref %2
 // CHECK:       bb2:
 // CHECK-NEXT:    end_init_let_ref %2
-// CHECK-NEXT:    destroy_value [dead_end]
+// CHECK-NEXT:    end_lifetime
 // CHECK-NEXT:    unreachable
 // CHECK:       bb3:
 // CHECK:       } // end sil function 'test_multi_block2'
@@ -220,7 +220,7 @@ bb1:
   end_borrow %3 : $C
   br bb3
 bb2:
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 bb3:
   return %2 : $C
@@ -251,7 +251,7 @@ bb2:
   destroy_addr %9 : $*Int
   end_access %9 : $*Int
   end_borrow %7 : $C
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 bb3:
   return %2 : $C
@@ -289,7 +289,7 @@ bb2:
   destroy_addr %19 : $*Int
   end_access %19 : $*Int
   end_borrow %17 : $C
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 }
 
@@ -344,7 +344,7 @@ bb7:
   br bb6
 bb8:
   end_borrow %3
-  destroy_value [dead_end] %2
+  end_lifetime %2
   unreachable
 }
 

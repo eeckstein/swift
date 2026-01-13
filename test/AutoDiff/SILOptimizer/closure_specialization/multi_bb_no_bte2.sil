@@ -127,8 +127,8 @@ bb0(%0 : @guaranteed $Array<Float>, %1 : @guaranteed $Array<Float>):
 
 bb1:
   end_borrow %b
-  destroy_value [dead_end] %19
-  destroy_value [dead_end] %121
+  end_lifetime %19
+  end_lifetime %121
   unreachable
 
 bb2:
@@ -142,8 +142,8 @@ bb2:
 
 bb3:
   end_borrow %b
-  destroy_value [dead_end] %19
-  destroy_value [dead_end] %121
+  end_lifetime %19
+  end_lifetime %121
   unreachable
 
 bb4:
@@ -160,14 +160,14 @@ bb4:
 
 bb5:
   end_borrow %b
-  destroy_value [dead_end] %19
-  destroy_value [dead_end] %121
+  end_lifetime %19
+  end_lifetime %121
   unreachable
 
 bb6:
   end_borrow %b
-  destroy_value [dead_end] %19
-  destroy_value [dead_end] %121
+  end_lifetime %19
+  end_lifetime %121
   unreachable
 
 bb7:
