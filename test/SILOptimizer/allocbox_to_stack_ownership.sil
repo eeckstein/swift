@@ -180,6 +180,32 @@ bb0(%0 : @owned $SomeClass):
 // CHECK: return
 }
 
+// CHECK-LABEL: sil [ossa] @class_promotion_with_end_lifetime :
+// CHECK:         %1 = alloc_stack $SomeClass
+// CHECK:       bb1:
+// CHECK-NEXT:    unreachable
+// CHECK:       bb2:
+// CHECK-NEXT:    load [copy]
+// CHECK-NEXT:    destroy_addr %1
+// CHECK-NEXT:    dealloc_stack %1
+// CHECK:       } // end sil function 'class_promotion_with_end_lifetime' 
+sil [ossa] @class_promotion_with_end_lifetime : $@convention(thin) (@owned SomeClass) -> @owned SomeClass {
+bb0(%0 : @owned $SomeClass):
+  %1 = alloc_box ${ var SomeClass }
+  %2 = project_box %1, 0
+  store %0 to [init] %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  end_lifetime %1
+  unreachable
+
+bb2:
+  %3 = load [copy] %2
+  destroy_value %1
+  return %3 : $SomeClass
+}
+
 protocol LogicValue {
   func getLogicValue() -> Bool
 }
@@ -974,6 +1000,7 @@ bb0(%0 : $Int):
 // CHECK:      bb1:
 // CHECK-NEXT:   [[STACK2:%[0-9]+]] = alloc_stack $Bool
 // CHECK-NEXT:   dealloc_stack [[STACK2]]
+// CHECK-NEXT:   dealloc_stack [[BOX]]
 // CHECK-NEXT:   unreachable
 // CHECK:      bb2:
 // CHECK:        store
@@ -1010,6 +1037,7 @@ bb2:
 // CHECK:      bb1:
 // CHECK-NEXT:   [[STACK2:%[0-9]+]] = alloc_stack $Bool
 // CHECK-NEXT:   dealloc_stack [[STACK2]]
+// CHECK-NEXT:   dealloc_stack [[BOX]]
 // CHECK-NEXT:   unreachable
 // CHECK:      bb2:
 // CHECK:        store
@@ -1075,6 +1103,7 @@ bb2:
 // CHECK:      bb0(%0 : $Int):
 // CHECK-NEXT:   [[BOX:%[0-9]+]] = alloc_stack $Int
 // CHECK:      bb1:
+// CHECK-NEXT:   dealloc_stack [[BOX]]
 // CHECK-NEXT:   unreachable
 // CHECK:      bb2:
 // CHECK:        store
@@ -1264,7 +1293,7 @@ bb2:
   br bb1
 
 bb3:
-  destroy_value [dead_end] %copy
+  end_lifetime %copy
   unreachable
 }
 
@@ -1307,7 +1336,7 @@ bb4:
   br bb3
 
 bb5:
-  destroy_value [dead_end] %copy2
+  end_lifetime %copy2
   unreachable
 }
 
@@ -1339,7 +1368,7 @@ bb3:
   br bb2
 
 bb4:
-  destroy_value [dead_end] %copy
+  end_lifetime %copy
   unreachable
 }
 
@@ -1447,7 +1476,7 @@ bb7:
   br bb6
 
 bb8:
-  destroy_value [dead_end] %box
+  end_lifetime %box
   unreachable
 }
 
@@ -1477,7 +1506,7 @@ bb2:
 bb3:
   %copy = copy_value %box
   destroy_value %copy
-  destroy_value [dead_end] %box
+  end_lifetime %box
   unreachable
 }
 

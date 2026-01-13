@@ -146,7 +146,7 @@ private func canPromote(allocBox: AllocBoxInst) -> (promotableArguments: [Functi
       // Note: all instructions which are handled here must also be handled in `FunctionSpecializations.rewriteUses`!
       switch use.instruction {
       case is StrongRetainInst, is StrongReleaseInst, is ProjectBoxInst, is DestroyValueInst,
-           is EndBorrowInst, is DebugValueInst, is DeallocStackInst:
+           is EndBorrowInst, is DebugValueInst, is DeallocStackInst, is EndLifetimeInst:
         break
       case let deallocBox as DeallocBoxInst where deallocBox.parentFunction == allocBox.parentFunction:
         break
@@ -222,7 +222,8 @@ private struct FunctionSpecializations {
     while let use = box.uses.first {
       let user = use.instruction
       switch user {
-      case is StrongRetainInst, is StrongReleaseInst, is DestroyValueInst, is EndBorrowInst, is DeallocBoxInst:
+      case is StrongRetainInst, is StrongReleaseInst, is DestroyValueInst, is EndBorrowInst,
+           is DeallocBoxInst, is EndLifetimeInst:
         context.erase(instruction: user)
       case let projectBox as ProjectBoxInst:
         assert(projectBox.fieldIndex == 0, "only single-field boxes are handled")
@@ -349,7 +350,7 @@ private func createAllocStack(for allocBox: AllocBoxInst, flags: Flags, _ contex
   for destroy in getFinalDestroys(of: allocBox, context) {
     let loc = allocBox.location.asCleanup.withScope(of: destroy.location)
     Builder.insert(after: destroy, location: loc, context) { builder in
-      if !(destroy is DeallocBoxInst),
+      if destroy is StrongReleaseInst,
          context.deadEndBlocks.isDeadEnd(destroy.parentBlock),
          !isInLoop(block: destroy.parentBlock, context) {
         // "Last" releases in dead-end regions may not actually destroy the box
@@ -370,12 +371,10 @@ private func createAllocStack(for allocBox: AllocBoxInst, flags: Flags, _ contex
         // the box.
         return
       }
-      if !unboxedType.isTrivial(in: allocBox.parentFunction), !(destroy is DeallocBoxInst) {
+      if !unboxedType.isTrivial(in: allocBox.parentFunction),
+         !(destroy is DeallocBoxInst || destroy is EndLifetimeInst)
+      {
         builder.createDestroyAddr(address: stackLocation)
-      }
-      if let dbi = destroy as? DeallocBoxInst, dbi.isDeadEnd {
-        // Don't bother to create dealloc_stack instructions in dead-ends.
-        return
       }
       builder.createDeallocStack(asi)
     }
