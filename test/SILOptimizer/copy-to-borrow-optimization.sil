@@ -2312,3 +2312,27 @@ bb1(%5 : @reborrow $Klass):
   return %9 : $()
 }
 
+// CHECK-LABEL: sil [ossa] @handle_end_lifetime :
+// CHECK:         %1 = load_borrow %0
+// CHECK:       bb1:
+// CHECK-NEXT:    fix_lifetime %1
+// CHECK-NEXT:    end_borrow %1
+// CHECK:       bb2:
+// CHECK-NEXT:    apply undef(%1)
+// CHECK-NEXT:    end_borrow %1
+// CHECK-LABEL: } // end sil function 'handle_end_lifetime'
+sil [ossa] @handle_end_lifetime : $@convention(thin) (@in_guaranteed Klass) -> () {
+bb0(%0 : $*Klass):
+  %1 = load [copy] %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  fix_lifetime %1
+  end_lifetime %1
+  unreachable
+
+bb2:
+  apply undef(%1) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %1
+  return undef : $()
+}

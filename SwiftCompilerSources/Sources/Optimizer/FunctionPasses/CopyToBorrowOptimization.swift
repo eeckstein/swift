@@ -125,11 +125,11 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
 private struct Uses {
   let context: FunctionPassContext
 
-  // Operand of all forwarding instructions, which - if possible - are converted from "owned" to "guaranteed"
+  // Operands of all forwarding instructions, which - if possible - are converted from "owned" to "guaranteed"
   private(set) var forwardingUses: Stack<Operand>
 
-  // All destroys of the load/copy_value and its forwarded values.
-  private(set) var destroys: Stack<DestroyValueInst>
+  // All `destroy_value` and `end_lifetime` instructions of the load/copy_value and its forwarded values.
+  private(set) var destroys: Stack<Instruction>
 
   // Exit blocks of the load/copy_value's liverange which don't have a destroy.
   // Those are successor blocks of terminators, like `switch_enum`, which do _not_ forward the value.
@@ -157,8 +157,8 @@ private struct Uses {
     while let value = worklist.pop() {
       for use in value.uses.endingLifetime {
         switch use.instruction {
-        case let destroy as DestroyValueInst:
-          destroys.append(destroy)
+        case is DestroyValueInst, is EndLifetimeInst:
+          destroys.append(use.instruction)
 
         case let forwardingInst as ForwardingInstruction where forwardingInst.canChangeToGuaranteedOwnership:
           forwardingUses.append(use)
@@ -229,7 +229,7 @@ private struct Uses {
 
 private func mayWrite(
   toAddressOf load: LoadInst,
-  within destroys: Stack<DestroyValueInst>,
+  within destroys: Stack<Instruction>,
   usersInDeadEndBlocks: Stack<Instruction>,
   _ context: FunctionPassContext
 ) -> Bool {
