@@ -513,7 +513,7 @@ collectStackClosureLifetimeEnds(SmallVectorImpl<SILInstruction *> &lifetimeEnds,
       do {
         SILInstruction *nextUser = nullptr;
         for (auto use : singlePAUser->getUses()) {
-          if (isa<DestroyValueInst>(use->getUser())) {
+          if (isa<DestroyValueInst>(use->getUser()) || isa<EndLifetimeInst>(use->getUser())) {
             continue;
           }
           assert(!nextUser && "more than one non-destroying use?!");

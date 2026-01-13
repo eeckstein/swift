@@ -2478,8 +2478,7 @@ bool GatherUsesVisitor::visitUse(Operand *op) {
         LLVM_DEBUG(llvm::dbgs() << "Adding destroys from load as liveness uses "
                                    "since they will become end_borrows.\n");
         for (auto *consumeUse : li->getConsumingUses()) {
-          auto *dvi = cast<DestroyValueInst>(consumeUse->getUser());
-          useState.recordLivenessUse(dvi, leafRange);
+          useState.recordLivenessUse(consumeUse->getUser(), leafRange);
         }
       }
 
@@ -2519,8 +2518,7 @@ bool GatherUsesVisitor::visitUse(Operand *op) {
         LLVM_DEBUG(llvm::dbgs() << "Adding destroys from load as liveness uses "
                                    "since they will become end_borrows.\n");
         for (auto *consumeUse : li->getConsumingUses()) {
-          auto *dvi = cast<DestroyValueInst>(consumeUse->getUser());
-          useState.recordLivenessUse(dvi, leafRange);
+          useState.recordLivenessUse(consumeUse->getUser(), leafRange);
         }
       } else {
         // Now that we know that we are going to perform a take, perform a
@@ -3485,12 +3483,12 @@ void MoveOnlyAddressCheckerPImpl::rewriteUses(
       auto *lbi = builder.createLoadBorrow(li->getLoc(), li->getOperand());
       // We use this auxillary list to avoid iterator invalidation of
       // li->getConsumingUse();
-      StackList<DestroyValueInst *> toDelete(lbi->getFunction());
+      StackList<SILInstruction *> toDelete(lbi->getFunction());
       for (auto *consumeUse : li->getConsumingUses()) {
-        auto *dvi = cast<DestroyValueInst>(consumeUse->getUser());
-        SILBuilderWithScope destroyBuilder(dvi);
-        destroyBuilder.createEndBorrow(dvi->getLoc(), lbi);
-        toDelete.push_back(dvi);
+        auto *destroy = consumeUse->getUser();
+        SILBuilderWithScope destroyBuilder(destroy);
+        destroyBuilder.createEndBorrow(destroy->getLoc(), lbi);
+        toDelete.push_back(destroy);
         changed = true;
       }
       while (!toDelete.empty())

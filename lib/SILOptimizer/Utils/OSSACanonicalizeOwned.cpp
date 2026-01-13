@@ -110,10 +110,9 @@ static void diagnose(ASTContext &Context, SourceLoc loc, Diag<T...> diag,
 /// Is \p instruction a destroy_value whose operand is \p def, or its
 /// transitive copy.
 static bool isDestroyOfCopyOf(SILInstruction *instruction, SILValue def) {
-  auto *destroy = dyn_cast<DestroyValueInst>(instruction);
-  if (!destroy)
+  if (!isa<DestroyValueInst>(instruction) && ! isa<EndLifetimeInst>(instruction))
     return false;
-  auto destroyed = destroy->getOperand();
+  auto destroyed = instruction->getOperand(0);
   while (true) {
     if (destroyed == def)
       return true;
@@ -236,7 +235,7 @@ bool OSSACanonicalizeOwned::computeCanonicalLiveness() {
           // if it's a destroy_value whose operand is not a transitive copy of
           // currentDef, then it's just ending an implicit borrow of currentDef,
           // not consuming it.
-          auto lifetimeEnding = !isa<DestroyValueInst>(user);
+          auto lifetimeEnding = !(isa<DestroyValueInst>(user) || isa<EndLifetimeInst>(user));
           liveness->updateForUse(user, lifetimeEnding);
         }
         recordConsumingUse(use);
@@ -866,35 +865,35 @@ public:
 
   /// Look past ignoreable instructions to find the _last_ destroy after the
   /// specified instruction that destroys \p def.
-  static DestroyValueInst *findDestroyAfter(SILInstruction *previous,
+  static SILInstruction *findDestroyAfter(SILInstruction *previous,
                                             SILValue def,
                                             InstructionPredicate isDestroy) {
-    DestroyValueInst *retval = nullptr;
+    SILInstruction *retval = nullptr;
     for (auto *instruction = previous->getNextInstruction(); instruction;
          instruction = instruction->getNextInstruction()) {
       if (!OSSACanonicalizeOwned::ignoredByDestroyHoisting(
               instruction->getKind()))
         break;
       if (isDestroy(instruction))
-        retval = cast<DestroyValueInst>(instruction);
+        retval = instruction;
     }
     return retval;
   }
 
   /// Look past ignoreable instructions to find the _last_ destroy at or after
   /// the specified instruction that destroys \p def.
-  static DestroyValueInst *
+  static SILInstruction *
   findDestroyAtOrAfter(SILInstruction *start, SILValue def,
                        InstructionPredicate isDestroy) {
     if (isDestroy(start))
-      return cast<DestroyValueInst>(start);
+      return start;
     return findDestroyAfter(start, def, isDestroy);
   }
 
   /// Look past ignoreable instructions to find the _first_ destroy in \p
   /// destination that destroys \p def and isn't separated from the beginning
   /// by "interesting" instructions.
-  static DestroyValueInst *
+  static SILInstruction *
   findDestroyFromBlockBegin(SILBasicBlock *destination, SILValue def,
                             InstructionPredicate isDestroy) {
     return findDestroyAtOrAfter(&*destination->begin(), def, isDestroy);
@@ -958,8 +957,7 @@ private:
   void extendBoundaryFromUser(SILInstruction *user,
                               PrunedLivenessBoundary &boundary) {
     if (isDestroy(user)) {
-      auto *dvi = cast<DestroyValueInst>(user);
-      auto *existingDestroy = findDestroyAtOrAfter(dvi, currentDef, isDestroy);
+      auto *existingDestroy = findDestroyAtOrAfter(user, currentDef, isDestroy);
       assert(existingDestroy && "couldn't find a destroy at or after one!?");
       boundary.lastUsers.push_back(existingDestroy);
       return;
@@ -1126,7 +1124,7 @@ isDeadEndDestroy(SILInstruction *inst,
       if (!destroys.contains(i)) {
         continue;
       }
-      if (isa<DestroyValueInst>(i))
+      if (isa<DestroyValueInst>(i) || isa<EndLifetimeInst>(i))
         return false;
     }
   }
@@ -1163,7 +1161,7 @@ void OSSACanonicalizeOwned::insertDestroysOnBoundary(
     SmallVectorImpl<SILInstruction *> &newDestroys) {
   BasicBlockSet semanticDestroyBlocks(getCurrentDef()->getFunction());
   for (auto *destroy : destroys) {
-    if (isa<DestroyValueInst>(destroy)) {
+    if (isa<DestroyValueInst>(destroy) || isa<EndLifetimeInst>(destroy)) {
       semanticDestroyBlocks.insert(destroy->getParent());
     }
   }
@@ -1279,18 +1277,17 @@ void OSSACanonicalizeOwned::rewriteCopies(
   auto visitUse = [&](Operand *use) {
     auto *user = use->getUser();
     if (destroys.contains(user)) {
-      auto *destroy = cast<DestroyValueInst>(user);
       // If this destroy was marked as a final destroy, ignore it; otherwise,
       // delete it.
-      if (!consumes.claimConsume(destroy)) {
-        instsToDelete.insert(destroy);
-        LLVM_DEBUG(llvm::dbgs() << "  Removing " << *destroy);
+      if (!consumes.claimConsume(user)) {
+        instsToDelete.insert(user);
+        LLVM_DEBUG(llvm::dbgs() << "  Removing " << *user);
         ++NumDestroysEliminated;
       } else if (pruneDebugMode) {
         // If this destroy was marked as a final destroy, add it to liveness so
         // that we don't delete any debug instructions that occur before it.
         // (Only relevant in pruneDebugMode).
-        liveness->updateForUse(destroy, /*lifetimeEnding*/ true);
+        liveness->updateForUse(user, /*lifetimeEnding*/ true);
       }
       return true;
     }

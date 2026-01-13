@@ -174,6 +174,7 @@ struct SILMoveOnlyWrappedTypeEliminatorVisitor
     return eraseFromParent(inst);                                              \
   }
   DELETE_IF_TRIVIAL_OP(DestroyValue)
+  DELETE_IF_TRIVIAL_OP(EndLifetime)
   DELETE_IF_TRIVIAL_OP(EndBorrow)
   DELETE_IF_TRIVIAL_OP(ExtendLifetime)
 #undef DELETE_IF_TRIVIAL_OP

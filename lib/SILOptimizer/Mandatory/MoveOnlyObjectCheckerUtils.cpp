@@ -517,7 +517,7 @@ bool MoveOnlyObjectCheckerPImpl::eraseMarkWithCopiedOperand(
 
   // NOTE: destroys is a separate array that we use to avoid iterator
   // invalidation when cleaning up destroy_value of guaranteed checked values.
-  SmallVector<DestroyValueInst *, 8> destroys;
+  SmallVector<SILInstruction *, 8> destroys;
 
   // Handle:
   //
@@ -528,7 +528,7 @@ bool MoveOnlyObjectCheckerPImpl::eraseMarkWithCopiedOperand(
   if (auto *arg = dyn_cast<SILArgument>(orig)) {
     if (arg->getOwnershipKind() == OwnershipKind::Guaranteed) {
       for (auto *use : markedInst->getConsumingUses()) {
-        destroys.push_back(cast<DestroyValueInst>(use->getUser()));
+        destroys.push_back(use->getUser());
       }
       while (!destroys.empty())
         destroys.pop_back_val()->eraseFromParent();
@@ -546,7 +546,7 @@ bool MoveOnlyObjectCheckerPImpl::eraseMarkWithCopiedOperand(
   //   %3 = mark_unresolved_non_copyable_value [no_consume_or_assign] %2
   if (isa<LoadBorrowInst>(orig)) {
     for (auto *use : markedInst->getConsumingUses()) {
-      destroys.push_back(cast<DestroyValueInst>(use->getUser()));
+      destroys.push_back(use->getUser());
     }
     while (!destroys.empty())
       destroys.pop_back_val()->eraseFromParent();
@@ -570,7 +570,7 @@ bool MoveOnlyObjectCheckerPImpl::eraseMarkWithCopiedOperand(
       isa_and_nonnull<ApplyInst>(orig->getDefiningInstruction())) {
     if (orig->getOwnershipKind() == OwnershipKind::Guaranteed) {
       for (auto *use : markedInst->getConsumingUses()) {
-        destroys.push_back(cast<DestroyValueInst>(use->getUser()));
+        destroys.push_back(use->getUser());
       }
       while (!destroys.empty())
         destroys.pop_back_val()->eraseFromParent();

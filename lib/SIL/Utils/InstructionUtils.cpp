@@ -374,6 +374,7 @@ bool swift::onlyAffectsRefCount(SILInstruction *user) {
     return false;
   case SILInstructionKind::CopyValueInst:
   case SILInstructionKind::DestroyValueInst:
+  case SILInstructionKind::EndLifetimeInst:
   case SILInstructionKind::AutoreleaseValueInst:
   case SILInstructionKind::ReleaseValueInst:
   case SILInstructionKind::RetainValueInst:

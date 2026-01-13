@@ -1412,7 +1412,7 @@ void ElementUseCollector::collectClassSelfUses(SILValue ClassPointer) {
       continue;
     }
 
-    if (isa<EndAccessInst>(User))
+    if (isa<EndAccessInst>(User) || isa<EndLifetimeInst>(User))
       continue;
 
     // Loads of the box produce self, so collect uses from them.
@@ -1652,7 +1652,7 @@ void ElementUseCollector::collectClassSelfUses(
     }
 
     // Skip end_borrow and end_access.
-    if (isa<EndBorrowInst>(User) || isa<EndAccessInst>(User))
+    if (isa<EndBorrowInst>(User) || isa<EndAccessInst>(User) || isa<EndLifetimeInst>(User))
       continue;
 
     // ref_element_addr P, #field lookups up a field.
@@ -2072,7 +2072,7 @@ void ClassInitElementUseCollector::collectClassInitSelfLoadUses(
       continue;
 
     // Ignore end_borrow.
-    if (isa<EndBorrowInst>(User))
+    if (isa<EndBorrowInst>(User) || isa<EndLifetimeInst>(User))
       continue;
 
     // A release of a load from the self box in a class delegating

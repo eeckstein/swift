@@ -1948,7 +1948,8 @@ PartialApplyInst::visitOnStackLifetimeEnds(
         continue;
       }
       noUsers = false;
-      if (isa<DestroyValueInst>(use->getUser())) {
+      if (isa<DestroyValueInst>(use->getUser()) ||
+          isa<EndLifetimeInst>(use->getUser())) {
         liveness.updateForUse(use->getUser(), /*lifetimeEnding=*/true);
         continue;
       }
@@ -1990,10 +1991,10 @@ PartialApplyInst::visitOnStackLifetimeEnds(
   liveness.computeBoundary(boundary);
 
   for (auto *inst : boundary.lastUsers) {
-    // Only destroy_values were added to liveness, so only destroy_values can be
-    // the last users.
-    auto *dvi = cast<DestroyValueInst>(inst);
-    auto keepGoing = func(&dvi->getOperandRef());
+    // Only destroy_values and end_lifetimes were added to liveness, so only
+    // those instructions can be the last users.
+    ASSERT(isa<DestroyValueInst>(inst) || isa<EndLifetimeInst>(inst));
+    auto keepGoing = func(&inst->getOperandRef(0));
     if (!keepGoing) {
       return false;
     }

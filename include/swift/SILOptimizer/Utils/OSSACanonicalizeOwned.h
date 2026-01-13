@@ -327,6 +327,7 @@ public:
     switch (kind) {
     case SILInstructionKind::DebugValueInst:
     case SILInstructionKind::DestroyValueInst:
+    case SILInstructionKind::EndLifetimeInst:
     case SILInstructionKind::CopyValueInst:
     case SILInstructionKind::BeginBorrowInst:
     case SILInstructionKind::EndBorrowInst:
