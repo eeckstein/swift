@@ -142,6 +142,8 @@ PASS(LoopInvariantCodeMotion, "loop-invariant-code-motion",
      "New Loop Invariant Code Motion")
 PASS(PackSpecialization, "pack-specialization",
      "Specialize uses of parameter packs")
+PASS(FunctionSignatureOptimization, "function-signature-optimization",
+     "Specialize uses of parameter packs")
 
 PASS(ClosureSpecialization, "closure-specialization",
      "Specialize functions with closure arguments")
