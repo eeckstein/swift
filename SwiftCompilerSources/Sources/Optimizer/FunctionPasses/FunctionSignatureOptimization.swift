@@ -12,12 +12,13 @@
 
 import SIL
 
-let functionSignatureOptimization = FunctionPass(name: "function-signature-optimization") {
-  (function: Function, context: FunctionPassContext) in
+let functionSignatureOptimization = ModulePass(name: "function-signature-optimization") {
+  (moduleContext: ModulePassContext) in
 
-  for inst in function.instructions {
-    if let apply = inst as? FullApplySite {
-      specialize(apply: apply, context)
+  for function in moduleContext.functions {
+    for inst in function.instructions {
+      if let apply = inst as? FullApplySite {
+      }
     }
   }
 }
@@ -25,3 +26,161 @@ let functionSignatureOptimization = FunctionPass(name: "function-signature-optim
 private func specialize(apply: FullApplySite, _ context: FunctionPassContext) {
   
 }
+
+private struct ParameterSpecialization {
+  enum Kind {
+    case ownedToGuaranteed
+    case guaranteedToOwned
+    case dead
+    case explode
+  }
+
+  let parameterIndex: Int
+  let kind: Kind
+}
+
+private func getParameterSpecializations(for function: Function,
+                                         _ context: FunctionPassContext
+) -> [ParameterSpecialization] {
+  var specializations = [ParameterSpecialization]()
+  for (argIndex, arg) in function.arguments.enumerated() {
+    if let specKind = getSpecializationKind(for: arg, context) {
+      specializations.append(ParameterSpecialization(parameterIndex: argIndex, kind: specKind))
+    }
+  }
+  return specializations
+}
+
+private func getSpecializationKind(for argument: FunctionArgument,
+                                   _ context: FunctionPassContext
+) -> ParameterSpecialization.Kind? {
+  if argument.uses.ignoreDebugUses.isEmpty {
+    return .dead
+  }
+
+  switch argument.convention {
+  case .directOwned:
+    if !argument.type.isMoveOnly,
+       argument.isDestroyedAtFunctionExits(context)
+    {
+      return .ownedToGuaranteed
+    }
+  case .directGuaranteed:
+    if argument.isCopiedAtFunctionEntry(context) {
+      return .guaranteedToOwned
+    }
+  default:
+    break
+  }
+  return nil
+}
+
+private extension FunctionArgument {
+  func isDestroyedAtFunctionExits(_ context: FunctionPassContext) -> Bool {
+    precondition(ownership == .owned)
+
+    guard uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst }) else {
+      return false
+    }
+
+    var worklist = InstructionWorklist(context)
+    defer { worklist.deinitialize() }
+    worklist.pushIfNotVisited(contentsOf: uses.endingLifetime.users)
+
+    let calleeAnalysis = context.calleeAnalysis
+
+    while let inst = worklist.pop() {
+      if inst.isDeinitBarrier(calleeAnalysis) {
+        return false
+      }
+      worklist.pushSuccessors(of: inst)
+    }
+    return true
+  }
+
+  func isCopiedAtFunctionEntry(_ context: FunctionPassContext) -> Bool {
+    precondition(ownership == .guaranteed)
+
+    guard uses.ignoreDebugUses.allSatisfy({ $0.instruction is CopyValueInst }) else {
+      return false
+    }
+
+    var entryToCopies = BasicBlockRange(begin: parentFunction.entryBlock, context)
+    entryToCopies.insert(contentsOf: uses.users(ofType: CopyValueInst.self).lazy.map { $0.parentBlock})
+
+    guard entryToCopies.exits.isEmpty else {
+      return false
+    }
+
+    guard uses.users(ofType: CopyValueInst.self).allSatisfy({ !entryToCopies.contains($0.parentBlock) }) else {
+      return false
+    }
+
+    return true
+  }
+}
+
+private extension FullApplySite {
+  func canBenefit(from parameterSpecializations: [ParameterSpecialization], _ context: FunctionPassContext) -> Bool {
+    for spec in parameterSpecializations {
+      if let arg = operand(forCalleeArgumentIndex: spec.parameterIndex),
+         arg.canBenefit(from: spec.kind, context)
+      {
+        return true
+      }
+    }
+    return false
+  }
+}
+
+private extension Operand {
+  func canBenefit(from specializationKind: ParameterSpecialization.Kind, _ context: FunctionPassContext) -> Bool {
+    switch specializationKind {
+    case .ownedToGuaranteed:
+      switch self.value {
+      case is CopyValueInst:
+        return true
+      default:
+        // TODO: check load_borrow
+        return false
+      }
+    case .guaranteedToOwned:
+      return self.value.isDestroyed(after: self.instruction, context)
+    case .dead:
+      return true
+    case .explode:
+      // TODO
+      return false
+    }
+  }
+}
+
+private extension Value {
+  func isDestroyed(after beginInstruction: Instruction, _ context: FunctionPassContext) -> Bool {
+    guard uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst }) else {
+      return false
+    }
+
+    var userSet = InstructionSet(context)
+    defer { userSet.deinitialize() }
+    userSet.insert(contentsOf: uses.filter{ !$0.endsLifetime }.users)
+
+    var worklist = InstructionWorklist(context)
+    defer { worklist.deinitialize() }
+    worklist.pushIfNotVisited(contentsOf: uses.endingLifetime.users)
+
+    let calleeAnalysis = context.calleeAnalysis
+
+    while let inst = worklist.pop() {
+      if inst.isDeinitBarrier(calleeAnalysis) {
+        return false
+      }
+      if userSet.contains(inst) {
+        return false
+      }
+      worklist.pushPredecessors(of: inst, ignoring: beginInstruction)
+    }
+    return true
+  }
+}
+
