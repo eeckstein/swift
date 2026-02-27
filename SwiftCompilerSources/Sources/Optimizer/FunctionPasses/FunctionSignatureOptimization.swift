@@ -27,25 +27,13 @@ private func specialize(apply: FullApplySite, _ context: FunctionPassContext) {
   
 }
 
-private struct ParameterSpecialization {
-  enum Kind {
-    case ownedToGuaranteed
-    case guaranteedToOwned
-    case dead
-    case explode
-  }
-
-  let parameterIndex: Int
-  let kind: Kind
-}
-
 private func getParameterSpecializations(for function: Function,
                                          _ context: FunctionPassContext
-) -> [ParameterSpecialization] {
-  var specializations = [ParameterSpecialization]()
+) -> [ArgumentSpecialization] {
+  var specializations = [ArgumentSpecialization]()
   for (argIndex, arg) in function.arguments.enumerated() {
     if let specKind = getSpecializationKind(for: arg, context) {
-      specializations.append(ParameterSpecialization(parameterIndex: argIndex, kind: specKind))
+      specializations.append(ArgumentSpecialization(argumentIndex: argIndex, kind: specKind))
     }
   }
   return specializations
@@ -53,7 +41,7 @@ private func getParameterSpecializations(for function: Function,
 
 private func getSpecializationKind(for argument: FunctionArgument,
                                    _ context: FunctionPassContext
-) -> ParameterSpecialization.Kind? {
+) -> ArgumentSpecialization.Kind? {
   if argument.uses.ignoreDebugUses.isEmpty {
     return .dead
   }
@@ -121,9 +109,9 @@ private extension FunctionArgument {
 }
 
 private extension FullApplySite {
-  func canBenefit(from parameterSpecializations: [ParameterSpecialization], _ context: FunctionPassContext) -> Bool {
+  func canBenefit(from parameterSpecializations: [ArgumentSpecialization], _ context: FunctionPassContext) -> Bool {
     for spec in parameterSpecializations {
-      if let arg = operand(forCalleeArgumentIndex: spec.parameterIndex),
+      if let arg = operand(forCalleeArgumentIndex: spec.argumentIndex),
          arg.canBenefit(from: spec.kind, context)
       {
         return true
@@ -134,7 +122,7 @@ private extension FullApplySite {
 }
 
 private extension Operand {
-  func canBenefit(from specializationKind: ParameterSpecialization.Kind, _ context: FunctionPassContext) -> Bool {
+  func canBenefit(from specializationKind: ArgumentSpecialization.Kind, _ context: FunctionPassContext) -> Bool {
     switch specializationKind {
     case .ownedToGuaranteed:
       switch self.value {
@@ -184,3 +172,44 @@ private extension Value {
   }
 }
 
+private func specialize(function: Function,
+                        with argumentSpecializations: [ArgumentSpecialization],
+                        _ context: FunctionPassContext
+) -> Function {
+  // If a function has lifetime dependencies, bailout if dead arguments precede lifetime sources or targets
+  if callee.convention.hasLifetimeDependencies() {
+    for (argIndex, _) in callee.arguments.enumerated() where argIndex >= deadArgIndices.first!.argumentIndex {
+      if callee.argumentConventions.isLifetimeSourceOrTarget(index: argIndex) {
+        return
+      }
+    }
+  }
+
+  let specializedFuncName = context.mangle(withSignatureSpecializedArguments: argumentSpecializations, from: function)
+
+  if let existingSpecializedFunction = context.lookupFunction(name: specializedFuncName) {
+    return existingSpecializedFunction
+  }
+
+  let specializedFunction =
+    context.createSpecializedFunctionDeclaration(
+      from: callee, withName: specializedFunctionName,
+      withParams: specializedParameters,
+      makeBare: true)
+
+  context.buildSpecializedFunction(
+    specializedFunction: specializedFunction,
+    buildFn: { (specializedFunction, specializedContext) in
+      var cloner = Cloner(cloneToEmptyFunction: specializedFunction, specializedContext)
+      defer { cloner.deinitialize() }
+
+      cloneAndSpecializeFunctionBody(using: &cloner)
+      // Cloning a whole function, even if it contains an `unreachable`, doesn't require lifetime completion.
+      specializedContext.setNeedCompleteLifetimes(to: false)
+    })
+
+  context.notifyNewFunction(function: specializedFunction, derivedFrom: callee)
+
+  return specializedFunction
+
+}

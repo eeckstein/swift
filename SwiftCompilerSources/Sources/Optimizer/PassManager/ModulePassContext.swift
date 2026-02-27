@@ -206,9 +206,19 @@ struct ModulePassContext : Context, CustomStringConvertible {
     return String(taking: bridgedPassContext.mangleAsyncRemoved(function.bridged))
   }
 
-  func mangle(withDeadArguments: [Int], from function: Function) -> String {
-    withDeadArguments.withBridgedArrayRef { bridgedArgIndices in
-      String(taking: bridgedPassContext.mangleWithDeadArgs(bridgedArgIndices, function.bridged))
+  func mangle(withSignatureSpecializedArguments: [ArgumentSpecialization], from function: Function) -> String {
+    let bridgedArgSpecs = withSignatureSpecializedArguments.map {
+      let bridgedKind: BridgedPassContext.SignatureSpecializedArgMangling.Kind
+      switch $0.kind {
+        case .ownedToGuaranteed: bridgedKind = .ownedToGuaranteed
+        case .guaranteedToOwned: bridgedKind = .guaranteedToOwned
+        case .dead:              bridgedKind = .dead
+        case .explode:           bridgedKind = .explode
+      }
+      return BridgedPassContext.SignatureSpecializedArgMangling(argIdx: $0.argumentIndex, kind: bridgedKind)
+    }
+    return bridgedArgSpecs.withBridgedArrayRef { bridgedArgIndices in
+      String(taking: bridgedPassContext.mangleWithSignatureSpecializedArgs(bridgedArgIndices, function.bridged))
     }
   }
 
