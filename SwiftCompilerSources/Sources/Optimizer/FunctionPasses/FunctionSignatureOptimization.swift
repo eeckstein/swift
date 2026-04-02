@@ -22,7 +22,7 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
     }
   }
 }
-
+/*
 private func specialize(apply: FullApplySite, _ context: FunctionPassContext) {
   
 }
@@ -213,3 +213,4 @@ private func specialize(function: Function,
   return specializedFunction
 
 }
+*/
