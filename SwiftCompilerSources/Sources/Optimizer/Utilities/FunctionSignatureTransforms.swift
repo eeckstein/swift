@@ -12,7 +12,7 @@
 
 import SIL
 
-private extension ArgumentConventions {
+extension ArgumentConventions {
   func isLifetimeSourceOrTarget(index argIndex: Int) -> Bool {
     // Check if `argIndex` is a lifetime target
     if self[parameterDependencies: argIndex] != nil {

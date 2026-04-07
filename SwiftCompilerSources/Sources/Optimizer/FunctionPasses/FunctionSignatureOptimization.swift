@@ -15,16 +15,51 @@ import SIL
 let functionSignatureOptimization = ModulePass(name: "function-signature-optimization") {
   (moduleContext: ModulePassContext) in
 
+  var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
+
   for function in moduleContext.functions {
     for inst in function.instructions {
-      if let apply = inst as? FullApplySite {
+      switch inst {
+      case let apply as ApplyInst:
+        trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext)
+      case let tryApply as TryApplyInst:
+        trySpecialize(apply: tryApply, cacheIn: &functionSpecializations, moduleContext)
+      default:
+        break
       }
     }
   }
 }
-/*
-private func specialize(apply: FullApplySite, _ context: FunctionPassContext) {
-  
+
+private func trySpecialize(apply: FullApplySite,
+                           cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
+                           _ moduleContext: ModulePassContext) {
+  guard let callee = apply.referencedFunction else {
+    return
+  }
+
+  let specializations: [ArgumentSpecialization]
+  if let existingSpecializations = functionSpecializations[callee] {
+    specializations = existingSpecializations
+  } else {
+    specializations = moduleContext.transform(function: callee) { context in
+      getParameterSpecializations(for: callee, context)
+    }
+    functionSpecializations[callee] = specializations
+  }
+
+  let benefit = moduleContext.transform(function: apply.parentFunction) { context in
+    apply.canBenefit(from: specializations, context)
+  }
+  guard benefit,
+        callee.isCompatibleWithLifetimeDependencies(argumentSpecializations: specializations)
+  else {
+    return
+  }
+  specialize(function: callee, with: specializations, callerSiteApply: apply, moduleContext)
+  moduleContext.transform(function: apply.parentFunction) { context in
+    context.inlineFunction(apply: apply, mandatoryInline: false)
+  }
 }
 
 private func getParameterSpecializations(for function: Function,
@@ -94,6 +129,8 @@ private extension FunctionArgument {
     }
 
     var entryToCopies = BasicBlockRange(begin: parentFunction.entryBlock, context)
+    defer { entryToCopies.deinitialize() }
+    
     entryToCopies.insert(contentsOf: uses.users(ofType: CopyValueInst.self).lazy.map { $0.parentBlock})
 
     guard entryToCopies.exits.isEmpty else {
@@ -174,43 +211,151 @@ private extension Value {
 
 private func specialize(function: Function,
                         with argumentSpecializations: [ArgumentSpecialization],
-                        _ context: FunctionPassContext
-) -> Function {
-  // If a function has lifetime dependencies, bailout if dead arguments precede lifetime sources or targets
-  if callee.convention.hasLifetimeDependencies() {
-    for (argIndex, _) in callee.arguments.enumerated() where argIndex >= deadArgIndices.first!.argumentIndex {
-      if callee.argumentConventions.isLifetimeSourceOrTarget(index: argIndex) {
-        return
-      }
+                        callerSiteApply: FullApplySite,
+                        _ moduleContext: ModulePassContext)
+{
+  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: argumentSpecializations, from: function)
+
+  if moduleContext.lookupFunction(name: specializedFuncName) != nil {
+    return
+  }
+
+  var specializedParams = Array(function.convention.parameters)
+
+  let argumentConventions = function.argumentConventions
+  var offset = 0
+
+  for spec in argumentSpecializations {
+    let paramIdx = argumentConventions.parameterIndex(ofArgumentIndex: spec.argumentIndex)! + offset
+
+    switch spec.kind {
+    case .ownedToGuaranteed:
+      assert(specializedParams[paramIdx].convention == .directOwned)
+      specializedParams[paramIdx] = specializedParams[paramIdx].with(convention: .directGuaranteed)
+    case .guaranteedToOwned:
+      assert(specializedParams[paramIdx].convention == .directGuaranteed)
+      specializedParams[paramIdx] = specializedParams[paramIdx].with(convention: .directOwned)
+    case .dead:
+      specializedParams.remove(at: paramIdx)
+      offset -= 1
+    case .explode:
+      fatalError("todo")
     }
   }
 
-  let specializedFuncName = context.mangle(withSignatureSpecializedArguments: argumentSpecializations, from: function)
-
-  if let existingSpecializedFunction = context.lookupFunction(name: specializedFuncName) {
-    return existingSpecializedFunction
-  }
-
-  let specializedFunction =
-    context.createSpecializedFunctionDeclaration(
-      from: callee, withName: specializedFunctionName,
-      withParams: specializedParameters,
+  let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
+      from: function, withName: specializedFuncName,
+      withParams: specializedParams,
       makeBare: true)
 
-  context.buildSpecializedFunction(
-    specializedFunction: specializedFunction,
-    buildFn: { (specializedFunction, specializedContext) in
-      var cloner = Cloner(cloneToEmptyFunction: specializedFunction, specializedContext)
-      defer { cloner.deinitialize() }
+  moduleContext.moveFunctionBody(from: function, to: specializedFunction)
 
-      cloneAndSpecializeFunctionBody(using: &cloner)
-      // Cloning a whole function, even if it contains an `unreachable`, doesn't require lifetime completion.
-      specializedContext.setNeedCompleteLifetimes(to: false)
-    })
+  moduleContext.transform(function: function) { context in
+    let newEntryBlock = context.appendNewBlock(in: function)
+    var newApplyArgs = [Value]()
+    for origArg in specializedFunction.arguments {
+      newApplyArgs.append(newEntryBlock.addFunctionArgument(type: origArg.type, context))
+    }
+    var toDelete = [Value]()
+    var offset = 0
+    for spec in argumentSpecializations {
+      let argIdx = spec.argumentIndex + offset
+      switch spec.kind {
+      case .ownedToGuaranteed:
+        toDelete.append(newApplyArgs[argIdx])
+      case .guaranteedToOwned:
+        let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+        let copy = builder.createCopyValue(operand: newApplyArgs[argIdx])
+        newApplyArgs[argIdx] = copy
+      case .dead:
+        newApplyArgs.remove(at: argIdx)
+        offset -= 1
+      case .explode:
+        fatalError("todo")
+      }
+    }
 
-  context.notifyNewFunction(function: specializedFunction, derivedFrom: callee)
+    let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+    let fri = builder.createFunctionRef(specializedFunction)
 
-  return specializedFunction
+    switch callerSiteApply {
+    case let applyInst as ApplyInst:
+      let newApply = builder.createApply(function: fri,
+                                         function.forwardingSubstitutionMap,
+                                         arguments: newApplyArgs,
+                                         isNonThrowing: applyInst.isNonThrowing,
+                                         isNonAsync: applyInst.isNonAsync)
 
+      for v in toDelete {
+        builder.createDestroyValue(operand: v)
+      }
+      // TODO: handle return_borrow
+      builder.createReturn(of: newApply)
+    case let tryApply as TryApplyInst:
+      let normalBlock = context.appendNewBlock(in: function)
+      let errorBlock = context.appendNewBlock(in: function)
+      builder.createTryApply(function: fri,
+                             function.forwardingSubstitutionMap,
+                             arguments: newApplyArgs,
+                             normalBlock: normalBlock, errorBlock: errorBlock,
+                             isNonAsync: tryApply.isNonAsync)
+
+      let retTy = function.convention.results[0].getReturnValueType(function: function)
+      let returnVal = normalBlock.addArgument(type: retTy.loweredType(in: function),
+                                              ownership: tryApply.normalBlock.arguments[0].ownership,
+                                              context)
+      Builder(atBeginOf: normalBlock, context).createReturn(of: returnVal)
+
+      let errorTy = function.convention.errorResult!.getReturnValueType(function: function)
+      let errorVal = errorBlock.addArgument(type: errorTy.loweredType(in: function),
+                                            ownership: tryApply.errorBlock.arguments[0].ownership,
+                                            context)
+      Builder(atBeginOf: errorBlock, context).createThrow(of: errorVal)
+    default:
+      fatalError("unsupported apply")
+    }
+  }
+
+  moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
+      (specializedFunction, specializedContext) in
+    var offset = 0
+    for spec in argumentSpecializations {
+      let arg = specializedFunction.arguments[spec.argumentIndex + offset]
+      switch spec.kind {
+      case .ownedToGuaranteed:
+        specializedContext.erase(instructions: arg.uses.users(ofType: DestroyValueInst.self))
+        arg.set(ownership: .guaranteed, specializedContext)
+      case .guaranteedToOwned:
+        for copy in arg.uses.users(ofType: CopyValueInst.self) {
+          copy.replace(with: arg, specializedContext)
+        }
+        arg.set(ownership: .owned, specializedContext)
+      case .dead:
+        specializedFunction.entryBlock.eraseArgument(at: arg.index, specializedContext)
+        offset -= 1
+      case .explode:
+        fatalError("todo")
+      }
+    }
+  }
+  moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
 }
-*/
+
+private extension Function {
+  func isCompatibleWithLifetimeDependencies(argumentSpecializations: [ArgumentSpecialization]) -> Bool {
+    if convention.hasLifetimeDependencies() {
+      for (argIndex, _) in arguments.enumerated() where argIndex >= argumentSpecializations.first!.argumentIndex {
+        if argumentConventions.isLifetimeSourceOrTarget(index: argIndex) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+}
+
+private extension ParameterInfo {
+  func with(convention newConvention: ArgumentConvention) -> ParameterInfo {
+    ParameterInfo(type: type, convention: newConvention, options: options, hasLoweredAddresses: hasLoweredAddresses)
+  }
+}

@@ -669,6 +669,16 @@ void BridgedArgument::setReborrow(bool reborrow) const {
   getArgument()->setReborrow(reborrow);
 }
 
+void BridgedArgument::setOwnership(BridgedValue::Ownership ownership) const {
+  auto *arg = getArgument();
+  switch (ownership) {
+    case BridgedValue::Ownership::Unowned:    arg->setOwnershipKind(swift::OwnershipKind::Unowned);    break;
+    case BridgedValue::Ownership::Owned:      arg->setOwnershipKind(swift::OwnershipKind::Owned);      break;
+    case BridgedValue::Ownership::Guaranteed: arg->setOwnershipKind(swift::OwnershipKind::Guaranteed); break;
+    case BridgedValue::Ownership::None:       arg->setOwnershipKind(swift::OwnershipKind::None);       break;
+  }
+}
+
 bool BridgedArgument::FunctionArgument_isLexical() const {
   return llvm::cast<swift::SILFunctionArgument>(getArgument())->getLifetime().isLexical();
 }
@@ -3327,6 +3337,10 @@ BridgedBasicBlock BridgedContext::splitBlockBefore(BridgedInstruction bridgedIns
 BridgedBasicBlock BridgedContext::splitBlockAfter(BridgedInstruction bridgedInst) const {
   auto *block = bridgedInst.unbridged()->getParent();
   return {block->split(std::next(bridgedInst.unbridged()->getIterator()))};
+}
+
+BridgedBasicBlock BridgedContext::createBlock(BridgedFunction inFunction) const {
+  return {inFunction.getFunction()->createBasicBlock()};
 }
 
 BridgedBasicBlock BridgedContext::createBlockAfter(BridgedBasicBlock bridgedBlock) const {

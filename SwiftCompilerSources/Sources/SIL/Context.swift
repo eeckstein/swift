@@ -165,6 +165,11 @@ extension MutatingContext {
     return _bridged.createBlockAfter(block.bridged).block
   }
 
+  public func appendNewBlock(in function: Function) -> BasicBlock {
+    notifyBranchesChanged()
+    return _bridged.createBlock(function.bridged).block
+  }
+
   /// Removes and deletes `instruction`.
   /// If `salvageDebugInfo` is true, compensating `debug_value` instructions are inserted for certain
   /// kind of instructions.

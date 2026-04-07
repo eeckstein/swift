@@ -1,0 +1,103 @@
+// RUN: %target-sil-opt -module-name=test -function-signature-optimization %s | %FileCheck %s
+
+sil_stage canonical
+
+import Swift
+import Builtin
+import SwiftShims
+
+// CHECK-LABEL: sil shared [ossa] @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int {
+// CHECK:       bb0(%0 : $Int):
+// CHECK-NEXT:    return %0
+// CHECK:       } // end sil function '$s8dead_argTf4dn_n'
+
+// CHECK-LABEL: sil [ossa] @dead_arg :
+// CHECK:         %2 = function_ref @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int
+// CHECK:         %3 = apply %2(%1)
+// CHECK:         return %3
+// CHECK:       } // end sil function 'dead_arg'
+sil [ossa] @dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  return %1
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_arg :
+// CHECK:         [[F:%.*]] = function_ref @$s8dead_argTf4dn_n :
+// CHECK:         [[A:%.*]] = apply [[F]](%1)
+// CHECK:         br bb1([[A]])
+// CHECK:       bb1([[R:%.*]] : $Int):
+// CHECK:         return [[R]]
+// CHECK:       } // end sil function 'call_dead_arg'
+sil [ossa] @call_dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  %2 = function_ref @dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  %3 = apply %2(%0, %1) : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  return %3
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> () {
+// CHECK:       bb0(%0 : @owned $AnyObject):
+// CHECK:         %1 = apply undef(%0) : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:       } // end sil function '$s14guaranteed_argTf4o_n'
+
+// CHECK-LABEL: sil [ossa] @guaranteed_arg :
+// CHECK:         %1 = copy_value %0
+// CHECK:         %2 = function_ref @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:         %3 = apply %2(%1)
+// CHECK:       } // end sil function 'guaranteed_arg'
+sil [ossa] @guaranteed_arg : $@convention(thin) (@guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $AnyObject):
+  %1 = copy_value %0
+  %2 = apply undef(%1) : $@convention(thin) (@owned AnyObject) -> ()
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_guaranteed_arg :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         [[C:%.*]] = copy_value [[B]]
+// CHECK:         [[F:%.*]] = function_ref @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:         apply [[F]]([[C]])
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'call_guaranteed_arg'
+sil [ossa] @call_guaranteed_arg : $@convention(thin) (@owned AnyObject) -> () {
+bb0(%0 : @owned $AnyObject):
+  %2 = function_ref @guaranteed_arg : $@convention(thin) (@guaranteed AnyObject) -> ()
+  %3 = apply %2(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+  destroy_value %0
+  return %3
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> () {
+// CHECK:       bb0(%0 : @guaranteed $AnyObject):
+// CHECK:         %1 = apply undef(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:       } // end sil function '$s9owned_argTf4g_n'
+
+// CHECK-LABEL: sil [ossa] @owned_arg :
+// CHECK:         %1 = function_ref @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:         %2 = apply %1(%0)
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       } // end sil function 'owned_arg'
+sil [ossa] @owned_arg : $@convention(thin) (@owned AnyObject) -> () {
+bb0(%0 : @owned $AnyObject):
+  %1 = apply undef(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+  destroy_value %0
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_owned_arg :
+// CHECK:         [[C:%.*]] = copy_value %0
+// CHECK:         [[M:%.*]] = move_value [lexical] [[C]]
+// CHECK:         [[F:%.*]] = function_ref @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:         apply [[F]]([[M]])
+// CHECK:         destroy_value [[M]]
+// CHECK:       } // end sil function 'call_owned_arg'
+sil [ossa] @call_owned_arg : $@convention(thin) (@guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $AnyObject):
+  %1 = copy_value %0
+  %2 = function_ref @owned_arg : $@convention(thin) (@owned AnyObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@owned AnyObject) -> ()
+  return %3
+}
