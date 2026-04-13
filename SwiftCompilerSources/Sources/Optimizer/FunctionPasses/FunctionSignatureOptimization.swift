@@ -92,6 +92,9 @@ private func getSpecializationKind(for argument: FunctionArgument,
     if argument.isCopiedAtFunctionEntry(context) {
       return .guaranteedToOwned
     }
+    if argument.isPartiallyUsed(context) {
+      return .explode
+    }
   default:
     break
   }
@@ -143,6 +146,75 @@ private extension FunctionArgument {
 
     return true
   }
+
+  func isPartiallyUsed(_ context: FunctionPassContext) -> Bool {
+    var usedFields = Stack<Int>(context)
+    defer { usedFields.deinitialize() }
+    var numUsedFields = 0
+
+    var worklist = OperandWorklist(context)
+    defer { worklist.deinitialize() }
+
+    var structOrTupleType: Type? = nil
+
+    worklist.pushIfNotVisited(contentsOf: uses)
+
+    while let use = worklist.pop() {
+      switch use.instruction {
+      case let structExtract as StructExtractInst:
+        guard let fields = use.value.type.getNominalFields(in: parentFunction) else {
+          return false
+        }
+        if fields.count == 1 {
+          worklist.pushIfNotVisited(contentsOf: structExtract.uses)
+        } else {
+          if let structOrTupleType = structOrTupleType {
+            assert(structOrTupleType == use.value.type)
+          } else {
+            structOrTupleType = use.value.type
+          }
+          if !usedFields.contains(structExtract.fieldIndex) {
+            usedFields.append(structExtract.fieldIndex)
+            numUsedFields += 1
+          }
+        }
+      case let tupleExtract as TupleExtractInst:
+        if let structOrTupleType = structOrTupleType {
+          assert(structOrTupleType == use.value.type)
+        } else {
+          structOrTupleType = use.value.type
+        }
+        if !usedFields.contains(tupleExtract.fieldIndex) {
+          usedFields.append(tupleExtract.fieldIndex)
+          numUsedFields += 1
+        }
+      case is DebugValueInst:
+        break
+      default:
+        return false
+      }
+    }
+    guard let structOrTupleType else {
+      return false
+    }
+    if numUsedFields > 2 {
+      return false
+    }
+    if structOrTupleType.isStruct {
+      for (fieldIdx, field) in structOrTupleType.getNominalFields(in: parentFunction)!.enumerated() {
+        if !usedFields.contains(fieldIdx), !field.isTrivial(in: parentFunction) {
+          return true
+        }
+      }
+    } else {
+      for (elementIdx, element) in structOrTupleType.tupleElements.enumerated() {
+        if !usedFields.contains(elementIdx), !element.isTrivial(in: parentFunction) {
+          return true
+        }
+      }
+    }
+    return false
+  }
 }
 
 private extension FullApplySite {
@@ -174,8 +246,12 @@ private extension Operand {
     case .dead:
       return true
     case .explode:
-      // TODO
-      return false
+      switch self.value {
+      case is CopyValueInst:
+        return true
+      default:
+        return false
+      }
     }
   }
 }
@@ -226,7 +302,8 @@ private func specialize(function: Function,
   var offset = 0
 
   for spec in argumentSpecializations {
-    let paramIdx = argumentConventions.parameterIndex(ofArgumentIndex: spec.argumentIndex)! + offset
+    let origParamIdx = argumentConventions.parameterIndex(ofArgumentIndex: spec.argumentIndex)!
+    let paramIdx = origParamIdx + offset
 
     switch spec.kind {
     case .ownedToGuaranteed:
@@ -239,7 +316,17 @@ private func specialize(function: Function,
       specializedParams.remove(at: paramIdx)
       offset -= 1
     case .explode:
-      fatalError("todo")
+      let toExplode = specializedParams.remove(at: paramIdx)
+      let silType = toExplode.type.loweredType(in: function)
+      for field in silType.getNominalFields(in: function)! {
+        let pi = ParameterInfo(type: field.canonicalType,
+                               convention: .directGuaranteed,
+                               options: toExplode.options,
+                               hasLoweredAddresses: toExplode.hasLoweredAddresses)
+        specializedParams.insert(pi, at: origParamIdx + offset)
+        offset += 1
+      }
+      offset -= 1
     }
   }
 
@@ -256,13 +343,13 @@ private func specialize(function: Function,
     for origArg in specializedFunction.arguments {
       newApplyArgs.append(newEntryBlock.addFunctionArgument(type: origArg.type, context))
     }
-    var toDelete = [Value]()
+    var toCleanup = [Value]()
     var offset = 0
     for spec in argumentSpecializations {
       let argIdx = spec.argumentIndex + offset
       switch spec.kind {
       case .ownedToGuaranteed:
-        toDelete.append(newApplyArgs[argIdx])
+        toCleanup.append(newApplyArgs[argIdx])
       case .guaranteedToOwned:
         let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
         let copy = builder.createCopyValue(operand: newApplyArgs[argIdx])
@@ -271,12 +358,23 @@ private func specialize(function: Function,
         newApplyArgs.remove(at: argIdx)
         offset -= 1
       case .explode:
-        fatalError("todo")
+        let original = newApplyArgs.remove(at: argIdx)
+        let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+        let borrow = builder.createBeginBorrow(of: original)
+        let destructure = builder.createDestructureStruct(struct: borrow)
+        toCleanup.append(borrow)
+        for field in destructure.results {
+          newApplyArgs.insert(field, at: spec.argumentIndex + offset)
+          offset += 1
+        }
+        offset -= 1
       }
     }
 
     let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
     let fri = builder.createFunctionRef(specializedFunction)
+
+    let newApplySite: Instruction
 
     switch callerSiteApply {
     case let applyInst as ApplyInst:
@@ -286,19 +384,18 @@ private func specialize(function: Function,
                                          isNonThrowing: applyInst.isNonThrowing,
                                          isNonAsync: applyInst.isNonAsync)
 
-      for v in toDelete {
-        builder.createDestroyValue(operand: v)
-      }
       // TODO: handle return_borrow
       builder.createReturn(of: newApply)
+      newApplySite = newApply
+
     case let tryApply as TryApplyInst:
       let normalBlock = context.appendNewBlock(in: function)
       let errorBlock = context.appendNewBlock(in: function)
-      builder.createTryApply(function: fri,
-                             function.forwardingSubstitutionMap,
-                             arguments: newApplyArgs,
-                             normalBlock: normalBlock, errorBlock: errorBlock,
-                             isNonAsync: tryApply.isNonAsync)
+      newApplySite = builder.createTryApply(function: fri,
+                                             function.forwardingSubstitutionMap,
+                                             arguments: newApplyArgs,
+                                             normalBlock: normalBlock, errorBlock: errorBlock,
+                                             isNonAsync: tryApply.isNonAsync)
 
       let retTy = function.convention.results[0].getReturnValueType(function: function)
       let returnVal = normalBlock.addArgument(type: retTy.loweredType(in: function),
@@ -313,6 +410,15 @@ private func specialize(function: Function,
       Builder(atBeginOf: errorBlock, context).createThrow(of: errorVal)
     default:
       fatalError("unsupported apply")
+    }
+    Builder.insert(after: newApplySite, context) { builder in
+      for v in toCleanup {
+        if v is BeginBorrowInst {
+          builder.createEndBorrow(of: v)
+        } else {
+          builder.createDestroyValue(operand: v)
+        }
+      }
     }
   }
 
@@ -334,7 +440,21 @@ private func specialize(function: Function,
         specializedFunction.entryBlock.eraseArgument(at: arg.index, specializedContext)
         offset -= 1
       case .explode:
-        fatalError("todo")
+        let builder = Builder(atBeginOf: specializedFunction.entryBlock, specializedContext)
+        var elements = [Value]()
+        for field in arg.type.getNominalFields(in: function)! {
+          let fieldArg = specializedFunction.entryBlock.insertFunctionArgument(
+            atPosition: spec.argumentIndex + offset + 1,
+            type: field,
+            ownership: field.isTrivial(in: specializedFunction) ? .none : .guaranteed,
+            specializedContext)
+          elements.append(fieldArg)
+          offset += 1
+        }
+        let structInst = builder.createStruct(type: arg.type, elements: elements)
+        arg.uses.replaceAll(with: structInst, specializedContext)
+        specializedFunction.entryBlock.eraseArgument(at: arg.index, specializedContext)
+        offset -= 1
       }
     }
   }
