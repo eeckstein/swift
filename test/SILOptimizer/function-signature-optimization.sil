@@ -11,6 +11,11 @@ struct S {
   var y: AnyObject
 }
 
+struct GenS<T> {
+  var x: Array<T>
+  var y: Array<T>
+}
+
 // CHECK-LABEL: sil shared [ossa] @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int {
 // CHECK:       bb0(%0 : $Int):
 // CHECK-NEXT:    return %0
@@ -150,3 +155,22 @@ bb0(%0 : @guaranteed $S):
   %r = tuple ()
   return %r
 }
+
+sil [ossa] @partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> () {
+bb0(%0 : @guaranteed $GenS<T>):
+  %1 = struct_extract %0, #GenS.x
+  fix_lifetime %1
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @call_partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> () {
+bb0(%0 : @guaranteed $GenS<T>):
+  %1 = copy_value %0
+  %2 = function_ref @partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> ()
+  %3 = apply %2<T>(%1) : $@convention(thin) <T> (@guaranteed GenS<T>) -> ()
+  destroy_value %1
+  %r = tuple ()
+  return %r
+}
+
