@@ -18,24 +18,32 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
   var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
 
   for function in moduleContext.functions {
-    for inst in function.instructions {
-      switch inst {
-      case let apply as ApplyInst:
-        trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext)
-      case let tryApply as TryApplyInst:
-        trySpecialize(apply: tryApply, cacheIn: &functionSpecializations, moduleContext)
-      default:
-        break
+    var changed: Bool
+    repeat {
+      changed = false
+      for inst in function.instructions {
+        switch inst {
+        case let apply as ApplyInst:
+          if trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext) {
+            changed = true
+          }
+        case let tryApply as TryApplyInst:
+          if trySpecialize(apply: tryApply, cacheIn: &functionSpecializations, moduleContext) {
+            changed = true
+          }
+        default:
+          break
+        }
       }
-    }
+    } while changed
   }
 }
 
 private func trySpecialize(apply: FullApplySite,
                            cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
-                           _ moduleContext: ModulePassContext) {
+                           _ moduleContext: ModulePassContext) -> Bool {
   guard let callee = apply.referencedFunction else {
-    return
+    return false
   }
 
   let specializations: [ArgumentSpecialization]
@@ -54,12 +62,13 @@ private func trySpecialize(apply: FullApplySite,
   guard benefit,
         callee.isCompatibleWithLifetimeDependencies(argumentSpecializations: specializations)
   else {
-    return
+    return false
   }
   specialize(function: callee, with: specializations, callerSiteApply: apply, moduleContext)
   moduleContext.transform(function: apply.parentFunction) { context in
     context.inlineFunction(apply: apply, mandatoryInline: false)
   }
+  return true
 }
 
 private func getParameterSpecializations(for function: Function,
@@ -155,7 +164,7 @@ private extension FunctionArgument {
     var worklist = OperandWorklist(context)
     defer { worklist.deinitialize() }
 
-    var structOrTupleType: Type? = nil
+    var structType: Type? = nil
 
     worklist.pushIfNotVisited(contentsOf: uses)
 
@@ -168,25 +177,15 @@ private extension FunctionArgument {
         if fields.count == 1 {
           worklist.pushIfNotVisited(contentsOf: structExtract.uses)
         } else {
-          if let structOrTupleType = structOrTupleType {
-            assert(structOrTupleType == use.value.type)
+          if let structType = structType {
+            assert(structType == use.value.type)
           } else {
-            structOrTupleType = use.value.type
+            structType = use.value.type
           }
           if !usedFields.contains(structExtract.fieldIndex) {
             usedFields.append(structExtract.fieldIndex)
             numUsedFields += 1
           }
-        }
-      case let tupleExtract as TupleExtractInst:
-        if let structOrTupleType = structOrTupleType {
-          assert(structOrTupleType == use.value.type)
-        } else {
-          structOrTupleType = use.value.type
-        }
-        if !usedFields.contains(tupleExtract.fieldIndex) {
-          usedFields.append(tupleExtract.fieldIndex)
-          numUsedFields += 1
         }
       case is DebugValueInst:
         break
@@ -194,23 +193,15 @@ private extension FunctionArgument {
         return false
       }
     }
-    guard let structOrTupleType else {
+    guard let structType else {
       return false
     }
     if numUsedFields > 2 {
       return false
     }
-    if structOrTupleType.isStruct {
-      for (fieldIdx, field) in structOrTupleType.getNominalFields(in: parentFunction)!.enumerated() {
-        if !usedFields.contains(fieldIdx), !field.isTrivial(in: parentFunction) {
-          return true
-        }
-      }
-    } else {
-      for (elementIdx, element) in structOrTupleType.tupleElements.enumerated() {
-        if !usedFields.contains(elementIdx), !element.isTrivial(in: parentFunction) {
-          return true
-        }
+    for (fieldIdx, field) in structType.getNominalFields(in: parentFunction)!.enumerated() {
+      if !usedFields.contains(fieldIdx), !field.isTrivial(in: parentFunction) {
+        return true
       }
     }
     return false
@@ -440,7 +431,6 @@ private func specialize(function: Function,
         specializedFunction.entryBlock.eraseArgument(at: arg.index, specializedContext)
         offset -= 1
       case .explode:
-        let builder = Builder(atBeginOf: specializedFunction.entryBlock, specializedContext)
         var elements = [Value]()
         for field in arg.type.getNominalFields(in: function)! {
           let fieldArg = specializedFunction.entryBlock.insertFunctionArgument(
@@ -451,8 +441,16 @@ private func specialize(function: Function,
           elements.append(fieldArg)
           offset += 1
         }
-        let structInst = builder.createStruct(type: arg.type, elements: elements)
-        arg.uses.replaceAll(with: structInst, specializedContext)
+        for user in arg.users {
+          switch user {
+          case is DebugValueInst:
+            specializedContext.erase(instruction: user)
+          case let structExtract as StructExtractInst:
+            structExtract.replace(with: elements[structExtract.fieldIndex], specializedContext)
+          default:
+            fatalError("unknown argument use")
+          }
+        }
         specializedFunction.entryBlock.eraseArgument(at: arg.index, specializedContext)
         offset -= 1
       }
