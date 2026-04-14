@@ -350,6 +350,8 @@ struct BridgedDeclObj {
           void * _Nonnull resultArray,
           void (* _Nonnull appendFn)(void * _Nonnull resultArray, BridgedDeclObj protocol)) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE OptionalBridgedDeclObj NominalType_getValueTypeDestructor() const;
+  BRIDGED_INLINE SwiftInt NominalType_getNumStoredProperties() const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedDeclObj NominalType_getStoredProperty(SwiftInt index) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedASTType Enum_getRawType() const;
   BRIDGED_INLINE bool Struct_hasUnreferenceableStorage() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedASTType Class_getSuperclass() const;
@@ -3145,6 +3147,7 @@ struct BridgedASTType {
   BRIDGED_INLINE bool isSILPackElementAddress() const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedASTTypeArray
   BoundGenericType_getGenericArgs() const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedASTType getTypeOfMember(BridgedDeclObj varDecl) const;
 };
 
 class BridgedCanType {

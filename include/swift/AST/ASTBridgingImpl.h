@@ -240,6 +240,14 @@ OptionalBridgedDeclObj BridgedDeclObj::NominalType_getValueTypeDestructor() cons
   return {getAs<swift::NominalTypeDecl>()->getValueTypeDestructor()};
 }
 
+SwiftInt BridgedDeclObj::NominalType_getNumStoredProperties() const {
+  return (SwiftInt)getAs<swift::NominalTypeDecl>()->getStoredProperties().size();
+}
+
+BridgedDeclObj BridgedDeclObj::NominalType_getStoredProperty(SwiftInt index) const {
+  return {getAs<swift::NominalTypeDecl>()->getStoredProperties()[index]};
+}
+
 BridgedASTType BridgedDeclObj::Enum_getRawType() const {
   swift::Type rawTy = getAs<swift::EnumDecl>()->getRawType();
   if (rawTy)
@@ -838,6 +846,10 @@ BridgedASTType::GenericTypeParam_getParamKind() const {
 
 BridgedASTTypeArray BridgedASTType::BoundGenericType_getGenericArgs() const {
   return {llvm::cast<swift::BoundGenericType>(type)->getGenericArgs()};
+}
+
+BridgedASTType BridgedASTType::getTypeOfMember(BridgedDeclObj varDecl) const {
+  return {unbridged()->getTypeOfMember(varDecl.getAs<swift::VarDecl>()).getPointer()};
 }
 
 static_assert((int)BridgedASTType::TraitResult::IsNot == (int)swift::TypeTraitResult::IsNot);

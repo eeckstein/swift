@@ -164,6 +164,11 @@ bb0(%0 : @guaranteed $GenS<T>):
   return %r
 }
 
+// CHECK-LABEL: sil [ossa] @call_partial_dead_generic_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s24partial_dead_generic_argTf4x_nTf4nd_n : $@convention(thin) <τ_0_0> (@guaranteed Array<τ_0_0>) -> ()
+// CHECK:           = apply [[F]]<T>([[X]]) : $@convention(thin) <τ_0_0> (@guaranteed Array<τ_0_0>) -> ()
+// CHECK:       } // end sil function 'call_partial_dead_generic_arg'
 sil [ossa] @call_partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> () {
 bb0(%0 : @guaranteed $GenS<T>):
   %1 = copy_value %0

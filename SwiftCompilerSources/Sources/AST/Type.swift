@@ -337,6 +337,10 @@ extension TypeProperties {
   public var isSILPackElementAddress: Bool {
     return rawType.bridged.isSILPackElementAddress()
   }
+
+  public func getTypeOf(member: VarDecl) -> Type {
+    Type(bridged: rawType.bridged.getTypeOfMember(member.bridged))
+  }
 }
 
 public enum FunctionTypeRepresentation {

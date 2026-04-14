@@ -308,9 +308,9 @@ private func specialize(function: Function,
       offset -= 1
     case .explode:
       let toExplode = specializedParams.remove(at: paramIdx)
-      let silType = toExplode.type.loweredType(in: function)
-      for field in silType.getNominalFields(in: function)! {
-        let pi = ParameterInfo(type: field.canonicalType,
+      for field in toExplode.type.nominal!.storedProperties {
+        let fieldType = toExplode.type.getTypeOf(member: field)
+        let pi = ParameterInfo(type: fieldType.canonical,
                                convention: .directGuaranteed,
                                options: toExplode.options,
                                hasLoweredAddresses: toExplode.hasLoweredAddresses)
