@@ -309,9 +309,9 @@ private func specialize(function: Function,
     case .explode:
       let toExplode = specializedParams.remove(at: paramIdx)
       for field in toExplode.type.nominal!.storedProperties {
-        let fieldType = toExplode.type.getTypeOf(member: field)
-        let pi = ParameterInfo(type: fieldType.canonical,
-                               convention: .directGuaranteed,
+        let fieldType = toExplode.type.getTypeOf(member: field).canonical
+        let pi = ParameterInfo(type: fieldType,
+                               convention: fieldType.isTrivial(in: function) ? .directUnowned : .directGuaranteed,
                                options: toExplode.options,
                                hasLoweredAddresses: toExplode.hasLoweredAddresses)
         specializedParams.insert(pi, at: origParamIdx + offset)

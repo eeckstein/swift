@@ -16,6 +16,11 @@ struct GenS<T> {
   var y: Array<T>
 }
 
+struct S2 {
+  var x: Int
+  var y: AnyObject
+}
+
 // CHECK-LABEL: sil shared [ossa] @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int {
 // CHECK:       bb0(%0 : $Int):
 // CHECK-NEXT:    return %0
@@ -179,3 +184,48 @@ bb0(%0 : @guaranteed $GenS<T>):
   return %r
 }
 
+sil [ossa] @partial_dead_and_dead_arg : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $S2, %1 : @guaranteed $AnyObject):
+  %2 = struct_extract %0, #S2.x
+  fix_lifetime %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_partial_dead_and_dead_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s017partial_dead_and_B4_argTf4xd_nTf4nd_n : $@convention(thin) (Int) -> ()
+// CHECK:           = apply [[F]]([[X]]) : $@convention(thin) (Int) -> ()
+// CHECK:       } // end sil function 'call_partial_dead_and_dead_arg'
+sil [ossa] @call_partial_dead_and_dead_arg : $@convention(thin) <T> (@guaranteed S2, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $S2, %1 : @guaranteed $AnyObject):
+  %2 = copy_value %0
+  %3 = function_ref @partial_dead_and_dead_arg : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> ()
+  %4 = apply %3(%2, %1) : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> ()
+  destroy_value %2
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @dead_and_partial_dead_arg : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> () {
+bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $S2):
+  %2 = struct_extract %1, #S2.x
+  fix_lifetime %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_and_partial_dead_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s017dead_and_partial_A4_argTf4dx_nTf4nd_n : $@convention(thin) (Int) -> ()
+// CHECK:           = apply [[F]]([[X]]) : $@convention(thin) (Int) -> ()
+// CHECK:       } // end sil function 'call_dead_and_partial_dead_arg'
+sil [ossa] @call_dead_and_partial_dead_arg : $@convention(thin) <T> (@guaranteed AnyObject, @guaranteed S2) -> () {
+bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $S2):
+  %2 = copy_value %1
+  %3 = function_ref @dead_and_partial_dead_arg : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> ()
+  %4 = apply %3(%0, %2) : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> ()
+  destroy_value %2
+  %r = tuple ()
+  return %r
+}
