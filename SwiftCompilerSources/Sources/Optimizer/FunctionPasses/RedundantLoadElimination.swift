@@ -134,13 +134,12 @@ private extension Instruction {
   // version with fast type casting (https://github.com/swiftlang/swift/pull/88270). Until then, casting to the
   // concrete classes avoids a slow dynamic cast to the protocol.
   var asLoadingInstruction: LoadingInstruction? {
-    if let load = self as? LoadInst {
-      return load
+    switch self {
+      case let load as LoadInst:           return load
+      case let copy as CopyAddrInst:       return copy
+      case let destroy as DestroyAddrInst: return destroy
+      default:                             return nil
     }
-    if let copy = self as? CopyAddrInst {
-      return copy
-    }
-    return nil
   }
 }
 
@@ -212,6 +211,35 @@ extension CopyAddrInst : LoadingInstruction {
   func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
     return replaceWithLoadAndStore(context).load
   }
+}
+
+// `destroy_addr` is equivalent to `load [take]` + `destroy_value`
+extension DestroyAddrInst : LoadingInstruction {
+  var address: Value { destroyedAddress }
+  var type: Type { address.type.objectType }
+  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
+  var loadOwnership: LoadInst.LoadOwnership { .take }
+
+  var ownership: Ownership {
+    if !parentFunction.hasOwnership {
+      return .none
+    }
+    return .owned
+  }
+
+  var canLoadValue: Bool {
+    destroyedAddress.type.isLoadable(in: parentFunction) && !type.isTrivial(in: parentFunction)
+  }
+
+  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
+    let builder = Builder(before: self, context)
+    let load = builder.createLoad(fromAddress: destroyedAddress, ownership: .take)
+    builder.createDestroyValue(operand: load)
+    context.erase(instruction: self)
+    return load
+  }
+
+  func trySplit(_ context: FunctionPassContext) -> Bool { false }
 }
 
 private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int, _ context: FunctionPassContext) -> Bool {
