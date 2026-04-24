@@ -45,3 +45,4 @@ public func run_ChaCha(_ N: Int) {
   // expected-remark @-1 {{release of type '}}
   // expected-remark @-2 {{release of type '}}
   // expected-remark @-3 {{release of type '}}
+  // expected-remark @-4 {{release of type '}}

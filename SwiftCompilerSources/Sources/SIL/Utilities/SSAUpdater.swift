@@ -409,6 +409,15 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
     return ssaUpdater.getValue(atBeginOf: block)
   }
 
+  /// Returns the value which is live on entry of `block`, i.e. ignoring all available values which
+  /// are registered within `block` itself.
+  ///
+  /// This is the value to use for instructions which are inserted at the begin of `block`, i.e.
+  /// before all of its existing instructions.
+  public mutating func getValue(atBeginOf block: BasicBlock) -> Value {
+    return ssaUpdater.getValue(atBeginOf: block)
+  }
+
   /// The phi arguments which were inserted so far by `getValue`, in the order they were created.
   public var insertedPhis: [Phi] { ssaUpdater.insertedPhis }
 }

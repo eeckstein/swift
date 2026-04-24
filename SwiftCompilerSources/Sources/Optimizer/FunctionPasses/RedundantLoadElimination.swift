@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AST
 import SIL
 
 /// Replaces redundant `load` or `copy_addr` instructions with already available values.
@@ -134,13 +135,26 @@ private extension Instruction {
   // version with fast type casting (https://github.com/swiftlang/swift/pull/88270). Until then, casting to the
   // concrete classes avoids a slow dynamic cast to the protocol.
   var asLoadingInstruction: LoadingInstruction? {
-    if let load = self as? LoadInst {
-      return load
+    switch self {
+      case let load as LoadInst:           return load
+      case let copy as CopyAddrInst:       return copy
+      case let destroy as DestroyAddrInst: return destroy
+      case let loadBorrow as LoadBorrowInst: return loadBorrow
+      default:                             return nil
     }
-    if let copy = self as? CopyAddrInst {
-      return copy
+  }
+}
+
+private enum LoadKind {
+  case unqualified, trivial, copy, take, borrow
+
+  init(from loadOwnership: LoadInst.LoadOwnership) {
+    switch loadOwnership {
+      case .unqualified: self = .unqualified
+      case .trivial:     self = .trivial
+      case .copy:        self = .copy
+      case .take:        self = .take
     }
-    return nil
   }
 }
 
@@ -148,19 +162,26 @@ private extension Instruction {
 private protocol LoadingInstruction: Instruction {
   var address: Value { get }
   var type: Type { get }
-  var ownership: Ownership { get }
-  var loadOwnership: LoadInst.LoadOwnership { get }
-  var canLoadValue: Bool { get }
+  var ownershipForSSAUpdater: Ownership { get }
+  var kind: LoadKind { get }
+  var canOptimize: Bool { get }
   func trySplit(_ context: FunctionPassContext) -> Bool
-  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext)
 }
 
 extension LoadInst : LoadingInstruction {
-  // We know that the type is loadable because - well - this is a load.
-  var canLoadValue: Bool { true }
+  var canOptimize: Bool { true }
+  fileprivate var kind: LoadKind { LoadKind(from: loadOwnership) }
+  fileprivate var ownershipForSSAUpdater: Ownership { ownership }
 
   // Nothing to materialize, because this is already a `load`.
   func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst { return self }
+
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    // Make sure to keep dependencies valid after replacing the load
+    insertMarkDependencies(for: self, context)
+    self.replaceEfficiently(with: newValue, context)
+  }
 
   func replaceEfficiently(with newValue: Value, _ context: FunctionPassContext) {
     if let existingLoad = newValue as? LoadInst {
@@ -184,9 +205,9 @@ extension LoadInst : LoadingInstruction {
 extension CopyAddrInst : LoadingInstruction {
   var address: Value { source }
   var type: Type { address.type.objectType }
-  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
+  fileprivate var kind: LoadKind { LoadKind(from: loadOwnership) }
 
-  var ownership: Ownership {
+  fileprivate var ownershipForSSAUpdater: Ownership {
     if !parentFunction.hasOwnership || type.isTrivial(in: parentFunction) {
       return .none
     }
@@ -194,7 +215,7 @@ extension CopyAddrInst : LoadingInstruction {
     return .owned
   }
 
-  var canLoadValue: Bool {
+  var canOptimize: Bool {
     if !source.type.isLoadable(in: parentFunction) {
       // Although the original load's type is loadable (obviously), it can be projected-out
       // from the copy_addr's type which might be not loadable.
@@ -209,8 +230,87 @@ extension CopyAddrInst : LoadingInstruction {
     return true
   }
 
-  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
-    return replaceWithLoadAndStore(context).load
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    let load = replaceWithLoadAndStore(context).load
+    insertMarkDependencies(for: load, context)
+    load.replaceEfficiently(with: newValue, context)
+  }
+}
+
+// `destroy_addr` is equivalent to `load [take]` + `destroy_value`
+extension DestroyAddrInst : LoadingInstruction {
+  var address: Value { destroyedAddress }
+  var type: Type { address.type.objectType }
+  fileprivate var kind: LoadKind { .take }
+
+  fileprivate var ownershipForSSAUpdater: Ownership {
+    if !parentFunction.hasOwnership {
+      return .none
+    }
+    return .owned
+  }
+
+  var canOptimize: Bool {
+    destroyedAddress.type.isLoadable(in: parentFunction) && !type.isTrivial(in: parentFunction)
+  }
+
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    let builder = Builder(before: self, context)
+    let load = builder.createLoad(fromAddress: destroyedAddress, ownership: .take)
+    builder.createDestroyValue(operand: load)
+    context.erase(instruction: self)
+    insertMarkDependencies(for: load, context)
+    load.replaceEfficiently(with: newValue, context)
+  }
+
+  /// Splits the `destroy_addr` of a struct or tuple into `destroy_addr`s of the non-trivial elements.
+  /// This enables to eliminate a `destroy_addr` for which the value is only available in the form of
+  /// stores to the elements, e.g.
+  ///
+  ///     %1 = struct_element_addr %0, #S.x
+  ///     store %2 to [init] %1
+  ///     ...
+  ///     destroy_addr %0
+  ///
+  func trySplit(_ context: FunctionPassContext) -> Bool {
+    let type = destroyedAddress.type
+    let elementTypes: [Type]
+    if type.isStruct {
+      guard let structDecl = type.nominal as? StructDecl,
+            !structDecl.hasUnreferenceableStorage,
+            // Destroying the fields individually would skip the deinit of the struct.
+            structDecl.valueTypeDestructor == nil,
+            let fields = type.getNominalFields(in: parentFunction)
+      else {
+        return false
+      }
+      elementTypes = Array(fields)
+    } else if type.isTuple {
+      elementTypes = Array(type.tupleElements)
+    } else {
+      return false
+    }
+    let builder = Builder(before: self, context)
+    for (index, elementType) in elementTypes.enumerated() where !elementType.isTrivial(in: parentFunction) {
+      let elementAddr = type.isStruct
+        ? builder.createStructElementAddr(structAddress: destroyedAddress, fieldIndex: index)
+        : builder.createTupleElementAddr(tupleAddress: destroyedAddress, elementIndex: index)
+      builder.createDestroyAddr(address: elementAddr)
+    }
+    context.erase(instruction: self)
+    return true
+  }
+}
+
+extension LoadBorrowInst : LoadingInstruction {
+  var canOptimize: Bool { valueHint == nil }
+  fileprivate var kind: LoadKind { .borrow }
+  func trySplit(_ context: FunctionPassContext) -> Bool { false }
+
+  fileprivate var ownershipForSSAUpdater: Ownership { .none }
+
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    set(valueHint: newValue, context)
   }
 }
 
@@ -218,8 +318,9 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues):
-    replace(load: load, with: availableValues, context)
+  case .redundant(let availableValues, let containedLoadBorrows, let exitBlocks):
+    replace(load: load, with: availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks,
+            context)
     return true
   case .maybePartiallyRedundant(let subPath):
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
@@ -237,12 +338,12 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
 private extension LoadingInstruction {
 
   func isEligibleForElimination(in variant: RedundantLoadEliminationVariant, _ context: FunctionPassContext) -> Bool {
-    if !canLoadValue {
+    if !canOptimize {
       return false
     }
     switch variant {
     case .mandatory, .mandatoryInGlobalInit:
-      if loadOwnership == .take {
+      if kind == .take {
         // load [take] would require to shrinkMemoryLifetime. But we don't want to do this in the mandatory
         // pipeline to not shrink or remove an alloc_stack which is relevant for debug info.
         return false
@@ -277,58 +378,18 @@ private extension LoadingInstruction {
   }
 
   func isRedundant(at accessPath: AccessPath, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
-    var scanner = InstructionScanner(load: self, accessPath: accessPath, context.aliasAnalysis)
-
-    switch scanner.scan(instructions: ReverseInstructionList(first: self.previous),
-                        in: parentBlock,
-                        complexityBudget: &complexityBudget)
-    {
-    case .overwritten:
-      return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-    case .available:
-      return .redundant(scanner.availableValues)
-    case .transparent:
-      return self.isRedundantInPredecessorBlocks(scanner: &scanner, complexityBudget: &complexityBudget, context)
-    }
-  }
-
-  private func isRedundantInPredecessorBlocks(
-    scanner: inout InstructionScanner,
-    complexityBudget: inout Int,
-    _ context: FunctionPassContext
-  ) -> DataflowResult {
-
-    var liverange = Liverange(endBlock: self.parentBlock, context)
+    var liverange = Liverange(load: self, accessPath: accessPath, context)
     defer { liverange.deinitialize() }
-    liverange.pushPredecessors(of: self.parentBlock)
 
-    while let block = liverange.pop() {
-      switch scanner.scan(instructions: block.instructions.reversed(),
-                          in: block,
-                          complexityBudget: &complexityBudget)
-      {
-      case .overwritten:
-        return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-      case .available:
-        liverange.add(beginBlock: block)
-      case .transparent:
-        liverange.pushPredecessors(of: block)
-      }
+    guard liverange.performDataflow(complexityBudget: &complexityBudget) else {
+      return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
     }
-    if !self.canReplaceWithoutInsertingCopies(liverange: liverange, context) {
-      return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-    }
-    return .redundant(scanner.availableValues)
-  }
-
-  func canReplaceWithoutInsertingCopies(liverange: Liverange,_ context: FunctionPassContext) -> Bool {
-    switch self.loadOwnership {
-    case .trivial, .unqualified:
-      return true
-
+    switch self.kind {
+    case .trivial, .unqualified, .borrow:
+      return .redundant(liverange.availableValues, containedLoadBorrows: [], exitBlocks: [])
     case .copy, .take:
-      // The liverange of the value has an "exit", i.e. a path which doesn't lead to the load,
-      // it means that we would have to insert a destroy on that exit to satisfy ownership rules.
+      // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
+      // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
       // But an inserted destroy also means that we would need to insert copies of the value which
       // were not there originally. For example:
       //
@@ -338,63 +399,231 @@ private extension LoadingInstruction {
       //     %2 = load [take] %addr
       //   bb2:                      // liverange exit
       //
-      // TODO: we could extend OSSA to transfer ownership to support liverange exits without copying. E.g.:
+      // Only handle two special cases:
+      // * if the exit is a dead-end block (with an `unreachable`) we are okay, because there we can
+      //   insert a `destroy_value [dead_end]`.
+      // * in case of a `take`, we can store the value back to memory in the exit block. This requires
+      //   that the address of the access can be re-materialized in the exit block.
       //
-      //     %b = store_and_borrow %1 to [init] %addr   // %b is borrowed from %addr
-      //     cond_br bb1, bb2
-      //   bb1:
-      //     %o = borrowed_to_owned %b take_ownership_from %addr
-      //     // replace %2 with %o
-      //   bb2:
-      //     end_borrow %b
-      //
-      if liverange.hasExits {
+      let exitBlocks = liverange.exits
+      if !exitBlocks.isEmpty {
+        if liverange.foundLoop {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+        }
+        for exitBlock in exitBlocks {
+          if exitBlock.isSafeDeadEndBlock(for: self.address, context) {
+            continue
+          }
+          if self.kind == .copy || !canMaterializeAddress(at: exitBlock.instructions.first!, context) {
+            return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+          }
+        }
+      }
+      var containedLoadBorrows = [LoadBorrowInst]()
+      for loadBorrow in liverange.loadBorrows {
+        if liverange.isFullyContained(scopeOf: loadBorrow) {
+          containedLoadBorrows.append(loadBorrow)
+        } else if self.kind == .take {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+        }
+      }
+      for case .lifetimeBorder(let borderInst) in liverange.availableValues {
+        guard canMaterializeAddress(at: borderInst, context) else {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+        }
+      }
+      if self.kind == .take {
+        // The memory lifetime is shrunk up to the available values. This means that the memory is
+        // mutated at the position of an available value. Therefore all available values must be
+        // located in a memory region which allows mutation.
+        for case .viaLoad(let availableLoad) in liverange.availableValues {
+          if availableLoad.address.isInImmutableAccessScope {
+            return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+          }
+        }
+      }
+      return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks)
+    }
+  }
+
+  /// The address from which this load's address can be re-created at another place in the function,
+  /// together with the projection path which leads from that address to the load's address.
+  ///
+  /// If the load's address is enclosed in an access scope, the `begin_access` is used - and _not_
+  /// the access base (e.g. an `alloc_stack`). Otherwise the re-created address would bypass the
+  /// access scope. Several optimizations rely on the fact that all accesses to a memory location
+  /// within an access scope go through the `begin_access`. For example, DestroyAddrHoisting treats
+  /// such a memory location as `AccessStorage::Nested` storage and therefore only looks at uses of
+  /// the `begin_access`.
+  var materializationBase: (address: Value, path: SmallProjectionPath)? {
+    let (accessPath, scope) = address.constantAccessPathWithScope
+    guard let path = accessPath.materializableProjectionPath,
+          let baseAddress = (scope as Value?) ?? accessPath.base.address
+    else {
+      return nil
+    }
+    return (baseAddress, path)
+  }
+
+  /// True, if the address of this load can be re-created at `instruction`.
+  func canMaterializeAddress(at instruction: Instruction, _ context: FunctionPassContext) -> Bool {
+    guard let (baseAddress, _) = materializationBase else {
+      return false
+    }
+    // The base address must be available at `instruction`.
+    if !baseAddress.strictlyDominates(instruction: instruction, context.dominatorTree) {
+      return false
+    }
+    if let beginAccess = baseAddress as? BeginAccessInst {
+      // The re-created address must not be used outside of its access scope.
+      // Note that the address is re-created _before_ `instruction`. Therefore an `end_access`
+      // itself is still a valid insertion point - hence `inclusiveRangeContains`.
+      var accessScope = InstructionRange(begin: beginAccess, ends: beginAccess.endAccessInstructions, context)
+      defer { accessScope.deinitialize() }
+      if !accessScope.inclusiveRangeContains(instruction) {
         return false
       }
-      return true
+    } else if let reference = baseAddress.accessBase.reference {
+      switch reference.ownership {
+      case .none:
+        return true
+      case .owned, .unowned:
+        // Can happen with project_box -> not supported yet
+        return false
+      case .guaranteed:
+        // The base address is derived from a reference which is only valid within its ownership scope:
+        //
+        //   %ref = begin_borrow %1
+        //   %base = ref_element_addr %ref
+        //   end_borrow %ref                 <- %base must not be re-created after this point
+        //
+        // Dominance of `baseAddress` is not sufficient here: if the load is in a loop, the
+        // materialization point can be located after the end of the scope.
+        for borrowIntroducer in reference.getBorrowIntroducers(context) {
+          guard borrowIntroducer.hasLocalScope else {
+            // A borrow without a local scope, e.g. a guaranteed function argument, is valid
+            // throughout the whole function.
+            continue
+          }
+          let v = borrowIntroducer.value
+          var scope = InstructionRange(for: v, context)
+          defer { scope.deinitialize() }
+          scope.insert(contentsOf: borrowIntroducer.scopeEndingOperands.users)
+          guard scope.contains(instruction) else {
+            return false
+          }
+        }
+      }
+    }
+    return true
+  }
+
+  /// Re-creates the address of this load at the builder's insertion point.
+  /// This is only legal if `canMaterializeAddress` returned true for that location.
+  func materializeAddress(_ builder: Builder) -> Value {
+    let (baseAddress, path) = materializationBase!
+    return baseAddress.createAddressProjection(path: path, builder: builder)
+  }
+}
+
+private extension Value {
+  /// True if this address is enclosed in an access scope which forbids mutating the memory.
+  var isInImmutableAccessScope: Bool {
+    return accessBaseWithScopes.scopes.contains {
+      guard case .access(let beginAccess) = $0 else {
+        // Non-access scopes, e.g. a `mark_dependence`, don't restrict mutation.
+        return false
+      }
+      switch beginAccess.accessKind {
+      case .modify, .deinit:
+        return false
+      case .read, .`init`:
+        return true
+      }
     }
   }
 }
 
-private func replace(load: LoadingInstruction, with availableValues: [AvailableValue], _ context: FunctionPassContext) {
-  var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownership, context)
+private extension BasicBlock {
+  /// Returns true if this block is a dead-end block which ends in `unreachable` and does not
+  /// read from `address`.
+  func isSafeDeadEndBlock(for address: Value, _ context: FunctionPassContext) -> Bool {
+    guard terminator is UnreachableInst else {
+      return false
+    }
+    let aliasAnalysis = context.aliasAnalysis
+    return instructions.allSatisfy { !$0.mayRead(fromAddress: address, aliasAnalysis) }
+  }
+}
+
+private func replace(load: LoadingInstruction,
+                     with availableValues: [AvailableValue],
+                     containedLoadBorrows: [LoadBorrowInst],
+                     exitBlocks: [BasicBlock],
+                     _ context: FunctionPassContext)
+{
+  // Note: an `InstructionBasedSSAUpdater` is needed (instead of a plain `SSAUpdater`), because an
+  // available value can be located _after_ a use for which we need to construct the value. E.g. the
+  // available value of the `load_borrow`'s block is located after the `load_borrow` here:
+  //
+  //   bb1:
+  //     %2 = load_borrow %addr    // must read the value which comes in via the back edge
+  //     ...
+  //     %3 = load [take] %addr    // The load
+  //     store %4 to [init] %addr  // an available value
+  //     br bb1
+  //
+  var ssaUpdater = InstructionBasedSSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater,
+                                              context)
   defer { ssaUpdater.deinitialize() }
 
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
+    // The value becomes available at the position of the available load/store. As `provideValue` can
+    // delete that instruction, anchor the position at its predecessor instruction.
     let block = availableValue.instruction.parentBlock
-    let availableValue = provideValue(for: load, from: availableValue, context)
-    ssaUpdater.addAvailableValue(availableValue, in: block)
+    var predecessorInst = availableValue.instruction.previous
+    // Splitting a store can also delete the `struct` and `tuple` instructions which define the stored value.
+    while let inst = predecessorInst, inst is StructInst || inst is TupleInst {
+      predecessorInst = inst.previous
+    }
+    let value = provideValue(for: load, from: availableValue, context)
+    if let predecessorInst {
+      ssaUpdater.addAvailableValue(value, after: predecessorInst)
+    } else {
+      ssaUpdater.addAvailableValue(value, beforeFirstInstructionOf: block)
+    }
+  }
+  let loadAccessPath = load.address.constantAccessPath
+
+  for exitBlock in exitBlocks {
+    let builder = Builder(atBeginOf: exitBlock, context)
+    // The store is inserted before all existing instructions of the exit block. Therefore it needs
+    // the value which is live on entry of the block.
+    let valueInExitBlock = ssaUpdater.getValue(atBeginOf: exitBlock)
+    if exitBlock.isSafeDeadEndBlock(for: load.address, context) {
+      builder.createDestroyValue(operand: valueInExitBlock, isDeadEnd: true)
+    } else {
+      // The memory is not initialized on this path anymore (because the load was turned into a
+      // `take` of the available value). Store the value back to re-initialize the memory.
+      // Note that the address of the load itself is not available in the exit block. Therefore
+      // re-create the address projections from the enclosing access of the load.
+      let addr = load.materializeAddress(builder)
+      builder.createStore(source: valueInExitBlock, destination: addr, ownership: .initialize)
+    }
   }
 
-  let newValue: Value
-  if availableValues.count == 1 {
-    // A single available value means that this available value is located _before_ the load. E.g.:
-    //
-    //     store %1 to %addr   // a single available value
-    //     ...
-    //     %2 = load %addr     // The load
-    //
-    newValue = ssaUpdater.getValue(atEndOf: load.parentBlock)
-  } else {
-    // In case of multiple available values, if an available value is defined in the same basic block
-    // as the load, this available is located _after_ the load. E.g.:
-    //
-    //     store %1 to %addr   // an available value
-    //     br bb1
-    //   bb1:
-    //     %2 = load %addr     // The load
-    //     store %3 to %addr   // another available value
-    //     cond_br bb1, bb2
-    //
-    newValue = ssaUpdater.getValue(atBeginOf: load.parentBlock)
+  for loadBorrow in containedLoadBorrows {
+    let builder = Builder(before: loadBorrow, context)
+    let beginBorrow = builder.createBeginBorrow(of: ssaUpdater.getValue(before: loadBorrow))
+    let path = loadAccessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath)!
+    let value = beginBorrow.createProjection(path: path, builder: builder)
+    // The scope ending instructions must end the borrow of the `begin_borrow`. If the borrowed value
+    // is projected, the projection is not a borrow introducer and therefore cannot be end-borrowed.
+    loadBorrow.uses.endingLifetime.replaceAll(with: beginBorrow, context)
+    loadBorrow.replace(with: value, context)
   }
 
-  let originalLoad = load.materializeLoadForReplacement(context)
-
-  // Make sure to keep dependencies valid after replacing the load
-  insertMarkDependencies(for: originalLoad, context)
-
-  originalLoad.replaceEfficiently(with: newValue, context)
+  load.replaceLoad(with: ssaUpdater.getValue(before: load), context)
 }
 
 private func provideValue(
@@ -402,23 +631,37 @@ private func provideValue(
   from availableValue: AvailableValue,
   _ context: FunctionPassContext
 ) -> Value {
-  let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
+  let projectionPath = availableValue.getProjectionPath(to: load.address)
 
-  switch load.loadOwnership {
+  let builder = availableValue.getBuilderForProjections(context)
+  let value: Value
+
+  switch load.kind {
   case .unqualified:
-    return availableValue.value.createProjection(path: projectionPath,
-                                                 builder: availableValue.getBuilderForProjections(context))
+    value = availableValue.value.createProjection(path: projectionPath, builder: builder)
   case .copy, .trivial:
-    // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
-    return availableValue.value.createProjectionAndCopy(path: projectionPath,
-                                                        builder: availableValue.getBuilderForProjections(context))
-  case .take:
-    if projectionPath.isEmpty {
-      return shrinkMemoryLifetime(to: availableValue, context)
+    if case .lifetimeBorder(let atInstruction) = availableValue {
+      assert(projectionPath.isEmpty)
+      let builder = Builder(before: atInstruction, context)
+      let addr = load.materializeAddress(builder)
+      return builder.createLoad(fromAddress: addr, ownership: .copy)
     } else {
-      return shrinkMemoryLifetimeAndSplit(to: availableValue, projectionPath: projectionPath, context)
+      // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
+      value = availableValue.value.createProjectionAndCopy(path: projectionPath, builder: builder)
     }
+  case .take:
+    return shrinkMemoryLifetime(to: availableValue, projectionPath: projectionPath, load: load, context)
+  case .borrow:
+    let conversion = builder.createUncheckedOwnership(operand: availableValue.value, forwardingOwnership: .none)
+    value = conversion.createProjection(path: projectionPath, builder: builder)
   }
+  if value.type != load.type {
+    // TODO: should not be need as load-simpilfication can do this.
+    // Just add a check for the correct type
+    assert(value.type.isClass && load.type.isClass, "unexpected type mismatch")
+    return builder.createUncheckedRefCast(from: value, to: load.type)
+  }
+  return value
 }
 
 /// In case of a `load [take]` shrink lifetime of the value in memory back to the `availableValue`
@@ -432,79 +675,43 @@ private func provideValue(
 ///     ...
 ///     // replace %2 with %1
 ///
-private func shrinkMemoryLifetime(to availableValue: AvailableValue, _ context: FunctionPassContext) -> Value {
+private func shrinkMemoryLifetime(to availableValue: AvailableValue,
+                                  projectionPath: SmallProjectionPath,
+                                  load: LoadingInstruction,
+                                  _ context: FunctionPassContext
+) -> Value {
   switch availableValue {
   case .viaLoad(let availableLoad):
     assert(availableLoad.loadOwnership == .copy)
-    let builder = Builder(after: availableLoad, context)
-    availableLoad.set(ownership: .take, context)
-    return builder.createCopyValue(operand: availableLoad)
+    let projectedLoad = availableLoad.split(alongPath: projectionPath, context)
+    projectedLoad.set(ownership: .take, context)
+    let builder = Builder(after: projectedLoad, context)
+    return builder.createCopyValue(operand: projectedLoad)
   case .viaStore(let availableStore):
-    let builder = Builder(after: availableStore, context)
-    let valueToAdd = availableStore.source
-    switch availableStore.storeOwnership {
-    case .assign:
+    let builder = Builder(before: availableStore, context)
+    if availableStore.storeOwnership == .assign {
       builder.createDestroyAddr(address: availableStore.destination)
-      context.erase(instruction: availableStore)
-    case .initialize,
-         // It can be the case that e non-payload case is stored as trivial enum and the enum is loaded as [take], e.g.
-         //   %1 = enum $Optional<Class>, #Optional.none
-         //   store %1 to [trivial] %addr : $*Optional<Class>
-         //   %2 = load [take] %addr : $*Optional<Class>
-         .trivial:
-      context.erase(instruction: availableStore)
-    case .unqualified:
-      fatalError("unqualified store in ossa function?")
+      availableStore.set(ownership: .initialize, context)
     }
+    let projectedStore = availableStore.split(alongPath: projectionPath, useConstructureOperands: true, context)
+    let valueToAdd = projectedStore.source
+    context.erase(instruction: projectedStore)
     return valueToAdd
+  case .lifetimeBorder(let atInstruction):
+    assert(projectionPath.isEmpty)
+    let builder = Builder(before: atInstruction, context)
+    let addr = load.materializeAddress(builder)
+    return builder.createLoad(fromAddress: addr, ownership: .take)
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
-  }
-}
-
-/// Like `shrinkMemoryLifetime`, but the available value must be projected.
-/// In this case we cannot just shrink the lifetime and reuse the available value.
-/// Therefore, we split the available load or store and load the projected available value.
-/// The inserted load can be optimized with the split value in the next iteration.
-///
-///     store %1 to [assign] %addr
-///     ...
-///     %2 = struct_element_addr %addr, #field1
-///     %3 = load [take] %2
-/// ->
-///     %f1 = struct_extract %1, #field1
-///     %fa1 = struct_element_addr %addr, #field1
-///     store %f1 to [assign] %fa1
-///     %f2 = struct_extract %1, #field2
-///     %fa2 = struct_element_addr %addr, #field2
-///     store %f2 to [assign] %fa2
-///     %1 = load [take] %fa1         // will be combined with `store %f1 to [assign] %fa1` in the next iteration
-///     ...
-///     // replace %3 with %1
-///
-private func shrinkMemoryLifetimeAndSplit(to availableValue: AvailableValue, projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> Value {
-  switch availableValue {
-  case .viaLoad(let availableLoad):
-    assert(availableLoad.loadOwnership == .copy)
-    let builder = Builder(after: availableLoad, context)
-    let addr = availableLoad.address.createAddressProjection(path: projectionPath, builder: builder)
-    let valueToAdd = builder.createLoad(fromAddress: addr, ownership: .take)
-    availableLoad.trySplit(context)
-    return valueToAdd
-  case .viaStore(let availableStore):
-    let builder = Builder(after: availableStore, context)
-    let addr = availableStore.destination.createAddressProjection(path: projectionPath, builder: builder)
-    let valueToAdd = builder.createLoad(fromAddress: addr, ownership: .take)
-    availableStore.trySplit(context)
-    return valueToAdd
-  case .viaCopyAddr:
-    fatalError("copy_addr must be lowered before shrinking lifetime")
+  case .viaLoadBorrow:
+    fatalError("load_borrow cannot be an available value for a load [take]")
   }
 }
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue])
+  case redundant([AvailableValue], containedLoadBorrows: [LoadBorrowInst], exitBlocks: [BasicBlock])
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
@@ -519,38 +726,57 @@ private enum DataflowResult {
 /// Either a `load` or `store` which is preceding the original load and provides the loaded value.
 private enum AvailableValue {
   case viaLoad(LoadInst)
+  /// Only used if the original load is a `load_borrow`.
+  case viaLoadBorrow(LoadBorrowInst)
   case viaStore(StoreInst)
   case viaCopyAddr(CopyAddrInst)
+  case lifetimeBorder(Instruction)
 
   var value: Value {
     switch self {
     case .viaLoad(let load):   return load
+    case .viaLoadBorrow(let loadBorrow): return loadBorrow
     case .viaStore(let store): return store.source
     case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .lifetimeBorder:      fatalError("lifetimeBorder not supported")
     }
   }
 
-  var address: Value {
+  func getProjectionPath(to address: Value) -> SmallProjectionPath {
+    let fromAddr: Value
     switch self {
-    case .viaLoad(let load):         return load.address
-    case .viaStore(let store):       return store.destination
-    case .viaCopyAddr(let copyAddr): return copyAddr.destination
+    case .viaLoad(let load):
+      fromAddr = load.address
+    case .viaLoadBorrow(let loadBorrow):
+      fromAddr = loadBorrow.address
+    case .viaStore(let store):
+      fromAddr = store.destination
+    case .viaCopyAddr(let copyAddr):
+      fromAddr = copyAddr.destination
+    case .lifetimeBorder:
+      return SmallProjectionPath()
     }
+    return fromAddr.constantAccessPath.getMaterializableProjection(to: address.constantAccessPath)!
   }
 
   var instruction: Instruction {
     switch self {
     case .viaLoad(let load):         return load
+    case .viaLoadBorrow(let loadBorrow): return loadBorrow
     case .viaStore(let store):       return store
     case .viaCopyAddr(let copyAddr): return copyAddr
+    case .lifetimeBorder(let inst):  return inst
     }
   }
 
   func getBuilderForProjections(_ context: FunctionPassContext) -> Builder {
     switch self {
-    case .viaLoad(let load):   return Builder(after: load, context)
-    case .viaStore(let store): return Builder(before: store, context)
-    case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .viaLoad(let load):        return Builder(after: load, context)
+    // The projections must be created within the borrow scope of the `load_borrow`.
+    case .viaLoadBorrow(let loadBorrow): return Builder(after: loadBorrow, context)
+    case .viaStore(let store):      return Builder(before: store, context)
+    case .lifetimeBorder(let inst): return Builder(before: inst, context)
+    case .viaCopyAddr:              fatalError("copy_addr must be lowered")
     }
   }
 }
@@ -564,145 +790,6 @@ private extension Array where Element == AvailableValue {
         return $0
       }
     }
-  }
-}
-
-private struct InstructionScanner {
-  private let load: LoadingInstruction
-  private let accessPath: AccessPath
-  private let storageDefBlock: BasicBlock?
-  private let aliasAnalysis: AliasAnalysis
-  private let loadAddress: AddressWithAccessPath
-
-  private(set) var potentiallyRedundantSubpath: AccessPath? = nil
-  private(set) var availableValues = Array<AvailableValue>()
-
-  init(load: LoadingInstruction, accessPath: AccessPath, _ aliasAnalysis: AliasAnalysis) {
-    self.load = load
-    self.accessPath = accessPath
-    self.storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
-    self.aliasAnalysis = aliasAnalysis
-    self.loadAddress = AddressWithAccessPath(load.address)
-  }
-
-  enum ScanResult {
-    case overwritten
-    case available
-    case transparent
-  }
-
-  mutating func scan(instructions: ReverseInstructionList,
-                     in block: BasicBlock,
-                     complexityBudget: inout Int) -> ScanResult
-  {
-    for inst in instructions {
-      complexityBudget -= 1
-      if complexityBudget <= 0 {
-        return .overwritten
-      }
-
-      switch visit(instruction: inst) {
-        case .available:   return .available
-        case .overwritten: return .overwritten
-        case .transparent: break
-      }
-    }
-
-    // Abort if we find the storage definition of the access in case of a loop, e.g.
-    //
-    //   bb1:
-    //     %storage_root = apply
-    //     %2 = ref_element_addr %storage_root
-    //     %3 = load %2
-    //     cond_br %c, bb1, bb2
-    //
-    // The storage root is different in each loop iteration. Therefore the load in a
-    // successive loop iteration does not load from the same address as in the previous iteration.
-    if let storageDefBlock = storageDefBlock,
-       block == storageDefBlock {
-      return .overwritten
-    }
-    if block.predecessors.isEmpty {
-      // We reached the function entry without finding an available value.
-      return .overwritten
-    }
-    return .transparent
-  }
-
-  private mutating func visit(instruction: Instruction) -> ScanResult {
-    switch instruction {
-    case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst, is EndBorrowInst:
-      // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
-      // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
-      // instructions prevent that the `load [take]` will illegally mutate memory which is protected
-      // from mutation by the scope.
-      if load.loadOwnership != .take {
-        return .transparent
-      }
-    case let precedingLoad as LoadInst:
-      if precedingLoad == load {
-        // We need to stop the data flow analysis when we visit the original load again.
-        // This happens if the load is in a loop.
-        return .available
-      }
-      if precedingLoad.loadOwnership == .take {
-        // A `load [take]` de-initializes the memory. Therefore it cannot provide an available value.
-        // This can happen in dead code when working with unsafe pointer APIs, e.g. two consecutive
-        // `load [take]` from the same address.
-        break
-      }
-      let precedingLoadPath = precedingLoad.address.constantAccessPath
-      if precedingLoadPath.getMaterializableProjection(to: accessPath) != nil {
-        availableValues.append(.viaLoad(precedingLoad))
-        return .available
-      }
-      if accessPath.getMaterializableProjection(to: precedingLoadPath) != nil,
-         potentiallyRedundantSubpath == nil {
-        potentiallyRedundantSubpath = precedingLoadPath
-      }
-      if load.loadOwnership != .take {
-        return .transparent
-      }
-
-    case let precedingStore as StoreInst:
-      if precedingStore.source is Undef {
-        return .overwritten
-      }
-      let precedingStorePath = precedingStore.destination.constantAccessPath
-      if precedingStorePath.getMaterializableProjection(to: accessPath) != nil {
-        availableValues.append(.viaStore(precedingStore))
-        return .available
-      }
-      if accessPath.getMaterializableProjection(to: precedingStorePath) != nil,
-         potentiallyRedundantSubpath == nil {
-        potentiallyRedundantSubpath = precedingStorePath
-      }
-
-    case let preceedingCopy as CopyAddrInst where preceedingCopy.canLoadValue:
-      let copyPath = preceedingCopy.destination.constantAccessPath
-      if copyPath.getMaterializableProjection(to: accessPath) != nil {
-        availableValues.append(.viaCopyAddr(preceedingCopy))
-        return .available
-      }
-      if accessPath.getMaterializableProjection(to: copyPath) != nil, potentiallyRedundantSubpath == nil {
-        potentiallyRedundantSubpath = copyPath
-      }
-
-    default:
-      break
-    }
-    if load.loadOwnership == .take {
-      // In case of `take`, don't allow reading instructions in the liverange.
-      // Otherwise we cannot shrink the memory liverange afterwards.
-      if instruction.mayReadOrWrite(address: loadAddress, aliasAnalysis) {
-        return .overwritten
-      }
-    } else {
-      if instruction.mayWrite(toAddress: loadAddress, aliasAnalysis) {
-        return .overwritten
-      }
-    }
-    return .transparent
   }
 }
 
@@ -721,38 +808,158 @@ private struct InstructionScanner {
 ///     %3 = load %addr     // end block
 ///
 private struct Liverange {
-  private var worklist: BasicBlockWorklist
-  private var containingBlocks: Stack<BasicBlock> // doesn't include the end-block
-  private var beginBlocks: BasicBlockSet
-  private let endBlock: BasicBlock
 
-  init(endBlock: BasicBlock, _ context: FunctionPassContext) {
-    self.worklist = BasicBlockWorklist(context)
-    self.containingBlocks = Stack(context)
-    self.beginBlocks = BasicBlockSet(context)
-    self.endBlock = endBlock
-    pushPredecessors(of: endBlock)
+  private let load: LoadingInstruction
+  private let accessPath: AccessPath
+  private let storageDefBlock: BasicBlock?
+  private let context: FunctionPassContext
+  private let loadAddress: AddressWithAccessPath
+
+  private var worklist: InstructionWorklist
+  private var visitedTerminators: Stack<TermInst>
+  private var availableValueInstructions: InstructionSet
+
+  private(set) var potentiallyRedundantSubpath: AccessPath? = nil
+  private(set) var availableValues = Array<AvailableValue>()
+  private(set) var loadBorrows: SpecificIterableInstructionSet<LoadBorrowInst>
+  private(set) var foundLoop = false
+
+  init(load: LoadingInstruction, accessPath: AccessPath, _ context: FunctionPassContext) {
+    self.load = load
+    self.accessPath = accessPath
+    self.storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
+    self.context = context
+    self.loadAddress = AddressWithAccessPath(load.address)
+
+    self.worklist = InstructionWorklist(context)
+    self.visitedTerminators = Stack(context)
+    self.availableValueInstructions = InstructionSet(context)
+    self.loadBorrows = SpecificIterableInstructionSet(context)
   }
 
   mutating func deinitialize() {
     worklist.deinitialize()
-    containingBlocks.deinitialize()
-    beginBlocks.deinitialize()
+    visitedTerminators.deinitialize()
+    availableValueInstructions.deinitialize()
+    loadBorrows.deinitialize()
   }
 
-  mutating func pushPredecessors(of block: BasicBlock) {
-    worklist.pushIfNotVisited(contentsOf: block.predecessors)
-    containingBlocks.append(contentsOf: block.predecessors)
+  mutating func performDataflow(complexityBudget: inout Int) -> Bool {
+    let functionEntry = load.parentFunction.entryBlock.instructions.first!
+    if load == functionEntry {
+      return false
+    }
+    let aliasAnalysis = context.aliasAnalysis
+    var killingInstructions = Stack<Instruction>(context)
+    defer { killingInstructions.deinitialize() }
+    var functionEntryReached = false
+
+    worklist.pushPredecessors(of: load)
+
+    while let inst = worklist.pop() {
+      complexityBudget -= 1
+      if complexityBudget <= 0 {
+        return false
+      }
+
+      switch visit(instruction: inst, aliasAnalysis) {
+      case .available:
+        availableValueInstructions.insert(inst)
+      case .overwritten:
+        // The memory must be valid again at this point, therefore this is a "border" of the
+        // liverange in the same sense as an available value instruction.
+        availableValueInstructions.insert(inst)
+        killingInstructions.append(inst)
+      case .transparent:
+        if inst == functionEntry {
+          // We reached the function entry without finding an available value.
+          functionEntryReached = true
+          continue
+        }
+        // Abort if we find the storage definition of the access in case of a loop, e.g.
+        //
+        //   bb1:
+        //     %storage_root = apply
+        //     %2 = ref_element_addr %storage_root
+        //     %3 = load %2
+        //     cond_br %c, bb1, bb2
+        //
+        // The storage root is different in each loop iteration. Therefore the load in a
+        // successive loop iteration does not load from the same address as in the previous iteration.
+        if inst.previous == nil,
+           let storageDefBlock = storageDefBlock,
+           inst.parentBlock == storageDefBlock
+        {
+          return false
+        }
+        worklist.pushPredecessors(of: inst)
+      }
+    }
+    if functionEntryReached || !killingInstructions.isEmpty {
+      // Re-creating the load at the border of the liverange only pays off if it enables the
+      // removal of `load_borrow`s. This is only done for `load [copy]` and `load [take]`
+      // (see `containedLoadBorrows` in `isRedundant`).
+      switch load.kind {
+      case .copy, .take:
+        break
+      case .trivial, .unqualified, .borrow:
+        return false
+      }
+      if loadBorrows.isEmpty {
+        return false
+      }
+      // Don't insert a load at a border which is in a loop that doesn't contain the load or one of
+      // the removed `load_borrow`s. The inserted load would be executed more often than the removed
+      // instructions. In case of a `load [take]` it would also require to store back the value in the
+      // loop, e.g.
+      //
+      //   bb1:                         // loop header
+      //     cond_br %c, bb2, bb3
+      //   bb2:
+      //     apply %f(%addr)            // killing instruction: the border is after it
+      //     br bb1
+      //   bb3:
+      //     %2 = load_borrow %addr
+      //     ...
+      //     %3 = load [take] %addr     // the load
+      //
+      let loopTree = context.loopTree
+      let isInLoopWithoutRemovedLoads = { (inst: Instruction) -> Bool in
+        guard let loop = loopTree.innermostLoop(of: inst.parentBlock) else {
+          return false
+        }
+        return !loop.contains(block: self.load.parentBlock) &&
+               !self.loadBorrows.contains(where: { loop.contains(block: $0.parentBlock) })
+      }
+      if killingInstructions.contains(where: isInLoopWithoutRemovedLoads) {
+        return false
+      }
+      if functionEntryReached {
+        availableValues.append(.lifetimeBorder(functionEntry))
+      }
+      for killingInst in killingInstructions {
+        if let next = killingInst.next {
+          availableValues.append(.lifetimeBorder(next))
+        } else {
+          for succ in (killingInst as! TermInst).successors {
+            let succInst = succ.instructions.first!
+            // Only add a border for successors which are within the liverange. And not for
+            // successors which begin with an instruction that already ends the liverange - either
+            // because it provides an available value or because it overwrites the memory itself.
+            if worklist.hasBeenPushed(succInst),
+               !availableValueInstructions.contains(succInst)
+            {
+              availableValues.append(.lifetimeBorder(succInst))
+            }
+          }
+        }
+      }
+    }
+    return true
   }
 
-  mutating func pop() -> BasicBlock? { worklist.pop() }
-
-  mutating func add(beginBlock: BasicBlock) {
-    beginBlocks.insert(beginBlock)
-  }
-
-  /// Returns true if there is some path from a begin block to a function exit which doesn't
-  /// go through the end-block. For example:
+  /// Returns exit blocks from the liverange, i.e. paths from a begin block to a function exit
+  /// which don't go through the end-block. For example:
   ///
   ///     store %1 to %addr   // begin
   ///     cond_br bb1, bb2
@@ -761,14 +968,166 @@ private struct Liverange {
   ///   bb2:
   ///     ...                 // exit
   ///
-  var hasExits: Bool {
-    for block in containingBlocks {
-      for succ in block.successors {
-        if succ != endBlock, (!worklist.hasBeenPushed(succ) || beginBlocks.contains(succ)) {
-          return true
+  var exits: [BasicBlock] {
+    var exitBlocks = [BasicBlock]()
+    for terminator in visitedTerminators {
+      for succ in terminator.successors {
+        let succInst = succ.instructions.first!
+        if !worklist.hasBeenPushed(succInst) || availableValueInstructions.contains(succInst),
+           succInst != load
+        {
+          exitBlocks.append(succ)
         }
       }
     }
-    return false
+    return exitBlocks
+  }
+
+  func isFullyContained(scopeOf loadBorrow: LoadBorrowInst) -> Bool {
+    guard worklist.hasBeenPushed(loadBorrow) else {
+      return false
+    }
+    for user in loadBorrow.uses.endingLifetime.users {
+      guard let endBorrow = user as? EndBorrowInst, worklist.hasBeenPushed(endBorrow) else {
+        return false
+      }
+    }
+    if availableValues.singleElement != nil {
+      return true
+    }
+    var scope = InstructionRange(begin: loadBorrow, context)
+    defer { scope.deinitialize() }
+    scope.insert(contentsOf: loadBorrow.uses.endingLifetime.users)
+
+    return availableValues.allSatisfy { !scope.contains($0.instruction) }
+  }
+
+  private enum Result {
+    case overwritten
+    case available
+    case transparent
+  }
+
+  private mutating func visit(instruction: Instruction, _ aliasAnalysis: AliasAnalysis) -> Result {
+    switch instruction {
+    case let endBorrow as EndBorrowInst:
+      if let loadBorrow = endBorrow.borrow as? LoadBorrowInst,
+         accessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath) != nil
+      {
+        loadBorrows.insert(loadBorrow)
+        return .transparent
+      }
+      fallthrough
+
+    case is FixLifetimeInst:
+      // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
+      // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
+      // instructions prevent that the `load [take]` will illegally mutate memory which is protected
+      // from mutation by the scope.
+      if load.kind != .take {
+        return .transparent
+      }
+
+    case is BeginAccessInst, is EndAccessInst:
+      // Memory effects of access scope instructions are only defined to prevent the optimizer from
+      // moving loads and stores across a `begin_access`/`end_access`. Such instructions don't read
+      // or write the memory themselves. Therefore they never prevent a load from being redundant -
+      // not even a `load [take]`, which shrinks the memory lifetime up to the available value.
+      // But taking the value out of memory is not allowed within a non-mutating access scope. This
+      // is checked separately with `isInImmutableAccessScope` in `isRedundant`.
+      return .transparent
+
+    case let precedingLoad as LoadInst:
+      if precedingLoad == load {
+        // We need to stop the data flow analysis when we visit the original load again.
+        // This happens if the load is in a loop.
+        foundLoop = true
+        return .available
+      }
+      if precedingLoad.loadOwnership == .take {
+        // A `load [take]` de-initializes the memory. Therefore it cannot provide an available value.
+        // This can happen in dead code when working with unsafe pointer APIs, e.g. two consecutive
+        // `load [take]` from the same address.
+        break
+      }
+      let precedingLoadPath = precedingLoad.address.constantAccessPath
+      if precedingLoadPath.getMaterializableProjection(to: accessPath) != nil {
+        availableValues.append(.viaLoad(precedingLoad))
+        return .available
+      }
+      if accessPath.getMaterializableProjection(to: precedingLoadPath) != nil,
+         potentiallyRedundantSubpath == nil {
+        potentiallyRedundantSubpath = precedingLoadPath
+      }
+      if load.kind != .take {
+        return .transparent
+      }
+
+    case let loadBorrow as LoadBorrowInst:
+      if load.kind == .borrow {
+        // A preceding `load_borrow` can provide the value for a `load_borrow`, because the value
+        // is only used as value hint, which has "none" ownership.
+        if loadBorrow == load {
+          foundLoop = true
+          return .available
+        }
+        if loadBorrow.address.constantAccessPath.getMaterializableProjection(to: accessPath) != nil {
+          availableValues.append(.viaLoadBorrow(loadBorrow))
+          return .available
+        }
+      }
+      if loadBorrows.contains(loadBorrow) {
+        return .transparent
+      }
+
+    case let precedingStore as StoreInst:
+      if precedingStore.source is Undef {
+        return .overwritten
+      }
+      let precedingStorePath = precedingStore.destination.constantAccessPath
+      if precedingStorePath.getMaterializableProjection(to: accessPath) != nil {
+        availableValues.append(.viaStore(precedingStore))
+        return .available
+      }
+      if accessPath.getMaterializableProjection(to: precedingStorePath) != nil,
+         potentiallyRedundantSubpath == nil {
+        potentiallyRedundantSubpath = precedingStorePath
+      }
+
+    case let preceedingCopy as CopyAddrInst where preceedingCopy.canOptimize:
+      let copyPath = preceedingCopy.destination.constantAccessPath
+      if copyPath.getMaterializableProjection(to: accessPath) != nil {
+        availableValues.append(.viaCopyAddr(preceedingCopy))
+        return .available
+      }
+      if accessPath.getMaterializableProjection(to: copyPath) != nil, potentiallyRedundantSubpath == nil {
+        potentiallyRedundantSubpath = copyPath
+      }
+
+    case is DebugValueInst:
+      // Igore memory reads of `debug_value` for `load [take]`.
+      return .transparent
+
+    default:
+      break
+    }
+    if load.kind == .take {
+      // In case of `take`, don't allow reading instructions in the liverange.
+      // Otherwise we cannot shrink the memory liverange afterwards.
+      if instruction.mayReadOrWrite(address: loadAddress, aliasAnalysis) {
+        return .overwritten
+      }
+    } else {
+      if instruction.mayWrite(toAddress: loadAddress, aliasAnalysis) {
+        return .overwritten
+      }
+    }
+    if let termInst = instruction as? TermInst {
+      // Note that a terminator is only recorded if it does _not_ overwrite the memory. The
+      // successors of an overwriting terminator are not liverange exits: the value is dead there
+      // because the memory is re-initialized by the terminator itself.
+      visitedTerminators.append(termInst)
+    }
+    return .transparent
   }
 }
