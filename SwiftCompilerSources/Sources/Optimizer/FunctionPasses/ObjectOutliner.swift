@@ -55,8 +55,10 @@ import SIL
 let objectOutliner = FunctionPass(name: "object-outliner") {
   (function: Function, context: FunctionPassContext) in
 
-  if function.hasOwnership && !function.isSwift51RuntimeAvailable {
-    // Since Swift 5.1 global objects have immortal ref counts. And that's required for ownership.
+  guard function.hasOwnership,
+        // Since Swift 5.1 global objects have immortal ref counts. And that's required for global objects.
+        function.isSwift51RuntimeAvailable
+  else {
     return
   }
 
@@ -118,8 +120,8 @@ private func optimizeObjectAllocation(allocRef: AllocRefInstBase, _ context: Fun
         markedAsUsed: false)
 
   constructObject(of: allocRef, inInitializerOf: outlinedGlobal, storesToClassFields, storesToTailElements, context)
-  context.erase(instructions: storesToClassFields)
-  context.erase(instructions: storesToTailElements)
+  erase(stores: storesToClassFields, context)
+  erase(stores: storesToTailElements, context)
 
   return replace(object: allocRef, with: outlinedGlobal, context)
 }
@@ -416,6 +418,16 @@ private func constructObject(of allocRef: AllocRefInstBase,
   global.stripAccessInstructionFromInitializer(context)
 }
 
+private func erase(stores: [StoreInst], _ context: FunctionPassContext) {
+  for store in stores {
+    if store.source.ownership == .owned {
+      let builder = Builder(before: store, context)
+      builder.createEndLifetime(of: store.source)
+    }
+    context.erase(instruction: store)
+  }
+}
+
 private func replace(object allocRef: AllocRefInstBase,
                      with global: GlobalVariable,
                      _ context: FunctionPassContext) -> GlobalValueInst {
@@ -456,8 +468,12 @@ private func rewriteUses(of startValue: Value, _ context: FunctionPassContext) {
       worklist.pushIfNotVisited(usersOf: refCast)
     case let moveValue as MoveValueInst:
       worklist.pushIfNotVisited(usersOf: moveValue)
-    case is DeallocRefInst, is DeallocStackRefInst:
-      context.erase(instruction: inst)
+    case let deallocRef as DeallocRefInst:
+      let builder = Builder(before: deallocRef, context)
+      builder.createEndLifetime(of: deallocRef.operand.value)
+      context.erase(instruction: deallocRef)
+    case let deallocStack as DeallocStackRefInst:
+      context.erase(instruction: deallocStack)
     default:
       break
     }
