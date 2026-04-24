@@ -109,7 +109,7 @@ func eliminateRedundantLoads(in function: Function,
 
       // TODO: replace this with `if let inst as? LoadingInstruction` once the toolchain builders are
       // upgraded to a compiler version with fast type casting (https://github.com/swiftlang/swift/pull/88270).
-      if inst is LoadInst || inst is CopyAddrInst {
+      if inst is LoadInst || inst is CopyAddrInst || inst is DestroyAddrInst {
         let load = inst as! LoadingInstruction
         if !context.continueWithNextSubpassRun(for: load) {
           return changed
@@ -200,6 +200,35 @@ extension CopyAddrInst : LoadingInstruction {
   func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
     return replaceWithLoadAndStore(context).load
   }
+}
+
+// `destroy_addr` is equivalent to `load [take]` + `destroy_value`
+extension DestroyAddrInst : LoadingInstruction {
+  var address: Value { destroyedAddress }
+  var type: Type { address.type.objectType }
+  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
+  var loadOwnership: LoadInst.LoadOwnership { .take }
+
+  var ownership: Ownership {
+    if !parentFunction.hasOwnership {
+      return .none
+    }
+    return .owned
+  }
+
+  var canLoadValue: Bool {
+    destroyedAddress.type.isLoadable(in: parentFunction) && !type.isTrivial(in: parentFunction)
+  }
+
+  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
+    let builder = Builder(before: self, context)
+    let load = builder.createLoad(fromAddress: destroyedAddress, ownership: .take)
+    builder.createDestroyValue(operand: load)
+    context.erase(instruction: self)
+    return load
+  }
+
+  func trySplit(_ context: FunctionPassContext) -> Bool { false }
 }
 
 private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int, _ context: FunctionPassContext) -> Bool {
