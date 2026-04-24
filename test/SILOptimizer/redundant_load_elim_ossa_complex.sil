@@ -821,7 +821,10 @@ bb9:
 
 // CHECK-LABEL: @rle_ownershipkindmergetest :
 // CHECK:       bb3:
-// CHECK-NEXT:    load [copy]
+// CHECK-NEXT:    [[L:%.*]] = load [take]
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[L]]
+// CHECK-NEXT:    destroy_value [[L]]
+// CHECK-NEXT:    destroy_value [[C]]
 // CHECK-LABEL: end sil function 'rle_ownershipkindmergetest'
 sil [ossa] @rle_ownershipkindmergetest : $@convention(thin) (@owned FakeOptional<Klass>) -> () {
 bb0(%0 : @owned $FakeOptional<Klass>):
