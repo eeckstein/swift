@@ -1215,6 +1215,21 @@ bb0(%0 : @owned $B, %1 : @guaranteed $B, %2 : @guaranteed $B):
   return %7
 }
 
+// CHECK-LABEL: sil [ossa] @destroy_addr :
+// CHECK:         %1 = alloc_stack $B
+// CHECK-NEXT:    destroy_value %0
+// CHECK-NEXT:    dealloc_stack %1
+// CHECK-LABEL: } // end sil function 'destroy_addr'
+sil [ossa] @destroy_addr : $@convention(thin) (@owned B) -> () {
+bb0(%0 : @owned $B):
+  %1 = alloc_stack $B
+  store %0 to [init] %1
+  destroy_addr %1
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
 // CHECK-LABEL: sil [ossa] @dont_crash_on_index_addr_projection :
 // CHECK-LABEL: } // end sil function 'dont_crash_on_index_addr_projection'
 sil [ossa] @dont_crash_on_index_addr_projection : $@convention(thin) (Builtin.RawPointer) -> (Int, Int, Int, Int) {
