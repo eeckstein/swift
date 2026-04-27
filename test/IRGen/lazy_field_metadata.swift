@@ -1,5 +1,5 @@
 // RUN: %empty-directory(%t)
-// RUN: %target-swift-frontend -emit-ir -wmo -O %s > %t/out.txt
+// RUN: %target-swift-frontend -emit-ir -wmo -O -Xllvm -sil-disable-pass=function-signature-optimization %s > %t/out.txt
 // RUN: %FileCheck %s < %t/out.txt
 // RUN: %FileCheck %s --check-prefix=NEGATIVE < %t/out.txt
 
