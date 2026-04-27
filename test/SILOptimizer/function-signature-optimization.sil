@@ -1,0 +1,273 @@
+// RUN: %target-sil-opt -module-name=test -function-signature-optimization %s | %FileCheck %s
+
+sil_stage canonical
+
+import Swift
+import Builtin
+import SwiftShims
+
+struct S {
+  var x: AnyObject
+  var y: AnyObject
+}
+
+struct GenS<T> {
+  var x: Array<T>
+  var y: Array<T>
+}
+
+struct S2 {
+  var x: Int
+  var y: AnyObject
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int {
+// CHECK:       bb0(%0 : $Int):
+// CHECK-NEXT:    return %0
+// CHECK:       } // end sil function '$s8dead_argTf4dn_n'
+
+// CHECK-LABEL: sil [ossa] @dead_arg :
+// CHECK:         %2 = function_ref @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int
+// CHECK:         %3 = apply %2(%1)
+// CHECK:         return %3
+// CHECK:       } // end sil function 'dead_arg'
+sil [ossa] @dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  return %1
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_arg :
+// CHECK:         [[F:%.*]] = function_ref @$s8dead_argTf4dn_n :
+// CHECK:         [[A:%.*]] = apply [[F]](%1)
+// CHECK:         br bb1([[A]])
+// CHECK:       bb1([[R:%.*]] : $Int):
+// CHECK:         return [[R]]
+// CHECK:       } // end sil function 'call_dead_arg'
+sil [ossa] @call_dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  %2 = function_ref @dead_arg : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  %3 = apply %2(%0, %1) : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  return %3
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> () {
+// CHECK:       bb0(%0 : @owned $AnyObject):
+// CHECK:         %1 = apply undef(%0) : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:       } // end sil function '$s14guaranteed_argTf4o_n'
+
+// CHECK-LABEL: sil [ossa] @guaranteed_arg :
+// CHECK:         %1 = copy_value %0
+// CHECK:         %2 = function_ref @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:         %3 = apply %2(%1)
+// CHECK:       } // end sil function 'guaranteed_arg'
+sil [ossa] @guaranteed_arg : $@convention(thin) (@guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $AnyObject):
+  %1 = copy_value %0
+  %2 = apply undef(%1) : $@convention(thin) (@owned AnyObject) -> ()
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_guaranteed_arg :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         [[C:%.*]] = copy_value [[B]]
+// CHECK:         [[F:%.*]] = function_ref @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> ()
+// CHECK:         apply [[F]]([[C]])
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'call_guaranteed_arg'
+sil [ossa] @call_guaranteed_arg : $@convention(thin) (@owned AnyObject) -> () {
+bb0(%0 : @owned $AnyObject):
+  %2 = function_ref @guaranteed_arg : $@convention(thin) (@guaranteed AnyObject) -> ()
+  %3 = apply %2(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+  destroy_value %0
+  return %3
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> () {
+// CHECK:       bb0(%0 : @guaranteed $AnyObject):
+// CHECK:         %1 = apply undef(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:       } // end sil function '$s9owned_argTf4g_n'
+
+// CHECK-LABEL: sil [ossa] @owned_arg :
+// CHECK:         %1 = function_ref @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:         %2 = apply %1(%0)
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       } // end sil function 'owned_arg'
+sil [ossa] @owned_arg : $@convention(thin) (@owned AnyObject) -> () {
+bb0(%0 : @owned $AnyObject):
+  %1 = apply undef(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+  destroy_value %0
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_owned_arg :
+// CHECK:         [[C:%.*]] = copy_value %0
+// CHECK:         [[M:%.*]] = move_value [lexical] [[C]]
+// CHECK:         [[F:%.*]] = function_ref @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:         apply [[F]]([[M]])
+// CHECK:         destroy_value [[M]]
+// CHECK:       } // end sil function 'call_owned_arg'
+sil [ossa] @call_owned_arg : $@convention(thin) (@guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $AnyObject):
+  %1 = copy_value %0
+  %2 = function_ref @owned_arg : $@convention(thin) (@owned AnyObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@owned AnyObject) -> ()
+  return %3
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s16partial_dead_argTf4x_nTf4nd_n : $@convention(thin) (@guaranteed AnyObject) -> () {
+// CHECK:       bb0(%0 : @guaranteed $AnyObject):
+// CHECK:         fix_lifetime %0
+// CHECK-NEXT:    tuple
+// CHECK:       } // end sil function '$s16partial_dead_argTf4x_nTf4nd_n'
+
+// CHECK-LABEL: sil shared [ossa] @$s16partial_dead_argTf4x_n : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject) -> () {
+// CHECK:       bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $AnyObject):
+// CHECK:         %2 = function_ref @$s16partial_dead_argTf4x_nTf4nd_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:         %3 = apply %2(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:       } // end sil function '$s16partial_dead_argTf4x_n'
+
+// CHECK-LABEL: sil [ossa] @partial_dead_arg : $@convention(thin) (@guaranteed S) -> () {
+// CHECK:       bb0(%0 : @guaranteed $S):
+// CHECK:         %1 = begin_borrow %0
+// CHECK:         (%2, %3) = destructure_struct %1
+// CHECK:         %4 = function_ref @$s16partial_dead_argTf4x_n : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject) -> ()
+// CHECK:         %5 = apply %4(%2, %3) : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject) -> ()
+// CHECK:         end_borrow %1                                   // id: %6
+// CHECK:       } // end sil function 'partial_dead_arg'
+sil [ossa] @partial_dead_arg : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = struct_extract %0, #S.x
+  fix_lifetime %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_partial_dead_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[B:%.*]] = begin_borrow [lexical] [[X]]
+// CHECK:         [[F:%.*]] = function_ref @$s16partial_dead_argTf4x_nTf4nd_n : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:           = apply [[F]]([[B]]) : $@convention(thin) (@guaranteed AnyObject) -> ()
+// CHECK:       } // end sil function 'call_partial_dead_arg'
+sil [ossa] @call_partial_dead_arg : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = copy_value %0
+  %2 = function_ref @partial_dead_arg : $@convention(thin) (@guaranteed S) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed S) -> ()
+  destroy_value %1
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> () {
+bb0(%0 : @guaranteed $GenS<T>):
+  %1 = struct_extract %0, #GenS.x
+  fix_lifetime %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_partial_dead_generic_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s24partial_dead_generic_argTf4x_nTf4nd_n : $@convention(thin) <τ_0_0> (@guaranteed Array<τ_0_0>) -> ()
+// CHECK:           = apply [[F]]<T>([[X]]) : $@convention(thin) <τ_0_0> (@guaranteed Array<τ_0_0>) -> ()
+// CHECK:       } // end sil function 'call_partial_dead_generic_arg'
+sil [ossa] @call_partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> () {
+bb0(%0 : @guaranteed $GenS<T>):
+  %1 = copy_value %0
+  %2 = function_ref @partial_dead_generic_arg : $@convention(thin) <T> (@guaranteed GenS<T>) -> ()
+  %3 = apply %2<T>(%1) : $@convention(thin) <T> (@guaranteed GenS<T>) -> ()
+  destroy_value %1
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @partial_dead_and_dead_arg : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $S2, %1 : @guaranteed $AnyObject):
+  %2 = struct_extract %0, #S2.x
+  fix_lifetime %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_partial_dead_and_dead_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s017partial_dead_and_B4_argTf4xd_nTf4nd_n : $@convention(thin) (Int) -> ()
+// CHECK:           = apply [[F]]([[X]]) : $@convention(thin) (Int) -> ()
+// CHECK:       } // end sil function 'call_partial_dead_and_dead_arg'
+sil [ossa] @call_partial_dead_and_dead_arg : $@convention(thin) <T> (@guaranteed S2, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $S2, %1 : @guaranteed $AnyObject):
+  %2 = copy_value %0
+  %3 = function_ref @partial_dead_and_dead_arg : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> ()
+  %4 = apply %3(%2, %1) : $@convention(thin) (@guaranteed S2, @guaranteed AnyObject) -> ()
+  destroy_value %2
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @dead_and_partial_dead_arg : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> () {
+bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $S2):
+  %2 = struct_extract %1, #S2.x
+  fix_lifetime %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_and_partial_dead_arg :
+// CHECK:         ([[X:%.*]], [[Y:%.*]]) = destructure_struct
+// CHECK:         [[F:%.*]] = function_ref @$s017dead_and_partial_A4_argTf4dx_nTf4nd_n : $@convention(thin) (Int) -> ()
+// CHECK:           = apply [[F]]([[X]]) : $@convention(thin) (Int) -> ()
+// CHECK:       } // end sil function 'call_dead_and_partial_dead_arg'
+sil [ossa] @call_dead_and_partial_dead_arg : $@convention(thin) <T> (@guaranteed AnyObject, @guaranteed S2) -> () {
+bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $S2):
+  %2 = copy_value %1
+  %3 = function_ref @dead_and_partial_dead_arg : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> ()
+  %4 = apply %3(%0, %2) : $@convention(thin) (@guaranteed AnyObject, @guaranteed S2) -> ()
+  destroy_value %2
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @dead_generic_metatype : $@convention(thin) <T> (@thick T.Type) -> () {
+bb0(%0 : $@thick T.Type):
+  %1 = metatype $@thick T.Type
+  fix_lifetime %1
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_generic_metatype :
+// CHECK:         [[F:%.*]] = function_ref @$s21dead_generic_metatypeTf4d_n : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:           = apply [[F]]<S>() : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:       } // end sil function 'call_dead_generic_metatype'
+sil [ossa] @call_dead_generic_metatype : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = metatype $@thick S.Type
+  %3 = function_ref @dead_generic_metatype : $@convention(thin) <T> (@thick T.Type) -> ()
+  %4 = apply %3<S>(%1) : $@convention(thin) <T> (@thick T.Type) -> ()
+  %r = tuple ()
+  return %r
+}
+
+sil [ossa] @dead_generic_metatype2 : $@convention(thin) <T> (@thick T.Type) -> () {
+bb0(%0 : $@thick T.Type):
+  %1 = builtin "sizeof"<T>() : $Builtin.Word
+  fix_lifetime %1
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_generic_metatype2 :
+// CHECK:         [[F:%.*]] = function_ref @$s22dead_generic_metatype2Tf4d_n : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:           = apply [[F]]<S>() : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:       } // end sil function 'call_dead_generic_metatype2'
+sil [ossa] @call_dead_generic_metatype2 : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = metatype $@thick S.Type
+  %3 = function_ref @dead_generic_metatype2 : $@convention(thin) <T> (@thick T.Type) -> ()
+  %4 = apply %3<S>(%1) : $@convention(thin) <T> (@thick T.Type) -> ()
+  %r = tuple ()
+  return %r
+}
