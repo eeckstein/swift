@@ -321,7 +321,7 @@ bb3:
 //
 // CHECK-LABEL: sil [signature_optimized_thunk] [heuristic_always_inline] @exploded_release_to_dead_argument
 // CHECK: bb0([[INPUT_ARG0:%[0-9]+]] : $boo):
-// CHECK: [[IN1:%.*]] = function_ref @$s33exploded_release_to_dead_argumentTf4d_n
+// CHECK: [[IN1:%.*]] = function_ref @$s33exploded_release_to_dead_argumentTf4g_nTf4d_n
 // CHECK: apply [[IN1]]()
 // CHECK: release_value [[INPUT_ARG0]]
 sil @exploded_release_to_dead_argument : $@convention(thin) (@owned boo) -> () {
