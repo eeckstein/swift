@@ -1584,7 +1584,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]]
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5'
@@ -1607,7 +1607,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_caller'
@@ -1633,7 +1633,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E18_5_public_externalTf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () 
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E18_5_public_externalTf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () 
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]]
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_public_external'
@@ -1656,7 +1656,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E18_5_public_externalTf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () 
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E18_5_public_externalTf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () 
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_public_external_caller'
@@ -1683,7 +1683,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]]
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_shared'
@@ -1706,7 +1706,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_shared_caller'
@@ -1733,7 +1733,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]]
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_hidden'
@@ -1756,7 +1756,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_hidden_caller'
@@ -1783,7 +1783,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]]
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_private'
@@ -1806,7 +1806,7 @@ only(%quintuple : $Quintuple):
 // CHECK: [[KLASS3:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass3
 // CHECK: [[KLASS2:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass2
 // CHECK: [[KLASS1:%.*]] = struct_extract [[QUINTUPLE]] : $Quintuple, #Quintuple.klass1
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnndd_n
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnngg_nTf4nnndd_n
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
 // CHECK-LABEL: } // end sil function 'take_quintuple_for_klass1_through_3_owned_klass4_through_5_private_caller'
@@ -2069,39 +2069,39 @@ only(%quintuple : $Quintuple):
 // Nothing to check.
 
 // TEST_QuK1K2K3OwK4OwK5Pu:
-// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
+// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
 // CHECK: bb{{[0-9]*}}([[KLASS1:%.*]] : $Klass, [[KLASS2:%.*]] : $Klass, [[KLASS3:%.*]] : $Klass):
 // CHECK: [[FUNCTION:%.*]] = function_ref @take_klass_three_times : $@convention(thin) (Klass, Klass, Klass) -> ()
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
-// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnndd_n'
+// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E2_5Tf4x_nTf4nnngg_nTf4nnndd_n'
 
 // TEST_QuK1K2K3OwK4OwK5PuEx:
 // FIXME: THIS CHANGED
 
 // TEST_QuK1K2K3OwK4OwK5Sh:
-// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
+// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
 // CHECK: bb{{[0-9]*}}([[KLASS1:%.*]] : $Klass, [[KLASS2:%.*]] : $Klass, [[KLASS3:%.*]] : $Klass):
 // CHECK: [[FUNCTION:%.*]] = function_ref @take_klass_three_times : $@convention(thin) (Klass, Klass, Klass) -> ()
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
-// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnndd_n'
+// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_sharedTf4x_nTf4nnngg_nTf4nnndd_n'
 
 // TEST_QuK1K2K3OwK4OwK5Hi:
-// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
+// CHECK-LABEL: sil shared [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
 // CHECK: bb{{[0-9]*}}([[KLASS1:%.*]] : $Klass, [[KLASS2:%.*]] : $Klass, [[KLASS3:%.*]] : $Klass):
 // CHECK: [[FUNCTION:%.*]] = function_ref @take_klass_three_times : $@convention(thin) (Klass, Klass, Klass) -> ()
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
-// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnndd_n'
+// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E9_5_hiddenTf4x_nTf4nnngg_nTf4nnndd_n'
 
 // TEST_QuK1K2K3OwK4OwK5Pr:
-// CHECK-LABEL: sil private [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
+// CHECK-LABEL: sil private [noinline] @$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnngg_nTf4nnndd_n : $@convention(thin) (@owned Klass, @owned Klass, @owned Klass) -> () {
 // CHECK: bb{{[0-9]*}}([[KLASS1:%.*]] : $Klass, [[KLASS2:%.*]] : $Klass, [[KLASS3:%.*]] : $Klass):
 // CHECK: [[FUNCTION:%.*]] = function_ref @take_klass_three_times : $@convention(thin) (Klass, Klass, Klass) -> ()
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[KLASS1]], [[KLASS2]], [[KLASS3]])
 // CHECK: return [[RESULT]] : $()
-// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnndd_n'
+// CHECK-LABEL: } // end sil function '$s049take_quintuple_for_klass1_through_3_owned_klass4_E10_5_privateTf4x_nTf4nnngg_nTf4nnndd_n'
 
 // =============================================================================
 // =============================================================================
