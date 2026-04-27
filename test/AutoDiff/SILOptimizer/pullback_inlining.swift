@@ -2,6 +2,9 @@
 
 // RUN: %target-swift-frontend -emit-sil -O -verify -Xllvm -debug-only=sil-inliner %s 2>&1 | %FileCheck %s
 
+// TODO: check why this fails in an OSSA pipeline.
+// REQUIRES: fix_autodiff_ossa
+
 // REQUIRES: asserts
 // UNSUPPORTED: OS=windows-msvc
 

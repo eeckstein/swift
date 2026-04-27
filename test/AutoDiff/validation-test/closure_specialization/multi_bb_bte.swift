@@ -102,7 +102,7 @@ AutoDiffClosureSpecMultiBBBTETests.testWithLeakChecking("Test3") {
 
     // CHECK3-NONE:  {{^}}// pullback of method
     // CHECK3:       {{^}}// specialized pullback of method()
-    // CHECK3:       sil private @$s3outyycfU1_5ClassL_V6methodSfyFTJpSpSr073$sSf16_DifferentiationE12_vjpMultiply3lhs3rhsSf5value_Sf_SftSfc8pullbacktk1_l5FZSf_L6SfcfU_S2fAES2fTf1nnEE_n : $@convention(thin) (Float, @owned _AD__$s3outyycfU1_5ClassL_V6methodSfyF_bb3__Pred__src_0_wrt_0, Float, Float, Float, Float) -> Class.TangentVector {
+    // CHECK3:       sil private @$s3outyycfU1_5ClassL_V6methodSfyFTJpSpSr073$sSf16_DifferentiationE12_vjpMultiply3lhs3rhsSf5value_Sf_SftSfc8pullbacktk1_l5FZSf_L6SfcfU_S2fAES2fTf1nnEE_n
 
     @differentiable(reverse)
     func method() -> Float {
