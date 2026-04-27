@@ -240,7 +240,10 @@ static DestructorEffects doesDestructorHaveSideEffects(AllocRefInstBase *ARI) {
         if (!rta)
           return DestructorEffects::Unknown;
         effects = DestructorEffects::DestroysTailElems;
-        if (rta->getOperand() == Self)
+        SILValue arrayRef = rta->getOperand();
+        if (auto *beginBorrow = dyn_cast<BeginBorrowInst>(arrayRef))
+          arrayRef = beginBorrow->getOperand();
+        if (arrayRef == Self)
           continue;
       }
 
@@ -273,6 +276,11 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
       isa<UpcastInst>(Inst) || isa<UncheckedRefCastInst>(Inst))
     return true;
 
+  if (auto *ddi = dyn_cast<DropDeinitInst>(Inst)) {
+    if (ddi->use_empty())
+      return true;
+  }
+
   // It is ok to eliminate various retains/releases. We are either removing
   // everything or nothing.
   if (isa<RefCountingInst>(Inst) ||
@@ -294,6 +302,14 @@ static bool canZapInstruction(SILInstruction *Inst, bool acceptRefCountInsts,
   // Much like deallocation, destroy addr is safe.
   if (isa<DestroyAddrInst>(Inst))
     return true;
+
+  if (auto *load = dyn_cast<LoadInst>(Inst)) {
+    if (load->getOwnershipQualifier() == LoadOwnershipQualifier::Take &&
+        load->getSingleUse()) {
+      if (isa<DestroyValueInst>(load->getSingleUse()->getUser()))
+        return true;
+    }
+  }
 
   // We have already checked that we are storing into the pointer before we
   // added it to the worklist. Here, in the case we are allowing non-trivial
