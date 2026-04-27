@@ -1,5 +1,5 @@
 // RUN: %target-swift-frontend -emit-ir %s | %FileCheck %s --check-prefix=CHECK --check-prefix=ONONE
-// RUN: %target-swift-frontend -O -disable-llvm-optzns -Xllvm -sil-disable-pass=FunctionSignatureOpts -emit-ir %s | %FileCheck %s --check-prefix=CHECK --check-prefix=O
+// RUN: %target-swift-frontend -O -disable-llvm-optzns -Xllvm -sil-disable-pass=FunctionSignatureOptimization -emit-ir %s | %FileCheck %s --check-prefix=CHECK --check-prefix=O
 
 @_silgen_name("useMetadata")
 func useMetadata<T>(_: T.Type)
