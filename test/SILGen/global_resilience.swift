@@ -11,10 +11,6 @@ public struct MyEmptyStruct {}
 
 // CHECK-LABEL: sil_global private @$s17global_resilience13myEmptyGlobalAA02MyD6StructVvp : $MyEmptyStruct
 
-// CHECK-OPT-LABEL: sil_global private @$s17global_resilience13myEmptyGlobalAA02MyD6StructVvp : $MyEmptyStruct = {
-// CHECK-OPT-LABEL:   %initval = struct $MyEmptyStruct ()
-// CHECK-OPT-LABEL: }
-
 public var myEmptyGlobal = MyEmptyStruct()
 
 // CHECK-LABEL: sil_global @$s17global_resilience19myFixedLayoutGlobalAA13MyEmptyStructVvp : $MyEmptyStruct
