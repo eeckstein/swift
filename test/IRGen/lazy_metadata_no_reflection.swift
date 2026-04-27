@@ -1,5 +1,5 @@
 // RUN: %empty-directory(%t)
-// RUN: %target-swift-frontend -parse-as-library -module-name=test -O %s -emit-ir -disable-reflection-metadata > %t/out.txt
+// RUN: %target-swift-frontend -parse-as-library -module-name=test -Xllvm -sil-disable-pass=function-signature-optimization -O %s -emit-ir -disable-reflection-metadata > %t/out.txt
 // RUN: %FileCheck %s < %t/out.txt
 // RUN: %FileCheck %s --check-prefix=NEGATIVE < %t/out.txt
 
