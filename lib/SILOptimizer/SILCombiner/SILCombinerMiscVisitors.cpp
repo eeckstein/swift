@@ -388,7 +388,7 @@ createValueFromAddr(SILValue addr, SILInstruction *forInst, DominanceInfo *DI,
                     SILBuilder *builder, SILLocation loc) {
   SmallVector<std::optional<std::pair<SILValue, SILInstruction *>>, 4> pairs;
   enum Kind {
-    none, store, tuple
+    none, store, copy, tuple
   } kind = none;
 
   for (Operand *use : addr->getUses()) {
@@ -400,6 +400,18 @@ createValueFromAddr(SILValue addr, SILInstruction *forInst, DominanceInfo *DI,
     if (st && kind == none && st->getDest() == addr) {
       pairs.push_back({{st->getSrc(), st}});
       kind = store;
+      // We cannot just return st->getSrc() here because we also have to check
+      // if the store destination is the only use of addr.
+      continue;
+    }
+
+    auto *cp = dyn_cast<CopyAddrInst>(user);
+    if (cp && kind == none && cp->getDest() == addr) {
+      if (!cp->getSrc()->getType().isLoadable(*addr->getFunction()))
+        return std::nullopt;
+
+      pairs.push_back({{cp->getSrc(), cp}});
+      kind = copy;
       // We cannot just return st->getSrc() here because we also have to check
       // if the store destination is the only use of addr.
       continue;
@@ -436,6 +448,29 @@ createValueFromAddr(SILValue addr, SILInstruction *forInst, DominanceInfo *DI,
       bool isEmpty = pair->first->getType().isEmpty(*addr->getFunction());
       if (isEmpty && !DI->properlyDominates(pair->second, forInst))
         return std::nullopt;
+      return pair;
+    }
+  case copy:
+    assert(pairs.size() == 1);
+    {
+      auto *func = forInst->getFunction();
+      if (!func->hasOwnership())
+        return std::nullopt;
+      auto pair = pairs[0];
+      assert(pair.has_value());
+      bool isEmpty = pair->first->getType().isEmpty(*func);
+      if (isEmpty && !DI->properlyDominates(pair->second, forInst))
+        return std::nullopt;
+      if (builder) {
+        SILBuilder builderForLoad(pair->second);
+        auto loadQual = pair->first->getType().isTrivial(*func)
+            ? LoadOwnershipQualifier::Trivial
+            : cast<CopyAddrInst>(pair->second)->isTakeOfSrc()
+              ? LoadOwnershipQualifier::Take
+              : LoadOwnershipQualifier::Copy;
+        auto *load = builderForLoad.createLoad(loc, pair->first, loadQual);
+        return {{load, pair->second}};
+      }
       return pair;
     }
   case tuple:
