@@ -809,6 +809,10 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
 
   addFunctionPasses(P, OptimizationLevelKind::LowLevel);
 
+  P.startPipeline("LowLevel,Cleanup");
+
+  P.addFunctionSignatureOptimization();
+
   // Must run after the last CopyPrpoagation pass, because CopyPropagation undos the
   // effect of LowerAddressInstructions.
   P.addLowerAddressInstructions();
@@ -827,8 +831,6 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   // dead-store-elimination can expose opportunities for dead object elimination.
   P.addLegacyDeadObjectElimination();
 
-  // We've done a lot of optimizations on this function, attempt to FSO.
-  P.addFunctionSignatureOpts();
   P.addComputeEscapeEffects();
   P.addComputeSideEffects();
 }

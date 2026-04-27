@@ -12,7 +12,7 @@
 
 import SIL
 
-private extension ArgumentConventions {
+extension ArgumentConventions {
   func isLifetimeSourceOrTarget(index argIndex: Int) -> Bool {
     // Check if `argIndex` is a lifetime target
     if self[parameterDependencies: argIndex] != nil {
@@ -33,6 +33,18 @@ private extension ArgumentConventions {
 
     return false
   }
+}
+
+struct ArgumentSpecialization {
+  enum Kind {
+    case ownedToGuaranteed
+    case guaranteedToOwned
+    case dead
+    case explode
+  }
+
+  let argumentIndex: Int
+  let kind: Kind
 }
 
 /// Replace an apply with metatype arguments with an apply to a specialized function, where the
@@ -70,21 +82,21 @@ func specializeByRemovingMetatypeArguments(apply: FullApplySite, _ context: Modu
 
   let deadArgIndices = callee.argumentTypes.enumerated()
                          .filter { $0.element.isRemovableMetatype(in: callee) }
-                         .map { $0.offset }
+                         .map { ArgumentSpecialization(argumentIndex: $0.offset, kind: .dead) }
   if deadArgIndices.isEmpty {
     return
   }
 
   // If a function has lifetime dependencies, bailout if dead arguments precede lifetime sources or targets
   if callee.convention.hasLifetimeDependencies() {
-    for (argIndex, _) in callee.arguments.enumerated() where argIndex >= deadArgIndices.first! {
+    for (argIndex, _) in callee.arguments.enumerated() where argIndex >= deadArgIndices.first!.argumentIndex {
       if callee.argumentConventions.isLifetimeSourceOrTarget(index: argIndex) {
         return
       }
     }
   }
 
-  let specializedFuncName = context.mangle(withDeadArguments: deadArgIndices, from: callee)
+  let specializedFuncName = context.mangle(withSignatureSpecializedArguments: deadArgIndices, from: callee)
 
   let specializedCallee: Function
   if let existingSpecialization = context.lookupFunction(name: specializedFuncName) {

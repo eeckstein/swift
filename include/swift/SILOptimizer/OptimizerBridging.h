@@ -228,7 +228,16 @@ struct BridgedPassContext {
     SwiftInt otherArgIdx;
   };
 
-  BridgedOwnedString mangleWithDeadArgs(BridgedArrayRef bridgedDeadArgIndices, BridgedFunction function) const;
+  struct SignatureSpecializedArgMangling {
+    SwiftInt argIdx;
+
+    enum class Kind {
+      ownedToGuaranteed, guaranteedToOwned, dead, explode
+    } kind;
+  };
+
+  BridgedOwnedString mangleWithSignatureSpecializedArgs(BridgedArrayRef bridgedArgSpecializations,
+                                                        BridgedFunction function) const;
   BridgedOwnedString mangleWithClosureArgs(BridgedArrayRef closureArgManglings, BridgedFunction applySiteCallee) const;
   BridgedOwnedString mangleWithConstCaptureArgs(BridgedArrayRef bridgedConstArgs,
                                                 BridgedFunction applySiteCallee) const;

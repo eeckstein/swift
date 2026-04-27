@@ -3121,6 +3121,10 @@ BridgedInstruction BridgedBuilder::createThrow(BridgedValue op) const {
   return {unbridged().createThrow(regularLoc(), op.getSILValue())};
 }
 
+BridgedInstruction BridgedBuilder::createThrowAddr() const {
+  return {unbridged().createThrowAddr(regularLoc())};
+}
+
 BridgedInstruction BridgedBuilder::createUncheckedEnumData(BridgedValue enumVal, SwiftInt caseIdx,
                                            BridgedType resultType) const {
   swift::SILValue en = enumVal.getSILValue();
