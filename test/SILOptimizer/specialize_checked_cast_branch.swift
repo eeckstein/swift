@@ -30,7 +30,6 @@ public func ArchetypeToArchetypeCast<T1, T2>(t1 : T1, t2 : T2) -> T2 {
 // CHECK:  checked_cast_br C in [[ARG]] : $C to D, bb1, bb2
 //
 // CHECK: bb1([[T0:%.*]] : $D):
-// CHECK:   strong_retain [[ARG]]
 // CHECK:   return [[T0]]
 //
 // CHECK: bb2
@@ -175,10 +174,10 @@ _ = ArchetypeToConcreteCastC(t: e)
 // x -> y where x is a super class of y.
 // CHECK-LABEL: sil shared @$s30specialize_checked_cast_branch24ArchetypeToConcreteCastD1tAA1DCx_tlFAA1CC_Tg5 : $@convention(thin) (@guaranteed C) -> @owned D {
 // CHECK: bb0([[ARG:%.*]] : $C):
+// CHECK:   strong_retain [[ARG]]
 // CHECK:   checked_cast_br C in [[ARG]] : $C to D, [[SUCC_BB:bb[0-9]+]], [[FAIL_BB:bb[0-9]+]]
 //
 // CHECK: [[SUCC_BB]]([[T0:%.*]] : $D):
-// CHECK:   strong_retain [[ARG]]
 // CHECK:   return [[T0]] : $D
 //
 // CHECK: [[FAIL_BB]]:
