@@ -474,7 +474,7 @@ bb0(%0 : $S2):
 /// is not exploded.
 // CHECK-LABEL: sil [serialized] [signature_optimized_thunk] [heuristic_always_inline] @owned_struct_1_callee : $@convention(thin) (@owned S5, @owned S5) -> (Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32) {
 // CHECK: bb0({{%.*}} : $S5, [[INPUT:%.*]] : $S5):
-// CHECK: [[FUNCTION:%.*]] = function_ref @$s21owned_struct_1_calleeTfq4dg_n : $@convention(thin) (@guaranteed S5) -> (Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32)
+// CHECK: [[FUNCTION:%.*]] = function_ref @$s21owned_struct_1_calleeTfq4gg_nTfq4dn_n : $@convention(thin) (@guaranteed S5) -> (Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32)
 // CHECK: [[RESULT:%.*]] = apply [[FUNCTION]]([[INPUT]])
 // CHECK: release_value [[INPUT]] : $S5
 // CHECK: release_value {{%.*}} : $S5
@@ -947,14 +947,14 @@ bb0(%0 : $SingleFieldLvl1):
 
 
 
-// CHECK-LABEL: sil shared [serialized] @$s21owned_struct_1_calleeTfq4dg_n : $@convention(thin) (@guaranteed S5) -> (Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32) {
+// CHECK-LABEL: sil shared [serialized] @$s21owned_struct_1_calleeTfq4gg_nTfq4dn_n : $@convention(thin) (@guaranteed S5) -> (Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32) {
 // CHECK: bb0([[INPUT:%.*]] : $S5):
 // CHECK: [[INPUTF2:%.*]] = struct_extract [[INPUT]] : $S5, #S5.f2
 // CHECK: [[INPUTF2F1:%.*]] = struct_extract [[INPUTF2]] : $S1, #S1.f1
 // CHECK: [[INPUTF2F2:%.*]] = struct_extract [[INPUTF2]] : $S1, #S1.f2
 // CHECK: [[OUT:%.*]] = tuple ([[INPUTF2F1]] : $Builtin.Int16, [[INPUTF2F2]] : $Builtin.Int32, [[INPUTF2F1]] : $Builtin.Int16, [[INPUTF2F2]] : $Builtin.Int32)
 // CHECK: return [[OUT]] : $(Builtin.Int16, Builtin.Int32, Builtin.Int16, Builtin.Int32)
-// CHECK-LABEL: } // end sil function '$s21owned_struct_1_calleeTfq4dg_n'
+// CHECK-LABEL: } // end sil function '$s21owned_struct_1_calleeTfq4gg_nTfq4dn_n'
 
 // CHECK-LABEL: sil shared [serialized] @$s21owned_struct_2_calleeTfq4ndgXdn_n : $@convention(thin) (Builtin.Int256, @guaranteed S4, @guaranteed S4, Builtin.Int128) -> (Builtin.Int256, Builtin.Int256, Builtin.Int128, Builtin.Int128) {
 // CHECK: bb0([[O1:%.*]] : $Builtin.Int256, [[INPUT1:%.*]] : $S4, [[INPUT2:%.*]] : $S4, [[O4:%.*]] : $Builtin.Int128):
