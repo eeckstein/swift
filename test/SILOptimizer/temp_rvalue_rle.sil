@@ -393,10 +393,8 @@ bb0(%0 : @owned $GS<Builtin.NativeObject>):
   return %v : $()
 }
 
-// We don't support liferange exits currently
-//
 // CHECK-LABEL: sil [ossa] @test_optimize_store_of_enum1
-// CHECK-NOT:      alloc_stack
+// CHECK-NOT:     alloc_stack
 // CHECK:       } // end sil function 'test_optimize_store_of_enum1'
 sil [ossa] @test_optimize_store_of_enum1 : $@convention(method) <Element> (@guaranteed Optional<Klass>) -> () {
 bb0(%0 : @guaranteed $Optional<Klass>):
