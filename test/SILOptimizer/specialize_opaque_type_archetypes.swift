@@ -190,6 +190,7 @@ struct Pair<T, V> {
 }
 // CHECK-LABEL: sil @$s1A10storedPropyyF
 // CHECK-NOT: apply
+// CHECK-NOT: store
 // CHECK: return
 public func storedProp() {
   var c = Container2(member: S().f())
