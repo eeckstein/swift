@@ -62,7 +62,7 @@ bb0(%0 : $LargeNonTrivialStructOneNonTrivialField):
 // CHECK: bb0([[ARG:%.*]] : $LargeNonTrivialStructOneNonTrivialField):
 // CHECK:   [[FIELD1:%.*]] = struct_extract [[ARG]] : $LargeNonTrivialStructOneNonTrivialField, #LargeNonTrivialStructOneNonTrivialField.k2
 // CHECK:   [[FIELD2:%.*]] = struct_extract [[ARG]] : $LargeNonTrivialStructOneNonTrivialField, #LargeNonTrivialStructOneNonTrivialField.k1
-// CHECK:   [[FUNC:%.*]] = function_ref @$s23partiallydead_after_o2gTf4x_nTf4dn_n : $@convention(thin) (@owned Klass) -> ()
+// CHECK:   [[FUNC:%.*]] = function_ref @$s23partiallydead_after_o2gTf4x_nTf4gn_nTf4dn_n : $@convention(thin) (@owned Klass) -> ()
 // CHECK:   apply [[FUNC]]([[FIELD1]]) : $@convention(thin) (@owned Klass) -> ()
 // CHECK:   release_value [[FIELD2]]
 // CHECK: } // end sil function 'caller2'
