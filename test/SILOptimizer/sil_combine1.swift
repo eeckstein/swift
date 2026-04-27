@@ -25,9 +25,10 @@ func compose(_ x: P, _ y: P, _ z: P) -> Int32 {
 }
 
 // CHECK-LABEL: sil [noinline] @$s12sil_combine120test_compose_closures5Int32VyF : $@convention(thin) () -> Int32 {
-// CHECK: [[OEADDR:%.*]] = open_existential_addr immutable_access {{%.*}} : $*any P to $*@opened
-// CHECK: [[ADDRCAST:%.*]] = unchecked_addr_cast [[OEADDR]] : $*@opened
-// CHECK: struct_element_addr [[ADDRCAST]] : $*CP, #CP.v
+// CHECK:         [[L:%.*]] = integer_literal $Builtin.Int32, 6
+// CHECK:         [[I:%.*]] = struct $Int32 ([[L]] : $Builtin.Int32)
+// CHECK:         return [[I]]
+// CHECK:       } // end sil function '$s12sil_combine120test_compose_closures5Int32VyF'
 @inline(never)
 public func test_compose_closure() -> Int32 {
   // The coercions ensure we pick the solution that binds the generic parameters
