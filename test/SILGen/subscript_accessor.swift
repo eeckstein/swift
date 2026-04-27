@@ -1,6 +1,8 @@
 // RUN: %target-swift-emit-silgen-ossa -o /dev/null -enable-sil-opaque-values %s
 // RUN: %target-swift-frontend -O -emit-sil -primary-file %s | %FileCheck %s
 
+// CHECK: sil shared @$s18subscript_accessor1XVxSgycisTf4nd_n :
+
 // CHECK-LABEL: sil hidden [transparent] @$s18subscript_accessor1XVxSgyciM
 // CHECK: [[SETTER:%.*]] = function_ref @$s18subscript_accessor1XVxSgycis
 // CHECK-NEXT: apply [[SETTER]]<T>
@@ -31,4 +33,3 @@ extension WillBeConcretelyConstrained where T == Int {
 func testXRead<T>(x: X<T>) -> T {
   return x[]!
 }
-// CHECK: $s18subscript_accessor1XVxSgycisTf4dn_n

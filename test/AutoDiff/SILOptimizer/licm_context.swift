@@ -76,7 +76,6 @@ public func s(y: B) -> B {
 
 // CHECK-LABEL: sil private @$s12licm_context1s1yAA1BVAE_tF1qL_yA2EFTJrSpSr :
 // CHECK: autoDiffCreateLinearMapContext
-// CHECK: autoDiffCreateLinearMapContext
 // CHECK-LABEL: end sil function '$s12licm_context1s1yAA1BVAE_tF1qL_yA2EFTJrSpSr'
 
 func o<T, R>(_ x: T, _ f: @differentiable(reverse) (T) -> R) -> R {
