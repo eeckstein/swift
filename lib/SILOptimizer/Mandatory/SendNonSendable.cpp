@@ -4108,7 +4108,7 @@ static SILValue lookThroughAccess(SILValue value) {
     }
 
     if (auto *lbi = dyn_cast<LoadBorrowInst>(value)) {
-      value = lbi->getOperand();
+      value = lbi->getAddress();
       continue;
     }
 
