@@ -1109,7 +1109,8 @@ public:
   Operand(SILInstruction *owner, SILValue theValue)
       : TheValue(theValue), Owner(owner),
         customBits(0), lastInitializedBitfieldID(0) {
-    insertIntoCurrent();
+    if (theValue)
+      insertIntoCurrent();
   }
 
   /// Operands are not copyable.
