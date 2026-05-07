@@ -3372,7 +3372,7 @@ static SILValue getGuaranteedAddressResultAddress(SILValue oldResult,
     return storage.storageAddress;
   }
   if (auto *lbi = dyn_cast<LoadBorrowInst>(oldResult))
-    return lbi->getOperand();
+    return lbi->getAddress();
   return cast<LoadInst>(oldResult)->getOperand();
 }
 
@@ -4605,7 +4605,7 @@ protected:
   }
 
   void visitLoadBorrowInst(LoadBorrowInst *lbi) {
-    pass.valueStorageMap.setStorageAddress(lbi, lbi->getOperand());
+    pass.valueStorageMap.setStorageAddress(lbi, lbi->getAddress());
   }
 
   // Define an opaque struct.

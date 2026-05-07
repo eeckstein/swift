@@ -884,10 +884,11 @@ final public class DeallocExistentialBoxInst : Instruction, UnaryInstruction, De
 //===----------------------------------------------------------------------===//
 
 @_semantics("fast_cast")
-public protocol LoadInstruction: SingleValueInstruction, UnaryInstruction {}
+public protocol LoadInstruction: SingleValueInstruction {}
 
 extension LoadInstruction {
-  public var address: Value { operand.value }
+  public var addressOperand: Operand { operands[0] }
+  public var address: Value { addressOperand.value }
 }
 
 final public class LoadInst : SingleValueInstruction, LoadInstruction {

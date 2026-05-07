@@ -593,6 +593,6 @@ private extension DebugValueInst {
     debugBB.eraseArgument(at: index, context)
     let newArg = debugBB.insertPhiArgument(
       atPosition: index, type: operandType, ownership: .none, context)
-    loadVal.operand.set(to: newArg, context)
+    loadVal.addressOperand.set(to: newArg, context)
   }
 }

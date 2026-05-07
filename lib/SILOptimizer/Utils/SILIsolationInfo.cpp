@@ -349,7 +349,7 @@ getSelfFunctionArgumentForRefElementAddr(SILValue value) {
   if (!lbi)
     return {};
 
-  auto *asi = dyn_cast<AllocStackInst>(lbi->getOperand());
+  auto *asi = dyn_cast<AllocStackInst>(lbi->getAddress());
   if (!asi || !asi->getDecl()->isActorSelf())
     return {};
   return self;
