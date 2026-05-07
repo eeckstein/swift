@@ -1578,22 +1578,22 @@ void SILCloner<ImplClass>::visitLoadBorrowInst(LoadBorrowInst *Inst) {
   if (!getBuilder().hasOwnership()) {
     return recordClonedInstruction(
         Inst, getBuilder().createLoad(getOpLocation(Inst->getLoc()),
-                                      getOpValue(Inst->getOperand()),
+                                      getOpValue(Inst->getAddress()),
                                       LoadOwnershipQualifier::Unqualified));
   }
 
-  if (getOpValue(Inst->getOperand())
+  if (getOpValue(Inst->getAddress())
           ->getType()
           .isTrivial(getBuilder().getFunction())) {
     return recordClonedInstruction(
         Inst, getBuilder().createLoad(getOpLocation(Inst->getLoc()),
-                                      getOpValue(Inst->getOperand()),
+                                      getOpValue(Inst->getAddress()),
                                       LoadOwnershipQualifier::Trivial));
   }
 
   recordClonedInstruction(
       Inst, getBuilder().createLoadBorrow(getOpLocation(Inst->getLoc()),
-                                          getOpValue(Inst->getOperand())));
+                                          getOpValue(Inst->getAddress())));
 }
 
 template <typename ImplClass>

@@ -4578,7 +4578,7 @@ protected:
   }
 
   void visitLoadBorrowInst(LoadBorrowInst *lbi) {
-    pass.valueStorageMap.setStorageAddress(lbi, lbi->getOperand());
+    pass.valueStorageMap.setStorageAddress(lbi, lbi->getAddress());
   }
 
   // Define an opaque struct.

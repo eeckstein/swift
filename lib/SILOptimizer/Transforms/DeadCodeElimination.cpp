@@ -280,7 +280,7 @@ void DCE::processBorrow(BorrowedValue borrow) {
     baseValue = borrowOp;
   } else {
     auto *loadBorrow = cast<LoadBorrowInst>(*borrow);
-    auto accessBase = AccessBase::compute(loadBorrow->getOperand());
+    auto accessBase = AccessBase::compute(loadBorrow->getAddress());
     if (!accessBase.isReference()) {
       return;
     }

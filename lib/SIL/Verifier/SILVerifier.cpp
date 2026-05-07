@@ -3046,11 +3046,15 @@ public:
     require(!fnConv.useLoweredAddresses()
             || LBI->getType().isLoadable(*LBI->getFunction()),
             "Load must have a loadable type");
-    require(LBI->getOperand()->getType().isAddress(),
+    require(LBI->getAddress()->getType().isAddress(),
             "Load operand must be an address");
-    requireSameType(LBI->getOperand()->getType().getObjectType(),
+    requireSameType(LBI->getAddress()->getType().getObjectType(),
                     LBI->getType(),
-                    "Load operand type and result type mismatch");
+                    "Load address type and result type mismatch");
+    if (LBI->hasValueHint()) {
+      requireSameType(LBI->getValueHint()->getType(), LBI->getType(),
+                      "Load value-hint type and result type mismatch");
+    }
     require(F.getModule().getStage() == SILStage::Raw || !LBI->isUnchecked(),
             "load_borrow's unchecked bit is on");
   }

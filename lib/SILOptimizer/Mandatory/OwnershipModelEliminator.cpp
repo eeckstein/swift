@@ -318,7 +318,7 @@ bool OwnershipModelEliminatorVisitor::visitLoadBorrowInst(LoadBorrowInst *lbi) {
   // Break down the load borrow into an unqualified load.
   auto newLoad =
       withBuilder<SILValue>(lbi, [&](SILBuilder &b, SILLocation loc) {
-        return b.createLoad(loc, lbi->getOperand(),
+        return b.createLoad(loc, lbi->getAddress(),
                             LoadOwnershipQualifier::Unqualified);
       });
 
