@@ -1870,6 +1870,7 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case SILInstructionKind::AbortApplyInst:
   case SILInstructionKind::ReturnInst:
   case SILInstructionKind::UncheckedOwnershipConversionInst:
+  case SILInstructionKind::UncheckedOwnershipInst:
   case SILInstructionKind::DestroyNotEscapedClosureInst:
   case SILInstructionKind::ThrowInst:
   case SILInstructionKind::MakeBorrowInst:
@@ -1888,6 +1889,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
       Attr = RCI->isNonAtomic();
     else if (auto *UOCI = dyn_cast<UncheckedOwnershipConversionInst>(&SI)) {
       Attr = encodeValueOwnership(UOCI->getOwnershipKind());
+    } else if (auto *UOI = dyn_cast<UncheckedOwnershipInst>(&SI)) {
+      Attr = encodeValueOwnership(UOI->getOwnershipKind());
     } else if (auto *IEC = dyn_cast<DestroyNotEscapedClosureInst>(&SI)) {
       Attr = IEC->getVerificationType();
     } else if (auto *HTE = dyn_cast<HopToExecutorInst>(&SI)) {
@@ -1960,9 +1963,6 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
         (unsigned)cast<MarkUninitializedInst>(&SI)->getMarkUninitializedKind();
     writeOneOperandExtraAttributeLayout(SI.getKind(), Attr, SI.getOperand(0));
     break;
-  }
-  case SILInstructionKind::UncheckedOwnershipInst: {
-    llvm_unreachable("Invalid unchecked_ownership during serialzation");
   }
   case SILInstructionKind::YieldInst: {
     auto YI = cast<YieldInst>(&SI);

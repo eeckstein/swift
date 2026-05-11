@@ -2576,6 +2576,7 @@ public:
 
   void visitUncheckedOwnershipInst(UncheckedOwnershipInst *I) {
     *this << getIDAndType(I->getOperand());
+    printForwardingOwnershipKind(I);
   }
 
   void visitUnownedCopyValueInst(UnownedCopyValueInst *I) {

@@ -1601,6 +1601,13 @@ public:
         getSILDebugLocation(Loc), Operand, Operand->getOwnershipKind()));
   }
 
+  UncheckedOwnershipInst *createUncheckedOwnership(SILLocation Loc,
+                                  SILValue Operand,
+                                  ValueOwnershipKind forwardingOwnershipKind) {
+    return insert(new (getModule()) UncheckedOwnershipInst(
+        getSILDebugLocation(Loc), Operand, forwardingOwnershipKind));
+  }
+
   UnconditionalCheckedCastInst *
   createUnconditionalCheckedCast(SILLocation Loc,
                                  CheckedCastInstOptions options,
