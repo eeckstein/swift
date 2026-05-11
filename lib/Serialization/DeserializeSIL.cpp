@@ -3076,6 +3076,16 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
         ResultKind);
     break;
   }
+  case SILInstructionKind::UncheckedOwnershipInst: {
+    auto Ty = MF->getType(TyID);
+    auto forwardingOwnership = decodeValueOwnership(Attr);
+    ResultInst = Builder.createUncheckedOwnership(
+        Loc,
+        getLocalValue(Builder.maybeGetFunction(), ValID,
+                      getSILType(Ty, (SILValueCategory)TyCategory, Fn)),
+        forwardingOwnership);
+    break;
+  }
 
   case SILInstructionKind::MoveValueInst: {
     auto Ty = MF->getType(TyID);
@@ -3195,9 +3205,6 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
                       getSILType(Ty, (SILValueCategory)TyCategory, Fn)),
         CKind, Strict);
     break;
-  }
-  case SILInstructionKind::UncheckedOwnershipInst: {
-    llvm_unreachable("Invalid unchecked_ownership in deserialization");
   }
   case SILInstructionKind::StoreInst: {
     auto Ty = MF->getType(TyID);

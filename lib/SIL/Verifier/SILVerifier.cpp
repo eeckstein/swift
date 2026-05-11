@@ -7082,8 +7082,8 @@ public:
   }
 
   void checkUncheckedOwnershipInst(UncheckedOwnershipInst *uoi) {
-    require(F.getModule().getStage() == SILStage::Raw,
-            "unchecked_ownership is valid only in raw SIL");
+    require(F.hasOwnership(),
+            "unchecked_ownership is valid only in OSSA");
   }
 
   void checkAllocPackMetadataInst(AllocPackMetadataInst *apmi) {
