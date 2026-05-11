@@ -141,6 +141,8 @@ struct LLVM_LIBRARY_VISIBILITY SemanticARCOptVisitor
   bool
   visitUncheckedOwnershipConversionInst(UncheckedOwnershipConversionInst *uoci);
 
+  bool visitUncheckedOwnershipInst(UncheckedOwnershipInst *uoi) {}
+
   static bool shouldVisitInst(SILInstruction *i) {
     switch (i->getKind()) {
     default:
