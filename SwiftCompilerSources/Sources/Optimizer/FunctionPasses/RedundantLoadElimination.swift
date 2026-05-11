@@ -129,20 +129,34 @@ func eliminateRedundantLoads(in function: Function,
   return changed
 }
 
+private enum LoadKind {
+  case unqualified, trivial, copy, take, borrow
+
+  init(from loadOwnership: LoadInst.LoadOwnership) {
+    switch loadOwnership {
+      case .unqualified: self = .unqualified
+      case .trivial:     self = .trivial
+      case .copy:        self = .copy
+      case .take:        self = .take
+    }
+  }
+}
+
 /// Either a `load` or a `copy_addr` (which is equivalent to a load+store).
 private protocol LoadingInstruction: Instruction {
   var address: Value { get }
   var type: Type { get }
-  var ownership: Ownership { get }
-  var loadOwnership: LoadInst.LoadOwnership { get }
-  var canLoadValue: Bool { get }
+  var ownershipForSSAUpdater: Ownership { get }
+  var kind: LoadKind { get }
+  var canOptimize: Bool { get }
   func trySplit(_ context: FunctionPassContext) -> Bool
   func replaceLoad(with newValue: Value, _ context: FunctionPassContext)
 }
 
 extension LoadInst : LoadingInstruction {
-  // We know that the type is loadable because - well - this is a load.
-  var canLoadValue: Bool { true }
+  var canOptimize: Bool { true }
+  fileprivate var kind: LoadKind { LoadKind(from: loadOwnership) }
+  fileprivate var ownershipForSSAUpdater: Ownership { ownership }
 
   // Nothing to materialize, because this is already a `load`.
   func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst { return self }
@@ -175,8 +189,9 @@ extension LoadInst : LoadingInstruction {
 extension CopyAddrInst : LoadingInstruction {
   var address: Value { source }
   var type: Type { address.type.objectType }
+  fileprivate var kind: LoadKind { LoadKind(from: loadOwnership) }
 
-  var ownership: Ownership {
+  fileprivate var ownershipForSSAUpdater: Ownership {
     if !parentFunction.hasOwnership || type.isTrivial(in: parentFunction) {
       return .none
     }
@@ -184,7 +199,7 @@ extension CopyAddrInst : LoadingInstruction {
     return .owned
   }
 
-  var canLoadValue: Bool {
+  var canOptimize: Bool {
     if !source.type.isLoadable(in: parentFunction) {
       // Although the original load's type is loadable (obviously), it can be projected-out
       // from the copy_addr's type which might be not loadable.
@@ -210,16 +225,16 @@ extension CopyAddrInst : LoadingInstruction {
 extension DestroyAddrInst : LoadingInstruction {
   var address: Value { destroyedAddress }
   var type: Type { address.type.objectType }
-  var loadOwnership: LoadInst.LoadOwnership { .take }
+  fileprivate var kind: LoadKind { .take }
 
-  var ownership: Ownership {
+  fileprivate var ownershipForSSAUpdater: Ownership {
     if !parentFunction.hasOwnership {
       return .none
     }
     return .owned
   }
 
-  var canLoadValue: Bool {
+  var canOptimize: Bool {
     destroyedAddress.type.isLoadable(in: parentFunction) && !type.isTrivial(in: parentFunction)
   }
 
@@ -233,6 +248,18 @@ extension DestroyAddrInst : LoadingInstruction {
   }
 
   func trySplit(_ context: FunctionPassContext) -> Bool { false }
+}
+
+extension LoadBorrowInst : LoadingInstruction {
+  var canOptimize: Bool { valueHint == nil }
+  fileprivate var kind: LoadKind { .borrow }
+  func trySplit(_ context: FunctionPassContext) -> Bool { false }
+
+  fileprivate var ownershipForSSAUpdater: Ownership { .none }
+
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    set(valueHint: newValue, context)
+  }
 }
 
 private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int, _ context: FunctionPassContext) -> Bool {
@@ -258,12 +285,12 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
 private extension LoadingInstruction {
 
   func isEligibleForElimination(in variant: RedundantLoadEliminationVariant, _ context: FunctionPassContext) -> Bool {
-    if !canLoadValue {
+    if !canOptimize {
       return false
     }
     switch variant {
     case .mandatory, .mandatoryInGlobalInit:
-      if loadOwnership == .take {
+      if kind == .take {
         // load [take] would require to shrinkMemoryLifetime. But we don't want to do this in the mandatory
         // pipeline to not shrink or remove an alloc_stack which is relevant for debug info.
         return false
@@ -343,8 +370,8 @@ private extension LoadingInstruction {
   }
 
   func canReplaceWithoutInsertingCopies(liverange: Liverange,_ context: FunctionPassContext) -> Bool {
-    switch self.loadOwnership {
-    case .trivial, .unqualified:
+    switch self.kind {
+    case .trivial, .unqualified, .borrow:
       return true
 
     case .copy, .take:
@@ -378,7 +405,7 @@ private extension LoadingInstruction {
 }
 
 private func replace(load: LoadingInstruction, with availableValues: [AvailableValue], _ context: FunctionPassContext) {
-  var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownership, context)
+  var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater, context)
   defer { ssaUpdater.deinitialize() }
 
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
@@ -420,7 +447,7 @@ private func provideValue(
 ) -> Value {
   let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
 
-  switch load.loadOwnership {
+  switch load.kind {
   case .unqualified:
     return availableValue.value.createProjection(path: projectionPath,
                                                  builder: availableValue.getBuilderForProjections(context))
@@ -434,6 +461,11 @@ private func provideValue(
     } else {
       return shrinkMemoryLifetimeAndSplit(to: availableValue, projectionPath: projectionPath, context)
     }
+
+  case .borrow:
+    let builder = availableValue.getBuilderForProjections(context)
+    let conversion = builder.createUncheckedOwnership(operand: availableValue.value, forwardingOwnership: .none)
+    return conversion.createProjection(path: projectionPath, builder: builder)
   }
 }
 
@@ -650,7 +682,7 @@ private struct InstructionScanner {
       // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
       // instructions prevent that the `load [take]` will illegally mutate memory which is protected
       // from mutation by the scope.
-      if load.loadOwnership != .take {
+      if load.kind != .take {
         return .transparent
       }
     case let precedingLoad as LoadInst:
@@ -668,7 +700,7 @@ private struct InstructionScanner {
          potentiallyRedundantSubpath == nil {
         potentiallyRedundantSubpath = precedingLoadPath
       }
-      if load.loadOwnership != .take {
+      if load.kind != .take {
         return .transparent
       }
 
@@ -686,7 +718,7 @@ private struct InstructionScanner {
         potentiallyRedundantSubpath = precedingStorePath
       }
 
-    case let preceedingCopy as CopyAddrInst where preceedingCopy.canLoadValue:
+    case let preceedingCopy as CopyAddrInst where preceedingCopy.canOptimize:
       let copyPath = preceedingCopy.destination.constantAccessPath
       if copyPath.getMaterializableProjection(to: accessPath) != nil {
         availableValues.append(.viaCopyAddr(preceedingCopy))
@@ -699,7 +731,7 @@ private struct InstructionScanner {
     default:
       break
     }
-    if load.loadOwnership == .take {
+    if load.kind == .take {
       // In case of `take`, don't allow reading instructions in the liverange.
       // Otherwise we cannot shrink the memory liverange afterwards.
       if instruction.mayReadOrWrite(address: load.address, aliasAnalysis) {
