@@ -1948,6 +1948,14 @@ final public class BeginBorrowInst : SingleValueInstruction, UnaryInstruction, B
 
 final public class LoadBorrowInst : SingleValueInstruction, LoadInstruction, BeginBorrowInstruction {
 
+  public var valueHint: Value? { operands.count == 2 ? operands[1].value : nil }
+
+  public func set(valueHint: Value, _ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    bridged.LoadBorrow_setValueHint(valueHint.bridged)
+    context.notifyInstructionChanged(self)
+  }
+
   // True if the invariants on `load_borrow` have not been checked and should not be strictly enforced.
   //
   // This can only occur during raw SIL before move-only checking occurs. Developers can write incorrect

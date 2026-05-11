@@ -1350,6 +1350,10 @@ SwiftInt BridgedInstruction::LoadInst_getLoadOwnership() const {
   return (SwiftInt)getAs<swift::LoadInst>()->getOwnershipQualifier();
 }
 
+bool BridgedInstruction::LoadBorrow_setValueHint(BridgedValue v) const {
+  getAs<swift::LoadBorrowInst>()->setValueHint(v.getSILValue());
+}
+
 bool BridgedInstruction::LoadBorrowInst_isUnchecked() const {
   return (SwiftInt)getAs<swift::LoadBorrowInst>()->isUnchecked();
 }
@@ -2855,6 +2859,12 @@ BridgedInstruction BridgedBuilder::createUncheckedOwnershipConversion(BridgedVal
                                                                       BridgedValue::Ownership ownership) const {
   return {unbridged().createUncheckedOwnershipConversion(regularLoc(), op.getSILValue(),
                                                          BridgedValue::unbridge(ownership))};
+}
+
+BridgedInstruction BridgedBuilder::createUncheckedOwnership(BridgedValue op,
+                                                            BridgedValue::Ownership forwardingOwnership) const {
+  return {unbridged().createUncheckedOwnership(regularLoc(), op.getSILValue(),
+                                               BridgedValue::unbridge(forwardingOwnership))};
 }
 
 BridgedInstruction BridgedBuilder::createLoadBorrow(BridgedValue op) const {
