@@ -3074,6 +3074,12 @@ BridgedInstruction BridgedBuilder::createUncheckedOwnershipConversion(BridgedVal
                                                          BridgedValue::unbridge(ownership))};
 }
 
+BridgedInstruction BridgedBuilder::createUncheckedOwnership(BridgedValue op,
+                                                            BridgedValue::Ownership forwardingOwnership) const {
+  return {unbridged().createUncheckedOwnership(regularLoc(), op.getSILValue(),
+                                               BridgedValue::unbridge(forwardingOwnership))};
+}
+
 BridgedInstruction BridgedBuilder::createLoadBorrow(BridgedValue op) const {
   return {unbridged().createLoadBorrow(regularLoc(), op.getSILValue())};
 }
