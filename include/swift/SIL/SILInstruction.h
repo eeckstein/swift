@@ -5030,6 +5030,8 @@ public:
 
   bool hasValueHint() const { return (bool)Operands[1].get(); }
 
+  void setValueHint(SILValue v) { Operands[1].set(v); }
+
   // True if the invariants on `load_borrow` have not been checked and
   // should not be strictly enforced.
   //
