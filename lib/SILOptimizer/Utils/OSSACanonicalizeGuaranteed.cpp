@@ -301,8 +301,6 @@ bool OSSACanonicalizeGuaranteed::visitBorrowScopeUses(SILValue innerValue,
       // stripped if needed when the outer copy or persistent copy is
       // canonicalized.
       switch (use->getOperandOwnership()) {
-      case OperandOwnership::NonUse:
-        break;
       case OperandOwnership::TrivialUse:
         llvm_unreachable("this operand cannot handle ownership");
 
@@ -358,6 +356,7 @@ bool OSSACanonicalizeGuaranteed::visitBorrowScopeUses(SILValue innerValue,
       case OperandOwnership::DebugUse:
       case OperandOwnership::BitwiseEscape:
       case OperandOwnership::DestroyingConsume:
+      case OperandOwnership::NonUse:
         if (!visitor.visitUse(use)) {
           return false;
         }
