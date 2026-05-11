@@ -848,3 +848,21 @@ bb3:
   %res = tuple ()
   return %res : $()
 }
+
+// CHECK-LABEL: sil [ossa] @load_borrow :
+// CHECK:         %2 = unchecked_ownership %1, forwarding: @none
+// CHECK:         %3 = struct_extract %2, #NonTrivialStruct.val
+// CHECK:         store %1 to [assign] %0
+// CHECK:         %5 = struct_element_addr %0, #NonTrivialStruct.val
+// CHECK:         %6 = load_borrow %5, value_hint %3
+// CHECK:         end_borrow %6
+// CHECK-LABEL: } // end sil function 'load_borrow'
+sil [ossa] @load_borrow : $@convention(thin) (@inout NonTrivialStruct, @owned NonTrivialStruct) -> () {
+bb0(%0 : $*NonTrivialStruct, %1 : @owned $NonTrivialStruct):
+  store %1 to [assign] %0
+  %3 = struct_element_addr %0, #NonTrivialStruct.val
+  %5 = load_borrow %3
+  end_borrow %5
+  %r = tuple ()
+  return %r
+}
