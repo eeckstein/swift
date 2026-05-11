@@ -107,10 +107,7 @@ func eliminateRedundantLoads(in function: Function,
     var iter = block.instructions.reversed().first
     while let succ = iter, let inst = succ.previous {
 
-      // TODO: replace this with `if let inst as? LoadingInstruction` once the toolchain builders are
-      // upgraded to a compiler version with fast type casting (https://github.com/swiftlang/swift/pull/88270).
-      if inst is LoadInst || inst is CopyAddrInst || inst is DestroyAddrInst {
-        let load = inst as! LoadingInstruction
+      if let load = inst as? LoadingInstruction {
         if !context.continueWithNextSubpassRun(for: load) {
           return changed
         }
@@ -140,7 +137,7 @@ private protocol LoadingInstruction: Instruction {
   var loadOwnership: LoadInst.LoadOwnership { get }
   var canLoadValue: Bool { get }
   func trySplit(_ context: FunctionPassContext) -> Bool
-  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext)
 }
 
 extension LoadInst : LoadingInstruction {
@@ -149,6 +146,12 @@ extension LoadInst : LoadingInstruction {
 
   // Nothing to materialize, because this is already a `load`.
   func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst { return self }
+
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    // Make sure to keep dependencies valid after replacing the load
+    insertMarkDependencies(for: self, context)
+    self.replaceEfficiently(with: newValue, context)
+  }
 
   func replaceEfficiently(with newValue: Value, _ context: FunctionPassContext) {
     if let existingLoad = newValue as? LoadInst {
@@ -172,7 +175,6 @@ extension LoadInst : LoadingInstruction {
 extension CopyAddrInst : LoadingInstruction {
   var address: Value { source }
   var type: Type { address.type.objectType }
-  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
 
   var ownership: Ownership {
     if !parentFunction.hasOwnership || type.isTrivial(in: parentFunction) {
@@ -197,8 +199,10 @@ extension CopyAddrInst : LoadingInstruction {
     return true
   }
 
-  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
-    return replaceWithLoadAndStore(context).load
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
+    let load = replaceWithLoadAndStore(context).load
+    insertMarkDependencies(for: load, context)
+    load.replaceEfficiently(with: newValue, context)
   }
 }
 
@@ -206,7 +210,6 @@ extension CopyAddrInst : LoadingInstruction {
 extension DestroyAddrInst : LoadingInstruction {
   var address: Value { destroyedAddress }
   var type: Type { address.type.objectType }
-  var typeIsLoadable: Bool { type.isLoadable(in: parentFunction) }
   var loadOwnership: LoadInst.LoadOwnership { .take }
 
   var ownership: Ownership {
@@ -220,12 +223,13 @@ extension DestroyAddrInst : LoadingInstruction {
     destroyedAddress.type.isLoadable(in: parentFunction) && !type.isTrivial(in: parentFunction)
   }
 
-  func materializeLoadForReplacement(_ context: FunctionPassContext) -> LoadInst {
+  func replaceLoad(with newValue: Value, _ context: FunctionPassContext) {
     let builder = Builder(before: self, context)
     let load = builder.createLoad(fromAddress: destroyedAddress, ownership: .take)
     builder.createDestroyValue(operand: load)
     context.erase(instruction: self)
-    return load
+    insertMarkDependencies(for: load, context)
+    load.replaceEfficiently(with: newValue, context)
   }
 
   func trySplit(_ context: FunctionPassContext) -> Bool { false }
@@ -406,12 +410,7 @@ private func replace(load: LoadingInstruction, with availableValues: [AvailableV
     newValue = ssaUpdater.getValue(atBeginOf: load.parentBlock)
   }
 
-  let originalLoad = load.materializeLoadForReplacement(context)
-
-  // Make sure to keep dependencies valid after replacing the load
-  insertMarkDependencies(for: originalLoad, context)
-
-  originalLoad.replaceEfficiently(with: newValue, context)
+  load.replaceLoad(with: newValue, context)
 }
 
 private func provideValue(
