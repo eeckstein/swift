@@ -17,6 +17,7 @@ func use(_ s: String) {
 }
 
 // CHECK-LABEL: sil hidden [noinline] @$s25array_element_propagation10testAppendyySaySiGzF :
+// CHECK-NOT:     alloc_ref
 // CHECK-NOT:     load
 // CHECK:       } // end sil function '$s25array_element_propagation10testAppendyySaySiGzF'
 @inline(never)
@@ -26,6 +27,7 @@ func testAppend(_ arr: inout [Int]) {
 }
 
 // CHECK-LABEL: sil hidden [noinline] @$s25array_element_propagation8testLoopyyF :
+// CHECK-NOT:     alloc_ref
 // CHECK-NOT:     load
 // CHECK-NOT:     retain
 // CHECK-NOT:     release
@@ -40,6 +42,7 @@ func testLoop() {
 }
 
 // CHECK-LABEL: sil hidden [noinline] @$s25array_element_propagation12testNonConstyySSF :
+// CHECK-NOT:     alloc_ref
 // CHECK-NOT:     load
 // CHECK-NOT:     retain
 // CHECK-NOT:     release
