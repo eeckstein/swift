@@ -1396,7 +1396,7 @@ SwiftInt BridgedInstruction::LoadInst_getLoadOwnership() const {
   return (SwiftInt)getAs<swift::LoadInst>()->getOwnershipQualifier();
 }
 
-bool BridgedInstruction::LoadBorrow_setValueHint(BridgedValue v) const {
+void BridgedInstruction::LoadBorrow_setValueHint(BridgedValue v) const {
   getAs<swift::LoadBorrowInst>()->setValueHint(v.getSILValue());
 }
 
