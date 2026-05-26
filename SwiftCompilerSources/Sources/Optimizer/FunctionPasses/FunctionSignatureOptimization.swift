@@ -467,6 +467,13 @@ private func specialize(function: Function,
           copy.replace(with: arg, specializedContext)
         }
         arg.set(ownership: .owned, specializedContext)
+
+        for dv in arg.uses.users(ofType: DebugValueInst.self) {
+          let firstInst = specializedFunction.instructions.first!
+          if dv != firstInst {
+            dv.move(before: firstInst, specializedContext)
+          }
+        }
       case .dead:
         assert(arg.users.allSatisfy { $0 is DebugValueInst })
         specializedContext.erase(instructions: arg.users)
