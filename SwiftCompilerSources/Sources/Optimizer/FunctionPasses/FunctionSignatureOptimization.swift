@@ -19,7 +19,9 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
   var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
 
   for function in moduleContext.functions {
-    guard function.shouldOptimize else {
+    guard function.hasOwnership,
+          function.shouldOptimize
+    else {
       continue
     }
 
@@ -48,6 +50,7 @@ private func trySpecialize(apply: FullApplySite,
                            cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
                            _ moduleContext: ModulePassContext) -> Bool {
   guard let callee = apply.referencedFunction,
+        callee.hasOwnership,
         callee.shouldOptimize,
         callee.isDefinition,
         callee.blocks.contains(where: { $0.terminator.isFunctionExiting })
@@ -119,6 +122,7 @@ private func getSpecializationKind(for argument: FunctionArgument,
     if argument.isCopiedAtFunctionEntry(context) {
       return .guaranteedToOwned
     }
+    // TODO: should we also explode partially dead trivial structs?
     if argument.isPartiallyUsed(context) {
       return .explode
     }
@@ -223,6 +227,7 @@ private extension FunctionArgument {
       return false
     }
     for (fieldIdx, field) in structType.getNominalFields(in: parentFunction)!.enumerated() {
+      // TODO: should we also explode partially dead trivial structs?
       if !usedFields.contains(fieldIdx), !field.isTrivial(in: parentFunction) {
         return true
       }
@@ -369,6 +374,9 @@ private func specialize(function: Function,
   moduleContext.moveFunctionBody(from: function, to: specializedFunction)
 
   moduleContext.transform(function: function) { context in
+
+    function.set(thunkKind: .signatureOptimizedThunk, context)
+
     let newEntryBlock = function.appendNewBlock(context)
     var newApplyArgs = [Value]()
     for origArg in specializedFunction.arguments {
