@@ -826,6 +826,12 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   P.addDeadStoreElimination();
   P.addDCE();
   P.addSimplification();
+
+  // Cleanup copies from FunctionSignatureOptimization
+  if (P.getOptions().CopyPropagation != CopyPropagationOption::Off) {
+    P.addCopyPropagation();
+  }
+
   P.addInitializeStaticGlobals();
 
   // dead-store-elimination can expose opportunities for dead object elimination.
