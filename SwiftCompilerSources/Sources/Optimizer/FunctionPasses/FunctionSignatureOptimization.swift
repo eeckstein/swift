@@ -19,6 +19,10 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
   var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
 
   for function in moduleContext.functions {
+    guard function.shouldOptimize else {
+      continue
+    }
+
     var changed: Bool
     repeat {
       changed = false
@@ -44,6 +48,7 @@ private func trySpecialize(apply: FullApplySite,
                            cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
                            _ moduleContext: ModulePassContext) -> Bool {
   guard let callee = apply.referencedFunction,
+        callee.shouldOptimize,
         callee.isDefinition,
         callee.blocks.contains(where: { $0.terminator.isFunctionExiting })
   else {
