@@ -22,7 +22,7 @@
 
 // Second test: check if CMO really imports the SIL of functions in other modules.
 
-// RUN: %target-build-swift -O -wmo -module-name=Main -I%t %s -Xllvm -sil-disable-pass=FunctionSignatureOpts -emit-sil -o %t/out.sil
+// RUN: %target-build-swift -O -wmo -module-name=Main -I%t %s -Xllvm -sil-disable-pass=FunctionSignatureOptimization -emit-sil -o %t/out.sil
 // RUN: %FileCheck %s -check-prefix=CHECK-SIL < %t/out.sil
 // RUN: %FileCheck %s -check-prefix=CHECK-SIL2 < %t/out.sil
 
