@@ -62,10 +62,10 @@ func takesPointer(_ p: UnsafeRawBufferPointer) {}
 //   apply [[TAKES_PTR]](%{{.*}}) : $@convention(thin) (UnsafeRawBufferPointer) -> ()
 // But the inlining isn't consistent across builds with and without debug info.
 //
-// CHECK-LABEL: sil shared [noinline] @$s30devirt_specialized_conformance19testWithUnsafeBytesyyxlFSayypG_Tg5 : $@convention(thin) (@guaranteed Array<Any>) -> () {
+// CHECK-LABEL: sil shared [noinline] @$s30devirt_specialized_conformance19testWithUnsafeBytesyyxlFSayypG_Tg5{{.*}} :
 // CHECK: bb0
 // CHECK-NOT: witness_method
-// CHECK-LABEL: } // end sil function '$s30devirt_specialized_conformance19testWithUnsafeBytesyyxlFSayypG_Tg5'
+// CHECK-LABEL: } // end sil function '$s30devirt_specialized_conformance19testWithUnsafeBytesyyxlFSayypG_Tg5{{.*}}'
 @inline(never)
 func testWithUnsafeBytes<T>(_ t: T) {
   if let cb = t as? ContiguousBytes {

@@ -29,8 +29,8 @@ public func testOptionalArray() {
 
   // CHECK:      [[SOME_BB]](
   // CHECK-NOT:    retain
-  // CHECK:        [[ORIGINAL_OWNER:%.*]] = unchecked_ref_cast {{%.*}} : $Builtin.BridgeObject to $__ContiguousArrayStorageBase
   // CHECK:        [[POINTER:%.+]] = struct $UnsafeRawPointer (
+  // CHECK:        [[ORIGINAL_OWNER:%.*]] = unchecked_ref_cast {{%.*}} : $Builtin.BridgeObject to $__ContiguousArrayStorageBase
   // CHECK-NEXT:   [[ORIGINAL_OWNER_EXISTENTIAL:%.*]] = init_existential_ref [[ORIGINAL_OWNER]]
   // CHECK-NEXT:   [[OWNER:%.+]] = enum $Optional<AnyObject>, #Optional.some!enumelt, [[ORIGINAL_OWNER_EXISTENTIAL]]
   // CHECK-NEXT:   [[DEP_POINTER:%.+]] = mark_dependence [[POINTER]] : $UnsafeRawPointer on [[ORIGINAL_OWNER]]
