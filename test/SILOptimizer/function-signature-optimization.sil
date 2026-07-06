@@ -26,7 +26,7 @@ struct S2 {
 // CHECK-NEXT:    return %0
 // CHECK:       } // end sil function '$s8dead_argTf4dn_n'
 
-// CHECK-LABEL: sil [ossa] @dead_arg :
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @dead_arg :
 // CHECK:         %2 = function_ref @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int
 // CHECK:         %3 = apply %2(%1)
 // CHECK:         return %3
@@ -55,7 +55,7 @@ bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
 // CHECK:         %1 = apply undef(%0) : $@convention(thin) (@owned AnyObject) -> ()
 // CHECK:       } // end sil function '$s14guaranteed_argTf4o_n'
 
-// CHECK-LABEL: sil [ossa] @guaranteed_arg :
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @guaranteed_arg :
 // CHECK:         %1 = copy_value %0
 // CHECK:         %2 = function_ref @$s14guaranteed_argTf4o_n : $@convention(thin) (@owned AnyObject) -> ()
 // CHECK:         %3 = apply %2(%1)
@@ -89,7 +89,7 @@ bb0(%0 : @owned $AnyObject):
 // CHECK:         %1 = apply undef(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
 // CHECK:       } // end sil function '$s9owned_argTf4g_n'
 
-// CHECK-LABEL: sil [ossa] @owned_arg :
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @owned_arg :
 // CHECK:         %1 = function_ref @$s9owned_argTf4g_n : $@convention(thin) (@guaranteed AnyObject) -> ()
 // CHECK:         %2 = apply %1(%0)
 // CHECK-NEXT:    destroy_value %0
@@ -123,13 +123,13 @@ bb0(%0 : @guaranteed $AnyObject):
 // CHECK-NEXT:    tuple
 // CHECK:       } // end sil function '$s16partial_dead_argTf4x_nTf4nd_n'
 
-// CHECK-LABEL: sil shared [ossa] @$s16partial_dead_argTf4x_n : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject) -> () {
+// CHECK-LABEL: sil shared [signature_optimized_thunk] [ossa] @$s16partial_dead_argTf4x_n : $@convention(thin) (@guaranteed AnyObject, @guaranteed AnyObject) -> () {
 // CHECK:       bb0(%0 : @guaranteed $AnyObject, %1 : @guaranteed $AnyObject):
 // CHECK:         %2 = function_ref @$s16partial_dead_argTf4x_nTf4nd_n : $@convention(thin) (@guaranteed AnyObject) -> ()
 // CHECK:         %3 = apply %2(%0) : $@convention(thin) (@guaranteed AnyObject) -> ()
 // CHECK:       } // end sil function '$s16partial_dead_argTf4x_n'
 
-// CHECK-LABEL: sil [ossa] @partial_dead_arg : $@convention(thin) (@guaranteed S) -> () {
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @partial_dead_arg : $@convention(thin) (@guaranteed S) -> () {
 // CHECK:       bb0(%0 : @guaranteed $S):
 // CHECK:         %1 = begin_borrow %0
 // CHECK:         (%2, %3) = destructure_struct %1
