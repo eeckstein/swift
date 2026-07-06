@@ -34,8 +34,8 @@ public func makeOne<T>(_ t:   T) -> T {
 // CHECK:       bb0(%0 : $*T, %1 : $*U, %2 : $*T, %3 : $*U):
 // CHECK-NEXT:    debug_value %2 : $*T, let, name "t", argno 1, expr op_deref
 // CHECK-NEXT:    debug_value %3 : $*U, let, name "u", argno 2, expr op_deref
-// CHECK-NEXT:    copy_addr %3 to [init] %1
 // CHECK-NEXT:    copy_addr %2 to [init] %0
+// CHECK-NEXT:    copy_addr %3 to [init] %1
 // CHECK-NEXT:    %8 = tuple ()
 // CHECK-NEXT:    return %8
 // CHECK-NEXT:  } // end sil function '$s17tuples_from_packs8makePairyx_q_tx_q_tr0_lF'
