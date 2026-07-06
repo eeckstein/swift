@@ -174,10 +174,10 @@ _ = ArchetypeToConcreteCastC(t: e)
 // x -> y where x is a super class of y.
 // CHECK-LABEL: sil shared @$s30specialize_checked_cast_branch24ArchetypeToConcreteCastD1tAA1DCx_tlFAA1CC_Tg5 : $@convention(thin) (@guaranteed C) -> @owned D {
 // CHECK: bb0([[ARG:%.*]] : $C):
-// CHECK:   strong_retain [[ARG]]
 // CHECK:   checked_cast_br C in [[ARG]] : $C to D, [[SUCC_BB:bb[0-9]+]], [[FAIL_BB:bb[0-9]+]]
 //
 // CHECK: [[SUCC_BB]]([[T0:%.*]] : $D):
+// CHECK:   strong_retain [[T0]]
 // CHECK:   return [[T0]] : $D
 //
 // CHECK: [[FAIL_BB]]:
