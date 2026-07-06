@@ -30,7 +30,7 @@ public func run_ChaCha(_ N: Int) {
   let key = Array(repeating: UInt8(1), count: 32) // expected-note {{of 'key}}
   let nonce = Array(repeating: UInt8(2), count: 12) // expected-note {{of 'nonce}}
 
-  var checkedtext = Array(repeating: UInt8(0), count: 1024) // expected-note {{of 'checkedtext}}
+  var checkedtext = Array(repeating: UInt8(0), count: 1024) // expected-note* {{of 'checkedtext}}
   ChaCha20.encrypt(bytes: &checkedtext, key: key, nonce: nonce)
   checkResult(checkedtext)
 
