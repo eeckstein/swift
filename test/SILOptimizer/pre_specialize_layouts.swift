@@ -206,8 +206,8 @@ public func usePrespecializedEntryPointsWithMarkerProtocol(t: SomeClass) {
 // OPT: sil @$s22pre_specialize_layouts34usePrespecializedThrowsEntryPointsyyKF : $@convention(thin) () -> @error any Error {
 // OPT:   [[F1:%.*]] = function_ref @$s30pre_specialized_module_layouts26publicPrespecializedThrowsyxxKlFSi_Ts5 : $@convention(thin) (Int) -> (Int, @error any Error)
 // OPT:   try_apply [[F1]]({{%.*}}) : $@convention(thin) (Int) -> (Int, @error any Error)
-// OPT-macosx:   [[F2:%.*]] = function_ref @$s30pre_specialized_module_layouts26publicPrespecializedThrowsyxxKlFAA8SomeDataV_Tg5 : $@convention(thin) (SomeData) -> (SomeData, @error any Error)
-// OPT-macosx:   try_apply [[F2]]({{%.*}}) : $@convention(thin) (SomeData) -> (SomeData, @error any Error)
+// OPT-macosx:   [[F2:%.*]] = function_ref @$s30pre_specialized_module_layouts26publicPrespecializedThrowsyxxKlFAA8SomeDataV_Tg5Tf4d_n : $@convention(thin) () -> (SomeData, @error any Error)
+// OPT-macosx:   try_apply [[F2]]() : $@convention(thin) () -> (SomeData, @error any Error)
 // OPT:   [[F3:%.*]] = function_ref @$s30pre_specialized_module_layouts26publicPrespecializedThrowsyxxKlFyXl_Ts5 : $@convention(thin) (@guaranteed AnyObject) -> (@owned AnyObject, @error any Error)
 // OPT:   [[A1:%.*]] = unchecked_ref_cast {{%.*}} : $SomeClass to $AnyObject
 // OPT:   try_apply [[F3]]([[A1]]) : $@convention(thin) (@guaranteed AnyObject) -> (@owned AnyObject, @error any Error), normal [[BB1:bb.*]], error

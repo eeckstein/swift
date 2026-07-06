@@ -48,7 +48,7 @@ struct AA {
   var i : Builtin.Int32
 }
 
-class B {
+class B: P {
   var i : Builtin.Int32
   init()
 }
@@ -1810,5 +1810,62 @@ bb0(%0 : @owned $NC, %1 : $*NC, %2 : @owned $AnyObject):
   %5 = load [take] %4
   store %2 to [init] %4
   return %5
+}
+
+// CHECK-LABEL: sil [ossa] @mismatching_existential_type_borrow :
+// CHECK:         [[UO:%.*]] = unchecked_ownership %0
+// CHECK:         [[C:%.*]] = unchecked_ref_cast [[UO]] : $E to $B
+// CHECK:           = load_borrow {{.*}}, value_hint [[C]]
+// CHECK-LABEL: } // end sil function 'mismatching_existential_type_borrow'
+sil [ossa] @mismatching_existential_type_borrow : $@convention(thin) (@owned E) -> () {
+bb0(%0 : @owned $E):
+  %1 = alloc_stack [lexical] $any P
+  %2 = init_existential_addr %1, $E
+  store %0 to [init] %2
+  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %5 = unchecked_addr_cast %4 to $*B
+  %6 = load_borrow %5
+  %7 = apply undef(%6) : $@convention(method) (@guaranteed B) -> ()
+  end_borrow %6
+  destroy_addr %1
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @mismatching_existential_type_copy :
+// CHECK:         [[CV:%.*]] = copy_value %0
+// CHECK:         [[C:%.*]] = unchecked_ref_cast [[CV]] : $E to $B
+// CHECK:           = apply undef([[C]])
+// CHECK-LABEL: } // end sil function 'mismatching_existential_type_copy'
+sil [ossa] @mismatching_existential_type_copy : $@convention(thin) (@owned E) -> () {
+bb0(%0 : @owned $E):
+  %1 = alloc_stack [lexical] $any P
+  %2 = init_existential_addr %1, $E
+  store %0 to [init] %2
+  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %5 = unchecked_addr_cast %4 to $*B
+  %6 = load [copy] %5
+  %7 = apply undef(%6) : $@convention(method) (@owned B) -> ()
+  destroy_addr %1
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @mismatching_existential_type_take :
+// CHECK-LABEL: } // end sil function 'mismatching_existential_type_take'
+sil [ossa] @mismatching_existential_type_take : $@convention(thin) (@owned E) -> () {
+bb0(%0 : @owned $E):
+  %1 = alloc_stack [lexical] $any P
+  %2 = init_existential_addr %1, $E
+  store %0 to [init] %2
+  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %5 = unchecked_addr_cast %4 to $*B
+  %6 = load [take] %5
+  %7 = apply undef(%6) : $@convention(method) (@owned B) -> ()
+  dealloc_stack %1
+  %r = tuple ()
+  return %r
 }
 

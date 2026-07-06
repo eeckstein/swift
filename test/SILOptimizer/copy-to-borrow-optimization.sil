@@ -2423,7 +2423,7 @@ bb1:
   %4 = apply undef(%3) : $@convention(thin) (@in_guaranteed C) -> ()
   %5 = load [copy] %3
   copy_addr %3 to %1
-  debug_value %3, expr op_deref
+  debug_value %3, name "x", expr op_deref
   destroy_addr %3
   dealloc_stack %3
   return %5

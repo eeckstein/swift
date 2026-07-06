@@ -23,12 +23,15 @@ public class Klass {}
 // CHECK-NEXT:   - String:          ''''
 // CHECK-NEXT: ...
 public var global = Klass() // expected-remark {{heap allocated ref of type 'Klass'}}
+                            // expected-note @-1:12 {{of 'global'}}
+                  // expected-note @-2:12 {{of 'global'}}
+                  // expected-note @-3:12 {{of 'global'}}
 
 // CHECK: --- !Missed
 // CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
 // CHECK-NEXT: Name:            sil.memory
 // CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                    Line: [[# @LINE + 42 ]], Column: 12 }
+// CHECK-NEXT:                    Line: [[# @LINE + 41 ]], Column: 12 }
 // CHECK-NEXT: Function:        '$s12optrecordmod9getGlobalAA5KlassCyF'
 // CHECK-NEXT: Args:
 // CHECK-NEXT:   - String:          'begin exclusive access to value of type '''
@@ -36,29 +39,14 @@ public var global = Klass() // expected-remark {{heap allocated ref of type 'Kla
 // CHECK-NEXT:   - String:          ''''
 // CHECK-NEXT:   - InferredValue:   'of ''global'''
 // CHECK-NEXT:     DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                        Line: [[# @LINE - 14 ]], Column: 12 }
-// CHECK-NEXT: ...
-//
-// CHECK: --- !Missed
-// CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
-// CHECK-NEXT: Name:            sil.memory
-// CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                    Line: [[# @LINE + 27 ]], Column: 12 }
-// CHECK-NEXT: Function:        '$s12optrecordmod9getGlobalAA5KlassCyF'
-// CHECK-NEXT: Args:
-// CHECK-NEXT:   - String:          'end exclusive access to value of type '''
-// CHECK-NEXT:   - ValueType:       Klass
-// CHECK-NEXT:   - String:          ''''
-// CHECK-NEXT:   - InferredValue:   'of ''global'''
-// CHECK-NEXT:     DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                        Line: [[# @LINE - 29 ]], Column: 12 }
+// CHECK-NEXT:                        Line: [[# @LINE - 17 ]], Column: 12 }
 // CHECK-NEXT: ...
 //
 // CHECK: --- !Missed
 // CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
 // CHECK-NEXT: Name:            sil.memory
 // CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift',
-// CHECK-NEXT:                    Line: [[# @LINE + 12]], Column: 5 }
+// CHECK-NEXT:                    Line: [[# @LINE + 26]], Column: 5 }
 // CHECK-NEXT: Function:        '$s12optrecordmod9getGlobalAA5KlassCyF'
 // CHECK-NEXT: Args:
 // CHECK-NEXT:   - String:          'retain of type '''
@@ -66,17 +54,27 @@ public var global = Klass() // expected-remark {{heap allocated ref of type 'Kla
 // CHECK-NEXT:   - String:          ''''
 // CHECK-NEXT:   - InferredValue:   'of ''global'''
 // CHECK-NEXT:     DebugLoc:        { File: '{{.*}}basic_yaml.swift',
-// CHECK-NEXT:                        Line: [[# @LINE - 44 ]], Column: 12 }
+// CHECK-NEXT:                        Line: [[# @LINE - 32 ]], Column: 12 }
+//
+// CHECK: --- !Missed
+// CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
+// CHECK-NEXT: Name:            sil.memory
+// CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
+// CHECK-NEXT:                    Line: [[# @LINE + 12 ]], Column: 12 }
+// CHECK-NEXT: Function:        '$s12optrecordmod9getGlobalAA5KlassCyF'
+// CHECK-NEXT: Args:
+// CHECK-NEXT:   - String:          'end exclusive access to value of type '''
+// CHECK-NEXT:   - ValueType:       Klass
+// CHECK-NEXT:   - String:          ''''
+// CHECK-NEXT:   - InferredValue:   'of ''global'''
+// CHECK-NEXT:     DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
+// CHECK-NEXT:                        Line: [[# @LINE - 46 ]], Column: 12 }
 // CHECK-NEXT: ...
 @inline(never)
 public func getGlobal() -> Klass {
     return global // expected-remark @:5 {{retain of type 'Klass'}}
-                  // expected-note @-49:12 {{of 'global'}}
-                  // expected-remark @-2 {{begin exclusive access to value of type 'Klass'}}
-                  // expected-note @-51:12 {{of 'global'}}
-                  // NOTE: We really want the end access at :18, not :12. TODO Fix this!
-                  // expected-remark @-5 {{end exclusive access to value of type 'Klass'}}
-                  // expected-note @-54:12 {{of 'global'}}
+                  // expected-remark @-1 {{begin exclusive access to value of type 'Klass'}}
+                  // expected-remark @-2 {{end exclusive access to value of type 'Klass'}}
 }
 
 // CHECK: --- !Missed
@@ -94,7 +92,7 @@ public func getGlobal() -> Klass {
 // CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
 // CHECK-NEXT: Name:            sil.memory
 // CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                    Line: [[# @LINE + 40 ]], Column: 5 }
+// CHECK-NEXT:                    Line: [[# @LINE + 40 ]], Column: 11 }
 // CHECK-NEXT: Function:        '$s12optrecordmod9useGlobalyyF'
 // CHECK-NEXT: Args:
 // CHECK-NEXT:   - String:          'retain of type '''
@@ -136,7 +134,7 @@ public func useGlobal() {
     // releases are the end of the print.
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
              // We test the type emission above since FileCheck can handle regex.
-             // expected-remark @-2:5 {{retain of type}}
+             // expected-remark @-2:11 {{retain of type}}
              // expected-note @-6 {{of 'x'}}
              // expected-remark @-4:12 {{release of type}}
              // expected-remark @-5:12 {{release of type}}

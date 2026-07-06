@@ -10,7 +10,7 @@ protocol ClassProtocol: AnyObject { func method() }
 class C: ClassProtocol { func method() {} }
 
 // CHECK-LABEL: sil [signature_optimized_thunk] [heuristic_always_inline] @test_indirect_class_protocol : $@convention(thin) (@in any ClassProtocol) -> ()
-sil [noinline] @test_indirect_class_protocol : $@convention(thin) (@in ClassProtocol) -> () {
+sil [noinline] [ossa] @test_indirect_class_protocol : $@convention(thin) (@in ClassProtocol) -> () {
 // CHECK: bb0(%0 : $*any ClassProtocol):
 bb0(%0 : $*ClassProtocol):
   destroy_addr %0 : $*ClassProtocol
@@ -27,29 +27,27 @@ bb0(%0 : $*ClassProtocol):
   // CHECK-NEXT: return undef
   // CHECK:      } // end sil function '$s39test_indirect_class_protocol_guaranteedTf4e_n'
   
-sil @test_indirect_class_protocol_guaranteed : $@convention(thin) (@in_guaranteed ClassProtocol) -> () {
+sil [ossa] @test_indirect_class_protocol_guaranteed : $@convention(thin) (@in_guaranteed ClassProtocol) -> () {
 bb0(%0 : $*ClassProtocol):
-  %1 = load %0 : $*ClassProtocol
+  %1 = load_borrow %0
   %2 = open_existential_ref %1 : $ClassProtocol to $@opened(1, ClassProtocol) Self
   %f = witness_method $@opened(1, ClassProtocol) Self, #ClassProtocol.method : <Self: ClassProtocol> (Self) -> () -> (), %2 : $@opened(1, ClassProtocol) Self : $@convention(witness_method : ClassProtocol) <Self: ClassProtocol> (@guaranteed Self) -> ()
   apply %f<@opened(1, ClassProtocol) Self>(%2) : $@convention(witness_method : ClassProtocol) <Self: ClassProtocol> (@guaranteed Self) -> ()
+  end_borrow %1
   return undef : $()
 }
 
 // Check that a specialization of test_indirect_class_protocol is created.
-// CHECK-LABEL: sil shared {{.*}}@$s28test_indirect_class_protocolTf4e_n4main1CC_Tg5 : $@convention(thin) (@owned C) -> ()
-// CHECK:      bb0(%0 : $C):
-// CHECK-NEXT: strong_release %0
-// CHECK-NEXT: return undef
-// CHECK-LABEL: end sil function '$s28test_indirect_class_protocolTf4e_n4main1CC_Tg5'
+// CHECK-LABEL: sil shared {{.*}}@$s28test_indirect_class_protocolTf4e_n :
+// CHECK-LABEL: end sil function '$s28test_indirect_class_protocolTf4e_n'
 
-sil @invoke_indirect_class_protocol : $@convention(thin) (@guaranteed C) -> () {
-bb0(%0 : $C):
+sil [ossa] @invoke_indirect_class_protocol : $@convention(thin) (@guaranteed C) -> () {
+bb0(%0 : @guaranteed $C):
   %1 = init_existential_ref %0 : $C : $C, $ClassProtocol
 
   %z = alloc_stack $ClassProtocol
-  retain_value %1 : $ClassProtocol
-  store %1 to %z : $*ClassProtocol
+  %2 = copy_value %1
+  store %2 to [init] %z
 
   %f = function_ref @test_indirect_class_protocol_guaranteed : $@convention(thin) (@in_guaranteed ClassProtocol) -> ()
   apply %f(%z) : $@convention(thin) (@in_guaranteed ClassProtocol) -> ()
