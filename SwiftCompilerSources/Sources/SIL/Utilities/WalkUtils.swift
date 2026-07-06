@@ -529,6 +529,8 @@ extension AddressDefUseWalker {
       } else {
         return unmatchedPath(address: operand, path: path)
       }
+    case let uac as UncheckedAddrCastInst where uac.fromAddress is OpenExistentialAddrInst:
+      return walkDownUses(ofAddress: uac, path: path)
     case let ia as IndexAddrInst where ia.isProjection:
       if let idx = ia.constantIndex {
         if let subPath = path.popIfMatches(.indexedElement, index: idx) {
@@ -847,6 +849,11 @@ extension AddressUseDefWalker {
       return walkUp(address: uteda.enum, path: path.push(.enumCase, index: uteda.caseIndex))
     case is InitExistentialAddrInst, is OpenExistentialAddrInst:
       return walkUp(address: (def as! Instruction).operands[0].value, path: path.push(.existential, index: 0))
+    case let uac as UncheckedAddrCastInst:
+      if let oea = uac.fromAddress as? OpenExistentialAddrInst {
+        return walkUp(address: oea, path: path)
+      }
+      return rootDef(address: def, path: path)
     case let ia as IndexAddrInst where ia.isProjection:
       if let idx = ia.constantIndex {
         return walkUp(address: ia.base, path: path.push(.indexedElement, index: idx))
