@@ -102,18 +102,18 @@ public func testOutlining() {
 // CHECK:  %1 = objc_method %0 : $Gizmo, #Gizmo.stringProperty!getter.foreign : (Gizmo) -> () -> String?
 // CHECK:  %2 = apply %1(%0) : $@convention(objc_method) (Gizmo) -> @autoreleased Optional<NSString>
 // CHECK:  switch_enum %2 : $Optional<NSString>, case #Optional.some!enumelt: bb1, case #Optional.none!enumelt: bb2
-// CHECK:bb1(%5 : $NSString):
-// CHECK:  %7 = function_ref @$sSS10FoundationE36_unconditionallyBridgeFromObjectiveCySSSo8NSStringCSgFZ : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
-// CHECK:  %8 = metatype $@thin String.Type
-// CHECK:  %9 = apply %7(%2, %8) : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
+// CHECK:bb1([[A:%.*]] : $NSString):
+// CHECK:  [[F:%.*]] = function_ref @$sSS10FoundationE36_unconditionallyBridgeFromObjectiveCySSSo8NSStringCSgFZ : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
+// CHECK:  [[MT:%.*]] = metatype $@thin String.Type
+// CHECK:  [[S:%.*]] = apply [[F]](%2, [[MT]]) : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
 // CHECK:  release_value %2 : $Optional<NSString>
-// CHECK:  %11 = enum $Optional<String>, #Optional.some!enumelt, %9 : $String
-// CHECK:  br bb3(%11 : $Optional<String>)
+// CHECK:  [[O:%.*]] = enum $Optional<String>, #Optional.some!enumelt, [[S]] : $String
+// CHECK:  br bb3([[O]] : $Optional<String>)
 // CHECK:bb2:
-// CHECK:  %14 = enum $Optional<String>, #Optional.none!enumelt
-// CHECK:  br bb3(%14 : $Optional<String>)
-// CHECK:bb3(%16 : $Optional<String>):
-// CHECK:  return %16 : $Optional<String>
+// CHECK:  [[ON:%.*]] = enum $Optional<String>, #Optional.none!enumelt
+// CHECK:  br bb3([[ON]] : $Optional<String>)
+// CHECK:bb3([[A2:%.*]] : $Optional<String>):
+// CHECK:  return [[A2]] : $Optional<String>
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvgToTepb_'
 
 // CHECK-LABEL: sil shared [noinline] @$sSo5GizmoC14stringPropertySSSgvsToTembnn_ : $@convention(thin) (@owned String, Gizmo) -> () {

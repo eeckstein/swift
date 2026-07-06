@@ -101,7 +101,7 @@ struct Main {
 
 // NOOOPT-NO: Simultaneous access to 0x
 // NOOPT: define{{.*}}void @swift_beginAccess
-// NOOPT: tail call swiftcc void [[TRAPFN:@.*]]()
-// NOOPT: define{{.*}}void [[TRAPFN]]()
+// NOOPT: tail call swiftcc void [[TRAPFN:@.*]](
+// NOOPT: define{{.*}}void [[TRAPFN]](
 // NOOPT: call void @llvm.trap()
 // NOOPT: unreachable
