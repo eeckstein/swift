@@ -447,14 +447,15 @@ private func provideValue(
 ) -> Value {
   let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
 
+  let builder = availableValue.getBuilderForProjections(context)
+  let value: Value
+
   switch load.kind {
   case .unqualified:
-    return availableValue.value.createProjection(path: projectionPath,
-                                                 builder: availableValue.getBuilderForProjections(context))
+    value = availableValue.value.createProjection(path: projectionPath, builder: builder)
   case .copy, .trivial:
     // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
-    return availableValue.value.createProjectionAndCopy(path: projectionPath,
-                                                        builder: availableValue.getBuilderForProjections(context))
+    value = availableValue.value.createProjectionAndCopy(path: projectionPath, builder: builder)
   case .take:
     if projectionPath.isEmpty {
       return shrinkMemoryLifetime(to: availableValue, context)
@@ -463,10 +464,16 @@ private func provideValue(
     }
 
   case .borrow:
-    let builder = availableValue.getBuilderForProjections(context)
     let conversion = builder.createUncheckedOwnership(operand: availableValue.value, forwardingOwnership: .none)
-    return conversion.createProjection(path: projectionPath, builder: builder)
+    value = conversion.createProjection(path: projectionPath, builder: builder)
   }
+  if value.type != load.type {
+    // TODO: should not be need as load-simpilfication can do this.
+    // Just add a check for the correct type
+    assert(value.type.isClass && load.type.isClass, "unexpected type mismatch")
+    return builder.createUncheckedRefCast(from: value, to: load.type)
+  }
+  return value
 }
 
 /// In case of a `load [take]` shrink lifetime of the value in memory back to the `availableValue`
