@@ -6403,11 +6403,12 @@ class PointerToAddressInst
   USE_SHARED_UINT32;
 
   PointerToAddressInst(SILDebugLocation DebugLoc, SILValue Operand, SILType Ty,
-                       bool IsStrict, bool IsInvariant,
+                       bool IsStrict, bool IsInvariant, bool IsImmutable,
                        llvm::MaybeAlign Alignment)
       : UnaryInstructionBase(DebugLoc, Operand, Ty) {
     sharedUInt8().PointerToAddressInst.isStrict = IsStrict;
     sharedUInt8().PointerToAddressInst.isInvariant = IsInvariant;
+    sharedUInt8().PointerToAddressInst.isImmutable = IsImmutable;
     setAlignment(Alignment);
   }
 
@@ -6423,6 +6424,15 @@ public:
   /// produces the same value.
   bool isInvariant() const {
     return sharedUInt8().PointerToAddressInst.isInvariant;
+  }
+  /// Whether the referenced memory is immutable within the liverange of the
+  /// value which contains the pointer (e.g. a struct which contains the
+  /// pointer as a field).
+  bool isImmutable() const {
+    return sharedUInt8().PointerToAddressInst.isImmutable;
+  }
+  void setImmutable(bool immutable = true) {
+    sharedUInt8().PointerToAddressInst.isImmutable = immutable;
   }
 
   /// The byte alignment of the address. Since the alignment of types isn't

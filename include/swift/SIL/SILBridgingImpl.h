@@ -1291,6 +1291,14 @@ bool BridgedInstruction::PointerToAddressInst_isInvariant() const {
   return getAs<swift::PointerToAddressInst>()->isInvariant();
 }
 
+bool BridgedInstruction::PointerToAddressInst_isImmutable() const {
+  return getAs<swift::PointerToAddressInst>()->isImmutable();
+}
+
+void BridgedInstruction::PointerToAddressInst_setImmutable(bool isImmutable) const {
+  getAs<swift::PointerToAddressInst>()->setImmutable(isImmutable);
+}
+
 uint64_t BridgedInstruction::PointerToAddressInst_getAlignment() const {
   auto maybeAlign = getAs<swift::PointerToAddressInst>()->alignment();
   if (maybeAlign.has_value()) {
@@ -2617,10 +2625,12 @@ BridgedInstruction BridgedBuilder::createAddressToPointer(BridgedValue address, 
 
 BridgedInstruction BridgedBuilder::createPointerToAddress(BridgedValue pointer, BridgedType addressTy,
                                                           bool isStrict, bool isInvariant,
+                                                          bool isImmutable,
                                                           uint64_t alignment) const {
   return {unbridged().createPointerToAddress(regularLoc(), pointer.getSILValue(), addressTy.unbridged(),
                                              isStrict, isInvariant,
-                                             alignment == 0 ? llvm::MaybeAlign() : llvm::Align(alignment))};
+                                             alignment == 0 ? llvm::MaybeAlign() : llvm::Align(alignment),
+                                             isImmutable)};
 }
 
 BridgedInstruction BridgedBuilder::createIndexAddr(BridgedValue base, BridgedValue index,

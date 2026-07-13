@@ -982,6 +982,17 @@ class PointerToAddressInst : SingleValueInstruction, UnaryInstruction {
   public var isStrict: Bool { bridged.PointerToAddressInst_isStrict() }
   public var isInvariant: Bool { bridged.PointerToAddressInst_isInvariant() }
 
+  /// True if the referenced memory is immutable within the liverange of the
+  /// value which contains the pointer (e.g. a struct which contains the
+  /// pointer as a field).
+  public var isImmutable: Bool { bridged.PointerToAddressInst_isImmutable() }
+
+  public func set(isImmutable: Bool, _ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    bridged.PointerToAddressInst_setImmutable(isImmutable)
+    context.notifyInstructionChanged(self)
+  }
+
   public var alignment: Int? {
     let maybeAlign = bridged.PointerToAddressInst_getAlignment()
     if maybeAlign == 0 {

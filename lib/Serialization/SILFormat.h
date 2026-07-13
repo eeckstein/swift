@@ -593,7 +593,7 @@ namespace sil_block {
   // SIL instructions with one type, one typed valueref, and extra bits.
   using SILOneTypeOneOperandExtraAttributeLayout =
       BCRecordLayout<SIL_ONE_TYPE_ONE_OPERAND_EXTRA_ATTR, SILInstOpCodeField,
-                     BCFixed<10>, // Optional attributes
+                     BCFixed<11>, // Optional attributes
                      TypeIDField, SILTypeCategoryField, TypeIDField,
                      SILTypeCategoryField, ValueIDField>;
 

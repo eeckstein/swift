@@ -81,7 +81,8 @@ private func simplifyIndexRawPointer(of ptr2Addr: PointerToAddressInst, _ contex
 
   let builder = Builder(before: ptr2Addr, context)
   let newPtr2Addr = builder.createPointerToAddress(pointer: indexRawPtr.base, addressType: ptr2Addr.type,
-                                                   isStrict: ptr2Addr.isStrict, isInvariant: ptr2Addr.isInvariant)
+                                                   isStrict: ptr2Addr.isStrict, isInvariant: ptr2Addr.isInvariant,
+                                                   isImmutable: ptr2Addr.isImmutable)
   let newIndex = builder.createCastIfNeeded(of: index, toIndexTypeOf: indexRawPtr)
   let indexAddr = builder.createIndexAddr(base: newPtr2Addr, index: newIndex,
                                           needStackProtection: false, isProjection: false)

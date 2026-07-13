@@ -4504,6 +4504,7 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
 
     bool isStrict = false;
     bool isInvariant = false;
+    bool isImmutable = false;
     llvm::MaybeAlign alignment;
     SILOptionalAttrValue parsedValue;
     SourceLoc parsedValueLoc;
@@ -4516,6 +4517,9 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
 
       if (attr == "invariant")
         isInvariant = true;
+
+      if (attr == "immutable")
+        isImmutable = true;
 
       if (attr == "align")
         alignment = llvm::Align(std::get<uint64_t>(*parsedValue));
@@ -4530,7 +4534,7 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
     }
 
     ResultVal = B.createPointerToAddress(InstLoc, Val, Ty, isStrict,
-                                         isInvariant, alignment);
+                                         isInvariant, alignment, isImmutable);
     break;
   }
   case SILInstructionKind::RefToBridgeObjectInst: {

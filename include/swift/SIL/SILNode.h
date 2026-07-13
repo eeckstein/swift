@@ -278,7 +278,8 @@ protected:
 
     SHARED_FIELD(PointerToAddressInst, uint8_t
       isStrict : 1,
-      isInvariant : 1);
+      isInvariant : 1,
+      isImmutable : 1);
 
     SHARED_TEMPLATE_FIELD(typename, BeginAccessBase, uint8_t
       accessKind : NumSILAccessKindBits,

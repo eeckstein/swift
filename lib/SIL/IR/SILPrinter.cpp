@@ -2404,6 +2404,8 @@ public:
       *this << "[strict] ";
     if (CI->isInvariant())
       *this << "[invariant] ";
+    if (CI->isImmutable())
+      *this << "[immutable] ";
     if (CI->alignment())
       *this << "[align=" << CI->alignment()->value() << "] ";
     *this << CI->getType();

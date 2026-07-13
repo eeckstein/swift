@@ -1660,6 +1660,14 @@ bb0(%0 : $Builtin.RawPointer, %1 : $X):
   store %1 to %9 : $*X
   // CHECK: [[T6:%.*]] = pointer_to_address {{%.*}} : $Builtin.RawPointer to [align=4294967296] $*X
   // CHECK-NEXT: store %1 to [[T6]] : $*X
+  %10 = pointer_to_address %0 : $Builtin.RawPointer to [immutable] $*X
+  store %1 to %10 : $*X
+  // CHECK: [[T7:%.*]] = pointer_to_address {{%.*}} : $Builtin.RawPointer to [immutable] $*X
+  // CHECK-NEXT: store %1 to [[T7]] : $*X
+  %11 = pointer_to_address %0 : $Builtin.RawPointer to [strict] [invariant] [immutable] [align=8] $*X
+  store %1 to %11 : $*X
+  // CHECK: [[T8:%.*]] = pointer_to_address {{%.*}} : $Builtin.RawPointer to [strict] [invariant] [immutable] [align=8] $*X
+  // CHECK-NEXT: store %1 to [[T8]] : $*X
   %28 = tuple ()
   return %28 : $()
 }

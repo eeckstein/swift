@@ -2373,7 +2373,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     assert(encodedAlignment == llvm::encode(PAI.alignment())
            && "pointer_to_address alignment overflow");
     unsigned attrs = encodedAlignment | (PAI.isStrict() ? 0x100 : 0)
-                     | (PAI.isInvariant() ? 0x200 : 0);
+                     | (PAI.isInvariant() ? 0x200 : 0)
+                     | (PAI.isImmutable() ? 0x400 : 0);
     writeOneTypeOneOperandExtraAttributeLayout(
       PAI.getKind(), attrs, PAI.getType(), PAI.getOperand());
     break;

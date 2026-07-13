@@ -290,9 +290,10 @@ public struct Builder {
 
   public func createPointerToAddress(pointer: Value, addressType: Type,
                                      isStrict: Bool, isInvariant: Bool,
+                                     isImmutable: Bool = false,
                                      alignment: Int? = nil) -> PointerToAddressInst {
     let dr = bridged.createPointerToAddress(pointer.bridged, addressType.bridged, isStrict, isInvariant,
-                                            UInt64(alignment ?? 0))
+                                            isImmutable, UInt64(alignment ?? 0))
     return notifyNew(dr.getAs(PointerToAddressInst.self))
   }
 

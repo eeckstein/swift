@@ -1297,9 +1297,11 @@ public:
   PointerToAddressInst *
   createPointerToAddress(SILLocation Loc, SILValue Op, SILType Ty,
                          bool isStrict, bool isInvariant = false,
-                         llvm::MaybeAlign alignment = llvm::MaybeAlign()) {
+                         llvm::MaybeAlign alignment = llvm::MaybeAlign(),
+                         bool isImmutable = false) {
     return insert(new (getModule()) PointerToAddressInst(
-        getSILDebugLocation(Loc), Op, Ty, isStrict, isInvariant, alignment));
+        getSILDebugLocation(Loc), Op, Ty, isStrict, isInvariant, isImmutable,
+        alignment));
   }
 
   UncheckedRefCastInst *createUncheckedRefCast(SILLocation Loc, SILValue Op,

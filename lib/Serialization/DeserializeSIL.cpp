@@ -2232,13 +2232,14 @@ bool SILDeserializer::readSILInstruction(SILFunction *Fn,
     auto alignment = llvm::decodeMaybeAlign(Attr & 0xFF);
     bool isStrict = Attr & 0x100;
     bool isInvariant = Attr & 0x200;
+    bool isImmutable = Attr & 0x400;
     ResultInst = Builder.createPointerToAddress(
         Loc,
         getLocalValue(
             Builder.maybeGetFunction(), ValID,
             getSILType(MF->getType(TyID2), (SILValueCategory)TyCategory2, Fn)),
         getSILType(MF->getType(TyID), (SILValueCategory)TyCategory, Fn),
-        isStrict, isInvariant, alignment);
+        isStrict, isInvariant, alignment, isImmutable);
     break;
   }
   case SILInstructionKind::DeallocExistentialBoxInst: {

@@ -142,8 +142,10 @@ bb0:
 // CHECK-LABEL: sil [ossa] @test_pointer_to_address : $@convention(thin) (Builtin.RawPointer, Builtin.Int64) -> () {
 // CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [strict] $*Builtin.Int64
 // CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [invariant] $*Builtin.Int64
+// CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [immutable] $*Builtin.Int64
 // CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [align=1] $*Builtin.Int64
 // CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [strict] [align=8] $*Builtin.Int64
+// CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [strict] [invariant] [immutable] [align=8] $*Builtin.Int64
 // CHECK:   pointer_to_address %0 : $Builtin.RawPointer to [align=4294967296] $*Builtin.Int64
 sil [ossa] @test_pointer_to_address : $@convention(thin) (Builtin.RawPointer, Builtin.Int64) -> () {
 bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Int64):
@@ -153,10 +155,14 @@ bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Int64):
   store %1 to [trivial] %5 : $*Builtin.Int64
   %7 = pointer_to_address %0 : $Builtin.RawPointer to [invariant] $*Builtin.Int64
   store %1 to [trivial] %7 : $*Builtin.Int64
+  %8 = pointer_to_address %0 : $Builtin.RawPointer to [immutable] $*Builtin.Int64
+  store %1 to [trivial] %8 : $*Builtin.Int64
   %9 = pointer_to_address %0 : $Builtin.RawPointer to [align=1] $*Builtin.Int64
   store %1 to [trivial] %9 : $*Builtin.Int64
   %11 = pointer_to_address %0 : $Builtin.RawPointer to [strict] [align=8] $*Builtin.Int64
   store %1 to [trivial] %11 : $*Builtin.Int64
+  %12 = pointer_to_address %0 : $Builtin.RawPointer to [strict] [invariant] [immutable] [align=8] $*Builtin.Int64
+  store %1 to [trivial] %12 : $*Builtin.Int64
   %13 = pointer_to_address %0 : $Builtin.RawPointer to [align=4294967296] $*Builtin.Int64
   store %1 to [trivial] %13 : $*Builtin.Int64
   %28 = tuple ()

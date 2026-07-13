@@ -814,6 +814,8 @@ struct BridgedInstruction {
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedSubstitutionMap BuiltinInst_getSubstitutionMap() const;
   BRIDGED_INLINE bool PointerToAddressInst_isStrict() const;
   BRIDGED_INLINE bool PointerToAddressInst_isInvariant() const;
+  BRIDGED_INLINE bool PointerToAddressInst_isImmutable() const;
+  BRIDGED_INLINE void PointerToAddressInst_setImmutable(bool isImmutable) const;
   BRIDGED_INLINE uint64_t PointerToAddressInst_getAlignment() const;
   BRIDGED_INLINE void PointerToAddressInst_setAlignment(uint64_t alignment) const;
   BRIDGED_INLINE bool AddressToPointerInst_needsStackProtection() const;
@@ -1328,6 +1330,7 @@ struct BridgedBuilder{
                                                                                BridgedType addressTy,
                                                                                bool isStrict,
                                                                                bool isInvariant,
+                                                                               bool isImmutable,
                                                                                uint64_t alignment) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedInstruction createIndexAddr(BridgedValue base,
                                                                         BridgedValue index,
