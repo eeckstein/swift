@@ -131,15 +131,15 @@ extension _RigidArray where Element: ~Copyable {
   @export(implementation)
   internal subscript(position: Int) -> Element {
     @_transparent
-    @_unsafeSelfDependentResult
-    borrow {
-      unsafe _ptr(to: position).pointee
+    _read {
+      yield unsafe _ptr(to: position).pointee
     }
 
     @_transparent
-    @_unsafeSelfDependentResult
-    mutate {
-      unsafe &_mutablePtr(to: position).pointee
+    _modify {
+      _ = Builtin.beginCOWMutation(&self)
+      yield unsafe &_mutablePtr(to: position).pointee
+      Builtin.endCOWMutation(&self)
     }
   }
 }

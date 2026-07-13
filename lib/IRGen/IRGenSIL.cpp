@@ -6567,8 +6567,8 @@ void IRGenSILFunction::visitBeginCOWMutationInst(BeginCOWMutationInst *i) {
                                     /*isNonNull*/ true));
     }
   } else {
-    emitTrap("beginCOWMutation called for a non-reference",
-             /*EmitUnreachable=*/false);
+//    emitTrap("beginCOWMutation called for a non-reference",
+//             /*EmitUnreachable=*/false);
     isUnique.add(llvm::UndefValue::get(IGM.Int1Ty));
   }
   setLoweredExplosion(i->getUniquenessResult(), isUnique);

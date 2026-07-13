@@ -85,15 +85,15 @@ extension UniqueArray where Element: ~Copyable {
   @export(implementation)
   public subscript(position: Int) -> Element {
     @_transparent
-    @_unsafeSelfDependentResult
-    borrow {
-      unsafe _storage._ptr(to: position).pointee
+    _read {
+      yield unsafe _storage._ptr(to: position).pointee
     }
 
     @_transparent
-    @_unsafeSelfDependentResult
-    mutate {
-      unsafe &_storage._mutablePtr(to: position).pointee
+    _modify {
+      _ = Builtin.beginCOWMutation(&self)
+      yield unsafe &_storage._mutablePtr(to: position).pointee
+      Builtin.endCOWMutation(&self)
     }
   }
 }
