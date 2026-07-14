@@ -675,6 +675,12 @@ public struct UnsafeMutablePointer<Pointee: ~Copyable>: Copyable {
   public init(_ _rawValue: Builtin.RawPointer) {
     self._rawValue = _rawValue
   }
+
+  @export(implementation)
+  internal var _immutable: UnsafeMutablePointer<Pointee> {
+    unsafe .init(Builtin.setImmutable(_rawValue))
+  }
+
 }
 
 @available(*, unavailable)

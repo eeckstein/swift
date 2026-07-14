@@ -107,7 +107,7 @@ extension _RigidArray where Element: ~Copyable {
   @_transparent
   internal func _ptr(to index: Int) -> UnsafePointer<Element> {
     _checkItemIndex(index)
-    let p = unsafe _storage.baseAddress.unsafelyUnwrapped.advanced(by: index)
+    let p = unsafe _storage.baseAddress.unsafelyUnwrapped._immutable.project(index)
     return unsafe UnsafePointer(p)
   }
 
@@ -117,7 +117,7 @@ extension _RigidArray where Element: ~Copyable {
     to index: Int
   ) -> UnsafeMutablePointer<Element> {
     _checkItemIndex(index)
-    return unsafe _storage.baseAddress.unsafelyUnwrapped.advanced(by: index)
+    return unsafe _storage.baseAddress.unsafelyUnwrapped.project(index)
   }
 
   /// Accesses the element at the specified position.
