@@ -681,6 +681,11 @@ private enum ImmutableScope {
           return
         }
         return nil
+      case .pointer(let pointerToAddr):
+        guard pointerToAddr.isImmutable, pointerToAddr.parentFunction.hasOwnership else {
+          return nil
+        }
+        object = pointerToAddr.pointer.lookThroughPointerExtracts
       default:
         return nil
       }
@@ -883,6 +888,20 @@ private extension Value {
       return arg.convention == .indirectInGuaranteed
     default:
       return false
+    }
+  }
+
+  var lookThroughPointerExtracts: Value {
+    if ownership != .none {
+      return self
+    }
+    switch self {
+    case let structExtract as StructExtractInst:
+      return structExtract.struct.lookThroughPointerExtracts
+    case let enumData as UncheckedEnumDataInst:
+      return enumData.enum.lookThroughPointerExtracts
+    default:
+      return self
     }
   }
 }
