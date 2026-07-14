@@ -890,6 +890,20 @@ BUILTIN_MISC_OPERATION(AssumeAlignment, "assumeAlignment", "n", Special)
 /// (Builtin.RawPointer, Builtin.Word) -> Builtin.RawPointer
 BUILTIN_MISC_OPERATION(Dereferenceable, "dereferenceable", "n", Special)
 
+/// Marks a raw pointer as pointing to immutable memory. If the result of
+/// this builtin is used by a 'pointer_to_address', the optimizer can set
+/// the '[immutable]' flag on that 'pointer_to_address', indicating that the
+/// referenced memory is immutable within the liverange of the resulting
+/// address.
+///
+///   %immutablePtr = builtin "setImmutable" (%ptr : $Builtin.RawPointer)
+///                                          : $Builtin.RawPointer
+///   %address = pointer_to_address %immutablePtr
+///              : $Builtin.RawPointer to [immutable] $*Int
+///
+/// (Builtin.RawPointer) -> Builtin.RawPointer
+BUILTIN_MISC_OPERATION(SetImmutable, "setImmutable", "n", Special)
+
 // BUILTIN_MISC_OPERATION_WITH_SILGEN - Miscellaneous operations that are
 // specially emitted during SIL generation.
 //

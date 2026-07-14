@@ -164,6 +164,7 @@ static bool isBarrier(SILInstruction *inst) {
     case BuiltinValueKind::AllocVector:
     case BuiltinValueKind::AssumeAlignment:
     case BuiltinValueKind::Dereferenceable:
+    case BuiltinValueKind::SetImmutable:
     case BuiltinValueKind::GetEnumTag:
     case BuiltinValueKind::InjectEnumTag:
     case BuiltinValueKind::ExtractFunctionIsolation:

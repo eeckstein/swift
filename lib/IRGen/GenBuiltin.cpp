@@ -1510,6 +1510,16 @@ void irgen::emitBuiltinCall(IRGenFunction &IGF, const BuiltinInfo &Builtin,
     return;
   }
 
+  case BuiltinValueKind::SetImmutable: {
+    // A no-op pointer cast that passes on its value. This builtin only exists
+    // to let the optimizer set the `[immutable]` flag on a following
+    // 'pointer_to_address'. It should already be removed by that point, but
+    // if it survives until IRGen, it's simply the identity function.
+    auto pointerSrc = args.claimNext();
+    out.add(pointerSrc);
+    return;
+  }
+
   case BuiltinValueKind::AllocVector: {
     // Obsolete: only there to be able to read old Swift.interface files which still
     // contain the builtin.

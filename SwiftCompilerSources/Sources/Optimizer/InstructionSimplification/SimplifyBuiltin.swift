@@ -28,6 +28,8 @@ extension BuiltinInst : OnoneSimplifiable, SILCombineSimplifiable {
         optimizeCanBeClass(context)
       case .AssertConf:
         optimizeAssertConfig(context)
+      case .SetImmutable:
+        optimizeSetImmutable(context)
       case .Sizeof,
            .Strideof,
            .Alignof:
@@ -159,7 +161,29 @@ private extension BuiltinInst {
       return
     }
   }
-  
+
+  /// Marks a `pointer_to_address` which directly uses the result of this builtin as `[immutable]`.
+  /// ```
+  ///    %1 = builtin "setImmutable"(%ptr)
+  ///    %2 = pointer_to_address %1 to $*T
+  /// ```
+  /// ->
+  /// ```
+  ///    %2 = pointer_to_address %ptr to [immutable] $*T
+  /// ```
+  /// The builtin itself is just an identity function on its operand and is removed once the
+  /// flag is transferred to any following `pointer_to_address`.
+  func optimizeSetImmutable(_ context: SimplifyContext) {
+    for use in uses {
+      if let pointerToAddr = use.instruction as? PointerToAddressInst, !pointerToAddr.isImmutable {
+        pointerToAddr.set(isImmutable: true, context)
+      }
+    }
+    if uses.hasOnlyUsers(ofType: PointerToAddressInst.self) {
+      replace(with: operands[0].value, context)
+    }
+  }
+
   func optimizeTargetTypeConst(_ context: SimplifyContext) {
     let ty = substitutionMap.replacementType.loweredType(in: parentFunction, maximallyAbstracted: true)
     let value: Int?
