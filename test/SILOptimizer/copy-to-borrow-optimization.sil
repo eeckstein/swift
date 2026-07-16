@@ -2407,7 +2407,7 @@ bb0(%0 : @guaranteed $C, %1 : $*C):
 // CHECK-NEXT:    apply undef(%4)
 // CHECK-NEXT:    load [copy] %4
 // CHECK-NEXT:    copy_addr %4 to %1
-// CHECK-NEXT:    debug_value %4, expr op_deref
+// CHECK-NEXT:    debug_value %4, var, name "x", expr op_deref
 // CHECK-NEXT:    end_borrow %4
 // CHECK-NEXT:    dealloc_stack %2
 // CHECK-LABEL: } // end sil function 'store_to_store_borrow_multi_bb'
