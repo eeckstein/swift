@@ -358,7 +358,7 @@ private func specialize(function: Function,
   let specializedRepresentation = representation == .method || representation == .witnessMethod ? .thin : representation
 
   let convention = FunctionConvention(for: function.loweredFunctionType,
-                                      hasLoweredAddresses: moduleContext.moduleHasLoweredAddresses)
+                                      hasLoweredAddresses: function.hasLoweredAddresses)
 
   let isGeneric = specializedParams.contains { $0.type.hasTypeParameter } ||
                   convention.resultsWithError.contains { $0.type.hasTypeParameter } ||
@@ -540,6 +540,10 @@ private extension Function {
         }
       case let builtin as BuiltinInst:
         if builtin.substitutionMap.usesGenericParameter {
+          return true
+        }
+      case let typeValue as TypeValueInst:
+        if typeValue.paramType.hasPrimaryArchetype {
           return true
         }
       default:
