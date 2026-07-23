@@ -1376,3 +1376,123 @@ private struct MarkDependenceInserter : AddressUseDefWalker {
     return .continueWalk
   }
 }
+
+extension OpenExistentialRefInst {
+  /// Redirects all uses of this opened-existential value to `replacement` and remaps this
+  /// instruction's opened archetype to `replacement`'s opened archetype throughout the
+  /// (transitive) users. Users whose result or argument types mention the old archetype are
+  /// cloned so that their types get updated to the new archetype.
+  ///
+  /// This does *not* erase `self`; the caller is responsible for deleting it (and any now-dead
+  /// operands) if desired.
+  ///
+  /// The caller must guarantee that `self` and `replacement` denote the same underlying
+  /// existential instance, so that redirecting uses is semantics-preserving.
+  func replaceAllUsesAndRemapOpenedArchetype(
+    with replacement: OpenExistentialRefInst, _ context: some MutatingContext
+  ) {
+    var usersToHandle = InstructionWorklist(context)
+    defer { usersToHandle.deinitialize() }
+
+    // Collect all direct users that may contain opened archetypes that need to
+    // be replaced.
+    for use in uses {
+      usersToHandle.pushIfNotVisited(use.instruction)
+    }
+
+    let oldEnv = definedGenericEnvironment
+    let newEnv = replacement.definedGenericEnvironment
+
+    // Use a cloner. It makes copying the instruction and remapping of opened
+    // archetypes trivial.
+    var cloner = Cloner(in: parentFunction, context)
+    defer { cloner.deinitialize() }
+    cloner.registerLocalArchetypeRemapping(from: oldEnv, to: newEnv)
+    // This cloner only remaps *types* containing local archetypes; it reuses
+    // SSA operands verbatim unless the operand's own defining instruction is
+    // itself cloned in this session. So direct (non-type-dependent) uses of
+    // `self` must be redirected to `replacement` before any user gets cloned
+    // below. Otherwise a clone whose result type is derived from its operand's
+    // type at construction time (e.g. `copy_value`) would bake in the stale
+    // (old-archetype) type, and a later RAUW of the operand cannot retroactively
+    // fix that already-cached type.
+    uses.ignoreTypeDependence.replaceAll(with: replacement, context)
+
+    // Now clone each candidate and replace the opened archetype by the
+    // replacement one.
+    while let user = usersToHandle.pop() {
+      if let term = user as? TermInst {
+        // The current use of the opened archetype is a terminator instruction.
+        // Check if any of the successor blocks use this opened archetype in
+        // the types of their arguments, and if so, replace those uses too.
+        for successor in term.successors where !successor.arguments.isEmpty {
+          updateBasicBlockArgTypes(successor, &cloner, &usersToHandle, oldEnv, context)
+        }
+      }
+
+      // Compute if this candidate depends on the old opened archetype. It
+      // always does if it has a type-dependent operand on `self`.
+      var dependsOnOldOpenedArchetype = user.operands.contains {
+        $0.isTypeDependent && $0.value == self
+      }
+
+      // Look for dependencies propagated via the candidate's results.
+      for result in user.results where !result.uses.isEmpty && result.type.hasExistentialArchetype {
+        // Check if the result type depends on this specific opened existential.
+        if result.type.canonicalType.hasLocalArchetype(from: oldEnv) {
+          dependsOnOldOpenedArchetype = true
+          // The users of this candidate are new candidates.
+          usersToHandle.pushIfNotVisited(contentsOf: result.uses.users)
+        }
+      }
+
+      // No need to clone if there is no dependency on the old opened archetype.
+      if !dependsOnOldOpenedArchetype {
+        continue
+      }
+
+      cloner.setInsertionPoint(before: user)
+      let newInst = cloner.clone(instruction: user)
+      // Result types of this candidate's users may be using this archetype.
+      // Thus, we need to try to replace it there too.
+      for (origResult, newResult) in zip(user.results, newInst.results) {
+        origResult.uses.replaceAll(with: newResult, context)
+      }
+      context.erase(instruction: user)
+    }
+  }
+}
+
+/// Update SIL basic block's arguments types which refer to the opened archetype
+/// of `oldEnv`. Replace such types by performing type substitutions according
+/// to the remappings registered in `cloner`.
+private func updateBasicBlockArgTypes<Context: MutatingContext>(
+  _ block: BasicBlock,
+  _ cloner: inout Cloner<Context>,
+  _ usersToHandle: inout InstructionWorklist,
+  _ oldEnv: GenericEnvironment,
+  _ context: Context
+) {
+  for index in 0..<block.arguments.count {
+    let arg = block.arguments[index]
+    if !arg.type.hasExistentialArchetype {
+      continue
+    }
+    // Try to apply the archetype remapping to this argument's type. If it
+    // produces a different type, use it as the argument's new type.
+    let oldArgType = arg.type
+    let newArgType = cloner.getOpType(oldArgType)
+    if newArgType == oldArgType {
+      continue
+    }
+    let newArg = block.replacePhiArgumentAndReplaceAllUses(
+      at: index, type: newArgType, ownership: arg.ownership, decl: arg.decl, context
+    )
+    // The old argument's borrowed-from instruction (if any) still refers to
+    // the stale archetype and was not carried over by the replacement above.
+    if newArg.ownership == .guaranteed, let phi = Phi(newArg) {
+      updateGuaranteedPhis(phis: [phi], context)
+    }
+    usersToHandle.pushIfNotVisited(contentsOf: newArg.users)
+  }
+}

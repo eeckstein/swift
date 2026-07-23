@@ -28,9 +28,10 @@ final class C: P {}
 // CHECK: [[O1:%.*]] = open_existential_ref [[E1]] : $any P to $@opened({{.*}}, any P) Self
 // CHECK: [[F1:%.*]] = function_ref @$s32sil_combine_concrete_existential1PPAAE10returnSelfxyF : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
 // CHECK: [[C1:%.*]] = apply [[F1]]<@opened({{.*}}, any P) Self>([[O1]]) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
-// CHECK: [[E2:%.*]] = init_existential_ref [[C1]] : $@opened({{.*}}, any P) Self : $@opened({{.*}}, any P) Self, $any P
+// CHECK: [[E2:%.*]] = init_existential_ref [[C1]] : $@opened({{.*}}, any P) Self : $@opened("{{.*}}", any P) Self, $any P
 // CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any P to $@opened({{.*}}, any P) Self
-// CHECK: apply [[F1]]<@opened({{.*}}, any P) Self>([[O2]]) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
+// CHECK: [[F2:%.*]] = function_ref @$s32sil_combine_concrete_existential1PPAAE10returnSelfxyFTf4o_n : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
+// CHECK: apply [[F2]]<@opened({{.*}}, any P) Self>([[O2]]) : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
 // CHECK-LABEL: } // end sil function '$s32sil_combine_concrete_existential14testReturnSelfAA1P_pyF'
 public func testReturnSelf() -> P {
   let p: P = C()
@@ -39,12 +40,15 @@ public func testReturnSelf() -> P {
 
 //===----------------------------------------------------------------------===//
 // testWitnessReturnOptionalSelf: Call to a witness method with an existential
-// self that can be type-propagated. sil-combine should bailout since it does
-// not propagate type substitutions on the return value, and it must walk the
-// Optional type to find Self in the return type.
+// self that can be type-propagated, where the method returns Self? and thus
+// re-wraps the opened existential into the result.
 //
-// Although sil-combine will not replace the self operand, it will still
-// rewrite the witness_method. The devirtualizer then handles the first call.
+// sil-combine propagates the concrete type into the witness_method, the
+// devirtualizer and inliner fold the first call, and the
+// open_existential_ref/init_existential_ref/open_existential_ref round-trip that
+// the first call leaves behind is collapsed (SimplifyOpenExistentialRef). This
+// re-exposes the concrete type to the chained second call, so both calls are
+// devirtualized and inlined away, leaving no apply.
 //===----------------------------------------------------------------------===//
 public protocol PP: class {
   func returnOptionalSelf() -> Self?
@@ -69,11 +73,9 @@ final class CC: PP {
 // CHECK: [[EI:%.*]] = end_init_let_ref %0
 // CHECK: [[E1:%.*]] = init_existential_ref [[EI]] : $CC : $CC, $any PP
 // CHECK: [[O1:%.*]] = open_existential_ref [[E1]] : $any PP to $@opened({{.*}}, any PP) Self
-// CHECK: [[U1:%.*]] = unchecked_ref_cast [[EI]] : $CC to $@opened({{.*}}, any PP) Self
-// CHECK: [[E2:%.*]] = init_existential_ref [[U1]] : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
-// CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any PP to $@opened({{.*}}, any PP) Self
-// CHECK: apply {{%.*}}<@opened({{.*}}, any PP) Self>([[O2]])
+// CHECK: [[E2:%.*]] = init_existential_ref [[O1]] : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
 // CHECK-NOT:     apply
+// CHECK-NOT:     witness_method
 // CHECK-LABEL: } // end sil function '$s32sil_combine_concrete_existential29testWitnessReturnOptionalSelfAA2PP_pSgyF'
 public func testWitnessReturnOptionalSelf() -> PP? {
   let p: PP = CC()
