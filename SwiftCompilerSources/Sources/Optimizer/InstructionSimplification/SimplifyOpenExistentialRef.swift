@@ -40,6 +40,22 @@ extension OpenExistentialRefInst: OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
 
+    // If the existential was initialized from another opened-existential value,
+    // re-opening it just yields an equivalent archetype:
+    // ```
+    //   %inner  = open_existential_ref %e to $@opened("A") Self       // opened archetype A
+    //   %rewrap = init_existential_ref %inner : $@opened("A") Self, $any P
+    //   %self   = open_existential_ref %rewrap to $@opened("B") Self  // opened archetype B
+    // ```
+    // Archetype B is dynamically the same type as A, so forward all uses of `self`
+    // to `%inner`, remapping B to A. This exposes `%inner`'s underlying (possibly
+    // concrete) type to the users -- e.g. enabling devirtualization of a chained
+    // witness/protocol-extension call whose self operand is `self`.
+    if let innerOpen = ier.instance as? OpenExistentialRefInst {
+      simplifyReopenedExistential(ier: ier, innerOpen: innerOpen, context)
+      return
+    }
+
     // In OSSA, redirecting an owned existential's uses is only safe if we can
     // account for (and later erase) every use of `self` -- otherwise we'd leave
     // two independent consumers of `ier.instance`. Guaranteed-OSSA and non-OSSA
@@ -72,6 +88,35 @@ extension OpenExistentialRefInst: OnoneSimplifiable, SILCombineSimplifiable {
       assert(!isOwned, "owned open_existental_ref must not have other uses")
     }
 
+    if ier.uses.ignoreDebugUses.isEmpty {
+      context.erase(instruction: ier)
+    }
+  }
+
+  /// Handles the `open_existential_ref (init_existential_ref (open_existential_ref ...))`
+  /// round-trip by forwarding `self`'s uses to `innerOpen` and remapping `self`'s opened
+  /// archetype to `innerOpen`'s.
+  private func simplifyReopenedExistential(
+    ier: InitExistentialRefInst, innerOpen: OpenExistentialRefInst, _ context: SimplifyContext
+  ) {
+    guard definedGenericEnvironment.hasEqualGenericSignature(to: innerOpen.definedGenericEnvironment) else {
+      return
+    }
+
+    // In OSSA, redirecting an owned value's uses is only safe if the re-wrapping
+    // init_existential_ref is the sole (non-debug) consumer -- otherwise we'd
+    // leave two independent consumers of `innerOpen`.
+    if ier.forwardingOwnership == .owned && ier.ownership == .owned {
+      guard ier.uses.ignoreDebugUses.isSingleUse else {
+        return
+      }
+    }
+
+    replaceAllUsesAndRemapOpenedArchetype(with: innerOpen, context)
+
+    if uses.ignoreDebugUses.isEmpty {
+      context.erase(instruction: self)
+    }
     if ier.uses.ignoreDebugUses.isEmpty {
       context.erase(instruction: ier)
     }
