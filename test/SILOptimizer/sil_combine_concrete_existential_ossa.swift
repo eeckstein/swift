@@ -30,7 +30,8 @@ final class C: P {}
 // CHECK: [[C1:%.*]] = apply [[F1]]<@opened({{.*}}, any P) Self>([[O1]]) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
 // CHECK: [[E2:%.*]] = init_existential_ref [[C1]] : $@opened({{.*}}, any P) Self : $@opened({{.*}}, any P) Self, $any P
 // CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any P to $@opened({{.*}}, any P) Self
-// CHECK: apply [[F1]]<@opened({{.*}}, any P) Self>([[O2]]) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
+// CHECK: [[F2:%.*]] = function_ref @$s37sil_combine_concrete_existential_ossa1PPAAE10returnSelfxyFTf4o_n : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
+// CHECK: apply [[F2]]<@opened({{.*}}, any P) Self>([[O2]]) : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
 // CHECK-LABEL: } // end sil function '$s37sil_combine_concrete_existential_ossa14testReturnSelfAA1P_pyF'
 public func testReturnSelf() -> P {
   let p: P = C()
@@ -69,13 +70,9 @@ final class CC: PP {
 // CHECK: [[EI:%.*]] = end_init_let_ref %0
 // CHECK: [[E1:%.*]] = init_existential_ref [[EI]] : $CC : $CC, $any PP
 // CHECK: [[O1:%.*]] = open_existential_ref [[E1]] : $any PP to $@opened({{.*}}, any PP) Self
-// CHECK: [[U1:%.*]] = unchecked_ref_cast [[EI]] : $CC to $@opened({{.*}}, any PP) Self
-// CHECK: [[E2:%.*]] = init_existential_ref [[U1]] : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
-// CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any PP to $@opened({{.*}}, any PP) Self
-// CHECK: apply {{%.*}}<@opened({{.*}}, any PP) Self>([[O2]])
-// CHECK: [[E3:%.*]] = init_existential_ref %{{.*}} : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
-// CHECK: [[E:%.*]] = enum $Optional<any PP>, #Optional.some!enumelt, [[E3]] : $any PP
-// CHECK: return
+// CHECK: [[E2:%.*]] = init_existential_ref [[O1]] : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
+// CHECK: [[E:%.*]] = enum $Optional<any PP>, #Optional.some!enumelt, [[E2]] : $any PP
+// CHECK: return [[E]] : $Optional<any PP>
 // CHECK-LABEL: } // end sil function '$s37sil_combine_concrete_existential_ossa29testWitnessReturnOptionalSelfAA2PP_pSgyF'
 public func testWitnessReturnOptionalSelf() -> PP? {
   let p: PP = CC()
