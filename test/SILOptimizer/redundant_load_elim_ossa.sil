@@ -1822,7 +1822,7 @@ bb0(%0 : @owned $E):
   %1 = alloc_stack [lexical] $any P
   %2 = init_existential_addr %1, $E
   store %0 to [init] %2
-  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %4 = open_existential_addr immutable_access %1 to $*@opened(1, any P) Self
   %5 = unchecked_addr_cast %4 to $*B
   %6 = load_borrow %5
   %7 = apply undef(%6) : $@convention(method) (@guaranteed B) -> ()
@@ -1843,7 +1843,7 @@ bb0(%0 : @owned $E):
   %1 = alloc_stack [lexical] $any P
   %2 = init_existential_addr %1, $E
   store %0 to [init] %2
-  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %4 = open_existential_addr immutable_access %1 to $*@opened(1, any P) Self
   %5 = unchecked_addr_cast %4 to $*B
   %6 = load [copy] %5
   %7 = apply undef(%6) : $@convention(method) (@owned B) -> ()
@@ -1860,7 +1860,7 @@ bb0(%0 : @owned $E):
   %1 = alloc_stack [lexical] $any P
   %2 = init_existential_addr %1, $E
   store %0 to [init] %2
-  %4 = open_existential_addr immutable_access %1 to $*@opened("592F4C30-5E4F-11F1-B22D-0EA13E3AABB3", any P) Self
+  %4 = open_existential_addr immutable_access %1 to $*@opened(1, any P) Self
   %5 = unchecked_addr_cast %4 to $*B
   %6 = load [take] %5
   %7 = apply undef(%6) : $@convention(method) (@owned B) -> ()
