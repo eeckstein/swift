@@ -28,7 +28,7 @@ final class C: P {}
 // CHECK: [[O1:%.*]] = open_existential_ref [[E1]] : $any P to $@opened({{.*}}, any P) Self
 // CHECK: [[F1:%.*]] = function_ref @$s32sil_combine_concrete_existential1PPAAE10returnSelfxyF : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
 // CHECK: [[C1:%.*]] = apply [[F1]]<@opened({{.*}}, any P) Self>([[O1]]) : $@convention(method) <τ_0_0 where τ_0_0 : P> (@guaranteed τ_0_0) -> @owned τ_0_0
-// CHECK: [[E2:%.*]] = init_existential_ref [[C1]] : $@opened({{.*}}, any P) Self : $@opened("{{.*}}", any P) Self, $any P
+// CHECK: [[E2:%.*]] = init_existential_ref [[C1]] : $@opened({{.*}}, any P) Self : $@opened({{.*}}, any P) Self, $any P
 // CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any P to $@opened({{.*}}, any P) Self
 // CHECK: [[F2:%.*]] = function_ref @$s32sil_combine_concrete_existential1PPAAE10returnSelfxyFTf4o_n : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
 // CHECK: apply [[F2]]<@opened({{.*}}, any P) Self>([[O2]]) : $@convention(thin) <τ_0_0 where τ_0_0 : P> (@owned τ_0_0) -> @owned τ_0_0
