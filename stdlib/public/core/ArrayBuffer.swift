@@ -181,6 +181,7 @@ extension _ArrayBuffer {
   @export(implementation)
   @inline(never)
   @_semantics("optimize.sil.specialize.owned2guarantee.never")
+  @_semantics("no_deinit_barrier")
   internal __consuming func _consumeAndCreateNew() -> _ArrayBuffer {
     return _consumeAndCreateNew(bufferIsUnique: false,
                                 minimumCapacity: count,
@@ -201,6 +202,7 @@ extension _ArrayBuffer {
   @export(implementation)
   @inline(never)
   @_semantics("optimize.sil.specialize.owned2guarantee.never")
+  @_semantics("no_deinit_barrier")
   internal __consuming func _consumeAndCreateNew(
     bufferIsUnique: Bool, minimumCapacity: Int, growForAppend: Bool
   ) -> _ArrayBuffer {
