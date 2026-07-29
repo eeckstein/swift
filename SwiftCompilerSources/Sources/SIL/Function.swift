@@ -345,7 +345,10 @@ final public class Function : CustomStringConvertible, HasShortDescription, Hash
   }
 
   public var isDeinitBarrier: Bool {
-    effects.sideEffects?.global.isDeinitBarrier ?? true
+    if hasSemanticsAttribute("no_deinit_barrier") {
+      return false
+    }
+    return effects.sideEffects?.global.isDeinitBarrier ?? true
   }
 
   public enum PerformanceConstraints {
