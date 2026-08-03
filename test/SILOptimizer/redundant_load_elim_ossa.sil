@@ -1869,3 +1869,18 @@ bb0(%0 : @owned $E):
   return %r
 }
 
+// CHECK-LABEL: sil [ossa] @load_take_and_debug_value :
+// CHECK-NOT:      store
+// CHECK-NOT:      load
+// CHECK:          return %0
+// CHECK-LABEL: } // end sil function 'load_take_and_debug_value'
+sil [ossa] @load_take_and_debug_value : $@convention(thin) (@owned AnyObject) -> @owned AnyObject {
+bb0(%0 : @owned $AnyObject):
+  %1 = alloc_stack $AnyObject
+  store %0 to [init] %1
+  debug_value %1, var, name "x", expr op_deref
+  %4 = load [take] %1
+  dealloc_stack %1
+  return %4
+}
+
