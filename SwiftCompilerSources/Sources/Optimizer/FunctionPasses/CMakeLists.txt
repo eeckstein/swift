@@ -32,6 +32,7 @@ swift_compiler_sources(Optimizer
   EmbeddedWitnessCallSpecialization.swift
   FunctionSignatureOptimization.swift
   InitializeStaticGlobals.swift
+  InstructionSinking.swift
   KillInvalidDebugValues.swift
   LetPropertyLowering.swift
   LifetimeDependenceDiagnostics.swift
