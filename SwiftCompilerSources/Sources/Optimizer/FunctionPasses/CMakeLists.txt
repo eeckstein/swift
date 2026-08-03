@@ -33,6 +33,7 @@ swift_compiler_sources(Optimizer
   ImplicitDestroyChecker.swift
   FunctionSignatureOptimization.swift
   InitializeStaticGlobals.swift
+  InstructionSinking.swift
   KillInvalidDebugValues.swift
   LetPropertyLowering.swift
   LifetimeDependenceDiagnostics.swift
