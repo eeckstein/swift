@@ -603,6 +603,7 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   P.addSemanticARCOpts();
   P.addCopyToBorrowOptimization();
   P.addCopySinking();
+  P.addInstructionSinking();
 
   P.addCOWOpts();
   P.addPerformanceConstantPropagation();
