@@ -735,6 +735,10 @@ private struct InstructionScanner {
         potentiallyRedundantSubpath = copyPath
       }
 
+    case is DebugValueInst:
+      // Igore memory reads of `debug_value` for `load [take]`.
+      return .transparent
+
     default:
       break
     }
