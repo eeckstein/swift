@@ -38,7 +38,10 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
     if tryRemoveAddressCast(context) {
       return
     }
-    removeIfDead(context)
+    if removeIfDead(context) {
+      return
+    }
+    _ = tryConvertToDestroyAddr(context)
   }
 
   /// ```
@@ -317,22 +320,27 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
   }
 
   /// Removes the `load [copy]` if the loaded value is just destroyed.
-  private func removeIfDead(_ context: SimplifyContext) {
+  private func removeIfDead(_ context: SimplifyContext) -> Bool {
     if loadOwnership == .copy,
-       loadedValueIsDead(context) {
-      for use in uses {
-        context.erase(instruction: use.instruction)
-      }
-      context.erase(instruction: self)
+       let destroy = next as? DestroyValueInst,
+       uses.singleUse?.instruction == destroy
+    {
+      context.erase(instructionIncludingAllUsers: self)
+      return true
     }
+    return false
   }
 
-  private func loadedValueIsDead(_ context: SimplifyContext) -> Bool {
-    if context.preserveDebugInfo {
-      return !uses.contains { !($0.instruction is DestroyValueInst) }
-    } else {
-      return !uses.ignoreDebugUses.contains { !($0.instruction is DestroyValueInst) }
+  private func tryConvertToDestroyAddr(_ context: SimplifyContext) -> Bool {
+    if loadOwnership == .take,
+       let destroy = next as? DestroyValueInst,
+       uses.singleUse?.instruction == destroy
+    {
+      Builder(before: self, context).createDestroyAddr(address: address)
+      context.erase(instructionIncludingAllUsers: self)
+      return true
     }
+    return false
   }
 }
 

@@ -3732,8 +3732,7 @@ sil [reabstraction_thunk] @_TTRXFo_iSS_iSb_XFo_oSS_dSb_ : $@convention(thin) (@o
 // CHECK:  [[STK:%.*]] = alloc_stack $@callee_owned (@owned String) -> Bool
 // CHECK-NOT: partial_apply
 // CHECK:  store %0 to [init] [[STK]]
-// CHECK:  [[LD:%.*]] = load [take] [[STK]]
-// CHECK:  destroy_value [[LD]]
+// CHECK:  destroy_addr [[STK]]
 // CHECK:  dealloc_stack [[STK]]
 // CHECK: } // end sil function 'remove_identity_reabstraction_thunks'
 sil [ossa] @remove_identity_reabstraction_thunks : $@convention(thin) (@owned @callee_owned (@owned String) -> Bool) -> () {
