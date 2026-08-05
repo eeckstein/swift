@@ -493,16 +493,14 @@ bb0(%0 : $*B):
   return %3 : $()
 }
 
-// CHECK-LABEL: sil [ossa] @remove_dead_load_with_debug_value :
-// CHECK-ONONE:     load
-// CHECK-ONONE:     destroy_value
-// CHECK-O-NOT:     load
-// CHECK-O-NOT:     destroy_value
-// CHECK:       } // end sil function 'remove_dead_load_with_debug_value'
-sil [ossa] @remove_dead_load_with_debug_value : $@convention(thin) (@in_guaranteed B) -> () {
+// CHECK-LABEL: sil [ossa] @dont_remove_dead_load_with_deinit_barrier :
+// CHECK:         load
+// CHECK:         destroy_value
+// CHECK:       } // end sil function 'dont_remove_dead_load_with_deinit_barrier'
+sil [ossa] @dont_remove_dead_load_with_deinit_barrier : $@convention(thin) (@in_guaranteed B) -> () {
 bb0(%0 : $*B):
   %1 = load [copy] %0 : $*B
-  debug_value %1 : $B, let, name "x"
+   apply undef() : $@convention(thin) () -> ()
   destroy_value %1 : $B
   %3 = tuple ()
   return %3 : $()
