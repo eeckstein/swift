@@ -149,8 +149,7 @@ func takeDictionaryPointer(_: UnsafePointer<Dictionary<Int, Int>>)
 // CHECK: apply %{{.*}}([[UP]]) : $@convention(thin) (UnsafeRawPointer) -> ()
 // CHECK: [[D:%.*]] = load %0 : $*Dictionary<Int, Int>
 // CHECK: fix_lifetime [[D]] : $Dictionary<Int, Int>
-// CHECK: [[D2:%.*]] = load %0 : $*Dictionary<Int, Int>
-// CHECK: release_value [[D2]] : $Dictionary<Int, Int>
+// CHECK: destroy_addr [[A]] : $*Dictionary<Int, Int>
 // CHECK: dealloc_stack [[A]] : $*Dictionary<Int, Int>
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion22dictionaryToRawPointeryyF'
 public func dictionaryToRawPointer() {
@@ -174,8 +173,7 @@ public func dictionaryToRawPointer() {
 // CHECK: apply %{{.*}}([[UP]]) : $@convention(thin) (UnsafePointer<AnyObject>) -> ()
 // CHECK: [[O:%.*]] = load [[A]] : $*AnyObject
 // CHECK: fix_lifetime [[O]] : $AnyObject
-// CHECK: [[O2:%.*]] = load [[A]] : $*AnyObject
-// CHECK: strong_release [[O2]] : $AnyObject
+// CHECK: destroy_addr [[A]] : $*AnyObject
 // CHECK: dealloc_stack [[A]] : $*AnyObject
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion18eagerMoveToPointer1oyyXln_tF'
 public func eagerMoveToPointer(@_eagerMove o: consuming AnyObject ) {
@@ -189,8 +187,7 @@ public func eagerMoveToPointer(@_eagerMove o: consuming AnyObject ) {
 // CHECK:   apply {{.*}}([[UP]]) : $@convention(thin) (UnsafePointer<String>) -> ()
 // CHECK:   [[S:%.*]] = load [[A]] : $*String
 // CHECK:   fix_lifetime [[S]] : $String
-// CHECK:   [[S2:%.*]] = load [[A]] : $*String
-// CHECK:   release_value [[S2]] : $String
+// CHECK:   destroy_addr [[A]] : $*String
 // CHECK:   dealloc_stack [[A]] : $*String
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion15stringToPointer2ssySS_tF'
 public func stringToPointer(ss: String) {
@@ -205,8 +202,7 @@ public func stringToPointer(ss: String) {
 // CHECK:   apply %{{.*}}([[UP]]) : $@convention(thin) (UnsafePointer<Dictionary<Int, Int>>) -> ()
 // CHECK:   [[D:%.*]] = load [[A]] : $*Dictionary<Int, Int>
 // CHECK:   fix_lifetime [[D]] : $Dictionary<Int, Int>
-// CHECK:   [[D2:%.*]] = load [[A]] : $*Dictionary<Int, Int>
-// CHECK:   release_value [[D2]] : $Dictionary<Int, Int>
+// CHECK:   destroy_addr [[A]] : $*Dictionary<Int, Int>
 // CHECK:   dealloc_stack [[A]] : $*Dictionary<Int, Int>
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion19dictionaryToPointer2ddySDyS2iG_tF'
 public func dictionaryToPointer(dd: Dictionary<Int, Int>) {
