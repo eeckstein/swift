@@ -921,21 +921,17 @@ public func test39d() -> Bool {
   return cast39((1, 2, 3))
 }
 
-// CHECK-LABEL: sil [noinline] @$s12cast_folding7test40a{{[_0-9a-zA-Z]*}}F
-// CHECK: bb0
-// FIXME: Would love to fold this to just "true"
-// CHECK-NOT: return:
-// CHECK: unconditional_checked_cast_addr
+// CHECK-LABEL: sil [noinline] @$s12cast_folding7test40aSbyF :
+// CHECK-NOT:     unconditional_checked_cast_addr
+// CHECK:       } // end sil function '$s12cast_folding7test40aSbyF'
 @inline(never)
 public func test40a() -> Bool {
   return cast40((1, A()))
 }
 
-// CHECK-LABEL: sil [noinline] @$s12cast_folding7test40b{{[_0-9a-zA-Z]*}}F
-// CHECK: bb0
-// FIXME: Would love to fold this to just "true"
-// CHECK-NOT: return:
-// CHECK: unconditional_checked_cast_addr
+// CHECK-LABEL: sil [noinline] @$s12cast_folding7test40bSbyF :
+// CHECK-NOT:     unconditional_checked_cast_addr
+// CHECK:       } // end sil function '$s12cast_folding7test40bSbyF'
 @inline(never)
 public func test40b() -> Bool {
   return cast40((1, AA()))
