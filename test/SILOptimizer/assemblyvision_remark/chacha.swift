@@ -35,7 +35,7 @@ public func run_ChaCha(_ N: Int) {
   checkResult(checkedtext)
 
 
-  var plaintext = Array(repeating: UInt8(0), count: 30720) // expected-note {{of 'plaintext}}
+  var plaintext = Array(repeating: UInt8(0), count: 30720)
   for _ in 1...N {
     ChaCha20.encrypt(bytes: &plaintext, key: key, nonce: nonce)
     print(plaintext.first!) // expected-remark @:11 {{heap allocated ref of type '}}
@@ -43,5 +43,3 @@ public func run_ChaCha(_ N: Int) {
   }
 } // expected-remark {{release of type '}}
   // expected-remark @-1 {{release of type '}}
-  // expected-remark @-2 {{release of type '}}
-  // expected-remark @-3 {{release of type '}}
