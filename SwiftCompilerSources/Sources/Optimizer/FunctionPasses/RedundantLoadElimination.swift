@@ -266,8 +266,8 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues):
-    replace(load: load, with: availableValues, context)
+  case .redundant(let availableValues, let deadEndBlocks):
+    replace(load: load, with: availableValues, deadEndBlocks: deadEndBlocks, context)
     return true
   case .maybePartiallyRedundant(let subPath):
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
@@ -334,7 +334,7 @@ private extension LoadingInstruction {
     case .overwritten:
       return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
     case .available:
-      return .redundant(scanner.availableValues)
+      return .redundant(scanner.availableValues, deadEndBlocks: [])
     case .transparent:
       return self.isRedundantInPredecessorBlocks(scanner: &scanner, complexityBudget: &complexityBudget, context)
     }
@@ -348,7 +348,6 @@ private extension LoadingInstruction {
 
     var liverange = Liverange(endBlock: self.parentBlock, context)
     defer { liverange.deinitialize() }
-    liverange.pushPredecessors(of: self.parentBlock)
 
     while let block = liverange.pop() {
       switch scanner.scan(instructions: block.instructions.reversed(),
@@ -363,20 +362,12 @@ private extension LoadingInstruction {
         liverange.pushPredecessors(of: block)
       }
     }
-    if !self.canReplaceWithoutInsertingCopies(liverange: liverange, context) {
-      return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-    }
-    return .redundant(scanner.availableValues)
-  }
-
-  func canReplaceWithoutInsertingCopies(liverange: Liverange,_ context: FunctionPassContext) -> Bool {
     switch self.kind {
     case .trivial, .unqualified, .borrow:
-      return true
-
+      return .redundant(scanner.availableValues, deadEndBlocks: [])
     case .copy, .take:
-      // The liverange of the value has an "exit", i.e. a path which doesn't lead to the load,
-      // it means that we would have to insert a destroy on that exit to satisfy ownership rules.
+      // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
+      // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
       // But an inserted destroy also means that we would need to insert copies of the value which
       // were not there originally. For example:
       //
@@ -386,25 +377,39 @@ private extension LoadingInstruction {
       //     %2 = load [take] %addr
       //   bb2:                      // liverange exit
       //
-      // TODO: we could extend OSSA to transfer ownership to support liverange exits without copying. E.g.:
+      // Only handle a common special case: if the exit is a dead-end block (with an `unreachable`)
+      // we are okay, because there we can insert a `destroy_value [dead_end]`.
       //
-      //     %b = store_and_borrow %1 to [init] %addr   // %b is borrowed from %addr
-      //     cond_br bb1, bb2
-      //   bb1:
-      //     %o = borrowed_to_owned %b take_ownership_from %addr
-      //     // replace %2 with %o
-      //   bb2:
-      //     end_borrow %b
-      //
-      if liverange.hasExits {
-        return false
+      let exitBlocks = liverange.exits
+      if !exitBlocks.isEmpty {
+        guard !scanner.foundLoop,
+              exitBlocks.allSatisfy({ $0.isSafeDeadEndBlock(for: address, context) })
+        else {
+          return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
+        }
       }
-      return true
+      return .redundant(scanner.availableValues, deadEndBlocks: exitBlocks)
     }
   }
 }
 
-private func replace(load: LoadingInstruction, with availableValues: [AvailableValue], _ context: FunctionPassContext) {
+private extension BasicBlock {
+  /// Returns true if this block is a dead-end block which ends in `unreachable` and does not
+  /// read from `address`.
+  func isSafeDeadEndBlock(for address: Value, _ context: FunctionPassContext) -> Bool {
+    guard terminator is UnreachableInst else {
+      return false
+    }
+    let aliasAnalysis = context.aliasAnalysis
+    return instructions.allSatisfy { !$0.mayRead(fromAddress: address, aliasAnalysis) }
+  }
+}
+
+private func replace(load: LoadingInstruction,
+                     with availableValues: [AvailableValue],
+                     deadEndBlocks: [BasicBlock],
+                     _ context: FunctionPassContext)
+{
   var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater, context)
   defer { ssaUpdater.deinitialize() }
 
@@ -412,6 +417,11 @@ private func replace(load: LoadingInstruction, with availableValues: [AvailableV
     let block = availableValue.instruction.parentBlock
     let availableValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
+  }
+
+  for deadEndBlock in deadEndBlocks {
+    let builder = Builder(atBeginOf: deadEndBlock, context)
+    builder.createDestroyValue(operand: ssaUpdater.getValue(atBeginOf: deadEndBlock), isDeadEnd: true)
   }
 
   let newValue: Value
@@ -559,7 +569,7 @@ private func shrinkMemoryLifetimeAndSplit(to availableValue: AvailableValue, pro
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue])
+  case redundant([AvailableValue], deadEndBlocks: [BasicBlock])
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
@@ -630,6 +640,7 @@ private struct InstructionScanner {
 
   private(set) var potentiallyRedundantSubpath: AccessPath? = nil
   private(set) var availableValues = Array<AvailableValue>()
+  private(set) var foundLoop = false
 
   init(load: LoadingInstruction, accessPath: AccessPath, _ aliasAnalysis: AliasAnalysis) {
     self.load = load
@@ -696,6 +707,7 @@ private struct InstructionScanner {
       if precedingLoad == load {
         // We need to stop the data flow analysis when we visit the original load again.
         // This happens if the load is in a loop.
+        foundLoop = true
         return .available
       }
       let precedingLoadPath = precedingLoad.address.constantAccessPath
@@ -792,8 +804,12 @@ private struct Liverange {
   }
 
   mutating func pushPredecessors(of block: BasicBlock) {
-    worklist.pushIfNotVisited(contentsOf: block.predecessors)
-    containingBlocks.append(contentsOf: block.predecessors)
+    for pred in block.predecessors {
+      if !worklist.hasBeenPushed(pred) {
+        worklist.pushIfNotVisited(pred)
+        containingBlocks.append(pred)
+      }
+    }
   }
 
   mutating func pop() -> BasicBlock? { worklist.pop() }
@@ -802,8 +818,8 @@ private struct Liverange {
     beginBlocks.insert(beginBlock)
   }
 
-  /// Returns true if there is some path from a begin block to a function exit which doesn't
-  /// go through the end-block. For example:
+  /// Returns exit blocks from the liverange, i.e. paths from a begin block to a function exit
+  /// which don't go through the end-block. For example:
   ///
   ///     store %1 to %addr   // begin
   ///     cond_br bb1, bb2
@@ -812,14 +828,15 @@ private struct Liverange {
   ///   bb2:
   ///     ...                 // exit
   ///
-  var hasExits: Bool {
+  var exits: [BasicBlock] {
+    var exitBlocks = [BasicBlock]()
     for block in containingBlocks {
       for succ in block.successors {
         if succ != endBlock, (!worklist.hasBeenPushed(succ) || beginBlocks.contains(succ)) {
-          return true
+          exitBlocks.append(succ)
         }
       }
     }
-    return false
+    return exitBlocks
   }
 }
