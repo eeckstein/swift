@@ -93,9 +93,9 @@ bb3:
 }
 
 // CHECK-LABEL: sil [ossa] @rle_needscopy1 :
-// This is not optimized, yet
-// CHECK: load
-// CHECK: load [take]
+// CHECK:         load
+// CHECK:       bb1:
+// CHECK-NOT:     load
 // CHECK-LABEL: } // end sil function 'rle_needscopy1'
 sil [ossa] @rle_needscopy1 : $@convention(thin) (@in NonTrivialStruct) -> @owned Klass {
 bb0(%0 : $*NonTrivialStruct):
@@ -520,9 +520,9 @@ bb0(%0 : $*NonTrivialStruct):
 }
 
 // CHECK-LABEL: sil [ossa] @rle_needsmultiplecopies2 : 
-// This is not optimized, yet
-// CHECK: load
-// CHECK: load 
+// CHECK:         load
+// CHECK:       bb1:
+// CHECK-NOT:     load 
 // CHECK-LABEL: } // end sil function 'rle_needsmultiplecopies2'
 sil [ossa] @rle_needsmultiplecopies2 : $@convention(thin) (@in NonTrivialStruct) -> @owned Klass {
 bb0(%0 : $*NonTrivialStruct):

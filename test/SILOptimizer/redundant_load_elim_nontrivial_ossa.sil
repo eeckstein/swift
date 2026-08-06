@@ -851,7 +851,10 @@ bb8:
 // CHECK-LABEL: @ignore_unreachable_simple :
 // This is not optimized, yet
 // CHECK:         load [copy]
-// CHECK:         load [copy]
+// CHECK:       bb1:
+// CHECK-NOT:     load
+// CHECK:       bb2:
+// CHECK:         destroy_value [dead_end]
 // CHECK: } // end sil function 'ignore_unreachable_simple'
 sil [ossa] @ignore_unreachable_simple : $@convention(thin) (@in_guaranteed NonTrivialStruct) -> () {
 bb0(%0 : $*NonTrivialStruct):
