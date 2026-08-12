@@ -745,6 +745,49 @@ extension StoreInst {
     context.erase(instruction: self)
   }
 
+  func split(alongPath projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> StoreInst {
+    precondition(storeOwnership == .initialize)
+
+    if projectionPath.isEmpty {
+      return self
+    }
+
+    let (fieldKind, index, subPath) = projectionPath.pop()
+
+    let builder = Builder(before: self, context)
+    var projectedStore: StoreInst? = nil
+
+    switch fieldKind {
+    case .structField:
+      let destructure = builder.createDestructureStruct(struct: source)
+      for (fieldIdx, fieldValue) in destructure.results.enumerated() {
+        let destFieldAddr = builder.createStructElementAddr(structAddress: destination, fieldIndex: fieldIdx)
+        let ownership = splitOwnership(for: fieldValue)
+        let s = builder.createStore(source: fieldValue, destination: destFieldAddr, ownership: ownership)
+        if fieldIdx == index {
+          projectedStore = s
+        }
+      }
+    case .tupleField:
+      let destructure = builder.createDestructureTuple(tuple: source)
+      for (elementIdx, elementValue) in destructure.results.enumerated() {
+        let elementAddr = builder.createTupleElementAddr(tupleAddress: destination, elementIndex: elementIdx)
+        let ownership = splitOwnership(for: elementValue)
+        let s = builder.createStore(source: elementValue, destination: elementAddr, ownership: ownership)
+        if elementIdx == index {
+          projectedStore = s
+        }
+      }
+    default:
+      fatalError("unsupported projection")
+    }
+    context.erase(instruction: self)
+    guard let projectedStore else {
+      fatalError("wrong projection path")
+    }
+    return projectedStore.split(alongPath: subPath, context)
+  }
+
   private func splitOwnership(for fieldValue: Value) -> StoreOwnership {
     switch self.storeOwnership {
     case .trivial, .unqualified:
@@ -1225,6 +1268,12 @@ extension Type {
   /// Only struct and tuple field components are supported; any other path component (e.g.
   /// enum cases, class fields, or "any"-kinds) causes the projection to fail.
   func project(path: SmallProjectionPath, in function: Function) -> Type? {
+    if let structDecl = nominal as? StructDecl,
+       structDecl.hasUnreferenceableStorage
+    {
+      return nil
+    }
+
     let (kind, index, subPath) = path.pop()
     switch kind {
     case .root:

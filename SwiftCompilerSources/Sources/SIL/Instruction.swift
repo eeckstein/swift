@@ -458,6 +458,11 @@ final public class StoreInst : Instruction, StoringInstruction {
   public var storeOwnership: StoreOwnership {
     StoreOwnership(rawValue: bridged.StoreInst_getStoreOwnership())!
   }
+  public func set(ownership: StoreInst.StoreOwnership, _ context: some MutatingContext) {
+    context.notifyInstructionsChanged()
+    bridged.StoreInst_setOwnership(ownership.rawValue)
+    context.notifyInstructionChanged(self)
+  }
 
   public override var mayCallFunction: Bool { storeOwnership == .assign }
 }
