@@ -80,9 +80,9 @@ func reassign_with_lets() -> C {
 
 // CHECK-LABEL: sil {{.*}}@renamed_return : {{.*}} {
 // CHECK:       bb0(
-// TODO-CHECK:      debug_value %1, let, name "a"
-// CHECK-NEXT:      strong_retain %1
-// CHECK-NEXT:      return %1
+// CHECK:         debug_value %1, let, name "a"
+// CHECK:         strong_retain %1
+// CHECK-NEXT:    return %1
 // CHECK-LABEL: } // end sil function 'renamed_return'
 
 

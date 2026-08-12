@@ -938,6 +938,7 @@ struct BridgedInstruction {
   BRIDGED_INLINE SwiftInt SwitchEnumAddrInst_getUniqueCaseForDefault() const;
   BRIDGED_INLINE OptionalBridgedBasicBlock SwitchEnumAddrInst_getSuccessorForDefault() const;
   BRIDGED_INLINE SwiftInt StoreInst_getStoreOwnership() const;
+  BRIDGED_INLINE void StoreInst_setOwnership(SwiftInt ownership) const;
   BRIDGED_INLINE SwiftInt AssignInst_getAssignOwnership() const;
   BRIDGED_INLINE MarkDependenceKind MarkDependenceInst_dependenceKind() const;
   BRIDGED_INLINE void MarkDependenceInstruction_resolveToNonEscaping() const;

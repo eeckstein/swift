@@ -1815,6 +1815,10 @@ SwiftInt BridgedInstruction::StoreInst_getStoreOwnership() const {
   return (SwiftInt)getAs<swift::StoreInst>()->getOwnershipQualifier();
 }
 
+void BridgedInstruction::StoreInst_setOwnership(SwiftInt ownership) const {
+  getAs<swift::StoreInst>()->setOwnershipQualifier((swift::StoreOwnershipQualifier)ownership);
+}
+
 SwiftInt BridgedInstruction::AssignInst_getAssignOwnership() const {
   return (SwiftInt)getAs<swift::AssignInst>()->getOwnershipQualifier();
 }
