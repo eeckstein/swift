@@ -377,10 +377,11 @@ bb6:
 // Forward store %1 and store %2 such that load %3 becomes an identity trivial cast.
 // Both loads from %0 will be eliminated.
 // CHECK-LABEL: sil [ossa] @test_read_dependence_allows_forwarding_multi_bb_2 : 
-// CHECK: bb1
-// CHECK: = load
-// CHECK-NOT: = load
-// CHECK: bb2
+// CHECK:         destroy_addr %0
+// CHECK:       bb1({{.*}}):
+// CHECK-NOT:     load
+// CHECK:       bb3:
+// CHECK:         store {{.*}} to [init] %0
 // CHECK-LABEL: } // end sil function 'test_read_dependence_allows_forwarding_multi_bb_2'
 sil [ossa] @test_read_dependence_allows_forwarding_multi_bb_2 : $@convention(thin) (@inout A, @owned A, @owned A) -> () {
 bb0(%0 : $*A, %1 : @owned $A, %2 : @owned $A):
@@ -410,11 +411,9 @@ bb2:
 }
 
 // CHECK-LABEL: sil [ossa] @load_to_load_loop :
-// CHECK:       bb1:
-// CHECK-NEXT:    load
+// CHECK:       bb1({{.*}}):
 // CHECK-NOT:     load
 // CHECK:       bb3:
-// CHECK-NEXT:    load
 // CHECK-NOT:     load
 // CHECK-LABEL: } // end sil function 'load_to_load_loop'
 sil [ossa] @load_to_load_loop : $@convention(thin) (@owned Klass) -> () {
@@ -1047,10 +1046,7 @@ bb14:
 }
 
 // CHECK-LABEL: @test_available_value3 :
-// CHECK:       bb9:
-// CHECK-NEXT:    load
-// CHECK:       bb13:
-// CHECK-NEXT:    load
+// CHECK-NOT:    load
 // CHECK: } // end sil function 'test_available_value3'
 sil [ossa] @test_available_value3 : $@convention(method) (@owned NonTrivialStruct) -> () {
 bb0(%0 : @owned $NonTrivialStruct):
@@ -1243,13 +1239,13 @@ bb0(%0 : $*(Agg3, Klass), %1 : @owned $Klass, %2 : $Int, %3 : @owned $Klass):
 }
 
 // CHECK-LABEL: @load_take_from_store_assign :
+// CHECK:         destroy_addr %1
 // CHECK:         [[DS:%.*]] = destructure_struct %0
 // CHECK:         [[TADDR:%.*]] =  struct_element_addr %1 : $*Agg2, #Agg2.t
 // CHECK:         ([[T0:%.*]], [[T1:%.*]]) = destructure_tuple [[DS]]
 // CHECK:         [[TA0:%.*]] = tuple_element_addr [[TADDR]] : $*(Klass, Klass), 0
-// CHECK:         destroy_addr [[TA0]]
 // CHECK:         [[TA1:%.*]] = tuple_element_addr [[TADDR]] : $*(Klass, Klass), 1
-// CHECK:         store [[T1]] to [assign] [[TA1]]
+// CHECK:         store [[T1]] to [init] [[TA1]]
 // CHECK:         return [[T0]]
 // CHECK:       } // end sil function 'load_take_from_store_assign'
 sil [ossa] @load_take_from_store_assign : $@convention(thin) (@owned Agg2, @inout Agg2, @owned Klass) -> @owned Klass {
@@ -1263,11 +1259,11 @@ bb0(%0 : @owned $Agg2, %1 : $*Agg2, %2 : @owned $Klass):
 }
 
 // CHECK-LABEL: @copyaddr_take_from_store_assign :
+// CHECK:         destroy_addr %2
 // CHECK:         [[DS:%.*]] = destructure_struct %1
 // CHECK:         [[TADDR:%.*]] =  struct_element_addr %2 : $*Agg2, #Agg2.t
 // CHECK:         ([[T0:%.*]], [[T1:%.*]]) = destructure_tuple [[DS]]
 // CHECK:         [[TA0:%.*]] = tuple_element_addr [[TADDR]] : $*(Klass, Klass), 0
-// CHECK:         destroy_addr [[TA0]]
 // CHECK:         [[TA1:%.*]] = tuple_element_addr [[TADDR]] : $*(Klass, Klass), 1
 // CHECK:         store [[T0]] to [init] %0
 // CHECK:       } // end sil function 'copyaddr_take_from_store_assign'
