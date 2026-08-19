@@ -822,7 +822,7 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   // For details see the comment for `namedReturnValueOptimization`.
   P.addNamedReturnValueOptimization();
 
-  P.addLegacyDeadObjectElimination();
+  P.addDeadObjectElimination();
   P.addObjectOutliner();
   P.addDeadStoreElimination();
   P.addDCE();
@@ -836,7 +836,7 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   P.addInitializeStaticGlobals();
 
   // dead-store-elimination can expose opportunities for dead object elimination.
-  P.addLegacyDeadObjectElimination();
+  P.addDeadObjectElimination();
 
   P.addComputeEscapeEffects();
   P.addComputeSideEffects();
