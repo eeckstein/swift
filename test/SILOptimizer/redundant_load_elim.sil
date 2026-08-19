@@ -1116,14 +1116,9 @@ bb6:
   br bb3
 }
 
-// Make sure the first load in bb1 is not eliminated as we have
-// this unreachable block which will have a liveout of nil.
-// we make this in the context of a loop, because we want to run an
-// optimistic data flow.
-//
 // CHECK-LABEL: sil @load_to_load_loop_with_unreachable_block
 // CHECK: bb1:
-// CHECK: = load
+// CHECK-NOT: load
 // CHECK: cond_br
 sil @load_to_load_loop_with_unreachable_block : $@convention(thin) () -> () {
 bb0:
