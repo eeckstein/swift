@@ -325,46 +325,15 @@ private extension LoadingInstruction {
   }
 
   func isRedundant(at accessPath: AccessPath, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
-    var scanner = InstructionScanner(load: self, accessPath: accessPath, context.aliasAnalysis)
-
-    switch scanner.scan(instructions: ReverseInstructionList(first: self.previous),
-                        in: parentBlock,
-                        complexityBudget: &complexityBudget)
-    {
-    case .overwritten:
-      return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-    case .available:
-      return .redundant(scanner.availableValues, exitBlocks: [])
-    case .transparent:
-      return self.isRedundantInPredecessorBlocks(scanner: &scanner, complexityBudget: &complexityBudget, context)
-    }
-  }
-
-  private func isRedundantInPredecessorBlocks(
-    scanner: inout InstructionScanner,
-    complexityBudget: inout Int,
-    _ context: FunctionPassContext
-  ) -> DataflowResult {
-
-    var liverange = Liverange(endBlock: self.parentBlock, context)
+    var liverange = Liverange(load: self, accessPath: accessPath, context)
     defer { liverange.deinitialize() }
 
-    while let block = liverange.pop() {
-      switch scanner.scan(instructions: block.instructions.reversed(),
-                          in: block,
-                          complexityBudget: &complexityBudget)
-      {
-      case .overwritten:
-        return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
-      case .available:
-        liverange.add(beginBlock: block)
-      case .transparent:
-        liverange.pushPredecessors(of: block)
-      }
+    guard liverange.performDataflow(complexityBudget: &complexityBudget) else {
+      return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
     }
     switch self.kind {
     case .trivial, .unqualified, .borrow:
-      return .redundant(scanner.availableValues, exitBlocks: [])
+      return .redundant(liverange.availableValues, exitBlocks: [])
     case .copy, .take:
       // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
       // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -382,19 +351,19 @@ private extension LoadingInstruction {
       //
       let exitBlocks = liverange.exits
       if !exitBlocks.isEmpty {
-        if scanner.foundLoop {
-          return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
+        if liverange.foundLoop {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
         }
         for exitBlock in exitBlocks {
           if exitBlock.isSafeDeadEndBlock(for: self.address, context) {
             continue
           }
-          if self.kind == .copy || findDominatingAddress(in: scanner.availableValues, for: exitBlock, context) == nil {
-            return DataflowResult(notRedundantWith: scanner.potentiallyRedundantSubpath)
+          if self.kind == .copy || findDominatingAddress(in: liverange.availableValues, for: exitBlock, context) == nil {
+            return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
           }
         }
       }
-      return .redundant(scanner.availableValues, exitBlocks: exitBlocks)
+      return .redundant(liverange.availableValues, exitBlocks: exitBlocks)
     }
   }
 }
@@ -542,14 +511,11 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
   switch availableValue {
   case .viaLoad(let availableLoad):
     assert(availableLoad.loadOwnership == .copy)
-    availableLoad.set(ownership: .take, context)
-    let builder = Builder(after: availableLoad, context)
-    let beginBorrow = builder.createBeginBorrow(of: availableLoad)
-    let projectedValue = beginBorrow.createProjection(path: projectionPath, builder: builder)
-    let projectedAddress = availableLoad.address.createAddressProjection(path: projectionPath, builder: builder)
-    let valueToAdd = builder.createCopyValue(operand: projectedValue)
-    builder.createEndBorrow(of: beginBorrow)
-    return (valueToAdd, address: projectedAddress)
+    let projectedLoad = availableLoad.split(alongPath: projectionPath, context)
+    projectedLoad.set(ownership: .take, context)
+    let builder = Builder(after: projectedLoad, context)
+    let valueToAdd = builder.createCopyValue(operand: projectedLoad)
+    return (valueToAdd, address: projectedLoad.address)
   case .viaStore(let availableStore):
     let builder = Builder(before: availableStore, context)
     if availableStore.storeOwnership == .assign {
@@ -631,68 +597,130 @@ private extension Array where Element == AvailableValue {
   }
 }
 
-private struct InstructionScanner {
+/// Represents the liverange (in terms of basic blocks) of the loaded value.
+///
+/// In contrast to a BlockRange, this liverange has multiple begin blocks (containing the
+/// available values) and a single end block (containing the original load). For example:
+///
+///   bb1:
+///     store %1 to %addr   // begin block
+///     br bb3
+///   bb2:
+///     store %2 to %addr   // begin block
+///     br bb3
+///   bb3:
+///     %3 = load %addr     // end block
+///
+private struct Liverange {
+
   private let load: LoadingInstruction
   private let accessPath: AccessPath
   private let storageDefBlock: BasicBlock?
   private let aliasAnalysis: AliasAnalysis
 
+  private var worklist: InstructionWorklist
+  private var visitedTerminators: Stack<TermInst>
+  private var availableValueInstructions: InstructionSet
+
   private(set) var potentiallyRedundantSubpath: AccessPath? = nil
   private(set) var availableValues = Array<AvailableValue>()
+  private(set) var loadBorrows = Array<LoadBorrowInst>()
   private(set) var foundLoop = false
 
-  init(load: LoadingInstruction, accessPath: AccessPath, _ aliasAnalysis: AliasAnalysis) {
+  init(load: LoadingInstruction, accessPath: AccessPath, _ context: FunctionPassContext) {
     self.load = load
     self.accessPath = accessPath
     self.storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
-    self.aliasAnalysis = aliasAnalysis
+    self.aliasAnalysis = context.aliasAnalysis
+
+    self.worklist = InstructionWorklist(context)
+    self.visitedTerminators = Stack(context)
+    self.availableValueInstructions = InstructionSet(context)
   }
 
-  enum ScanResult {
+  mutating func deinitialize() {
+    worklist.deinitialize()
+    visitedTerminators.deinitialize()
+    availableValueInstructions.deinitialize()
+  }
+
+  mutating func performDataflow(complexityBudget: inout Int) -> Bool {
+    let functionEntry = load.parentFunction.entryBlock.instructions.first!
+    if load == functionEntry {
+      return false
+    }
+    worklist.pushPredecessors(of: load)
+
+    while let inst = worklist.pop() {
+      complexityBudget -= 1
+      if complexityBudget <= 0 {
+        return false
+      }
+
+      switch visit(instruction: inst) {
+      case .available:
+        availableValueInstructions.insert(inst)
+      case .overwritten:
+        return false
+      case .transparent:
+        if inst == functionEntry {
+          // We reached the function entry without finding an available value.
+          return false
+        }
+        // Abort if we find the storage definition of the access in case of a loop, e.g.
+        //
+        //   bb1:
+        //     %storage_root = apply
+        //     %2 = ref_element_addr %storage_root
+        //     %3 = load %2
+        //     cond_br %c, bb1, bb2
+        //
+        // The storage root is different in each loop iteration. Therefore the load in a
+        // successive loop iteration does not load from the same address as in the previous iteration.
+        if inst.previous == nil,
+           let storageDefBlock = storageDefBlock,
+           inst.parentBlock == storageDefBlock
+        {
+          return false
+        }
+        worklist.pushPredecessors(of: inst)
+      }
+    }
+    return true
+  }
+
+  /// Returns exit blocks from the liverange, i.e. paths from a begin block to a function exit
+  /// which don't go through the end-block. For example:
+  ///
+  ///     store %1 to %addr   // begin
+  ///     cond_br bb1, bb2
+  ///   bb1:
+  ///     %2 = load %addr     // end
+  ///   bb2:
+  ///     ...                 // exit
+  ///
+  var exits: [BasicBlock] {
+    var exitBlocks = [BasicBlock]()
+    for terminator in visitedTerminators {
+      for succ in terminator.successors {
+        let succInst = succ.instructions.first!
+        if !worklist.hasBeenPushed(succInst) || availableValueInstructions.contains(succInst),
+           succInst != load
+        {
+          exitBlocks.append(succ)
+        }
+      }
+    }
+    return exitBlocks
+  }
+
+  private enum Result {
     case overwritten
     case available
     case transparent
   }
 
-  mutating func scan(instructions: ReverseInstructionList,
-                     in block: BasicBlock,
-                     complexityBudget: inout Int) -> ScanResult
-  {
-    for inst in instructions {
-      complexityBudget -= 1
-      if complexityBudget <= 0 {
-        return .overwritten
-      }
-
-      switch visit(instruction: inst) {
-        case .available:   return .available
-        case .overwritten: return .overwritten
-        case .transparent: break
-      }
-    }
-
-    // Abort if we find the storage definition of the access in case of a loop, e.g.
-    //
-    //   bb1:
-    //     %storage_root = apply
-    //     %2 = ref_element_addr %storage_root
-    //     %3 = load %2
-    //     cond_br %c, bb1, bb2
-    //
-    // The storage root is different in each loop iteration. Therefore the load in a
-    // successive loop iteration does not load from the same address as in the previous iteration.
-    if let storageDefBlock = storageDefBlock,
-       block == storageDefBlock {
-      return .overwritten
-    }
-    if block.predecessors.isEmpty {
-      // We reached the function entry without finding an available value.
-      return .overwritten
-    }
-    return .transparent
-  }
-
-  private mutating func visit(instruction: Instruction) -> ScanResult {
+  private mutating func visit(instruction: Instruction) -> Result {
     switch instruction {
     case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst, is EndBorrowInst:
       // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
@@ -721,7 +749,14 @@ private struct InstructionScanner {
       if load.kind != .take {
         return .transparent
       }
-
+/*
+    case let loadBorrow as LoadBorrowInst where load.kind == .take:
+      let precedingLoadPath = loadBorrow.address.constantAccessPath
+      if precedingLoadPath.getMaterializableProjection(to: accessPath) != nil {
+        loadBorrows.append(loadBorrow)
+        return .transparent
+      }
+*/
     case let precedingStore as StoreInst:
       if precedingStore.source is Undef {
         return .overwritten
@@ -750,6 +785,9 @@ private struct InstructionScanner {
       // Igore memory reads of `debug_value` for `load [take]`.
       return .transparent
 
+    case let termInst as TermInst:
+      visitedTerminators.append(termInst)
+
     default:
       break
     }
@@ -765,77 +803,5 @@ private struct InstructionScanner {
       }
     }
     return .transparent
-  }
-}
-
-/// Represents the liverange (in terms of basic blocks) of the loaded value.
-///
-/// In contrast to a BlockRange, this liverange has multiple begin blocks (containing the
-/// available values) and a single end block (containing the original load). For example:
-///
-///   bb1:
-///     store %1 to %addr   // begin block
-///     br bb3
-///   bb2:
-///     store %2 to %addr   // begin block
-///     br bb3
-///   bb3:
-///     %3 = load %addr     // end block
-///
-private struct Liverange {
-  private var worklist: BasicBlockWorklist
-  private var containingBlocks: Stack<BasicBlock> // doesn't include the end-block
-  private var beginBlocks: BasicBlockSet
-  private let endBlock: BasicBlock
-
-  init(endBlock: BasicBlock, _ context: FunctionPassContext) {
-    self.worklist = BasicBlockWorklist(context)
-    self.containingBlocks = Stack(context)
-    self.beginBlocks = BasicBlockSet(context)
-    self.endBlock = endBlock
-    pushPredecessors(of: endBlock)
-  }
-
-  mutating func deinitialize() {
-    worklist.deinitialize()
-    containingBlocks.deinitialize()
-    beginBlocks.deinitialize()
-  }
-
-  mutating func pushPredecessors(of block: BasicBlock) {
-    for pred in block.predecessors {
-      if !worklist.hasBeenPushed(pred) {
-        worklist.pushIfNotVisited(pred)
-        containingBlocks.append(pred)
-      }
-    }
-  }
-
-  mutating func pop() -> BasicBlock? { worklist.pop() }
-
-  mutating func add(beginBlock: BasicBlock) {
-    beginBlocks.insert(beginBlock)
-  }
-
-  /// Returns exit blocks from the liverange, i.e. paths from a begin block to a function exit
-  /// which don't go through the end-block. For example:
-  ///
-  ///     store %1 to %addr   // begin
-  ///     cond_br bb1, bb2
-  ///   bb1:
-  ///     %2 = load %addr     // end
-  ///   bb2:
-  ///     ...                 // exit
-  ///
-  var exits: [BasicBlock] {
-    var exitBlocks = [BasicBlock]()
-    for block in containingBlocks {
-      for succ in block.successors {
-        if succ != endBlock, (!worklist.hasBeenPushed(succ) || beginBlocks.contains(succ)) {
-          exitBlocks.append(succ)
-        }
-      }
-    }
-    return exitBlocks
   }
 }

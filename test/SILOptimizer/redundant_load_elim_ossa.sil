@@ -1650,7 +1650,7 @@ bb0(%0 : $UInt64):
 // CHECK-LABEL: sil [ossa] @struct_of_optional_none :
 // CHECK:         [[E:%.*]] = enum
 // CHECK:         [[S:%.*]] = struct $S ([[E]] : $Optional<String>)
-// CHECK:         [[F:%.*]] = struct_extract [[S]] : $S, #S.e
+// CHECK:         [[F:%.*]] = destructure_struct [[S]]
 // CHECK:         return [[F]]
 // CHECK-LABEL: } // end sil function 'struct_of_optional_none'
 sil [ossa] @struct_of_optional_none : $@convention(thin) () -> @owned Optional<String> {
@@ -1668,7 +1668,7 @@ bb0:
 // CHECK-LABEL: sil [ossa] @tuple_of_optional_none :
 // CHECK:         [[E:%.*]] = enum
 // CHECK:         [[T:%.*]] = tuple ([[E]] : $Optional<String>, %0 : $Int)
-// CHECK:         [[F:%.*]] = tuple_extract [[T]] : $(Optional<String>, Int), 0
+// CHECK:         ([[F:%.*]], [[G:%.*]]) = destructure_tuple [[T]]
 // CHECK:         return [[F]]
 // CHECK-LABEL: } // end sil function 'tuple_of_optional_none'
 sil [ossa] @tuple_of_optional_none : $@convention(thin) (Int) -> @owned Optional<String> {
@@ -1798,7 +1798,6 @@ bb0(%0 : @owned $NC, %1 : @owned $AnyObject):
 // CHECK-NEXT:    ([[A:%.*]], [[B:%.*]]) = destructure_struct [[DD]]
 // CHECK:         [[BADDR:%.*]] = struct_element_addr %1 : $*NC, #NC.b
 // CHECK:         store [[B]] to [trivial] [[BADDR]]
-// CHECK:           = struct_element_addr %1 : $*NC, #NC.a
 // CHECK:         [[AADDR:%.*]] = struct_element_addr %1 : $*NC, #NC.a
 // CHECK:         store %2 to [init] [[AADDR]]
 // CHECK:         return [[A]]
