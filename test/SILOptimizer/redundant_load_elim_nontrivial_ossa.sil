@@ -98,6 +98,7 @@ sil_global @total_nontrivialstruct : $NonTrivialStruct
 sil @use : $@convention(thin) (Builtin.Int32) -> ()
 sil @use_Klass : $@convention(thin) (@owned Klass) -> ()
 sil @use_nontrivialstruct : $@convention(thin) (@owned NonTrivialStruct) -> ()
+sil @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
 sil @use_a : $@convention(thin) (@owned A) -> ()
 sil @use_twofield : $@convention(thin) (@owned TwoField) -> ()
 sil @init_twofield : $@convention(thin) (@thin TwoField.Type) -> @owned TwoField
@@ -1320,3 +1321,365 @@ bb0(%0 : $*Agg2, %1 : @owned $Klass):
   return %8 : $Klass
 }
 
+
+// A `load_borrow` of a sub-field, contained in the liverange of the `load [take]`.
+// The `load_borrow` is replaced by a `begin_borrow` of the available value plus a projection.
+// The scope ending `end_borrow` must end the `begin_borrow` and not the projected value,
+// because a projection is not a borrow introducer.
+// CHECK-LABEL: @load_take_with_contained_load_borrow :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK-NEXT:    [[F:%.*]] = struct_extract [[B]] : $NonTrivialStruct, #NonTrivialStruct.val
+// CHECK-NEXT:    unchecked_ref_cast [[F]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     load
+// CHECK:       } // end sil function 'load_take_with_contained_load_borrow'
+sil [ossa] @load_take_with_contained_load_borrow : $@convention(thin) (@owned NonTrivialStruct) -> @owned NonTrivialStruct {
+bb0(%0 : @owned $NonTrivialStruct):
+  %1 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %1 : $*NonTrivialStruct
+  %2 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %3 = load_borrow %2 : $*Klass
+  %4 = unchecked_ref_cast %3 : $Klass to $Builtin.NativeObject
+  end_borrow %3 : $Klass
+  %5 = load [take] %1 : $*NonTrivialStruct
+  dealloc_stack %1 : $*NonTrivialStruct
+  return %5 : $NonTrivialStruct
+}
+
+// A `load [take]` with a liverange exit (bb2) which is not a dead-end block: the value must be
+// stored back to memory in the exit block. The address of the load does not dominate the exit
+// block, therefore it must be re-created from the base of the access.
+// CHECK-LABEL: @load_take_exit_block_projected_address :
+// CHECK:         [[F:%.*]] = destructure_struct %0
+// CHECK:       bb2:
+// CHECK-NEXT:    [[SEA:%.*]] = struct_element_addr %{{[0-9]+}} : $*NonTrivialStruct, #NonTrivialStruct.val
+// CHECK-NEXT:    store [[F]] to [init] [[SEA]]
+// CHECK:       } // end sil function 'load_take_exit_block_projected_address'
+sil [ossa] @load_take_exit_block_projected_address : $@convention(thin) (@owned NonTrivialStruct, Builtin.Int1) -> () {
+bb0(%0 : @owned $NonTrivialStruct, %1 : $Builtin.Int1):
+  %2 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %2 : $*NonTrivialStruct
+  cond_br %1, bb1, bb2
+
+bb1:
+  %3 = struct_element_addr %2 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %4 = load [take] %3 : $*Klass
+  destroy_value %4 : $Klass
+  dealloc_stack %2 : $*NonTrivialStruct
+  br bb3
+
+bb2:
+  %5 = function_ref @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  %6 = apply %5(%2) : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  destroy_addr %2 : $*NonTrivialStruct
+  dealloc_stack %2 : $*NonTrivialStruct
+  br bb3
+
+bb3:
+  %7 = tuple ()
+  return %7 : $()
+}
+
+// A `load_borrow` of the whole location, contained in the liverange of the `load [take]`.
+// CHECK-LABEL: @load_take_with_contained_load_borrow_of_whole_location :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK-NEXT:    unchecked_ref_cast [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     load
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_with_contained_load_borrow_of_whole_location'
+sil [ossa] @load_take_with_contained_load_borrow_of_whole_location : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %1 = alloc_stack $Klass
+  store %0 to [init] %1 : $*Klass
+  %2 = load_borrow %1 : $*Klass
+  %3 = unchecked_ref_cast %2 : $Klass to $Builtin.NativeObject
+  end_borrow %2 : $Klass
+  %4 = load [take] %1 : $*Klass
+  dealloc_stack %1 : $*Klass
+  return %4 : $Klass
+}
+
+// The borrow scope of the contained `load_borrow` has multiple `end_borrow`s, all of them
+// within the liverange.
+// CHECK-LABEL: @load_take_with_contained_load_borrow_multiple_end_borrows :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb3:
+// CHECK-NOT:     load
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_with_contained_load_borrow_multiple_end_borrows'
+sil [ossa] @load_take_with_contained_load_borrow_multiple_end_borrows : $@convention(thin) (@owned Klass, Builtin.Int1) -> @owned Klass {
+bb0(%0 : @owned $Klass, %1 : $Builtin.Int1):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = load_borrow %2 : $*Klass
+  cond_br %1, bb1, bb2
+
+bb1:
+  end_borrow %3 : $Klass
+  br bb3
+
+bb2:
+  end_borrow %3 : $Klass
+  br bb3
+
+bb3:
+  %4 = load [take] %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  return %4 : $Klass
+}
+
+// With multiple available values the contained `load_borrow` borrows the phi which the
+// SSA updater creates for the available values.
+// CHECK-LABEL: @load_take_with_contained_load_borrow_multiple_available_values :
+// CHECK:       bb3([[P:%.*]] : @owned $Klass):
+// CHECK-NEXT:    [[B:%.*]] = begin_borrow [[P]]
+// CHECK-NEXT:    unchecked_ref_cast [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     load
+// CHECK:         return [[P]]
+// CHECK:       } // end sil function 'load_take_with_contained_load_borrow_multiple_available_values'
+sil [ossa] @load_take_with_contained_load_borrow_multiple_available_values : $@convention(thin) (@guaranteed Klass, Builtin.Int1) -> @owned Klass {
+bb0(%0 : @guaranteed $Klass, %1 : $Builtin.Int1):
+  %2 = alloc_stack $Klass
+  cond_br %1, bb1, bb2
+
+bb1:
+  %3 = copy_value %0 : $Klass
+  store %3 to [init] %2 : $*Klass
+  br bb3
+
+bb2:
+  %4 = copy_value %0 : $Klass
+  store %4 to [init] %2 : $*Klass
+  br bb3
+
+bb3:
+  %5 = load_borrow %2 : $*Klass
+  %6 = unchecked_ref_cast %5 : $Klass to $Builtin.NativeObject
+  end_borrow %5 : $Klass
+  %7 = load [take] %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  return %7 : $Klass
+}
+
+// Two `load_borrow`s in the liverange: one of the whole location and one of a sub-field.
+// CHECK-LABEL: @load_take_with_two_contained_load_borrows :
+// CHECK:         [[B1:%.*]] = begin_borrow %0
+// CHECK-NEXT:    end_borrow [[B1]]
+// CHECK:         [[B2:%.*]] = begin_borrow %0
+// CHECK-NEXT:    struct_extract [[B2]] : $NonTrivialStruct, #NonTrivialStruct.val
+// CHECK-NEXT:    end_borrow [[B2]]
+// CHECK-NOT:     load
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_with_two_contained_load_borrows'
+sil [ossa] @load_take_with_two_contained_load_borrows : $@convention(thin) (@owned NonTrivialStruct) -> @owned NonTrivialStruct {
+bb0(%0 : @owned $NonTrivialStruct):
+  %1 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %1 : $*NonTrivialStruct
+  %2 = load_borrow %1 : $*NonTrivialStruct
+  end_borrow %2 : $NonTrivialStruct
+  %3 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %4 = load_borrow %3 : $*Klass
+  end_borrow %4 : $Klass
+  %5 = load [take] %1 : $*NonTrivialStruct
+  dealloc_stack %1 : $*NonTrivialStruct
+  return %5 : $NonTrivialStruct
+}
+
+// A contained `load_borrow` is also replaced if the load is a `load [copy]`. In this case the
+// `load_borrow` borrows the inserted copy of the available value.
+// CHECK-LABEL: @load_copy_with_contained_load_borrow :
+// CHECK:         [[C:%.*]] = copy_value %1
+// CHECK-NEXT:    store %1 to [assign] %0
+// CHECK-NEXT:    [[B:%.*]] = begin_borrow [[C]]
+// CHECK-NEXT:    struct_extract [[B]] : $NonTrivialStruct, #NonTrivialStruct.val
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     load
+// CHECK:         return [[C]]
+// CHECK:       } // end sil function 'load_copy_with_contained_load_borrow'
+sil [ossa] @load_copy_with_contained_load_borrow : $@convention(thin) (@inout NonTrivialStruct, @owned NonTrivialStruct) -> @owned NonTrivialStruct {
+bb0(%0 : $*NonTrivialStruct, %1 : @owned $NonTrivialStruct):
+  store %1 to [assign] %0 : $*NonTrivialStruct
+  %2 = load_borrow %0 : $*NonTrivialStruct
+  %3 = struct_extract %2 : $NonTrivialStruct, #NonTrivialStruct.val
+  end_borrow %2 : $NonTrivialStruct
+  %4 = load [copy] %0 : $*NonTrivialStruct
+  return %4 : $NonTrivialStruct
+}
+
+// A `load_borrow` of an unrelated location does not prevent the optimization and is not touched.
+// CHECK-LABEL: @load_take_with_load_borrow_of_unrelated_location :
+// CHECK-NOT:     load [take]
+// CHECK:         load_borrow %1
+// CHECK-NOT:     load [take]
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_with_load_borrow_of_unrelated_location'
+sil [ossa] @load_take_with_load_borrow_of_unrelated_location : $@convention(thin) (@owned Klass, @inout Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass, %1 : $*Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = load_borrow %1 : $*Klass
+  %4 = unchecked_ref_cast %3 : $Klass to $Builtin.NativeObject
+  end_borrow %3 : $Klass
+  %5 = load [take] %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  return %5 : $Klass
+}
+
+// An `end_borrow` of a borrow scope which is not a `load_borrow` of the load's location does not
+// prevent the optimization.
+// CHECK-LABEL: @load_take_with_unrelated_borrow_scope :
+// CHECK-NOT:     load
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_with_unrelated_borrow_scope'
+sil [ossa] @load_take_with_unrelated_borrow_scope : $@convention(thin) (@owned Klass, @guaranteed Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass, %1 : @guaranteed $Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = begin_borrow %1 : $Klass
+  %4 = unchecked_ref_cast %3 : $Klass to $Builtin.NativeObject
+  end_borrow %3 : $Klass
+  %5 = load [take] %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  return %5 : $Klass
+}
+
+// Bail out: the `load_borrow` borrows a larger location than the one which is loaded.
+// Such a `load_borrow` cannot be replaced by a projection of the available value.
+// CHECK-LABEL: @load_take_with_load_borrow_of_larger_location :
+// CHECK:         load_borrow %1
+// CHECK:         load [take]
+// CHECK:       } // end sil function 'load_take_with_load_borrow_of_larger_location'
+sil [ossa] @load_take_with_load_borrow_of_larger_location : $@convention(thin) (@owned NonTrivialStruct) -> @owned Klass {
+bb0(%0 : @owned $NonTrivialStruct):
+  %1 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %1 : $*NonTrivialStruct
+  %2 = load_borrow %1 : $*NonTrivialStruct
+  %3 = struct_extract %2 : $NonTrivialStruct, #NonTrivialStruct.val
+  end_borrow %2 : $NonTrivialStruct
+  %4 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %5 = load [take] %4 : $*Klass
+  dealloc_stack %1 : $*NonTrivialStruct
+  return %5 : $Klass
+}
+
+// Bail out: the borrow scope is not fully contained in the liverange, because the `end_borrow`
+// in bb2 is not reachable backward from the load.
+// CHECK-LABEL: @load_take_with_load_borrow_scope_not_contained :
+// CHECK:       bb1:
+// CHECK:         load [take] %2
+// CHECK:       bb2:
+// CHECK:         destroy_addr %2
+// CHECK:       } // end sil function 'load_take_with_load_borrow_scope_not_contained'
+sil [ossa] @load_take_with_load_borrow_scope_not_contained : $@convention(thin) (@owned Klass, Builtin.Int1) -> () {
+bb0(%0 : @owned $Klass, %1 : $Builtin.Int1):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = load_borrow %2 : $*Klass
+  cond_br %1, bb1, bb2
+
+bb1:
+  end_borrow %3 : $Klass
+  %4 = load [take] %2 : $*Klass
+  destroy_value %4 : $Klass
+  dealloc_stack %2 : $*Klass
+  br bb3
+
+bb2:
+  end_borrow %3 : $Klass
+  destroy_addr %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  br bb3
+
+bb3:
+  %5 = tuple ()
+  return %5 : $()
+}
+
+// Bail out: the borrow scope is ended by a reborrow (in bb2) and not by an `end_borrow`.
+// CHECK-LABEL: @load_take_with_reborrowed_load_borrow :
+// CHECK:         load_borrow %2
+// CHECK:         load [take] %2
+// CHECK:       } // end sil function 'load_take_with_reborrowed_load_borrow'
+sil [ossa] @load_take_with_reborrowed_load_borrow : $@convention(thin) (@owned Klass, Builtin.Int1) -> () {
+bb0(%0 : @owned $Klass, %1 : $Builtin.Int1):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = load_borrow %2 : $*Klass
+  cond_br %1, bb1, bb2
+
+bb1:
+  end_borrow %3 : $Klass
+  %4 = load [take] %2 : $*Klass
+  destroy_value %4 : $Klass
+  dealloc_stack %2 : $*Klass
+  br bb4
+
+bb2:
+  br bb3(%3 : $Klass)
+
+bb3(%5 : @reborrow $Klass):
+  %6 = borrowed %5 : $Klass from ()
+  end_borrow %6 : $Klass
+  destroy_addr %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  br bb4
+
+bb4:
+  %7 = tuple ()
+  return %7 : $()
+}
+
+// Bail out: the `load_borrow` is not in the liverange, because the available value (the
+// `load [copy]`) is located between the `load_borrow` and the load.
+// CHECK-LABEL: @load_take_with_load_borrow_before_available_value :
+// CHECK:         load_borrow %1
+// CHECK:         load [take] %1
+// CHECK:       } // end sil function 'load_take_with_load_borrow_before_available_value'
+sil [ossa] @load_take_with_load_borrow_before_available_value : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %1 = alloc_stack $Klass
+  store %0 to [init] %1 : $*Klass
+  %2 = load_borrow %1 : $*Klass
+  %3 = load [copy] %1 : $*Klass
+  end_borrow %2 : $Klass
+  destroy_value %3 : $Klass
+  %4 = load [take] %1 : $*Klass
+  dealloc_stack %1 : $*Klass
+  return %4 : $Klass
+}
+
+// Bail out: one of the two available values (the `load [copy]` in bb1) is located inside the
+// borrow scope of the `load_borrow`.
+// CHECK-LABEL: @load_take_with_available_value_in_load_borrow_scope :
+// CHECK:         load_borrow %2
+// CHECK:       bb3:
+// CHECK:         load [take] %2
+// CHECK:       } // end sil function 'load_take_with_available_value_in_load_borrow_scope'
+sil [ossa] @load_take_with_available_value_in_load_borrow_scope : $@convention(thin) (@owned Klass, Builtin.Int1) -> @owned Klass {
+bb0(%0 : @owned $Klass, %1 : $Builtin.Int1):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2 : $*Klass
+  %3 = load_borrow %2 : $*Klass
+  cond_br %1, bb1, bb2
+
+bb1:
+  %4 = load [copy] %2 : $*Klass
+  end_borrow %3 : $Klass
+  destroy_value %4 : $Klass
+  br bb3
+
+bb2:
+  end_borrow %3 : $Klass
+  br bb3
+
+bb3:
+  %5 = load [take] %2 : $*Klass
+  dealloc_stack %2 : $*Klass
+  return %5 : $Klass
+}
