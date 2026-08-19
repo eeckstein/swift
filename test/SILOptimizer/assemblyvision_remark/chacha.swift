@@ -43,3 +43,4 @@ public func run_ChaCha(_ N: Int) {
   }
 } // expected-remark {{release of type '}}
   // expected-remark @-1 {{release of type '}}
+  // expected-remark @-2 {{release of type '}}

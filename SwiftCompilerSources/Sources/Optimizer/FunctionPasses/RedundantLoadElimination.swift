@@ -280,8 +280,9 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues, let exitBlocks, let accessPath):
-    replace(load: load, with: availableValues, exitBlocks: exitBlocks, accessPath: accessPath, context)
+  case .redundant(let availableValues, let containedLoadBorrows, let exitBlocks, let accessPath):
+    replace(load: load, with: availableValues, containedLoadBorrows: containedLoadBorrows,
+            exitBlocks: exitBlocks, accessPath: accessPath, context)
     return true
   case .maybePartiallyRedundant(let subPath):
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
@@ -347,7 +348,7 @@ private extension LoadingInstruction {
     }
     switch self.kind {
     case .trivial, .unqualified, .borrow:
-      return .redundant(liverange.availableValues, exitBlocks: [], accessPath: accessPath)
+      return .redundant(liverange.availableValues, containedLoadBorrows: [], exitBlocks: [], accessPath: accessPath)
     case .copy, .take:
       // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
       // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -380,7 +381,16 @@ private extension LoadingInstruction {
           }
         }
       }
-      return .redundant(liverange.availableValues, exitBlocks: exitBlocks, accessPath: accessPath)
+      var containedLoadBorrows = [LoadBorrowInst]()
+      for loadBorrow in liverange.loadBorrows {
+        if liverange.isFullyContained(scopeOf: loadBorrow) {
+          containedLoadBorrows.append(loadBorrow)
+        } else if self.kind == .take {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+        }
+      }
+      return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows,
+                        exitBlocks: exitBlocks, accessPath: accessPath)
     }
   }
 }
@@ -422,6 +432,7 @@ private extension BasicBlock {
 
 private func replace(load: LoadingInstruction,
                      with availableValues: [AvailableValue],
+                     containedLoadBorrows: [LoadBorrowInst],
                      exitBlocks: [BasicBlock],
                      accessPath: AccessPath,
                      _ context: FunctionPassContext)
@@ -448,6 +459,17 @@ private func replace(load: LoadingInstruction,
       let addr = accessPath.materializeAddress(builder)
       builder.createStore(source: valueInExitBlock, destination: addr, ownership: .initialize)
     }
+  }
+
+  for loadBorrow in containedLoadBorrows {
+    let builder = Builder(before: loadBorrow, context)
+    let beginBorrow = builder.createBeginBorrow(of: ssaUpdater.getValue(atEndOf: loadBorrow.parentBlock))
+    let path = accessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath)!
+    let value = beginBorrow.createProjection(path: path, builder: builder)
+    // The scope ending instructions must end the borrow of the `begin_borrow`. If the borrowed value
+    // is projected, the projection is not a borrow introducer and therefore cannot be end-borrowed.
+    loadBorrow.uses.endingLifetime.replaceAll(with: beginBorrow, context)
+    loadBorrow.replace(with: value, context)
   }
 
   let newValue: Value
@@ -546,7 +568,7 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue], exitBlocks: [BasicBlock], accessPath: AccessPath)
+  case redundant([AvailableValue], containedLoadBorrows: [LoadBorrowInst], exitBlocks: [BasicBlock], accessPath: AccessPath)
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
@@ -628,7 +650,7 @@ private struct Liverange {
   private let load: LoadingInstruction
   private let accessPath: AccessPath
   private let storageDefBlock: BasicBlock?
-  private let aliasAnalysis: AliasAnalysis
+  private let context: FunctionPassContext
   private let loadAddress: AddressWithAccessPath
 
   private var worklist: InstructionWorklist
@@ -637,25 +659,27 @@ private struct Liverange {
 
   private(set) var potentiallyRedundantSubpath: AccessPath? = nil
   private(set) var availableValues = Array<AvailableValue>()
-  private(set) var loadBorrows = Array<LoadBorrowInst>()
+  private(set) var loadBorrows: SpecificIterableInstructionSet<LoadBorrowInst>
   private(set) var foundLoop = false
 
   init(load: LoadingInstruction, accessPath: AccessPath, _ context: FunctionPassContext) {
     self.load = load
     self.accessPath = accessPath
     self.storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
-    self.aliasAnalysis = context.aliasAnalysis
+    self.context = context
     self.loadAddress = AddressWithAccessPath(load.address)
 
     self.worklist = InstructionWorklist(context)
     self.visitedTerminators = Stack(context)
     self.availableValueInstructions = InstructionSet(context)
+    self.loadBorrows = SpecificIterableInstructionSet(context)
   }
 
   mutating func deinitialize() {
     worklist.deinitialize()
     visitedTerminators.deinitialize()
     availableValueInstructions.deinitialize()
+    loadBorrows.deinitialize()
   }
 
   mutating func performDataflow(complexityBudget: inout Int) -> Bool {
@@ -663,6 +687,8 @@ private struct Liverange {
     if load == functionEntry {
       return false
     }
+    let aliasAnalysis = context.aliasAnalysis
+
     worklist.pushPredecessors(of: load)
 
     while let inst = worklist.pop() {
@@ -671,7 +697,7 @@ private struct Liverange {
         return false
       }
 
-      switch visit(instruction: inst) {
+      switch visit(instruction: inst, aliasAnalysis) {
       case .available:
         availableValueInstructions.insert(inst)
       case .overwritten:
@@ -728,15 +754,43 @@ private struct Liverange {
     return exitBlocks
   }
 
+  func isFullyContained(scopeOf loadBorrow: LoadBorrowInst) -> Bool {
+    guard worklist.hasBeenPushed(loadBorrow) else {
+      return false
+    }
+    for user in loadBorrow.uses.endingLifetime.users {
+      guard let endBorrow = user as? EndBorrowInst, worklist.hasBeenPushed(endBorrow) else {
+        return false
+      }
+    }
+    if availableValues.singleElement != nil {
+      return true
+    }
+    var scope = InstructionRange(begin: loadBorrow, context)
+    defer { scope.deinitialize() }
+    scope.insert(contentsOf: loadBorrow.uses.endingLifetime.users)
+
+    return availableValues.allSatisfy { !scope.contains($0.instruction) }
+  }
+
   private enum Result {
     case overwritten
     case available
     case transparent
   }
 
-  private mutating func visit(instruction: Instruction) -> Result {
+  private mutating func visit(instruction: Instruction, _ aliasAnalysis: AliasAnalysis) -> Result {
     switch instruction {
-    case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst, is EndBorrowInst:
+    case let endBorrow as EndBorrowInst:
+      if let loadBorrow = endBorrow.borrow as? LoadBorrowInst,
+         accessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath) != nil
+      {
+        loadBorrows.insert(loadBorrow)
+        return .transparent
+      }
+      fallthrough
+
+    case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst:
       // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
       // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
       // instructions prevent that the `load [take]` will illegally mutate memory which is protected
@@ -744,6 +798,7 @@ private struct Liverange {
       if load.kind != .take {
         return .transparent
       }
+
     case let precedingLoad as LoadInst:
       if precedingLoad == load {
         // We need to stop the data flow analysis when we visit the original load again.
@@ -769,14 +824,12 @@ private struct Liverange {
       if load.kind != .take {
         return .transparent
       }
-/*
-    case let loadBorrow as LoadBorrowInst where load.kind == .take:
-      let precedingLoadPath = loadBorrow.address.constantAccessPath
-      if precedingLoadPath.getMaterializableProjection(to: accessPath) != nil {
-        loadBorrows.append(loadBorrow)
+
+    case let loadBorrow as LoadBorrowInst:
+      if loadBorrows.contains(loadBorrow) {
         return .transparent
       }
-*/
+
     case let precedingStore as StoreInst:
       if precedingStore.source is Undef {
         return .overwritten
