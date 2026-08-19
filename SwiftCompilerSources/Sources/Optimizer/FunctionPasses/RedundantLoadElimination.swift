@@ -266,8 +266,8 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues, let exitBlocks):
-    replace(load: load, with: availableValues, exitBlocks: exitBlocks, context)
+  case .redundant(let availableValues, let exitBlocks, let accessPath):
+    replace(load: load, with: availableValues, exitBlocks: exitBlocks, accessPath: accessPath, context)
     return true
   case .maybePartiallyRedundant(let subPath):
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
@@ -333,7 +333,7 @@ private extension LoadingInstruction {
     }
     switch self.kind {
     case .trivial, .unqualified, .borrow:
-      return .redundant(liverange.availableValues, exitBlocks: [])
+      return .redundant(liverange.availableValues, exitBlocks: [], accessPath: accessPath)
     case .copy, .take:
       // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
       // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -346,8 +346,11 @@ private extension LoadingInstruction {
       //     %2 = load [take] %addr
       //   bb2:                      // liverange exit
       //
-      // Only handle a common special case: if the exit is a dead-end block (with an `unreachable`)
-      // we are okay, because there we can insert a `destroy_value [dead_end]`.
+      // Only handle two special cases:
+      // * if the exit is a dead-end block (with an `unreachable`) we are okay, because there we can
+      //   insert a `destroy_value [dead_end]`.
+      // * in case of a `take`, we can store the value back to memory in the exit block. This requires
+      //   that the address of the access can be re-materialized in the exit block.
       //
       let exitBlocks = liverange.exits
       if !exitBlocks.isEmpty {
@@ -358,40 +361,37 @@ private extension LoadingInstruction {
           if exitBlock.isSafeDeadEndBlock(for: self.address, context) {
             continue
           }
-          if self.kind == .copy || findDominatingAddress(in: liverange.availableValues, for: exitBlock, context) == nil {
+          if self.kind == .copy || !accessPath.canMaterializeAddress(atBeginOf: exitBlock, context) {
             return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
           }
         }
       }
-      return .redundant(liverange.availableValues, exitBlocks: exitBlocks)
+      return .redundant(liverange.availableValues, exitBlocks: exitBlocks, accessPath: accessPath)
     }
   }
 }
 
-private func findDominatingAddress(in availableValues: [AvailableValue],
-                                   for exitBlock: BasicBlock,
-                                   _ context: FunctionPassContext
-) -> Value? {
-  let domTree = context.dominatorTree
-  for availableValue in availableValues {
-    if availableValue.address.strictlyDominates(instruction: exitBlock.instructions.first!, domTree) {
-      return availableValue.address
+private extension AccessPath {
+  /// True, if the address of this access can be re-created at the begin of `block`.
+  func canMaterializeAddress(atBeginOf block: BasicBlock, _ context: FunctionPassContext) -> Bool {
+    guard let baseAddress = base.address,
+          materializableProjectionPath != nil else {
+      return false
     }
+    // The base address must be available at the begin of `block`.
+    if !baseAddress.strictlyDominates(instruction: block.instructions.first!, context.dominatorTree) {
+      return false
+    }
+    // If the base address is derived from a reference which is only valid within a borrow scope,
+    // that scope might not cover `block` - even if the base address dominates `block`.
+    return !base.hasLocalOwnershipLifetime
   }
-  return nil
-}
 
-private func findDominatingAddress(in addresses: [Value],
-                                   for exitBlock: BasicBlock,
-                                   _ context: FunctionPassContext
-) -> Value {
-  let domTree = context.dominatorTree
-  for address in addresses {
-    if address.strictlyDominates(instruction: exitBlock.instructions.first!, domTree) {
-      return address
-    }
+  /// Re-creates the address projections of this access path at the builder's insertion point.
+  /// This is only legal if `canMaterializeAddress` returned true for that location.
+  func materializeAddress(_ builder: Builder) -> Value {
+    return base.address!.createAddressProjection(path: materializableProjectionPath!, builder: builder)
   }
-  fatalError("no dominating address found")
 }
 
 private extension BasicBlock {
@@ -409,16 +409,15 @@ private extension BasicBlock {
 private func replace(load: LoadingInstruction,
                      with availableValues: [AvailableValue],
                      exitBlocks: [BasicBlock],
+                     accessPath: AccessPath,
                      _ context: FunctionPassContext)
 {
   var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater, context)
   defer { ssaUpdater.deinitialize() }
 
-  var projectedAddresses = [Value]()
-
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
     let block = availableValue.instruction.parentBlock
-    let availableValue = provideValue(for: load, from: availableValue, &projectedAddresses, context)
+    let availableValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
   }
 
@@ -428,7 +427,11 @@ private func replace(load: LoadingInstruction,
     if exitBlock.isSafeDeadEndBlock(for: load.address, context) {
       builder.createDestroyValue(operand: valueInExitBlock, isDeadEnd: true)
     } else {
-      let addr = findDominatingAddress(in: projectedAddresses, for: exitBlock, context)
+      // The memory is not initialized on this path anymore (because the load was turned into a
+      // `take` of the available value). Store the value back to re-initialize the memory.
+      // Note that the address of the load itself is not available in the exit block. Therefore
+      // re-create the address projections from the base of the access.
+      let addr = accessPath.materializeAddress(builder)
       builder.createStore(source: valueInExitBlock, destination: addr, ownership: .initialize)
     }
   }
@@ -462,7 +465,6 @@ private func replace(load: LoadingInstruction,
 private func provideValue(
   for load: LoadingInstruction,
   from availableValue: AvailableValue,
-  _ projectedAddresses: inout [Value],
   _ context: FunctionPassContext
 ) -> Value {
   let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
@@ -477,9 +479,7 @@ private func provideValue(
     // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
     value = availableValue.value.createProjectionAndCopy(path: projectionPath, builder: builder)
   case .take:
-    let (value, projectedAddress) = shrinkMemoryLifetime(to: availableValue, projectionPath: projectionPath, context)
-    projectedAddresses.append(projectedAddress)
-    return value
+    return shrinkMemoryLifetime(to: availableValue, projectionPath: projectionPath, context)
   case .borrow:
     let conversion = builder.createUncheckedOwnership(operand: availableValue.value, forwardingOwnership: .none)
     value = conversion.createProjection(path: projectionPath, builder: builder)
@@ -507,15 +507,14 @@ private func provideValue(
 private func shrinkMemoryLifetime(to availableValue: AvailableValue,
                                   projectionPath: SmallProjectionPath,
                                   _ context: FunctionPassContext
-) -> (Value, address: Value) {
+) -> Value {
   switch availableValue {
   case .viaLoad(let availableLoad):
     assert(availableLoad.loadOwnership == .copy)
     let projectedLoad = availableLoad.split(alongPath: projectionPath, context)
     projectedLoad.set(ownership: .take, context)
     let builder = Builder(after: projectedLoad, context)
-    let valueToAdd = builder.createCopyValue(operand: projectedLoad)
-    return (valueToAdd, address: projectedLoad.address)
+    return builder.createCopyValue(operand: projectedLoad)
   case .viaStore(let availableStore):
     let builder = Builder(before: availableStore, context)
     if availableStore.storeOwnership == .assign {
@@ -524,9 +523,8 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
     }
     let projectedStore = availableStore.split(alongPath: projectionPath, context)
     let valueToAdd = projectedStore.source
-    let projectedAddress = projectedStore.destination
     context.erase(instruction: projectedStore)
-    return (valueToAdd, address: projectedAddress)
+    return valueToAdd
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
   }
@@ -534,7 +532,7 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue], exitBlocks: [BasicBlock])
+  case redundant([AvailableValue], exitBlocks: [BasicBlock], accessPath: AccessPath)
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
