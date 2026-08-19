@@ -695,14 +695,24 @@ private extension AnalyzedInstructions {
         continue
       }
 
+      let instBeforeLoad = loadInst.previous
+      let instAfterLoad = loadInst.next!
       guard let projectionPath =  loadInst.address.accessPath.getProjection(to: accessPath),
-            let splitLoads = loadInst.trySplit(alongPath: projectionPath, context) else {
+            loadInst.type.canProject(path: projectionPath, in: loadInst.parentFunction) else {
         newLoads.push(loadInst)
         return false
       }
-      
-      splitCounter += splitLoads.count
-      newLoads.append(contentsOf: splitLoads)
+      _ = loadInst.split(alongPath: projectionPath, context)
+
+      for inst in ReverseInstructionList(first: instAfterLoad.previous) {
+        if inst == instBeforeLoad {
+          break
+        }
+        if let newLoad = inst as? LoadInst {
+          splitCounter += 1
+          newLoads.append(newLoad)
+        }
+      }
     }
 
     return true

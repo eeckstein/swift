@@ -746,20 +746,25 @@ extension StoreInst {
   }
 
   func split(alongPath projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> StoreInst {
-    precondition(storeOwnership == .initialize)
-
-    if projectionPath.isEmpty {
-      return self
-    }
+    precondition(storeOwnership != .assign)
 
     let (fieldKind, index, subPath) = projectionPath.pop()
-
-    let builder = Builder(before: self, context)
     var projectedStore: StoreInst? = nil
 
     switch fieldKind {
+    case .root:
+      return self
     case .structField:
-      let destructure = builder.createDestructureStruct(struct: source)
+      assert(!(source.type.nominal as! StructDecl).hasUnreferenceableStorage)
+      let builder = Builder(before: self, context)
+      let v = if source.ownership != .none,
+                 (source.type.nominal as! StructDecl).valueTypeDestructor != nil
+      {
+        builder.createDropDeinit(of: source)
+      } else {
+        source
+      }
+      let destructure = builder.createDestructureStruct(struct: v)
       for (fieldIdx, fieldValue) in destructure.results.enumerated() {
         let destFieldAddr = builder.createStructElementAddr(structAddress: destination, fieldIndex: fieldIdx)
         let ownership = splitOwnership(for: fieldValue)
@@ -769,6 +774,7 @@ extension StoreInst {
         }
       }
     case .tupleField:
+      let builder = Builder(before: self, context)
       let destructure = builder.createDestructureTuple(tuple: source)
       for (elementIdx, elementValue) in destructure.results.enumerated() {
         let elementAddr = builder.createTupleElementAddr(tupleAddress: destination, elementIndex: elementIdx)
@@ -828,38 +834,30 @@ extension LoadInst {
     }
   }
   
-  func trySplit(
+  func split(
     alongPath projectionPath: SmallProjectionPath,
+    insertedLoadCallback: (LoadInst) -> () = { _  in },
     _ context: FunctionPassContext
-  ) -> [LoadInst]? {
-    if projectionPath.isEmpty {
-      return nil
-    }
-    
+  ) -> LoadInst {
     let (fieldKind, index, pathRemainder) = projectionPath.pop()
     
     var elements: [LoadInst]
     
     switch fieldKind {
+    case .root:
+      return self
     case .structField where type.isStruct:
-      guard !(type.nominal as! StructDecl).hasUnreferenceableStorage,
-            let fields = type.getNominalFields(in: parentFunction) else {
-        return nil
-      }
-      
+      assert(!(type.nominal as! StructDecl).hasUnreferenceableStorage)
+      let fields = type.getNominalFields(in: parentFunction)!
+
       elements = splitStruct(fields: fields, context)
     case .tupleField where type.isTuple:
       elements = splitTuple(context)
     default:
-      return nil
+      fatalError("unsupported projection")
     }
     
-    if let recursiveSplitLoad = elements[index].trySplit(alongPath: pathRemainder, context) {
-      elements.remove(at: index)
-      elements += recursiveSplitLoad
-    }
-    
-    return elements
+    return elements[index].split(alongPath: pathRemainder, context)
   }
   
   private func splitStruct(fields: NominalFieldsArray, _ context: FunctionPassContext) -> [LoadInst] {
@@ -1295,6 +1293,10 @@ extension Type {
     default:
       return nil
     }
+  }
+
+  func canProject(path: SmallProjectionPath, in function: Function) -> Bool {
+    return project(path: path, in: function) != nil
   }
 }
 
