@@ -834,11 +834,7 @@ extension LoadInst {
     }
   }
   
-  func split(
-    alongPath projectionPath: SmallProjectionPath,
-    insertedLoadCallback: (LoadInst) -> () = { _  in },
-    _ context: FunctionPassContext
-  ) -> LoadInst {
+  func split(alongPath projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> LoadInst {
     let (fieldKind, index, pathRemainder) = projectionPath.pop()
     
     var elements: [LoadInst]
@@ -1266,19 +1262,14 @@ extension Type {
   /// Only struct and tuple field components are supported; any other path component (e.g.
   /// enum cases, class fields, or "any"-kinds) causes the projection to fail.
   func project(path: SmallProjectionPath, in function: Function) -> Type? {
-    if let structDecl = nominal as? StructDecl,
-       structDecl.hasUnreferenceableStorage
-    {
-      return nil
-    }
-
     let (kind, index, subPath) = path.pop()
     switch kind {
     case .root:
       return self
     case .structField:
       guard let fields = getNominalFields(in: function),
-            index < fields.count
+            index < fields.count,
+            !(nominal as! StructDecl).hasUnreferenceableStorage
       else {
         return nil
       }
