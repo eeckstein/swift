@@ -396,9 +396,7 @@ private extension AccessPath {
     if !baseAddress.strictlyDominates(instruction: instruction, context.dominatorTree) {
       return false
     }
-    // If the base address is derived from a reference which is only valid within a borrow scope,
-    // that scope might not cover `instruction` - even if the base address dominates it.
-    return !base.hasLocalOwnershipLifetime
+    return true
   }
 
   /// Re-creates the address projections of this access path at the builder's insertion point.
