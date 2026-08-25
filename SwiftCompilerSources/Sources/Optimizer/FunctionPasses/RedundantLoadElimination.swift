@@ -266,9 +266,9 @@ private func tryEliminate(load: LoadingInstruction, complexityBudget: inout Int,
   switch load.isRedundant(complexityBudget: &complexityBudget, context) {
   case .notRedundant:
     return false
-  case .redundant(let availableValues, let containedLoadBorrows, let exitBlocks, let accessPath):
-    replace(load: load, with: availableValues, containedLoadBorrows: containedLoadBorrows,
-            exitBlocks: exitBlocks, accessPath: accessPath, context)
+  case .redundant(let availableValues, let containedLoadBorrows, let exitBlocks):
+    replace(load: load, with: availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks,
+            context)
     return true
   case .maybePartiallyRedundant(let subPath):
     // Check if the a partial load would really be redundant to avoid unnecessary splitting.
@@ -334,7 +334,7 @@ private extension LoadingInstruction {
     }
     switch self.kind {
     case .trivial, .unqualified, .borrow:
-      return .redundant(liverange.availableValues, containedLoadBorrows: [], exitBlocks: [], accessPath: accessPath)
+      return .redundant(liverange.availableValues, containedLoadBorrows: [], exitBlocks: [])
     case .copy, .take:
       // Check if the liverange of the value has "exits", i.e. paths which don't lead to the load.
       // It means that we would have to insert a destroy on that exit to satisfy ownership rules.
@@ -362,7 +362,7 @@ private extension LoadingInstruction {
           if exitBlock.isSafeDeadEndBlock(for: self.address, context) {
             continue
           }
-          if self.kind == .copy || !accessPath.canMaterializeAddress(atBeginOf: exitBlock, context) {
+          if self.kind == .copy || !accessPath.canMaterializeAddress(at: exitBlock.instructions.first!, context) {
             return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
           }
         }
@@ -375,25 +375,29 @@ private extension LoadingInstruction {
           return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
         }
       }
-      return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows,
-                        exitBlocks: exitBlocks, accessPath: accessPath)
+      for case .lifetimeBorder(let borderInst) in liverange.availableValues {
+        guard accessPath.canMaterializeAddress(at: borderInst, context) else {
+          return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+        }
+      }
+      return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks)
     }
   }
 }
 
 private extension AccessPath {
-  /// True, if the address of this access can be re-created at the begin of `block`.
-  func canMaterializeAddress(atBeginOf block: BasicBlock, _ context: FunctionPassContext) -> Bool {
+  /// True, if the address of this access can be re-created at `instruction`.
+  func canMaterializeAddress(at instruction: Instruction, _ context: FunctionPassContext) -> Bool {
     guard let baseAddress = base.address,
           materializableProjectionPath != nil else {
       return false
     }
-    // The base address must be available at the begin of `block`.
-    if !baseAddress.strictlyDominates(instruction: block.instructions.first!, context.dominatorTree) {
+    // The base address must be available at `instruction`.
+    if !baseAddress.strictlyDominates(instruction: instruction, context.dominatorTree) {
       return false
     }
     // If the base address is derived from a reference which is only valid within a borrow scope,
-    // that scope might not cover `block` - even if the base address dominates `block`.
+    // that scope might not cover `instruction` - even if the base address dominates it.
     return !base.hasLocalOwnershipLifetime
   }
 
@@ -420,7 +424,6 @@ private func replace(load: LoadingInstruction,
                      with availableValues: [AvailableValue],
                      containedLoadBorrows: [LoadBorrowInst],
                      exitBlocks: [BasicBlock],
-                     accessPath: AccessPath,
                      _ context: FunctionPassContext)
 {
   var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater, context)
@@ -431,6 +434,7 @@ private func replace(load: LoadingInstruction,
     let availableValue = provideValue(for: load, from: availableValue, context)
     ssaUpdater.addAvailableValue(availableValue, in: block)
   }
+  let loadAccessPath = load.address.constantAccessPath
 
   for exitBlock in exitBlocks {
     let builder = Builder(atBeginOf: exitBlock, context)
@@ -442,7 +446,7 @@ private func replace(load: LoadingInstruction,
       // `take` of the available value). Store the value back to re-initialize the memory.
       // Note that the address of the load itself is not available in the exit block. Therefore
       // re-create the address projections from the base of the access.
-      let addr = accessPath.materializeAddress(builder)
+      let addr = loadAccessPath.materializeAddress(builder)
       builder.createStore(source: valueInExitBlock, destination: addr, ownership: .initialize)
     }
   }
@@ -450,7 +454,7 @@ private func replace(load: LoadingInstruction,
   for loadBorrow in containedLoadBorrows {
     let builder = Builder(before: loadBorrow, context)
     let beginBorrow = builder.createBeginBorrow(of: ssaUpdater.getValue(atEndOf: loadBorrow.parentBlock))
-    let path = accessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath)!
+    let path = loadAccessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath)!
     let value = beginBorrow.createProjection(path: path, builder: builder)
     // The scope ending instructions must end the borrow of the `begin_borrow`. If the borrowed value
     // is projected, the projection is not a borrow introducer and therefore cannot be end-borrowed.
@@ -489,7 +493,7 @@ private func provideValue(
   from availableValue: AvailableValue,
   _ context: FunctionPassContext
 ) -> Value {
-  let projectionPath = availableValue.address.constantAccessPath.getMaterializableProjection(to: load.address.constantAccessPath)!
+  let projectionPath = availableValue.getProjectionPath(to: load.address)
 
   let builder = availableValue.getBuilderForProjections(context)
   let value: Value
@@ -498,10 +502,17 @@ private func provideValue(
   case .unqualified:
     value = availableValue.value.createProjection(path: projectionPath, builder: builder)
   case .copy, .trivial:
-    // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
-    value = availableValue.value.createProjectionAndCopy(path: projectionPath, builder: builder)
+    if case .lifetimeBorder(let atInstruction) = availableValue {
+      assert(projectionPath.isEmpty)
+      let builder = Builder(before: atInstruction, context)
+      let addr = load.address.constantAccessPath.materializeAddress(builder)
+      return builder.createLoad(fromAddress: addr, ownership: .copy)
+    } else {
+      // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
+      value = availableValue.value.createProjectionAndCopy(path: projectionPath, builder: builder)
+    }
   case .take:
-    return shrinkMemoryLifetime(to: availableValue, projectionPath: projectionPath, context)
+    return shrinkMemoryLifetime(to: availableValue, projectionPath: projectionPath, load: load, context)
   case .borrow:
     let conversion = builder.createUncheckedOwnership(operand: availableValue.value, forwardingOwnership: .none)
     value = conversion.createProjection(path: projectionPath, builder: builder)
@@ -528,6 +539,7 @@ private func provideValue(
 ///
 private func shrinkMemoryLifetime(to availableValue: AvailableValue,
                                   projectionPath: SmallProjectionPath,
+                                  load: LoadingInstruction,
                                   _ context: FunctionPassContext
 ) -> Value {
   switch availableValue {
@@ -547,6 +559,11 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
     let valueToAdd = projectedStore.source
     context.erase(instruction: projectedStore)
     return valueToAdd
+  case .lifetimeBorder(let atInstruction):
+    assert(projectionPath.isEmpty)
+    let builder = Builder(before: atInstruction, context)
+    let addr = load.address.constantAccessPath.materializeAddress(builder)
+    return builder.createLoad(fromAddress: addr, ownership: .take)
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
   }
@@ -554,7 +571,7 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
 
 private enum DataflowResult {
   case notRedundant
-  case redundant([AvailableValue], containedLoadBorrows: [LoadBorrowInst], exitBlocks: [BasicBlock], accessPath: AccessPath)
+  case redundant([AvailableValue], containedLoadBorrows: [LoadBorrowInst], exitBlocks: [BasicBlock])
   case maybePartiallyRedundant(AccessPath)
 
   init(notRedundantWith subPath: AccessPath?) {
@@ -571,21 +588,30 @@ private enum AvailableValue {
   case viaLoad(LoadInst)
   case viaStore(StoreInst)
   case viaCopyAddr(CopyAddrInst)
+  case lifetimeBorder(Instruction)
 
   var value: Value {
     switch self {
     case .viaLoad(let load):   return load
     case .viaStore(let store): return store.source
     case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .lifetimeBorder:      fatalError("lifetimeBorder not supported")
     }
   }
 
-  var address: Value {
+  func getProjectionPath(to address: Value) -> SmallProjectionPath {
+    let fromAddr: Value
     switch self {
-    case .viaLoad(let load):         return load.address
-    case .viaStore(let store):       return store.destination
-    case .viaCopyAddr(let copyAddr): return copyAddr.destination
+    case .viaLoad(let load):
+      fromAddr = load.address
+    case .viaStore(let store):
+      fromAddr = store.destination
+    case .viaCopyAddr(let copyAddr):
+      fromAddr = copyAddr.destination
+    case .lifetimeBorder:
+      return SmallProjectionPath()
     }
+    return fromAddr.constantAccessPath.getMaterializableProjection(to: address.constantAccessPath)!
   }
 
   var instruction: Instruction {
@@ -593,14 +619,16 @@ private enum AvailableValue {
     case .viaLoad(let load):         return load
     case .viaStore(let store):       return store
     case .viaCopyAddr(let copyAddr): return copyAddr
+    case .lifetimeBorder(let inst):  return inst
     }
   }
 
   func getBuilderForProjections(_ context: FunctionPassContext) -> Builder {
     switch self {
-    case .viaLoad(let load):   return Builder(after: load, context)
-    case .viaStore(let store): return Builder(before: store, context)
-    case .viaCopyAddr:         fatalError("copy_addr must be lowered")
+    case .viaLoad(let load):        return Builder(after: load, context)
+    case .viaStore(let store):      return Builder(before: store, context)
+    case .lifetimeBorder(let inst): return Builder(before: inst, context)
+    case .viaCopyAddr:              fatalError("copy_addr must be lowered")
     }
   }
 }
@@ -672,6 +700,9 @@ private struct Liverange {
       return false
     }
     let aliasAnalysis = context.aliasAnalysis
+    var killingInstructions = Stack<Instruction>(context)
+    defer { killingInstructions.deinitialize() }
+    var functionEntryReached = false
 
     worklist.pushPredecessors(of: load)
 
@@ -685,11 +716,15 @@ private struct Liverange {
       case .available:
         availableValueInstructions.insert(inst)
       case .overwritten:
-        return false
+        // The memory must be valid again at this point, therefore this is a "border" of the
+        // liverange in the same sense as an available value instruction.
+        availableValueInstructions.insert(inst)
+        killingInstructions.append(inst)
       case .transparent:
         if inst == functionEntry {
           // We reached the function entry without finding an available value.
-          return false
+          functionEntryReached = true
+          continue
         }
         // Abort if we find the storage definition of the access in case of a loop, e.g.
         //
@@ -708,6 +743,40 @@ private struct Liverange {
           return false
         }
         worklist.pushPredecessors(of: inst)
+      }
+    }
+    if functionEntryReached || !killingInstructions.isEmpty {
+      // Re-creating the load at the border of the liverange only pays off if it enables the
+      // removal of `load_borrow`s. This is only done for `load [copy]` and `load [take]`
+      // (see `containedLoadBorrows` in `isRedundant`).
+      switch load.kind {
+      case .copy, .take:
+        break
+      case .trivial, .unqualified, .borrow:
+        return false
+      }
+      if loadBorrows.isEmpty {
+        return false
+      }
+      if functionEntryReached {
+        availableValues.append(.lifetimeBorder(functionEntry))
+      }
+      for killingInst in killingInstructions {
+        if let next = killingInst.next {
+          availableValues.append(.lifetimeBorder(next))
+        } else {
+          for succ in (killingInst as! TermInst).successors {
+            let succInst = succ.instructions.first!
+            // Only add a border for successors which are within the liverange. And not for
+            // successors which begin with an instruction that already ends the liverange - either
+            // because it provides an available value or because it overwrites the memory itself.
+            if worklist.hasBeenPushed(succInst),
+               !availableValueInstructions.contains(succInst)
+            {
+              availableValues.append(.lifetimeBorder(succInst))
+            }
+          }
+        }
       }
     }
     return true
@@ -836,9 +905,6 @@ private struct Liverange {
       // Igore memory reads of `debug_value` for `load [take]`.
       return .transparent
 
-    case let termInst as TermInst:
-      visitedTerminators.append(termInst)
-
     default:
       break
     }
@@ -852,6 +918,12 @@ private struct Liverange {
       if instruction.mayWrite(toAddress: load.address, aliasAnalysis) {
         return .overwritten
       }
+    }
+    if let termInst = instruction as? TermInst {
+      // Note that a terminator is only recorded if it does _not_ overwrite the memory. The
+      // successors of an overwriting terminator are not liverange exits: the value is dead there
+      // because the memory is re-initialized by the terminator itself.
+      visitedTerminators.append(termInst)
     }
     return .transparent
   }
