@@ -165,6 +165,7 @@ sil @consumeB : $@convention(thin) (@owned B) -> ()
 sil @useB : $@convention(thin) (@guaranteed B) -> ()
 sil @writeB : $@convention(thin) (@inout B) -> ()
 sil @throwingWriteB : $@convention(thin) (@inout B) -> (@owned B, @error Error)
+sil @writeHolder : $@convention(thin) (@guaranteed RefHolder) -> ()
 
 // We have a bug in the old projection code which this test case exposes.
 // Make sure its handled properly in the new projection.
@@ -2053,14 +2054,14 @@ bb0(%0 : $*B):
   return %9
 }
 
-// The address cannot be re-materialized at the begin of the liverange, because the base
-// of the access is a reference with a local ownership lifetime.
-// CHECK-LABEL: sil [ossa] @dont_hoist_load_take_with_local_ownership_base :
+// The address cannot be re-materialized at the begin of the liverange - the function entry
+// here - because the base of the access is not available at that point.
+// CHECK-LABEL: sil [ossa] @dont_hoist_load_take_if_base_not_available :
 // CHECK:         load_borrow
 // CHECK:         end_borrow
 // CHECK:         load [take]
-// CHECK-LABEL: } // end sil function 'dont_hoist_load_take_with_local_ownership_base'
-sil [ossa] @dont_hoist_load_take_with_local_ownership_base : $@convention(thin) (@guaranteed RefHolder) -> () {
+// CHECK-LABEL: } // end sil function 'dont_hoist_load_take_if_base_not_available'
+sil [ossa] @dont_hoist_load_take_if_base_not_available : $@convention(thin) (@guaranteed RefHolder) -> () {
 bb0(%0 : @guaranteed $RefHolder):
   %1 = function_ref @useB : $@convention(thin) (@guaranteed B) -> ()
   %2 = ref_element_addr %0, #RefHolder.c
@@ -2072,6 +2073,33 @@ bb0(%0 : @guaranteed $RefHolder):
   %8 = apply %7(%6) : $@convention(thin) (@owned B) -> ()
   %9 = alloc_ref $B
   store %9 to [init] %2
+  %11 = tuple ()
+  return %11
+}
+
+// It does not matter that the base of the access is only valid within a local ownership
+// scope: the border of the liverange is always covered by that scope, because it is located
+// between the base address and the load.
+// CHECK-LABEL: sil [ossa] @hoist_load_take_with_local_ownership_base :
+// CHECK:         apply {{%[0-9]+}}(%0) : $@convention(thin) (@guaranteed RefHolder) -> ()
+// CHECK-NEXT:    [[L:%.*]] = load [take] %1
+// CHECK-NEXT:    [[B:%.*]] = begin_borrow [[L]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     load
+// CHECK:         apply {{%[0-9]+}}([[L]])
+// CHECK-LABEL: } // end sil function 'hoist_load_take_with_local_ownership_base'
+sil [ossa] @hoist_load_take_with_local_ownership_base : $@convention(thin) (@guaranteed RefHolder) -> () {
+bb0(%0 : @guaranteed $RefHolder):
+  %1 = ref_element_addr %0, #RefHolder.c
+  %2 = function_ref @writeHolder : $@convention(thin) (@guaranteed RefHolder) -> ()
+  %3 = apply %2(%0) : $@convention(thin) (@guaranteed RefHolder) -> ()
+  %4 = load_borrow %1
+  end_borrow %4
+  %6 = load [take] %1
+  %7 = function_ref @consumeB : $@convention(thin) (@owned B) -> ()
+  %8 = apply %7(%6) : $@convention(thin) (@owned B) -> ()
+  %9 = alloc_ref $B
+  store %9 to [init] %1
   %11 = tuple ()
   return %11
 }
