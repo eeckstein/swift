@@ -1380,6 +1380,44 @@ bb3:
   return %7 : $()
 }
 
+// Like `load_take_exit_block_projected_address`, but the load is within an access scope.
+// The address must be re-created from the `begin_access` and not from the access base.
+// Otherwise the inserted store would bypass the access scope, which breaks optimizations which
+// rely on the fact that all accesses within an access scope go through the `begin_access`.
+// CHECK-LABEL: @load_take_exit_block_address_in_access_scope :
+// CHECK:         [[BA:%.*]] = begin_access [modify] [dynamic] %{{[0-9]+}} : $*NonTrivialStruct
+// CHECK:         [[F:%.*]] = destructure_struct %1
+// CHECK:       bb2:
+// CHECK-NEXT:    [[SEA:%.*]] = struct_element_addr [[BA]] : $*NonTrivialStruct, #NonTrivialStruct.val
+// CHECK-NEXT:    store [[F]] to [init] [[SEA]]
+// CHECK:       } // end sil function 'load_take_exit_block_address_in_access_scope'
+sil [ossa] @load_take_exit_block_address_in_access_scope : $@convention(thin) (@owned NonTrivialStruct, @owned NonTrivialStruct, Builtin.Int1) -> () {
+bb0(%0 : @owned $NonTrivialStruct, %1 : @owned $NonTrivialStruct, %2 : $Builtin.Int1):
+  %3 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %3 : $*NonTrivialStruct
+  %4 = begin_access [modify] [dynamic] %3 : $*NonTrivialStruct
+  store %1 to [assign] %4 : $*NonTrivialStruct
+  cond_br %2, bb1, bb2
+
+bb1:
+  %5 = struct_element_addr %4 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %6 = load [take] %5 : $*Klass
+  destroy_value %6 : $Klass
+  br bb3
+
+bb2:
+  %7 = function_ref @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  %8 = apply %7(%4) : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  destroy_addr %4 : $*NonTrivialStruct
+  br bb3
+
+bb3:
+  end_access %4 : $*NonTrivialStruct
+  dealloc_stack %3 : $*NonTrivialStruct
+  %9 = tuple ()
+  return %9 : $()
+}
+
 // A `load_borrow` of the whole location, contained in the liverange of the `load [take]`.
 // CHECK-LABEL: @load_take_with_contained_load_borrow_of_whole_location :
 // CHECK:         [[B:%.*]] = begin_borrow %0
