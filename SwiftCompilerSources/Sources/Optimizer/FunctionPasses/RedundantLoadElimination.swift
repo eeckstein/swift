@@ -362,7 +362,7 @@ private extension LoadingInstruction {
           if exitBlock.isSafeDeadEndBlock(for: self.address, context) {
             continue
           }
-          if self.kind == .copy || !accessPath.canMaterializeAddress(at: exitBlock.instructions.first!, context) {
+          if self.kind == .copy || !canMaterializeAddress(at: exitBlock.instructions.first!, context) {
             return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
           }
         }
@@ -376,33 +376,58 @@ private extension LoadingInstruction {
         }
       }
       for case .lifetimeBorder(let borderInst) in liverange.availableValues {
-        guard accessPath.canMaterializeAddress(at: borderInst, context) else {
+        guard canMaterializeAddress(at: borderInst, context) else {
           return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
         }
       }
       return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks)
     }
   }
-}
 
-private extension AccessPath {
-  /// True, if the address of this access can be re-created at `instruction`.
+  /// The address from which this load's address can be re-created at another place in the function,
+  /// together with the projection path which leads from that address to the load's address.
+  ///
+  /// If the load's address is enclosed in an access scope, the `begin_access` is used - and _not_
+  /// the access base (e.g. an `alloc_stack`). Otherwise the re-created address would bypass the
+  /// access scope. Several optimizations rely on the fact that all accesses to a memory location
+  /// within an access scope go through the `begin_access`. For example, DestroyAddrHoisting treats
+  /// such a memory location as `AccessStorage::Nested` storage and therefore only looks at uses of
+  /// the `begin_access`.
+  var materializationBase: (address: Value, path: SmallProjectionPath)? {
+    let (accessPath, scope) = address.constantAccessPathWithScope
+    guard let path = accessPath.materializableProjectionPath,
+          let baseAddress = (scope as Value?) ?? accessPath.base.address
+    else {
+      return nil
+    }
+    return (baseAddress, path)
+  }
+
+  /// True, if the address of this load can be re-created at `instruction`.
   func canMaterializeAddress(at instruction: Instruction, _ context: FunctionPassContext) -> Bool {
-    guard let baseAddress = base.address,
-          materializableProjectionPath != nil else {
+    guard let (baseAddress, _) = materializationBase else {
       return false
     }
     // The base address must be available at `instruction`.
     if !baseAddress.strictlyDominates(instruction: instruction, context.dominatorTree) {
       return false
     }
+    if let beginAccess = baseAddress as? BeginAccessInst {
+      // The re-created address must not be used outside of its access scope.
+      var accessScope = InstructionRange(begin: beginAccess, ends: beginAccess.endAccessInstructions, context)
+      defer { accessScope.deinitialize() }
+      if !accessScope.contains(instruction) {
+        return false
+      }
+    }
     return true
   }
 
-  /// Re-creates the address projections of this access path at the builder's insertion point.
+  /// Re-creates the address of this load at the builder's insertion point.
   /// This is only legal if `canMaterializeAddress` returned true for that location.
   func materializeAddress(_ builder: Builder) -> Value {
-    return base.address!.createAddressProjection(path: materializableProjectionPath!, builder: builder)
+    let (baseAddress, path) = materializationBase!
+    return baseAddress.createAddressProjection(path: path, builder: builder)
   }
 }
 
@@ -443,8 +468,8 @@ private func replace(load: LoadingInstruction,
       // The memory is not initialized on this path anymore (because the load was turned into a
       // `take` of the available value). Store the value back to re-initialize the memory.
       // Note that the address of the load itself is not available in the exit block. Therefore
-      // re-create the address projections from the base of the access.
-      let addr = loadAccessPath.materializeAddress(builder)
+      // re-create the address projections from the enclosing access of the load.
+      let addr = load.materializeAddress(builder)
       builder.createStore(source: valueInExitBlock, destination: addr, ownership: .initialize)
     }
   }
@@ -503,7 +528,7 @@ private func provideValue(
     if case .lifetimeBorder(let atInstruction) = availableValue {
       assert(projectionPath.isEmpty)
       let builder = Builder(before: atInstruction, context)
-      let addr = load.address.constantAccessPath.materializeAddress(builder)
+      let addr = load.materializeAddress(builder)
       return builder.createLoad(fromAddress: addr, ownership: .copy)
     } else {
       // Note: even if the load is trivial, the available value may be projected out of a non-trivial value.
@@ -560,7 +585,7 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
   case .lifetimeBorder(let atInstruction):
     assert(projectionPath.isEmpty)
     let builder = Builder(before: atInstruction, context)
-    let addr = load.address.constantAccessPath.materializeAddress(builder)
+    let addr = load.materializeAddress(builder)
     return builder.createLoad(fromAddress: addr, ownership: .take)
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
