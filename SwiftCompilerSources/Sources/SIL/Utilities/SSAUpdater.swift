@@ -279,7 +279,8 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
 
   /// The available values within a single basic block, ordered by their position in the block.
   private struct ValuesInBlock {
-    var values = SingleInlineArray<(value: Value, atInstruction: Instruction)>()
+    var valueAtBlockBegin: Value? = nil
+    var values = SingleInlineArray<(value: Value, afterInstruction: Instruction)>()
     var lastInstruction: Instruction? = nil
     var isSorted = false
 
@@ -299,6 +300,16 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
       }
     }
 
+    /// Records `value` as available from the begin of the block on.
+    ///
+    /// Returns true if no value was added for an instruction of this block yet, i.e. if `value`
+    /// needs to be registered with the underlying `SSAUpdater` as *the* available value for this
+    /// block.
+    mutating func addValueAtBeginOfBlock(value: Value) -> Bool {
+      valueAtBlockBegin = value
+      return lastInstruction == nil
+    }
+
     /// Returns the available value which is defined closest to, but still strictly before,
     /// `instruction` in this block, or nil if no available value precedes `instruction`.
     ///
@@ -307,10 +318,10 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
     /// value.
     mutating func getAvailableValue(before instruction: Instruction) -> Value? {
       if values.isEmpty {
-        return nil
+        return valueAtBlockBegin
       }
       if !isSorted {
-        values.sort(by: { $0.atInstruction.strictlyDominatesInBlock($1.atInstruction) })
+        values.sort(by: { $0.afterInstruction.strictlyDominatesInBlock($1.afterInstruction) })
         isSorted = true
       }
 
@@ -320,7 +331,7 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
 
       while low != high {
         let mid = (low + high + 1) / 2
-        if instruction.dominatesInBlock(vals[mid].atInstruction) {
+        if instruction.dominatesInBlock(vals[mid].afterInstruction) {
           high = mid - 1
         } else {
           low = mid
@@ -330,7 +341,7 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
       if atInstruction.strictlyDominatesInBlock(instruction) {
         return value
       }
-      return nil
+      return valueAtBlockBegin
     }
   }
 
@@ -355,6 +366,19 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
     }
   }
 
+  /// Registers `value` as available from the begin of `block` on.
+  ///
+  /// This is for the case that a value becomes available before the first instruction of `block`, so
+  /// that there is no instruction to anchor the position at. Values which are added for instructions
+  /// of `block` - via `addAvailableValue(_:after:)` - take precedence for uses which they dominate.
+  /// Note that `getValue(atBeginOf:)` still returns the value which is live on _entry_ of `block`,
+  /// i.e. it ignores `value`.
+  public mutating func addAvailableValue(_ value: Value, atBeginOf block: BasicBlock) {
+    if availableValues[block, default: ValuesInBlock()].addValueAtBeginOfBlock(value: value) {
+      ssaUpdater.addAvailableValue(value, in: block)
+    }
+  }
+
   /// Constructs SSA for a value that is live at `instruction`.
   ///
   /// If an available value was added after some instruction which precedes `instruction` in the
@@ -367,6 +391,15 @@ public struct InstructionBasedSSAUpdater<Context: MutatingContext> {
       return value
     }
     return ssaUpdater.getValue(atBeginOf: instruction.parentBlock)
+  }
+
+  /// Returns the value which is live on entry of `block`, i.e. ignoring all available values which
+  /// are registered within `block` itself.
+  ///
+  /// This is the value to use for instructions which are inserted at the begin of `block`, i.e.
+  /// before all of its existing instructions.
+  public mutating func getValue(atBeginOf block: BasicBlock) -> Value {
+    return ssaUpdater.getValue(atBeginOf: block)
   }
 
   /// The phi arguments which were inserted so far by `getValue`, in the order they were created.
