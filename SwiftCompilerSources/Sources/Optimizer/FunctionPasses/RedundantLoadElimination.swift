@@ -449,18 +449,39 @@ private func replace(load: LoadingInstruction,
                      exitBlocks: [BasicBlock],
                      _ context: FunctionPassContext)
 {
-  var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater, context)
+  // Note: an `InstructionBasedSSAUpdater` is needed (instead of a plain `SSAUpdater`), because an
+  // available value can be located _after_ a use for which we need to construct the value. E.g. the
+  // available value of the `load_borrow`'s block is located after the `load_borrow` here:
+  //
+  //   bb1:
+  //     %2 = load_borrow %addr    // must read the value which comes in via the back edge
+  //     ...
+  //     %3 = load [take] %addr    // The load
+  //     store %4 to [init] %addr  // an available value
+  //     br bb1
+  //
+  var ssaUpdater = InstructionBasedSSAUpdater(type: load.type, ownership: load.ownershipForSSAUpdater,
+                                              context)
   defer { ssaUpdater.deinitialize() }
 
   for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
+    // The value becomes available at the position of the available load/store. As `provideValue` can
+    // delete that instruction, anchor the position at its predecessor instruction.
     let block = availableValue.instruction.parentBlock
-    let availableValue = provideValue(for: load, from: availableValue, context)
-    ssaUpdater.addAvailableValue(availableValue, in: block)
+    let predecessorInst = availableValue.instruction.previous
+    let value = provideValue(for: load, from: availableValue, context)
+    if let predecessorInst {
+      ssaUpdater.addAvailableValue(value, after: predecessorInst)
+    } else {
+      ssaUpdater.addAvailableValue(value, atBeginOf: block)
+    }
   }
   let loadAccessPath = load.address.constantAccessPath
 
   for exitBlock in exitBlocks {
     let builder = Builder(atBeginOf: exitBlock, context)
+    // The store is inserted before all existing instructions of the exit block. Therefore it needs
+    // the value which is live on entry of the block.
     let valueInExitBlock = ssaUpdater.getValue(atBeginOf: exitBlock)
     if exitBlock.isSafeDeadEndBlock(for: load.address, context) {
       builder.createDestroyValue(operand: valueInExitBlock, isDeadEnd: true)
@@ -476,7 +497,7 @@ private func replace(load: LoadingInstruction,
 
   for loadBorrow in containedLoadBorrows {
     let builder = Builder(before: loadBorrow, context)
-    let beginBorrow = builder.createBeginBorrow(of: ssaUpdater.getValue(atEndOf: loadBorrow.parentBlock))
+    let beginBorrow = builder.createBeginBorrow(of: ssaUpdater.getValue(before: loadBorrow))
     let path = loadAccessPath.getMaterializableProjection(to: loadBorrow.address.constantAccessPath)!
     let value = beginBorrow.createProjection(path: path, builder: builder)
     // The scope ending instructions must end the borrow of the `begin_borrow`. If the borrowed value
@@ -485,30 +506,7 @@ private func replace(load: LoadingInstruction,
     loadBorrow.replace(with: value, context)
   }
 
-  let newValue: Value
-  if availableValues.count == 1 {
-    // A single available value means that this available value is located _before_ the load. E.g.:
-    //
-    //     store %1 to %addr   // a single available value
-    //     ...
-    //     %2 = load %addr     // The load
-    //
-    newValue = ssaUpdater.getValue(atEndOf: load.parentBlock)
-  } else {
-    // In case of multiple available values, if an available value is defined in the same basic block
-    // as the load, this available is located _after_ the load. E.g.:
-    //
-    //     store %1 to %addr   // an available value
-    //     br bb1
-    //   bb1:
-    //     %2 = load %addr     // The load
-    //     store %3 to %addr   // another available value
-    //     cond_br bb1, bb2
-    //
-    newValue = ssaUpdater.getValue(atBeginOf: load.parentBlock)
-  }
-
-  load.replaceLoad(with: newValue, context)
+  load.replaceLoad(with: ssaUpdater.getValue(before: load), context)
 }
 
 private func provideValue(
