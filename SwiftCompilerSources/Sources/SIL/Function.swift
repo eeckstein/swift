@@ -345,7 +345,7 @@ final public class Function : CustomStringConvertible, HasShortDescription, Hash
   }
 
   public var isDeinitBarrier: Bool {
-    if hasSemanticsAttribute("no_deinit_barrier") {
+    if hasSemanticsAttribute("realloc_array_buffer") {
       return false
     }
     return effects.sideEffects?.global.isDeinitBarrier ?? true
