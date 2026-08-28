@@ -97,6 +97,7 @@ sil_global @total_nontrivialstruct : $NonTrivialStruct
 
 sil @use : $@convention(thin) (Builtin.Int32) -> ()
 sil @use_Klass : $@convention(thin) (@owned Klass) -> ()
+sil @borrow_and_produce_klass : $@convention(thin) (@guaranteed Klass) -> @owned Klass
 sil @use_nontrivialstruct : $@convention(thin) (@owned NonTrivialStruct) -> ()
 sil @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
 sil @use_a : $@convention(thin) (@owned A) -> ()
@@ -1416,6 +1417,45 @@ bb3:
   dealloc_stack %3 : $*NonTrivialStruct
   %9 = tuple ()
   return %9 : $()
+}
+
+// A contained `load_borrow` in a loop header. The available value of the `load_borrow`'s block is
+// located _after_ the `load_borrow`. Therefore the `load_borrow` must borrow the value which comes
+// into the block - and not the available value of its own block, which would create a cycle.
+// CHECK-LABEL: @load_borrow_with_available_value_after_it :
+// CHECK:       bb1([[PHI:%.*]] : @owned $Klass):
+// CHECK-NEXT:    [[B:%.*]] = begin_borrow [[PHI]]
+// CHECK:         [[NEW:%.*]] = apply %{{[0-9]+}}([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    destroy_value [[PHI]]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'load_borrow_with_available_value_after_it'
+sil [ossa] @load_borrow_with_available_value_after_it : $@convention(thin) (@owned Klass) -> () {
+bb0(%0 : @owned $Klass):
+  %1 = alloc_stack $Klass
+  store %0 to [init] %1 : $*Klass
+  br bb1
+
+bb1:
+  %2 = load_borrow %1 : $*Klass
+  %3 = function_ref @borrow_and_produce_klass : $@convention(thin) (@guaranteed Klass) -> @owned Klass
+  %4 = apply %3(%2) : $@convention(thin) (@guaranteed Klass) -> @owned Klass
+  end_borrow %2 : $Klass
+  destroy_addr %1 : $*Klass
+  fix_lifetime %4 : $Klass
+  store %4 to [init] %1 : $*Klass
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  %5 = function_ref @test_rle_in_guaranteed_callee : $@convention(thin) (@in_guaranteed Klass) -> ()
+  %6 = apply %5(%1) : $@convention(thin) (@in_guaranteed Klass) -> ()
+  destroy_addr %1 : $*Klass
+  dealloc_stack %1 : $*Klass
+  %7 = tuple ()
+  return %7 : $()
 }
 
 // A `load_borrow` of the whole location, contained in the liverange of the `load [take]`.
