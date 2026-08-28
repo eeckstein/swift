@@ -261,9 +261,39 @@ private extension InstructionRange {
         case let termInst as TermInst & ForwardingInstruction:
           worklist.pushIfNotVisited(contentsOf: termInst.forwardedResults.lazy.filter({ $0.ownership != .none }))
 
-        case is ForwardingInstruction, is MoveValueInst:
+        case let branch as BranchInst:
+          // A branch forwards the value into the phi argument of the destination block. The phi
+          // keeps the referenced object alive, so continue the liverange there. This is important
+          // for loops, where the forwarded value is passed to the loop header in each iteration.
+          let phi = branch.getArgument(for: use)
+          if phi.ownership == .owned,
+             // If the phi's block is not dominated by `initialDef`, the liverange would extend up
+             // to the function entry - which might cause compile time problems. It's not worth
+             // following uses beyond the `initialDef` anyway, because there are no destroys outside
+             // the dominating blocks.
+             initialDef.parentBlock.dominates(phi.parentBlock, context.dominatorTree)
+          {
+            worklist.pushIfNotVisited(phi)
+          } else {
+            self.insert(user)
+          }
+
+        // `begin_cow_mutation` and `end_cow_mutation` are not ForwardingInstructions, but they do
+        // forward the ownership of their operand to their (instance) result.
+        case is ForwardingInstruction, is MoveValueInst,
+             is BeginCOWMutationInst, is EndCOWMutationInst:
           if let result = user.results.lazy.filter({ $0.ownership != .none }).singleElement {
             worklist.pushIfNotVisited(result)
+          }
+
+        // A function which is annotated to forward its owned argument to its result keeps the
+        // referenced object(s) alive in its result, e.g. `_ArrayBuffer._consumeAndCreateNew`.
+        case let apply as ApplyInst
+               where apply.referencedFunction?.hasSemanticsAttribute("realloc_array_buffer") ?? false:
+          if apply.ownership == .owned {
+            worklist.pushIfNotVisited(apply)
+          } else {
+            self.insert(user)
           }
 
         default:
