@@ -139,6 +139,14 @@ SILValue swift::stripFunctionConversions(SILValue val) {
     } else if (auto md = dyn_cast<MarkDependenceInst>(val)) {
       val = md->getValue();
       result = val;
+    } else if (isa<CopyValueInst>(val) || isa<BeginBorrowInst>(val) ||
+               isa<MoveValueInst>(val) || isa<BorrowedFromInst>(val)) {
+      // In OSSA, function values can be wrapped in ownership instructions,
+      // e.g. a `convert_function` which produces an owned value is borrowed
+      // before it is passed to an apply. Look through them so that the
+      // underlying `function_ref`/`partial_apply` can be found.
+      val = cast<SingleValueInstruction>(val)->getOperand(0);
+      result = val;
     } else {
       break;
     }
