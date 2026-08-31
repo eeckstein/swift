@@ -27,7 +27,56 @@ extension LoadBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
 
+    if replaceLoadOfGlobalLet(context) {
+      return
+    }
+
     tryForwardStoreBorrow(context)
+  }
+
+  /// The load of a global let variable is replaced by its static initializer value.
+  ///
+  /// The cloned initializer value is not a borrow, so it is borrowed to keep the guaranteed uses
+  /// unchanged and destroyed where the original borrow scope ended:
+  /// ```
+  ///   %1 = global_addr @g
+  ///   %2 = load_borrow %1
+  ///   // ... uses of %2
+  ///   end_borrow %2
+  /// ```
+  /// ->
+  /// ```
+  ///   %1 = <cloned initializer of g>
+  ///   %2 = begin_borrow %1
+  ///   // ... uses of %2
+  ///   end_borrow %2
+  ///   destroy_value %1
+  /// ```
+  ///
+  /// Usually the initializer of a global `let` is statically allocatable and therefore the cloned
+  /// value has `.none` ownership. In that case SimplifyDestroyValue removes the `destroy_value`
+  /// again.
+  private func replaceLoadOfGlobalLet(_ context: SimplifyContext) -> Bool {
+    guard let globalInitVal = getGlobalInitValue(address: address, context),
+          globalInitVal.canBeCopied(into: parentFunction, context),
+          // Only handle the simple case where the borrow scope is delimited by end_borrows.
+          // Otherwise it's not clear where to destroy the cloned value.
+          uses.endingLifetime.hasOnlyUsers(ofType: EndBorrowInst.self)
+    else {
+      return false
+    }
+
+    var cloner = Cloner(cloneBefore: self, context)
+    defer { cloner.deinitialize() }
+    let initVal = cloner.cloneRecursively(globalInitValue: globalInitVal)
+
+    let builder = Builder(before: self, context)
+    let beginBorrow = builder.createBeginBorrow(of: initVal)
+    for endBorrow in uses.endingLifetime.users(ofType: EndBorrowInst.self) {
+      Builder(after: endBorrow, context).createDestroyValue(operand: initVal)
+    }
+    replace(with: beginBorrow, context)
+    return true
   }
 
   /// If the load_borrow is followed by a copy_value, combine both into a `load [copy]`:
