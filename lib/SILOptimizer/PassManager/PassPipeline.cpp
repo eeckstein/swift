@@ -817,10 +817,6 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
 
   P.addFunctionSignatureOptimization();
 
-  // Must run after the last CopyPrpoagation pass, because CopyPropagation undos the
-  // effect of LowerAddressInstructions.
-  P.addLowerAddressInstructions();
-
   // The NamedReturnValueOptimization shouldn't be done before serialization.
   // For details see the comment for `namedReturnValueOptimization`.
   P.addNamedReturnValueOptimization();
@@ -835,6 +831,11 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   if (P.getOptions().CopyPropagation != CopyPropagationOption::Off) {
     P.addCopyPropagation();
   }
+
+  // Must run after the last CopyPropagation and Simplification pass, because both undo the
+  // effect of LowerAddressInstructions: CopyPropagation re-creates `copy_addr` and the
+  // load-simplification re-creates `destroy_addr`.
+  P.addLowerAddressInstructions();
 
   P.addInitializeStaticGlobals();
 
