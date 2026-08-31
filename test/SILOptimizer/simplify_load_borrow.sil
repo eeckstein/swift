@@ -191,3 +191,85 @@ bb1(%5 : @reborrow $B):
   dealloc_stack %1
   return %0
 }
+
+struct FnBox {
+  let fn: () -> ()
+  let i: Int
+}
+
+sil @someFn : $@convention(thin) () -> ()
+sil @useFnBox : $@convention(thin) (@guaranteed FnBox) -> ()
+
+sil_global [let] @gfnbox : $FnBox = {
+  %0 = function_ref @someFn : $@convention(thin) () -> ()
+  %1 = thin_to_thick_function %0 : $@convention(thin) () -> () to $@callee_guaranteed () -> ()
+  %2 = integer_literal $Builtin.Int64, 27
+  %3 = struct $Int (%2 : $Builtin.Int64)
+  %initval = struct $FnBox (%1 : $@callee_guaranteed () -> (), %3 : $Int)
+}
+
+// The load_borrow of a global let is replaced by its static initializer value. The cloned value
+// is not a borrow, so it's borrowed for the guaranteed uses and destroyed where the original
+// borrow scope ended. The cloned value has `.none` ownership here, so in a full pipeline
+// SimplifyDestroyValue would remove the destroy_value again.
+// CHECK-LABEL: sil [ossa] @load_borrow_global_let :
+// CHECK-NOT:     global_addr
+// CHECK:         [[F:%.*]] = function_ref @someFn
+// CHECK:         [[TTF:%.*]] = thin_to_thick_function [[F]]
+// CHECK:         [[S:%.*]] = struct $FnBox ([[TTF]], {{%.*}})
+// CHECK:         [[B:%.*]] = begin_borrow [[S]]
+// CHECK:         apply {{%.*}}([[B]])
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value [[S]]
+// CHECK:       } // end sil function 'load_borrow_global_let'
+sil [ossa] @load_borrow_global_let : $@convention(thin) () -> () {
+bb0:
+  %0 = global_addr @gfnbox : $*FnBox
+  %1 = load_borrow %0 : $*FnBox
+  %2 = function_ref @useFnBox : $@convention(thin) (@guaranteed FnBox) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed FnBox) -> ()
+  end_borrow %1 : $FnBox
+  %5 = tuple ()
+  return %5 : $()
+}
+
+sil @useB : $@convention(thin) (@guaranteed B) -> ()
+
+sil_global private @gobj_storage : $B = {
+  %initval = object $B ()
+}
+
+sil_global hidden [let] @gobj : $B
+
+sil [global_init_once_fn] @init_gobj : $@convention(c) () -> () {
+bb0:
+  alloc_global @gobj
+  %1 = global_addr @gobj : $*B
+  %2 = global_value @gobj_storage : $B
+  store %2 to %1 : $*B
+  %4 = tuple ()
+  return %4 : $()
+}
+
+// Same, but the initializer value is not a static initializer of the global. It's taken from the
+// global's init-once function, which is also erased if it has no side effects.
+// CHECK-LABEL: sil [ossa] @load_borrow_global_let_init_fn :
+// CHECK-NOT:     global_addr
+// CHECK:         [[GV:%.*]] = global_value @gobj_storage
+// CHECK:         [[B:%.*]] = begin_borrow [[GV]]
+// CHECK:         apply {{%.*}}([[B]])
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value [[GV]]
+// CHECK:       } // end sil function 'load_borrow_global_let_init_fn'
+sil [ossa] @load_borrow_global_let_init_fn : $@convention(thin) (Builtin.RawPointer) -> () {
+bb0(%0 : $Builtin.RawPointer):
+  %1 = function_ref @init_gobj : $@convention(c) () -> ()
+  %2 = builtin "once"(%0 : $Builtin.RawPointer, %1 : $@convention(c) () -> ()) : $Builtin.SILToken
+  %3 = global_addr @gobj : $*B depends_on %2
+  %4 = load_borrow %3 : $*B
+  %5 = function_ref @useB : $@convention(thin) (@guaranteed B) -> ()
+  %6 = apply %5(%4) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %4 : $B
+  %8 = tuple ()
+  return %8 : $()
+}
