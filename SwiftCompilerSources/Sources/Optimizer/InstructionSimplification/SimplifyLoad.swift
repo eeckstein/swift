@@ -345,7 +345,7 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
 }
 
 /// Returns the init value of a global which is loaded from `address`.
-private func getGlobalInitValue(address: Value, _ context: SimplifyContext) -> Value? {
+func getGlobalInitValue(address: Value, _ context: SimplifyContext) -> Value? {
   switch address {
   case let gai as GlobalAddrInst:
     if gai.global.isLet {
@@ -440,7 +440,7 @@ private func transitivelyErase(load: LoadInst, _ context: SimplifyContext) {
   }
 }
 
-private extension Value {
+extension Value {
   func canBeCopied(into function: Function, _ context: SimplifyContext) -> Bool {
     // Can't use `ValueSet` because the this value is inside a global initializer and
     // not inside a function.
