@@ -15,6 +15,21 @@ struct S {
   let i: Int
 }
 
+sil_global private @gstatic_b : $B = {
+  %initval = object $B ()
+}
+
+sil_global private @gstatic_b2 : $B = {
+  %initval = object $B ()
+}
+
+enum EnumWithB {
+  case a(B)
+  case b
+}
+
+sil @use_b : $@convention(thin) (@guaranteed B) -> ()
+
 // CHECK-LABEL: sil [ossa] @load_borrow_and_copy :
 // CHECK:         %1 = load [copy] %0
 // CHECK:         %2 = begin_borrow %1
@@ -272,4 +287,93 @@ bb0(%0 : $Builtin.RawPointer):
   end_borrow %4 : $B
   %8 = tuple ()
   return %8 : $()
+}
+
+// If the value hint of the load_borrow doesn't need to be kept alive by a borrow scope, the
+// load_borrow can be replaced by it.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_ownership_free_value_hint :
+// CHECK:         [[G:%.*]] = global_value @gstatic_b
+// CHECK-NOT:     load_borrow
+// CHECK:         apply %{{[0-9]+}}([[G]])
+// CHECK:       } // end sil function 'load_borrow_with_ownership_free_value_hint'
+sil [ossa] @load_borrow_with_ownership_free_value_hint : $@convention(thin) (@inout B) -> () {
+bb0(%0 : $*B):
+  %1 = global_value @gstatic_b : $B
+  store %1 to [assign] %0
+  %3 = load_borrow %0, value_hint %1
+  %4 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %4(%3) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %3
+  %r = tuple ()
+  return %r
+}
+
+// The value hint only fakes "none" ownership for an owned value, which needs a lifetime.
+// The load_borrow must not be replaced.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_faked_ownership_free_value_hint :
+// CHECK:         load_borrow %0, value_hint
+// CHECK:       } // end sil function 'load_borrow_with_faked_ownership_free_value_hint'
+sil [ossa] @load_borrow_with_faked_ownership_free_value_hint : $@convention(thin) (@inout B, @owned B) -> () {
+bb0(%0 : $*B, %1 : @owned $B):
+  %2 = unchecked_ownership %1, forwarding: @none
+  store %1 to [assign] %0
+  %4 = load_borrow %0, value_hint %2
+  %5 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %5(%4) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %4
+  %r = tuple ()
+  return %r
+}
+
+// The value hint is a phi of values which genuinely don't have ownership.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_phi_value_hint :
+// CHECK:       bb3([[PHI:%[0-9]+]] : $B):
+// CHECK-NOT:     load_borrow
+// CHECK:         apply %{{[0-9]+}}([[PHI]])
+// CHECK:       } // end sil function 'load_borrow_with_phi_value_hint'
+sil [ossa] @load_borrow_with_phi_value_hint : $@convention(thin) (@inout B, Builtin.Int1) -> () {
+bb0(%0 : $*B, %1 : $Builtin.Int1):
+  cond_br %1, bb1, bb2
+
+bb1:
+  %2 = global_value @gstatic_b : $B
+  br bb3(%2)
+
+bb2:
+  %3 = global_value @gstatic_b2 : $B
+  br bb3(%3)
+
+bb3(%4 : $B):
+  %5 = load_borrow %0, value_hint %4
+  %6 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %6(%5) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %5
+  %r = tuple ()
+  return %r
+}
+
+// The value hint is a `switch_enum` payload whose "none" ownership is faked by the
+// `unchecked_ownership` of an owned enum. The load_borrow must not be replaced.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_terminator_result_value_hint :
+// CHECK:         load_borrow %0, value_hint
+// CHECK:       } // end sil function 'load_borrow_with_terminator_result_value_hint'
+sil [ossa] @load_borrow_with_terminator_result_value_hint : $@convention(thin) (@inout B, @owned EnumWithB) -> () {
+bb0(%0 : $*B, %1 : @owned $EnumWithB):
+  %2 = unchecked_ownership %1, forwarding: @none
+  switch_enum %2, case #EnumWithB.a!enumelt: bb1, case #EnumWithB.b!enumelt: bb2
+
+bb1(%4 : $B):
+  %5 = load_borrow %0, value_hint %4
+  %6 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %6(%5) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %5
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  destroy_value %1
+  %r = tuple ()
+  return %r
 }
