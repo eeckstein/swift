@@ -31,7 +31,38 @@ extension LoadBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
 
+    if replaceWithValueHint(context) {
+      return
+    }
+
     tryForwardStoreBorrow(context)
+  }
+
+  /// If RLE cannot eliminate a redundant `load_borrow` it records the available value in the value
+  /// hint instead. If that value does not need to be kept alive by a borrow scope, the
+  /// `load_borrow` can be replaced by it after all:
+  /// ```
+  ///   %1 = load_borrow %0, value_hint %v      // %v has "none" ownership
+  ///   // ... uses of %1
+  ///   end_borrow %1
+  /// ```
+  /// ->
+  /// ```
+  ///   // ... uses of %v
+  /// ```
+  ///
+  /// The hinted value can lose its ownership long after RLE set the hint. For example when a
+  /// `partial_apply` is turned into a `thin_to_thick_function` by the ConstantCapturePropagation.
+  private func replaceWithValueHint(_ context: SimplifyContext) -> Bool {
+    guard let valueHint, valueHint.hasGenuineNoneOwnership(context),
+          // A reborrow cannot be replaced by a value which is not a borrow introducer.
+          uses.endingLifetime.hasOnlyUsers(ofType: EndBorrowInst.self)
+    else {
+      return false
+    }
+    context.erase(instructions: uses.endingLifetime.users(ofType: EndBorrowInst.self))
+    replace(with: valueHint, context)
+    return true
   }
 
   /// The load of a global let variable is replaced by its static initializer value.
@@ -168,5 +199,38 @@ extension LoadBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
     uses.endingLifetime.replaceAll(with: beginBorrow, context)
     let v = beginBorrow.createProjection(path: accessPath.projectionPath, builder: builder)
     replace(with: v, context)
+  }
+}
+
+private extension Value {
+  /// True if the value has "none" ownership and does not derive it from an `unchecked_ownership`,
+  /// which only fakes "none" ownership for a value which actually needs a lifetime.
+  func hasGenuineNoneOwnership(_ context: SimplifyContext) -> Bool {
+    var worklist = ValueWorklist(context)
+    defer { worklist.deinitialize() }
+
+    worklist.pushIfNotVisited(self)
+    while let value = worklist.pop() {
+
+      if value.ownership != .none {
+        // This also covers an `unchecked_ownership` of a value which still needs a lifetime,
+        // because such an operand has ownership.
+        return false
+      }
+      if let forwarding = value as? ForwardingInstruction {
+        worklist.pushIfNotVisited(contentsOf: forwarding.forwardedOperands.values)
+      } else if let phi = Phi(value) {
+        worklist.pushIfNotVisited(contentsOf: phi.incomingValues)
+      } else if let termResult = TerminatorResult(value) {
+        // A terminator, e.g. a `switch_enum`, forwards its ownership to the block arguments of its
+        // successors. Therefore the argument's "none" ownership can be faked by the terminator's
+        // operand.
+        guard let forwarding = termResult.terminator as? ForwardingInstruction else {
+          return false
+        }
+        worklist.pushIfNotVisited(contentsOf: forwarding.forwardedOperands.values)
+      }
+    }
+    return true
   }
 }
