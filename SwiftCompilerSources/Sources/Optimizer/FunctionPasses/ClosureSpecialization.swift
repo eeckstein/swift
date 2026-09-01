@@ -404,7 +404,11 @@ private func findSpecializableClosure(of value: Value, _ visited: inout ValueSet
   case is ConvertFunctionInst,
        is ConvertEscapeToNoEscapeInst,
        is MoveValueInst,
-       is CopyValueInst:
+       is CopyValueInst,
+       // In OSSA a closure can be wrapped in a `begin_borrow` before it is passed as a `@guaranteed`
+       // argument to an apply. This is e.g. the case for a closure which is re-created in a
+       // previously specialized function.
+       is BeginBorrowInst:
     return findSpecializableClosure(of: (value as! UnaryInstruction).operand.value, &visited, &capturedDependencies)
 
   case let mdi as MarkDependenceInst:
@@ -828,7 +832,8 @@ private func checkRecursivelyIfClosureIsApplied(_ closure: Value, _ handledFuncs
     case is ConvertFunctionInst,
          is ConvertEscapeToNoEscapeInst,
          is MoveValueInst,
-         is CopyValueInst:
+         is CopyValueInst,
+         is BeginBorrowInst:
       if checkRecursivelyIfClosureIsApplied(use.instruction as! SingleValueInstruction, &handledFuncs) {
         return true
       }
