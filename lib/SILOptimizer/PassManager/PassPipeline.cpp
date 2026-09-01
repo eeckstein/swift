@@ -797,6 +797,14 @@ static void addClosureSpecializePassPipeline(SILPassPipelinePlan &P) {
   // passes can expose more inlining opportunities.
   addSimplifyCFGSILCombinePasses(P);
 
+  // ConstantCapturePropagation can turn a `partial_apply` into a
+  // `thin_to_thick_function`, which leaves stale forwarding-ownership behind.
+  // Canonicalizing it to "none" lets RLE's `load_borrow` value hints be
+  // resolved before the last inliner runs.
+  // This Simplification pass is needed because simplifyForwardingInstruction
+  // is not run from SILCombine.
+  P.addSimplification();
+
   P.addComputeEscapeEffects();
   P.addComputeSideEffects();
 
