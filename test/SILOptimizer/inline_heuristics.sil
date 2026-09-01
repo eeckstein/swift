@@ -111,6 +111,49 @@ bb0(%0 : $Int32, %1 : $Int32):
 }
 
 
+// If RLE cannot eliminate a redundant `load_borrow`, it only records the loaded value in the
+// value hint. Make sure the closure is found through the value hint, so that the closure benefit
+// is applied.
+
+// CHECK-LABEL: sil [ossa] @testValueHintClosure
+// CHECK:         partial_apply
+// The closure is now applied directly in this function, i.e. the body of
+// takeGuaranteedStructClosure was inlined.
+// CHECK:         apply {{%[0-9]+}}({{.*}}) : $@callee_guaranteed (Int32) -> Int32
+// CHECK:         return
+// CHECK:       } // end sil function 'testValueHintClosure'
+
+// CHECK-LOG-LABEL: Inline into caller: testValueHintClosure
+// CHECK-LOG-NEXT: decision {{.*}}, b=70,
+
+sil [ossa] @testValueHintClosure : $@convention(thin) (@inout Cont, Int32) -> Int32 {
+bb0(%0 : $*Cont, %x : $Int32):
+  %1 = function_ref @takeGuaranteedStructClosure : $@convention(thin) (@guaranteed Cont) -> Int32
+  %2 = function_ref @closure2 : $@convention(thin) (Int32, Int32) -> Int32
+  %3 = partial_apply [callee_guaranteed] %2(%x) : $@convention(thin) (Int32, Int32) -> Int32
+  %4 = struct $Cont (%3 : $@callee_guaranteed (Int32) -> Int32)
+  %5 = unchecked_ownership %4, forwarding: @none
+  store %4 to [assign] %0 : $*Cont
+  %7 = load_borrow %0 : $*Cont, value_hint %5 : $Cont
+  %8 = apply %1(%7) : $@convention(thin) (@guaranteed Cont) -> Int32
+  end_borrow %7 : $Cont
+  return %8 : $Int32
+}
+
+sil [ossa] @takeGuaranteedStructClosure : $@convention(thin) (@guaranteed Cont) -> Int32 {
+bb0(%0 : @guaranteed $Cont):
+  // increase the scope length
+  %c1 = builtin "assert_configuration"() : $Builtin.Int32
+  %c2 = builtin "assert_configuration"() : $Builtin.Int32
+
+  %1 = struct_extract %0 : $Cont, #Cont.cl
+  %2 = integer_literal $Builtin.Int32, 27
+  %3 = struct $Int32 (%2 : $Builtin.Int32)
+  %4 = apply %1(%3) : $@callee_guaranteed (Int32) -> Int32
+  return %4 : $Int32
+}
+
+
 // CHECK-LABEL: sil @testStructClosure
 // CHECK: [[C:%[0-9]+]] = struct_extract
 // CHECK: apply [[C]](
