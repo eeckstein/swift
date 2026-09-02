@@ -34,10 +34,10 @@ llvm::cl::list<std::string>
 //===----------------------------------------------------------------------===//
 
 void ConstantTracker::trackInst(SILInstruction *inst) {
-  if (auto *LI = dyn_cast<LoadInst>(inst)) {
-    SILValue baseAddr = scanProjections(LI->getOperand());
+  if (isa<LoadInst>(inst) || isa<LoadBorrowInst>(inst)) {
+    SILValue baseAddr = scanProjections(inst->getOperand(0));
     if (SILInstruction *loadLink = getMemoryContent(baseAddr))
-      links[LI] = loadLink;
+      links[inst] = loadLink;
   } else if (auto *SI = dyn_cast<StoreInst>(inst)) {
     SILValue baseAddr = scanProjections(SI->getOperand(1));
     memoryContent[baseAddr] = SI;
@@ -81,7 +81,8 @@ SILValue ConstantTracker::getStoredValue(SILInstruction *loadInst,
     store = callerTracker->links[loadInst];
   if (!store) return SILValue();
 
-  assert(isa<LoadInst>(loadInst) || isa<CopyAddrInst>(loadInst));
+  assert(isa<LoadInst>(loadInst) || isa<LoadBorrowInst>(loadInst) ||
+         isa<CopyAddrInst>(loadInst));
 
   // Push the address projections of the load onto the stack.
   SmallVector<Projection, 4> loadProjections;
