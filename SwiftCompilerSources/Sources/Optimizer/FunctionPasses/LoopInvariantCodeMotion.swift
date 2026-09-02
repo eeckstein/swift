@@ -642,12 +642,19 @@ private extension AnalyzedInstructions {
     return false
   }
 
+  /// Like `sideEffectsMayWrite`, but also considers reads. Used when extending a "modify"
+  /// access scope.
+  ///
+  /// The markers of statically enforced accesses are ignored: see `isStaticAccessMarker`.
+  /// This is only correct because the memory operations _within_ such an access scope are
+  /// checked as well - they are part of `loopSideEffects` like any other instruction.
   func sideEffectsMayReadOrWrite(to address: Value,
                                  outsideOf scope: InstructionRange,
                                  _ context: FunctionPassContext
   ) -> Bool {
     for sideEffectInst in loopSideEffects {
       if sideEffectInst.mayReadOrWrite(address: address, context.aliasAnalysis),
+         !sideEffectInst.isStaticAccessMarker,
          !scope.inclusiveRangeContains(sideEffectInst)
       {
         return true
@@ -1231,7 +1238,30 @@ private extension FullApplySite {
   }
 }
 
+private extension Instruction {
+  /// True, if this is the begin or end marker of a statically enforced access.
+  ///
+  /// Such markers don't do any runtime book-keeping. Therefore they neither conflict with a
+  /// widened access scope nor can they cause a spurious exclusivity violation if they end up
+  /// being nested in a widened access scope.
+  /// Note that the instructions _within_ such an access scope are checked separately.
+  var isStaticAccessMarker: Bool {
+    switch self {
+    case let beginAccess as BeginAccessInst:
+      return beginAccess.isStatic || beginAccess.isUnsafe
+    case let endAccess as EndAccessInst:
+      return endAccess.beginAccess.isStatic || endAccess.beginAccess.isUnsafe
+    default:
+      return false
+    }
+  }
+}
+
 private extension ScopedInstruction {
+  var isStaticAccessMarker: Bool {
+    (self as Instruction).isStaticAccessMarker
+  }
+
   /// Returns `true` if this begin access is safe to hoist.
   func canScopedInstructionBeHoisted(
     outOf loop: Loop,
