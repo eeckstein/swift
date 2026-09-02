@@ -645,12 +645,19 @@ private extension AnalyzedInstructions {
     return false
   }
 
+  /// Like `sideEffectsMayWrite`, but also considers reads. Used when extending a "modify"
+  /// access scope.
+  ///
+  /// The markers of statically enforced accesses are ignored: see `isStaticAccessMarker`.
+  /// This is only correct because the memory operations _within_ such an access scope are
+  /// checked as well - they are part of `loopSideEffects` like any other instruction.
   func sideEffectsMayReadOrWrite(to address: Value,
                                  outsideOf scope: InstructionRange,
                                  _ context: FunctionPassContext
   ) -> Bool {
     for sideEffectInst in loopSideEffects {
       if sideEffectInst.mayReadOrWrite(address: address, context.aliasAnalysis),
+         !sideEffectInst.isStaticAccessMarker,
          !scope.inclusiveRangeContains(sideEffectInst)
       {
         return true
@@ -1234,7 +1241,30 @@ private extension FullApplySite {
   }
 }
 
+private extension Instruction {
+  /// True, if this is the begin or end marker of a statically enforced access.
+  ///
+  /// Such markers don't do any runtime book-keeping. Therefore they neither conflict with a
+  /// widened access scope nor can they cause a spurious exclusivity violation if they end up
+  /// being nested in a widened access scope.
+  /// Note that the instructions _within_ such an access scope are checked separately.
+  var isStaticAccessMarker: Bool {
+    switch self {
+    case let beginAccess as BeginAccessInst:
+      return beginAccess.isStatic || beginAccess.isUnsafe
+    case let endAccess as EndAccessInst:
+      return endAccess.beginAccess.isStatic || endAccess.beginAccess.isUnsafe
+    default:
+      return false
+    }
+  }
+}
+
 private extension ScopedInstruction {
+  var isStaticAccessMarker: Bool {
+    (self as Instruction).isStaticAccessMarker
+  }
+
   /// Returns `true` if this begin access is safe to hoist.
   func canScopedInstructionBeHoisted(
     outOf loop: Loop,
@@ -1248,9 +1278,21 @@ private extension ScopedInstruction {
     // Instruction specific preconditions
     switch self {
     case is BeginAccessInst, is LoadBorrowInst:
+      // A `modify` access scope can be extended over a statically enforced access of the same
+      // address: the nested static access does no runtime book-keeping and therefore cannot
+      // cause a spurious exclusivity violation (see `isStaticAccessMarker`).
+      // This is what enables the last LICM run to hoist the single remaining dynamic access out
+      // of a loop after AccessEnforcementDom turned the loop's other accesses into `[static]`
+      // ones - which is exactly why LICM is run again after AccessEnforcementDom.
+      let selfIsModifyAccess = (self as? BeginAccessInst)?.accessKind == .modify
+
       guard (analyzedInstructions.scopedInsts
         .allSatisfy { otherScopedInst in
           guard self != otherScopedInst else { return true }
+
+          if selfIsModifyAccess, otherScopedInst.isStaticAccessMarker {
+            return true
+          }
 
           return operands.first!.value.accessPath.isDistinct(from: otherScopedInst.operand.value.accessPath)
         }) else {
