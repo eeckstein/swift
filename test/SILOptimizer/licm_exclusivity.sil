@@ -304,3 +304,41 @@ bb6:
   %10 = tuple ()
   return %10
 }
+
+// Tests hoisting a dynamic "modify" access out of a loop which also contains a non-distinct
+// _static_ access. The static access does no runtime book-keeping, therefore nesting it in the
+// widened "modify" scope cannot cause a spurious exclusivity violation.
+// This is the situation which the LICM run after AccessEnforcementDom is supposed to handle:
+// AccessEnforcementDom turned the loop's read access into a [static] one, leaving the modify
+// access as the only dynamic access of the loop.
+//
+// CHECK-LABEL: sil @hoist_modify_over_static_access : $@convention(thin) () -> () {
+// CHECK:         [[GLOBAL:%.*]] = global_addr @globalX : $*X
+// CHECK:         [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*X
+// CHECK:         br bb1
+// CHECK:       bb1:
+// CHECK-NEXT:    begin_access [read] [static] [[GLOBAL]] : $*X
+// CHECK:       bb2:
+// CHECK:         end_access [[BEGIN]] : $*X
+// CHECK-LABEL: } // end sil function 'hoist_modify_over_static_access'
+sil @hoist_modify_over_static_access : $@convention(thin) () -> () {
+bb0:
+  %0 = global_addr @globalX: $*X
+  br bb1
+
+bb1:
+  %r1 = begin_access [read] [static] %0 : $*X
+  %r2 = load %r1 : $*X
+  end_access %r1 : $*X
+  %m1 = begin_access [modify] [dynamic] %0 : $*X
+  store %r2 to %m1 : $*X
+  end_access %m1 : $*X
+  cond_br undef, bb3, bb2
+
+bb2:
+  %10 = tuple ()
+  return %10 : $()
+
+bb3:
+  br bb1
+}
