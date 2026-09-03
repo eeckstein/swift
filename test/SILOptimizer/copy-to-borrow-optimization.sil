@@ -971,8 +971,15 @@ bb0(%0 : $*NativeObjectPair, %1 : @guaranteed $Builtin.NativeObject):
   return %9999 : $()
 }
 
+// The write (= the `begin_access [modify]`) is only on one path. Therefore the copy is moved
+// to just before the write.
+//
 // CHECK-LABEL: sil [ossa] @inout_argument_never_written_to_begin_access_2a : $@convention(thin) (@inout NativeObjectPair, @guaranteed Builtin.NativeObject) -> () {
-// CHECK: load [copy]
+// CHECK:         [[B:%.*]] = load_borrow %2
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    begin_access
 // CHECK: } // end sil function 'inout_argument_never_written_to_begin_access_2a'
 sil [ossa] @inout_argument_never_written_to_begin_access_2a : $@convention(thin) (@inout NativeObjectPair, @guaranteed Builtin.NativeObject) -> () {
 bb0(%0 : $*NativeObjectPair, %1 : @guaranteed $Builtin.NativeObject):
@@ -2790,4 +2797,105 @@ bb0(%0 : @owned $ClassLet):
   %r = tuple ()
   return %r : $()
 }
+
+// The apply of `guaranteed_klass_user` may write to `%1`. But it's only on one path.
+// Therefore the copy can be moved to just before the write.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_before_write :
+// CHECK:         [[B:%.*]] = load_borrow %2
+// CHECK:       bb1:
+// CHECK:         [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply %{{[0-9]+}}([[C]])
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    br bb3
+// CHECK:       } // end sil function 'shorten_liverange_before_write'
+sil [ossa] @shorten_liverange_before_write : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.aVar
+  %2 = begin_access [read] [dynamic] [no_nested_conflict] %1
+  %3 = load [copy] %2
+  end_access %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%3) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %3
+  br bb3
+
+bb2:
+  destroy_value %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// Not optimized: the loaded value is still needed in a successor of the block which contains
+// the write.
+//
+// CHECK-LABEL: sil [ossa] @dont_shorten_liverange_if_used_in_successor :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_shorten_liverange_if_used_in_successor'
+sil [ossa] @dont_shorten_liverange_if_used_in_successor : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.aVar
+  %2 = begin_access [read] [dynamic] [no_nested_conflict] %1
+  %3 = load [copy] %2
+  end_access %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%3) : $@convention(thin) (@guaranteed Klass) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  destroy_value %3
+  %9999 = tuple()
+  return %9999
+}
+
+// Not optimized: the `store_borrow` scope - which is an inner borrow scope of the loaded value -
+// extends beyond the write.
+//
+// CHECK-LABEL: sil [ossa] @dont_shorten_liverange_with_inner_borrow_scope :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_shorten_liverange_with_inner_borrow_scope'
+sil [ossa] @dont_shorten_liverange_with_inner_borrow_scope : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.aVar
+  %2 = begin_access [read] [dynamic] [no_nested_conflict] %1
+  %3 = load [copy] %2
+  end_access %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  %s = alloc_stack $Klass
+  %sb = store_borrow %3 to %s
+  %f = function_ref @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
+  apply %f(%sb) : $@convention(thin) (@in_guaranteed Klass) -> ()
+  end_borrow %sb
+  dealloc_stack %s
+  destroy_value %3
+  br bb3
+
+bb2:
+  destroy_value %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
 
