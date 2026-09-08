@@ -103,6 +103,10 @@ struct MyArray {
 
 sil @getKlass : $@convention(thin) () -> @owned Klass
 sil @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+// Same as `guaranteed_klass_user`, but it's known to not write to memory.
+sil @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> () {
+[global:]
+}
 sil @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
 sil @guaranteed_fakeoptional_klass_user : $@convention(thin) (@guaranteed FakeOptional<Klass>) -> ()
 sil @guaranteed_fakeoptional_classlet_user : $@convention(thin) (@guaranteed FakeOptional<ClassLet>) -> ()
@@ -2148,7 +2152,9 @@ bb3:
 }
 
 // CHECK-LABEL: sil [ossa] @dead_end_loop :
-// CHECK:         %1 = load [copy] %0
+// CHECK:         %1 = load_borrow %0
+// CHECK:       bb1:
+// CHECK-NEXT:    %3 = copy_value %1
 // CHECK:       } // end sil function 'dead_end_loop'
 sil [ossa] @dead_end_loop : $@convention(thin) (@inout Klass) -> () {
 bb0(%0 : $*Klass):
@@ -2201,13 +2207,11 @@ bb0(%0 : @guaranteed $Container):
   return %9 : $()
 }
 
-// Same as above, but the address of the base `load_borrow` is mutable. The `destroy_value` of the
-// loaded value may write to it, therefore its borrow scope cannot be extended.
-//
-// CHECK-LABEL: sil [ossa] @dont_extend_load_borrow_scope_over_may_write :
-// CHECK:         load [copy]
-// CHECK:       } // end sil function 'dont_extend_load_borrow_scope_over_may_write'
-sil [ossa] @dont_extend_load_borrow_scope_over_may_write : $@convention(thin) (@guaranteed Container) -> () {
+// CHECK-LABEL: sil [ossa] @extend_load_borrow_scope_over_end_borrow :
+// CHECK:         load_borrow
+// CHECK:         load_borrow
+// CHECK:       } // end sil function 'extend_load_borrow_scope_over_end_borrow'
+sil [ossa] @extend_load_borrow_scope_over_end_borrow : $@convention(thin) (@guaranteed Container) -> () {
 bb0(%0 : @guaranteed $Container):
   %1 = ref_element_addr %0 : $Container, #Container.b
   %2 = load_borrow %1 : $*Base
@@ -2806,7 +2810,7 @@ bb0(%0 : @owned $ClassLet):
 // CHECK:       bb1:
 // CHECK:         [[C:%.*]] = copy_value [[B]]
 // CHECK-NEXT:    end_borrow [[B]]
-// CHECK-NEXT:    apply %{{[0-9]+}}([[C]])
+// CHECK:         apply %{{[0-9]+}}([[C]])
 // CHECK-NEXT:    destroy_value [[C]]
 // CHECK:       bb2:
 // CHECK-NEXT:    end_borrow [[B]]
@@ -2868,8 +2872,11 @@ bb3:
 // extends beyond the write.
 //
 // CHECK-LABEL: sil [ossa] @dont_shorten_liverange_with_inner_borrow_scope :
-// CHECK:         load [copy]
-// CHECK-NOT:     load_borrow
+// CHECK:         %3 = load_borrow %2
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value
+// CHECK-NEXT:    end_borrow %3
+// CHECK:         store_borrow [[C]]
 // CHECK:       } // end sil function 'dont_shorten_liverange_with_inner_borrow_scope'
 sil [ossa] @dont_shorten_liverange_with_inner_borrow_scope : $@convention(thin) (@guaranteed ClassLet) -> () {
 bb0(%0 : @guaranteed $ClassLet):
@@ -2898,4 +2905,854 @@ bb3:
   return %9999
 }
 
+// CHECK-LABEL: sil [ossa] @load_copy_to_borrow_with_liverange_splitting :
+// CHECK:         %2 = load_borrow %1
+// CHECK:         %3 = begin_borrow %2
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    [[C:%.*]] = copy_value %2
+// CHECK-NEXT:    [[BB:%.*]] = begin_borrow [[C]]
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow [[BB]]
+// CHECK-NEXT:    [[S:%.*]] = struct $NonTrivialStruct ([[C]])
+// CHECK-NEXT:    destroy_value [[S]]
+// CHECK:       } // end sil function 'load_copy_to_borrow_with_liverange_splitting'
+sil [ossa] @load_copy_to_borrow_with_liverange_splitting : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = begin_borrow %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  end_borrow %3
+  destroy_value %2
+  br bb3
+
+bb2:
+  apply undef() : $@convention(thin) () -> ()
+  end_borrow %3
+  %10 = struct $NonTrivialStruct (%2)
+  destroy_value %10
+  br bb3
+
+bb3:
+  return undef : $()
+}
+
+
+// The write is located in the load's block. Therefore _all_ lifetime ends of the loaded value are
+// after the write and the liverange cannot be shortened.
+//
+// CHECK-LABEL: sil [ossa] @dont_shorten_liverange_if_write_dominates_all_ends :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_shorten_liverange_if_write_dominates_all_ends'
+sil [ossa] @dont_shorten_liverange_if_write_dominates_all_ends : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  apply undef() : $@convention(thin) () -> ()
+  cond_br undef, bb1, bb2
+
+bb1:
+  destroy_value %2
+  br bb3
+
+bb2:
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The write is in a loop, which means that it's also "before" all lifetime ends of the loaded value.
+//
+// CHECK-LABEL: sil [ossa] @dont_shorten_liverange_with_write_in_loop :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_shorten_liverange_with_write_in_loop'
+sil [ossa] @dont_shorten_liverange_with_write_in_loop : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  br bb1
+
+bb1:
+  cond_br undef, bb2, bb3
+
+bb2:
+  apply undef() : $@convention(thin) () -> ()
+  br bb1
+
+bb3:
+  destroy_value %2
+  br bb4
+
+bb4:
+  %9999 = tuple()
+  return %9999
+}
+
+// Only borrow scopes which are directly derived from the load can be split.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_nested_borrow_scope :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_nested_borrow_scope'
+sil [ossa] @dont_split_liverange_with_nested_borrow_scope : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = begin_borrow %2
+  %4 = begin_borrow %3
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  end_borrow %4
+  end_borrow %3
+  destroy_value %2
+  br bb3
+
+bb2:
+  end_borrow %4
+  end_borrow %3
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// A `store_borrow` scope of the loaded value cannot be split.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_store_borrow_scope :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_store_borrow_scope'
+sil [ossa] @dont_split_liverange_with_store_borrow_scope : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = alloc_stack $Klass
+  %4 = store_borrow %2 to %3
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  end_borrow %4
+  dealloc_stack %3
+  destroy_value %2
+  br bb3
+
+bb2:
+  end_borrow %4
+  dealloc_stack %3
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The loaded value escapes, so its uses cannot be enumerated reliably.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_escaping_use :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_escaping_use'
+sil [ossa] @dont_split_liverange_with_escaping_use : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = ref_to_unmanaged %2 : $Klass to $@sil_unmanaged Klass
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The `struct` is inside the shortened liverange, but its result is used beyond the liverange exit.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_forwarded_value :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_forwarded_value'
+sil [ossa] @dont_split_liverange_with_forwarded_value : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = struct $NonTrivialStruct (%2)
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %3
+  br bb3
+
+bb2:
+  destroy_value %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// Same as above, but with multiple forwarded results.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_destructured_values :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_destructured_values'
+sil [ossa] @dont_split_liverange_with_destructured_values : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.aLetTuple
+  %2 = load [copy] %1
+  (%3, %4) = destructure_tuple %2 : $(Klass, Klass)
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %3
+  destroy_value %4
+  br bb3
+
+bb2:
+  destroy_value %3
+  destroy_value %4
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The `store` is inside the shortened liverange, but the stack location is used beyond the
+// liverange exit.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_store_to_stack :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_store_to_stack'
+sil [ossa] @dont_split_liverange_with_store_to_stack : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = alloc_stack $Klass
+  store %2 to [init] %3
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_addr %3
+  dealloc_stack %3
+  br bb3
+
+bb2:
+  destroy_addr %3
+  dealloc_stack %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The write in bb1 also invalidates the memory in bb1's successors bb3 and bb4.
+// Only the lifetime end in bb2 can be converted to an `end_borrow`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_write_propagated_to_successors :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb3:
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb4:
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       } // end sil function 'shorten_liverange_with_write_propagated_to_successors'
+sil [ossa] @shorten_liverange_with_write_propagated_to_successors : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  cond_br undef, bb3, bb4
+
+bb2:
+  destroy_value %2
+  br bb5
+
+bb3:
+  destroy_value %2
+  br bb5
+
+bb4:
+  destroy_value %2
+  br bb5
+
+bb5:
+  %9999 = tuple()
+  return %9999
+}
+
+// Two writes on different paths result in two exits of the shortened liverange.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_multiple_exits :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C1:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [[C1]]
+// CHECK:       bb3:
+// CHECK-NEXT:    [[C2:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [[C2]]
+// CHECK:       bb4:
+// CHECK:         apply %{{[0-9]+}}([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_multiple_exits'
+sil [ossa] @shorten_liverange_with_multiple_exits : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb5
+
+bb2:
+  cond_br undef, bb3, bb4
+
+bb3:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb5
+
+bb4:
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%2) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %2
+  br bb5
+
+bb5:
+  %9999 = tuple()
+  return %9999
+}
+
+// The use in the exit block bb1 must be re-written to the new `copy_value`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_use_in_write_block :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    apply %{{[0-9]+}}([[C]])
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_use_in_write_block'
+sil [ossa] @shorten_liverange_with_use_in_write_block : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  apply %f(%2) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The uses within the shortened liverange keep using the `load_borrow`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_use_in_clean_block :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:         apply %{{[0-9]+}}([[B]])
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb2:
+// CHECK-NEXT:    apply %{{[0-9]+}}([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_use_in_clean_block'
+sil [ossa] @shorten_liverange_with_use_in_clean_block : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%2) : $@convention(thin) (@guaranteed Klass) -> ()
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  apply %f(%2) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The inner borrow scope ends before the liverange exit and therefore doesn't need to be split.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_borrow_scope_ending_before_exit :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK-NEXT:    [[IB:%.*]] = begin_borrow [[B]]
+// CHECK:         end_borrow [[IB]]
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     begin_borrow
+// CHECK:       } // end sil function 'shorten_liverange_with_borrow_scope_ending_before_exit'
+sil [ossa] @shorten_liverange_with_borrow_scope_ending_before_exit : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = begin_borrow %2
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%3) : $@convention(thin) (@guaranteed Klass) -> ()
+  end_borrow %3
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// Two borrow scopes of the loaded value, both of which need to be split.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_two_borrow_scopes :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK-NEXT:    [[IB1:%.*]] = begin_borrow [[B]]
+// CHECK-NEXT:    [[IB2:%.*]] = begin_borrow [[B]]
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[IB1]]
+// CHECK-NEXT:    end_borrow [[IB2]]
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    [[NB1:%.*]] = begin_borrow [[C]]
+// CHECK-NEXT:    [[NB2:%.*]] = begin_borrow [[C]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    end_borrow [[NB1]]
+// CHECK-NEXT:    end_borrow [[NB2]]
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[IB1]]
+// CHECK-NEXT:    end_borrow [[IB2]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_two_borrow_scopes'
+sil [ossa] @shorten_liverange_with_two_borrow_scopes : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = begin_borrow %2
+  %4 = begin_borrow %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  end_borrow %3
+  end_borrow %4
+  destroy_value %2
+  br bb3
+
+bb2:
+  end_borrow %3
+  end_borrow %4
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The split borrow scope needs a reborrow phi-argument in the block where it ends.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_reborrow_phi :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK-NEXT:    [[IB:%.*]] = begin_borrow [[B]]
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[IB]]
+// CHECK-NEXT:    [[C1:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    [[NB1:%.*]] = begin_borrow [[C1]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    br bb5([[C1]], [[NB1]])
+// CHECK:       bb3:
+// CHECK-NEXT:    end_borrow [[IB]]
+// CHECK-NEXT:    [[C2:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    [[NB2:%.*]] = begin_borrow [[C2]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    br bb5([[C2]], [[NB2]])
+// CHECK:       bb4:
+// CHECK-NEXT:    end_borrow [[IB]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb5([[A1:%.*]] : @owned $Klass, [[A2:%.*]] : @reborrow $Klass):
+// CHECK-NEXT:    [[BF:%.*]] = borrowed [[A2]] from ([[A1]])
+// CHECK:         end_borrow [[BF]]
+// CHECK-NEXT:    destroy_value [[A1]]
+// CHECK:       } // end sil function 'shorten_liverange_with_reborrow_phi'
+sil [ossa] @shorten_liverange_with_reborrow_phi : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  %3 = begin_borrow %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  br bb5
+
+bb2:
+  cond_br undef, bb3, bb4
+
+bb3:
+  apply undef() : $@convention(thin) () -> ()
+  br bb5
+
+bb4:
+  end_borrow %3
+  destroy_value %2
+  br bb6
+
+bb5:
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%3) : $@convention(thin) (@guaranteed Klass) -> ()
+  end_borrow %3
+  destroy_value %2
+  br bb6
+
+bb6:
+  %9999 = tuple()
+  return %9999
+}
+
+// A `switch_enum` in the shortened liverange: the non-payload case block needs an `end_borrow`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_switch_enum :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb2:
+// CHECK-NEXT:    switch_enum [[B]]
+// CHECK:       bb3:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb4(%{{[0-9]+}} : @guaranteed $Klass):
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_switch_enum'
+sil [ossa] @shorten_liverange_with_switch_enum : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.anOptionalLet
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb5
+
+bb2:
+  switch_enum %2 : $FakeOptional<Klass>, case #FakeOptional.none!enumelt: bb3, case #FakeOptional.some!enumelt: bb4
+
+bb3:
+  br bb5
+
+bb4(%3 : @owned $Klass):
+  destroy_value %3
+  br bb5
+
+bb5:
+  %9999 = tuple()
+  return %9999
+}
+
+// An `unchecked_enum_data` which ends the lifetime without a `destroy_value`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_unchecked_enum_data :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb2:
+// CHECK-NEXT:    unchecked_enum_data [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_unchecked_enum_data'
+sil [ossa] @shorten_liverange_with_unchecked_enum_data : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.anOptionalLet
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  %3 = unchecked_enum_data %2 : $FakeOptional<Klass>, #FakeOptional.some!enumelt
+  destroy_value %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The forwarded value is completely inside the shortened liverange.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_forwarded_value_in_range :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb2:
+// CHECK-NEXT:    struct $NonTrivialStruct ([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_forwarded_value_in_range'
+sil [ossa] @shorten_liverange_with_forwarded_value_in_range : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  %3 = struct $NonTrivialStruct (%2)
+  destroy_value %3
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The borrow scope of the load's base must be extended over the shortened liverange - and not
+// over the original liverange of the `load [copy]`.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_and_extend_base_borrow_scope :
+// CHECK:         [[OUTER:%.*]] = load_borrow %1
+// CHECK:         [[INNER:%.*]] = load_borrow %3
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[INNER]]
+// CHECK-NEXT:    end_borrow [[INNER]]
+// CHECK-NEXT:    end_borrow [[OUTER]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[INNER]]
+// CHECK-NEXT:    end_borrow [[OUTER]]
+// CHECK:       } // end sil function 'shorten_liverange_and_extend_base_borrow_scope'
+sil [ossa] @shorten_liverange_and_extend_base_borrow_scope : $@convention(thin) (@guaranteed Container) -> () {
+bb0(%0 : @guaranteed $Container):
+  %1 = ref_element_addr [immutable] %0, #Container.b
+  %2 = load_borrow %1
+  %3 = ref_element_addr %2, #Base.c
+  %4 = load [copy] %3
+  end_borrow %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %4
+  br bb3
+
+bb2:
+  destroy_value %4
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
+
+// The load is in a loop header and the write is after the loop.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_in_loop :
+// CHECK:       bb1:
+// CHECK-NEXT:    [[B:%.*]] = load_borrow %1
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb3:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       } // end sil function 'shorten_liverange_in_loop'
+sil [ossa] @shorten_liverange_in_loop : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  br bb1
+
+bb1:
+  %2 = load [copy] %1
+  cond_br undef, bb2, bb3
+
+bb2:
+  destroy_value %2
+  br bb1
+
+bb3:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value %2
+  br bb4
+
+bb4:
+  %9999 = tuple()
+  return %9999
+}
+
+// The liverange exit is a dead-end block.
+//
+// CHECK-LABEL: sil [ossa] @shorten_liverange_with_dead_end_exit :
+// CHECK:         [[B:%.*]] = load_borrow %1
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[B]]
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    apply undef
+// CHECK-NEXT:    destroy_value [dead_end] [[C]]
+// CHECK-NEXT:    unreachable
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'shorten_liverange_with_dead_end_exit'
+sil [ossa] @shorten_liverange_with_dead_end_exit : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  apply undef() : $@convention(thin) () -> ()
+  destroy_value [dead_end] %2
+  unreachable
+
+bb2:
+  destroy_value %2
+  %9999 = tuple()
+  return %9999
+}
+
+// The borrow scope of the copy's source must be extended over the `switch_enum`'s
+// non-payload case block, which ends the copy's liverange without a `destroy_value`.
+//
+// CHECK-LABEL: sil [ossa] @remove_copy_extend_scope_over_switch_enum_exit :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK-NEXT:    switch_enum [[B]]
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       bb2(%{{[0-9]+}} : @guaranteed $Klass):
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     copy_value
+// CHECK:       } // end sil function 'remove_copy_extend_scope_over_switch_enum_exit'
+sil [ossa] @remove_copy_extend_scope_over_switch_enum_exit : $@convention(thin) (@owned FakeOptional<Klass>) -> () {
+bb0(%0 : @owned $FakeOptional<Klass>):
+  %1 = begin_borrow %0
+  %2 = copy_value %1
+  end_borrow %1
+  switch_enum %2 : $FakeOptional<Klass>, case #FakeOptional.none!enumelt: bb1, case #FakeOptional.some!enumelt: bb2
+
+bb1:
+  br bb3
+
+bb2(%3 : @owned $Klass):
+  destroy_value %3
+  br bb3
+
+bb3:
+  destroy_value %0
+  %9999 = tuple()
+  return %9999
+}
+
+// The `switch_enum` payload argument %2 is forwarded from the inner borrow scope of %1. It cannot be
+// re-created in the liverange exit block bb2, in which it is used after the write.
+//
+// CHECK-LABEL: sil [ossa] @dont_split_liverange_with_forwarded_guaranteed_value :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'dont_split_liverange_with_forwarded_guaranteed_value'
+sil [ossa] @dont_split_liverange_with_forwarded_guaranteed_value : $@convention(thin) (@guaranteed ClassLet) -> () {
+bb0(%0 : @guaranteed $ClassLet):
+  %1 = ref_element_addr %0, #ClassLet.anOptionalLet
+  %2 = load [copy] %1
+  %3 = begin_borrow [lexical] %2
+  switch_enum %3 : $FakeOptional<Klass>, case #FakeOptional.none!enumelt: bb1, case #FakeOptional.some!enumelt: bb2
+
+bb1:
+  end_borrow %3
+  destroy_value %2
+  br bb3
+
+bb2(%4 : @guaranteed $Klass):
+  apply undef() : $@convention(thin) () -> ()
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%4) : $@convention(thin) (@guaranteed Klass) -> ()
+  end_borrow %3
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9999 = tuple()
+  return %9999
+}
 
