@@ -106,31 +106,57 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
 
   // If the loaded address is a projection of a borrowed reference, the borrow scope of that reference
   // must enclose the whole lifetime of the new `load_borrow`.
-  if let baseReference = load.address.accessBase.reference,
-     let baseBorrow = BeginBorrowValue(baseReference.lookThroughForwardingInstructions)
-  {
-    // The `end_borrow`s of `baseBorrow` are not considered to be writes here, because that borrow scope is
-    // extended beyond the load's liverange below. If it cannot be extended, this function bails out.
-    if mayWrite(toAddressOf: load, within: collectedUses.destroys, ignoreEndBorrowsOf: baseBorrow, context) {
-      return false
-    }
+  let baseBorrow = load.address.beginBorrowOfAddress
 
-    var liverange = InstructionRange(begin: load, context)
-    defer { liverange.deinitialize() }
-    liverange.insert(contentsOf: collectedUses.destroys.lazy.map { $0.next! })
+  //   %1 = load [copy] %addr      -+ liverangeOfLoadedValue  -+ loadBorrowLiverange
+  //   cond_br %c, bb2, bb3         |                          | (= sub-range of liverangeOfLoadedValue)
+  // bb2:                           |                          |
+  //   use(%1)                      |                          |
+  //   destroy_value %1             |                         -+
+  //   br bb4                       |
+  // bb3: // = exit block           |                         -+ memoryOverwrittenBlocks
+  //   store %x to %addr            |                          |
+  //   destroy_value %1            -+                          |
+  //   br bb4                                                 -+
+  //
+  var liverangeOfLoadedValue = InstructionRange(begin: load, ends: collectedUses.ends, context)
+  defer { liverangeOfLoadedValue.deinitialize() }
 
-    guard extendBorrowScope(of: baseBorrow.value, toOverlap: liverange, context) else {
-      return false
-    }
-    load.replaceWithLoadBorrow(collectedUses: collectedUses, enclosingBorrow: baseBorrow.value)
-  } else {
-    // The address is not derived from a borrowed reference.
-    if mayWrite(toAddressOf: load, within: collectedUses.destroys, context) {
-      return false
-    }
-    load.replaceWithLoadBorrow(collectedUses: collectedUses)
+  var memoryOverwrittenBlocks = BasicBlockWorklist(context)
+  defer { memoryOverwrittenBlocks.deinitialize() }
+
+  collectInitialMemoryWriteBlocks(of: load,
+                                  within: liverangeOfLoadedValue,
+                                  into: &memoryOverwrittenBlocks,
+                                  baseBorrow: baseBorrow,
+                                  context)
+
+  memoryOverwrittenBlocks.propagateDown(toEndOf: liverangeOfLoadedValue)
+
+  if collectedUses.ends.outsideOf(memoryOverwrittenBlocks).isEmpty {
+    return false
   }
 
+  var loadBorrowLiverange = InstructionRange(
+    begin: load,
+    ends: collectedUses.ends.atEndOf(liverangeOfLoadedValue).outsideOf(memoryOverwrittenBlocks),
+    context)
+  defer { loadBorrowLiverange.deinitialize() }
+
+  guard canSplitLiveranges(of: load, atExitsOf: loadBorrowLiverange, context),
+        collectedUses.forwardedValuesDontOverlap(exitsOf: loadBorrowLiverange)
+  else {
+    return false
+  }
+
+  if let baseBorrow {
+    guard extendBorrowScope(of: baseBorrow.value, toOverlap: loadBorrowLiverange, context) else {
+      return false
+    }
+  }
+
+  load.replaceWithLoadBorrow(within: loadBorrowLiverange, collectedUses: collectedUses,
+                             enclosingBorrow: baseBorrow?.value)
   return true
 }
 
@@ -143,7 +169,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
 
   var liverange = InstructionRange(begin: copy, context)
   defer { liverange.deinitialize() }
-  liverange.insert(contentsOf: collectedUses.destroys)
+  liverange.insert(contentsOf: collectedUses.ends)
 
   if copy.fromValue.ownership == .owned {
     if !liverange.isFullyContainedIn(scopeOf: copy.fromValue) {
@@ -189,27 +215,15 @@ private struct Uses {
   private(set) var forwardingUses: Stack<Operand>
 
   // All destroys of the load/copy_value and its forwarded values.
-  private(set) var destroys: Stack<Instruction>
-
-  // Exit blocks of the load/copy_value's liverange which don't have a destroy.
+  // Also, first instructions of exit blocks of the load/copy_value's liverange which don't have a destroy.
   // Those are successor blocks of terminators, like `switch_enum`, which do _not_ forward the value.
   // E.g. the none-case of a switch_enum of an Optional.
-  // Note: we cannot just store the first instruction of a basic block, because that might get deleted
-  //       before we use the results of `nonDestroyingLiverangeExitBlocks`.
-  private(set) var nonDestroyingLiverangeExitBlocks: Stack<BasicBlock>
-
-  // Forwarding instructions which end the lifetime without a destroy, e.g. an `unchecked_enum_data`
-  // which extracts a trivial payload out of a non-trivial enum.
-  // Note: we cannot just store the next instruction after the forwarding instruction (which we eventually
-  //       need) because that might get deleted before we use the results of `nonDestroyingForwardingEnds`.
-  private(set) var nonDestroyingForwardingEnds: Stack<ForwardingInstruction>
+  private(set) var ends: IterableInstructionSet
 
   init(_ context: FunctionPassContext) {
     self.context = context
     self.forwardingUses = Stack(context)
-    self.destroys = Stack(context)
-    self.nonDestroyingLiverangeExitBlocks = Stack(context)
-    self.nonDestroyingForwardingEnds = Stack(context)
+    self.ends = IterableInstructionSet(context)
   }
 
   mutating func collectUses(of initialValue: SingleValueInstruction) -> Bool {
@@ -224,7 +238,8 @@ private struct Uses {
       for use in value.uses.endingLifetime {
         switch use.instruction {
         case let destroy as DestroyValueInst:
-          destroys.append(destroy)
+          ends.insert(destroy)
+          forwardingUses.append(use)
 
         case let forwardingInst as ForwardingInstruction where forwardingInst.canChangeToGuaranteedOwnership:
           forwardingUses.append(use)
@@ -233,7 +248,7 @@ private struct Uses {
 
         case let store as StoreInst:
           assert(use == store.sourceOperand)
-          guard canConvertToStoreBorrow(store: store, destroys: &destroys, context) else {
+          guard canConvertToStoreBorrow(store: store, ends: &ends, context) else {
             return false
           }
           forwardingUses.append(use)
@@ -245,16 +260,40 @@ private struct Uses {
     return true
   }
 
-  func changeOwnedToGuaranteed(outerScope: Value) {
-    for forwardingUse in forwardingUses {
+  func forwardedValuesDontOverlap(exitsOf liverange: InstructionRange) -> Bool {
+    for forwardingUse in forwardingUses where liverange.contains(forwardingUse.instruction) {
+      switch forwardingUse.instruction {
+      case let forwardingInst as ForwardingInstruction:
+        for result in forwardingInst.forwardedResults where result.ownership == .owned {
+          guard result.users.allSatisfy({liverange.inclusiveRangeContains($0)}) else {
+            return false
+          }
+        }
+      case let store as StoreInst:
+        let allocStack = store.destination as! AllocStackInst
+        guard allocStack.users.allSatisfy({liverange.contains($0)}) else {
+          return false
+        }
+      case is DestroyValueInst:
+        break
+      default:
+        fatalError("unknown forwarding instruction")
+      }
+    }
+    return true
+  }
+
+  func changeOwnedToGuaranteed(outerScope: Value, within liverange: InstructionRange) {
+    for forwardingUse in forwardingUses where liverange.inclusiveRangeContains(forwardingUse.instruction){
       switch forwardingUse.instruction {
       case let store as StoreInst:
         changeStoreToStoreBorrow(store: store, outerScope: outerScope)
+      case let destroy as DestroyValueInst:
+        context.erase(instruction: destroy)
       default:
         forwardingUse.changeOwnership(from: .owned, to: .guaranteed, context)
       }
     }
-    context.erase(instructions: destroys)
   }
 
   private func changeStoreToStoreBorrow(store: StoreInst, outerScope: Value) {
@@ -278,6 +317,7 @@ private struct Uses {
         } else {
           Builder(before: destroy, context).createEndBorrow(of: storeBorrow)
         }
+        context.erase(instruction: destroy)
       case let debugValue as DebugValueInst:
         if debugValue.parentBlock != storeBorrow.parentBlock || !storeBorrow.strictlyDominatesInBlock(debugValue) {
           debugValue.move(before: storeBorrow.next!, context)
@@ -296,28 +336,26 @@ private struct Uses {
       // A terminator instruction can implicitly end the lifetime of its operand in a success block,
       // e.g. a `switch_enum` with a non-payload case block. Such success blocks need an `end_borrow`, though.
       for succ in termInst.successors where !succ.arguments.contains(where: {$0.ownership == .owned}) {
-        nonDestroyingLiverangeExitBlocks.append(succ)
+        ends.insert(succ.instructions.first!)
       }
     } else if !forwardingInst.forwardedResults.contains(where: { $0.ownership == .owned }) {
       // The forwarding instruction has no owned result, which means it ends the lifetime of its owned operand.
       // This can happen with an `unchecked_enum_data` which extracts a trivial payload out of a
       // non-trivial enum.
-      nonDestroyingForwardingEnds.append(forwardingInst)
+      ends.insert(forwardingInst.next!)
     }
   }
 
   mutating func deinitialize() {
     forwardingUses.deinitialize()
-    destroys.deinitialize()
-    nonDestroyingLiverangeExitBlocks.deinitialize()
-    nonDestroyingForwardingEnds.deinitialize()
+    ends.deinitialize()
   }
 }
 
 /// Checks if the `store` stores to an `alloc_stack` and that no other instructions (beside `destroy_addr`)
 /// modify the stack location.
 private func canConvertToStoreBorrow(store: StoreInst,
-                                     destroys: inout Stack<Instruction>,
+                                     ends: inout IterableInstructionSet,
                                      _ context: FunctionPassContext) -> Bool
 {
   guard store.storeOwnership == .initialize,
@@ -336,7 +374,7 @@ private func canConvertToStoreBorrow(store: StoreInst,
     return false
   }
 
-  destroys.append(contentsOf: walker.destroys)
+  ends.insert(contentsOf: walker.destroys)
   return true
 }
 
@@ -412,48 +450,135 @@ private struct AllocStackUsesWalker : AddressDefUseWalker {
   }
 }
 
-private func mayWrite(
-  toAddressOf load: LoadInst,
-  within destroys: Stack<Instruction>,
-  ignoreEndBorrowsOf borrowToIgnore: BeginBorrowValue? = nil,
-  _ context: FunctionPassContext
-) -> Bool {
-  let aliasAnalysis = context.aliasAnalysis
+private func collectInitialMemoryWriteBlocks(of load: LoadInst,
+                                             within liverange: InstructionRange,
+                                             into memoryOverwrittenBlocks: inout BasicBlockWorklist,
+                                             baseBorrow: BeginBorrowValue?,
+                                             _ context: FunctionPassContext
+) {
   var worklist = InstructionWorklist(context)
   defer { worklist.deinitialize() }
 
-  for destroy in destroys {
-    worklist.pushPredecessors(of: destroy, ignoring: load)
-  }
+  worklist.pushIfNotVisited(load.next!)
 
-  // Visit all instructions starting from the destroys in backward order.
+  let aliasAnalysis = context.aliasAnalysis
+
   while let inst = worklist.pop() {
-    if inst.mayWrite(toAddress: load.address, aliasAnalysis),
-       !inst.isEndBorrow(ofScope: borrowToIgnore)
-    {
-      return true
+    guard liverange.contains(inst) else {
+      continue
     }
-    worklist.pushPredecessors(of: inst, ignoring: load)
+    if inst.mayWrite(toAddress: load.address, aliasAnalysis),
+       !inst.isEndBorrow(ofScope: baseBorrow)
+    {
+      memoryOverwrittenBlocks.pushIfNotVisited(inst.parentBlock)
+    } else {
+      worklist.pushSuccessors(of: inst)
+    }
   }
-  return false
+}
+
+private func canSplitLiveranges(of load: LoadInst,
+                                atExitsOf liverange: InstructionRange,
+                                _ context: FunctionPassContext
+) -> Bool {
+  var walker = InteriorUseWalker(definingValue: load, ignoreEscape: false, visitInnerUses: true, context) {
+      (operand: Operand) -> WalkResult in
+    if operand.value == load {
+      // We can always split the top-level "owned" liverange by inserting `copy_value`s at exit blocks.
+      return .continueWalk
+    } else if let beginBorrow = operand.value as? BeginBorrowInst, beginBorrow.borrowedValue == load {
+      // We can split borrow scopes by inserting `begin_borrow`s (of the split "owned" liverange) at exit blocks.
+      return .continueWalk
+    } else {
+      // Any other value which is derived from the load - e.g. a guaranteed value which is forwarded from
+      // an inner borrow scope - cannot be re-created at the liverange exits. Therefore it must not be
+      // used beyond the liverange.
+      // Values which are _defined_ outside the liverange are fine: they are derived from operands which
+      // are re-written to the new `copy_value` in the exit block.
+      if !liverange.inclusiveRangeContains(operand.instruction),
+         operand.value.isDefined(within: liverange)
+      {
+        return .abortWalk
+      }
+      return .continueWalk
+    }
+  }
+  defer { walker.deinitialize() }
+
+  return walker.visitUses() == .continueWalk
+}
+
+private func splitLiverange(of load: LoadInst,
+                            replacedWith loadBorrow: LoadBorrowInst,
+                            atExitsOf liverange: InstructionRange,
+                            _ context: FunctionPassContext
+) {
+  var ssaUpdater = SSAUpdater(type: loadBorrow.type, ownership: .owned, context)
+  defer { ssaUpdater.deinitialize() }
+  for exitBlock in liverange.blockRange.exits {
+    let builder = Builder(atBeginOf: exitBlock, context)
+    let newCopy = builder.createCopyValue(operand: loadBorrow)
+    ssaUpdater.addAvailableValue(newCopy, in: exitBlock)
+    builder.createEndBorrow(of: loadBorrow)
+  }
+  for use in load.uses {
+    if liverange.inclusiveRangeContains(use.instruction) {
+      if let beginBorrow = use.instruction as? BeginBorrowInst {
+        splitBorrowScope(of: beginBorrow, atExitsOf: liverange, ownedSsaUpdater: &ssaUpdater, context)
+      }
+    } else {
+      use.set(to: ssaUpdater.getValue(atEndOf: use.instruction.parentBlock), context)
+    }
+  }
+}
+
+private func splitBorrowScope(of beginBorrow: BeginBorrowInst,
+                              atExitsOf liverange: InstructionRange,
+                              ownedSsaUpdater: inout SSAUpdater<FunctionPassContext>,
+                              _ context: FunctionPassContext
+) {
+  var borrowScope = BasicBlockRange(begin: beginBorrow.parentBlock, context)
+  defer { borrowScope.deinitialize() }
+  borrowScope.insert(contentsOf: beginBorrow.uses.endingLifetime.map { $0.instruction.parentBlock })
+
+  var ssaUpdater = SSAUpdater(type: beginBorrow.type, ownership: .guaranteed, context)
+  defer { ssaUpdater.deinitialize() }
+
+  for exitBlock in liverange.blockRange.exits where borrowScope.inclusiveRangeContains(exitBlock) {
+    let previouslyInsertedNewCopy = ownedSsaUpdater.getValue(atEndOf: exitBlock) as! CopyValueInst
+    let builder = Builder(after: previouslyInsertedNewCopy, context)
+    let newBeginBorrow = builder.createBeginBorrow(of: previouslyInsertedNewCopy)
+    ssaUpdater.addAvailableValue(newBeginBorrow, in: exitBlock)
+  }
+  for borrowUse in beginBorrow.uses {
+    if !liverange.inclusiveRangeContains(borrowUse.instruction) {
+      borrowUse.set(to: ssaUpdater.getValue(atEndOf: borrowUse.instruction.parentBlock), context)
+    }
+  }
+  for exitBlock in liverange.blockRange.exits where borrowScope.inclusiveRangeContains(exitBlock) {
+    Builder(atBeginOf: exitBlock, context).createEndBorrow(of: beginBorrow)
+  }
+  updateBorrowedFrom(for: ssaUpdater.insertedPhis, context)
 }
 
 private extension LoadInst {
-  func replaceWithLoadBorrow(collectedUses: Uses, enclosingBorrow: Value? = nil) {
+  func replaceWithLoadBorrow(within liverange: InstructionRange,
+                             collectedUses: Uses,
+                             enclosingBorrow: Value? = nil
+  ) {
     let context = collectedUses.context
     let builder = Builder(before: self, context)
     let loadBorrow = builder.createLoadBorrow(fromAddress: address)
 
-    var liverange = InstructionRange(begin: self, ends: collectedUses.destroys, context)
-    defer { liverange.deinitialize() }
-
     createEndBorrows(for: loadBorrow, atEndOf: liverange, collectedUses: collectedUses,
                      enclosingBorrow: enclosingBorrow)
+
+    splitLiverange(of: self, replacedWith: loadBorrow, atExitsOf: liverange, context)
 
     uses.replaceAll(with: loadBorrow, context)
     context.erase(instruction: self)
 
-    collectedUses.changeOwnedToGuaranteed(outerScope: loadBorrow)
+    collectedUses.changeOwnedToGuaranteed(outerScope: loadBorrow, within: liverange)
   }
 }
 
@@ -467,10 +592,10 @@ private func remove(copy: CopyValueInst, collectedUses: Uses, liverange: Instruc
     let beginBorrow = builder.createBeginBorrow(of: fromValue)
     copy.replace(with: beginBorrow, context)
     createEndBorrows(for: beginBorrow, atEndOf: liverange, collectedUses: collectedUses)
-    collectedUses.changeOwnedToGuaranteed(outerScope: beginBorrow)
+    collectedUses.changeOwnedToGuaranteed(outerScope: beginBorrow, within: liverange)
   case .guaranteed:
     copy.replace(with: fromValue, context)
-    collectedUses.changeOwnedToGuaranteed(outerScope: fromValue.lookThroughForwardingInstructions)
+    collectedUses.changeOwnedToGuaranteed(outerScope: fromValue.lookThroughForwardingInstructions, within: liverange)
   case .none, .unowned:
     fatalError("unexpected ownership of copy source")
   }
@@ -490,34 +615,18 @@ private func createEndBorrows(for beginBorrow: Value,
   //   destroy_value %2
   //   destroy_value %3  // The final destroy. Here we need to create the `end_borrow`(s)
   //
-
-  var allLifetimeEndingInstructions = InstructionWorklist(context)
-  allLifetimeEndingInstructions.pushIfNotVisited(contentsOf: collectedUses.destroys.lazy.map { $0 })
-  allLifetimeEndingInstructions.pushIfNotVisited(contentsOf: collectedUses.nonDestroyingLiverangeExitBlocks.lazy.map {
-    $0.instructions.first!
-  })
-  allLifetimeEndingInstructions.pushIfNotVisited(contentsOf: collectedUses.nonDestroyingForwardingEnds.lazy.map {
-    $0.next!
-  })
-
-  defer {
-    allLifetimeEndingInstructions.deinitialize()
-  }
-
-  while let endInst = allLifetimeEndingInstructions.pop() {
-    if !liverange.contains(endInst) {
-      var insertionPoint = endInst
-      if let enclosingBorrow {
-        // If we already inserted `end_borrow`s for an enclosing scope - e.g. when the borrow scope of the
-        // load's base was extended - we need to make sure that the `end_borrow`s for this (inner) scope are
-        // inserted before the `end_borrow`s of the enclosing scope.
-        while let prev = insertionPoint.previous as? EndBorrowInst, prev.borrow == enclosingBorrow {
-          insertionPoint = prev
-        }
+  for endInst in collectedUses.ends.atEndOf(liverange) {
+    var insertionPoint = endInst
+    if let enclosingBorrow {
+      // If we already inserted `end_borrow`s for an enclosing scope - e.g. when the borrow scope of the
+      // load's base was extended - we need to make sure that the `end_borrow`s for this (inner) scope are
+      // inserted before the `end_borrow`s of the enclosing scope.
+      while let prev = insertionPoint.previous as? EndBorrowInst, prev.borrow == enclosingBorrow {
+        insertionPoint = prev
       }
-      let builder = Builder(before: insertionPoint, context)
-      builder.createEndBorrow(of: beginBorrow)
     }
+    let builder = Builder(before: insertionPoint, context)
+    builder.createEndBorrow(of: beginBorrow)
   }
 }
 
@@ -546,5 +655,44 @@ private extension ForwardingInstruction {
       return false
     }
     return true
+  }
+}
+
+private extension BasicBlockWorklist {
+  mutating func propagateDown(toEndOf liverange: InstructionRange) {
+    while let block = pop() {
+      pushIfNotVisited(contentsOf: block.successors.lazy.filter { succ in
+        liverange.inclusiveRangeContains(succ.instructions.first!)
+      })
+    }
+  }
+}
+
+private extension Value {
+  var beginBorrowOfAddress: BeginBorrowValue? {
+    if let baseReference = accessBase.reference {
+      return BeginBorrowValue(baseReference.lookThroughForwardingInstructions)
+    }
+    return nil
+  }
+
+  /// True if this value is defined inside `range`. Note that for a terminator result - e.g. a `switch_enum`
+  /// payload argument - the defining instruction is the terminator in the predecessor block.
+  func isDefined(within range: InstructionRange) -> Bool {
+    guard let def = definingInstructionOrTerminator else {
+      // A phi argument: be conservative.
+      return true
+    }
+    return range.inclusiveRangeContains(def)
+  }
+}
+
+private extension Sequence where Element == Instruction {
+  func outsideOf(_ blocks: BasicBlockWorklist) -> LazyFilterSequence<Self> {
+    self.lazy.filter { !blocks.hasBeenPushed($0.parentBlock) }
+  }
+
+  func atEndOf(_ liverange: InstructionRange) -> LazyFilterSequence<Self> {
+    self.lazy.filter { liverange.isEnd($0) }
   }
 }
