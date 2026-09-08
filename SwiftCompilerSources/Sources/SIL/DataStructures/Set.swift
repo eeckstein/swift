@@ -326,6 +326,12 @@ public struct IterableSet<Set: IntrusiveSet> : CollectionLikeSequence {
     return set.insert(element)
   }
 
+  public mutating func insert(contentsOf source: some Sequence<Element>) {
+    for element in source {
+      _ = insert(element)
+    }
+  }
+
   public mutating func erase(_ element: Element) {
     set.erase(element)
   }

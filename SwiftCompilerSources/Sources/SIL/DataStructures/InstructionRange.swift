@@ -108,6 +108,10 @@ public struct InstructionRange : CustomStringConvertible, NoReflectionChildren {
     contains(inst) || insertedInsts.contains(inst)
   }
 
+  public func isEnd(_ inst: Instruction) -> Bool {
+    !contains(inst) && insertedInsts.contains(inst)
+  }
+
   /// Returns the end instructions.
   ///
   /// Warning: this returns `begin` if no instructions were inserted.
