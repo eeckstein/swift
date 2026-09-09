@@ -430,7 +430,7 @@ private struct UseCollector : AddressDefUseWalker {
       if load.loadOwnership == .take {
         accessTree.append((projectionPath, .loadTake(load)))
       } else {
-        accessTree.append((projectionPath, .load(load, addressOperand: load.operand)))
+        accessTree.append((projectionPath, .load(load, addressOperand: load.addressOperand)))
       }
       return .continueWalk
 
@@ -441,7 +441,7 @@ private struct UseCollector : AddressDefUseWalker {
       guard loadBorrow.uses.endingLifetime.users.allSatisfy({ $0 is EndBorrowInst}) else {
         return .abortWalk
       }
-      accessTree.append((projectionPath, .load(loadBorrow, addressOperand: loadBorrow.operand)))
+      accessTree.append((projectionPath, .load(loadBorrow, addressOperand: loadBorrow.addressOperand)))
       return .continueWalk
 
     case let destroy as DestroyAddrInst:
