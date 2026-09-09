@@ -3861,3 +3861,90 @@ bb1:
   %r = tuple ()
   return %r
 }
+
+sil @readonly_two_inner_user : $@convention(thin) (@guaranteed Inner, @guaranteed Inner) -> () {
+[global:]
+}
+
+// Two loads from the same (unidentified) memory region, where the loaded values are destructured
+// and then borrowed - the pattern a sort predicate on a non-trivial element type produces.
+// The `end_borrow`s must not be treated as writes to the loaded memory, otherwise the two loads
+// block each other and neither can be converted.
+//
+// CHECK-LABEL: sil [ossa] @two_loads_with_borrowed_fields :
+// CHECK:         load_borrow
+// CHECK:         load_borrow
+// CHECK-NOT:     destroy_value
+// CHECK:         end_borrow
+// CHECK:       } // end sil function 'two_loads_with_borrowed_fields'
+sil [ossa] @two_loads_with_borrowed_fields : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %w : $Builtin.Word):
+  %1 = pointer_to_address %0 to [strict] $*Outer
+  %2 = index_addr %1, %w
+  %3 = load [copy] %1
+  %4 = destructure_struct %3
+  %5 = load [copy] %2
+  %6 = destructure_struct %5
+  %7 = begin_borrow %4
+  %8 = begin_borrow %6
+  %f = function_ref @readonly_two_inner_user : $@convention(thin) (@guaranteed Inner, @guaranteed Inner) -> ()
+  apply %f(%7, %8) : $@convention(thin) (@guaranteed Inner, @guaranteed Inner) -> ()
+  end_borrow %8
+  end_borrow %7
+  destroy_value %6
+  destroy_value %4
+  %r = tuple ()
+  return %r
+}
+
+// Returns a pointer derived from the borrowed reference, but opaquely: `accessBase` cannot see
+// through the call, so the load's base is `.pointer` and `baseBorrow` is nil.
+sil @get_opaque_ptr : $@convention(thin) (@guaranteed ClassLet) -> Builtin.RawPointer {
+[global: read]
+}
+
+// The `begin_borrow` is the reference root which holds the loaded address and it is *before* the
+// load, so its `end_borrow` must keep blocking the conversion. Otherwise the `load_borrow` scope
+// would reach the `destroy_value`, using the address after `end_borrow %1`.
+//
+// CHECK-LABEL: sil [ossa] @end_borrow_of_address_root_blocks :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK:       } // end sil function 'end_borrow_of_address_root_blocks'
+sil [ossa] @end_borrow_of_address_root_blocks : $@convention(thin) (@owned ClassLet) -> () {
+bb0(%0 : @owned $ClassLet):
+  %1 = begin_borrow %0
+  %g = function_ref @get_opaque_ptr : $@convention(thin) (@guaranteed ClassLet) -> Builtin.RawPointer
+  %2 = apply %g(%1) : $@convention(thin) (@guaranteed ClassLet) -> Builtin.RawPointer
+  %3 = pointer_to_address %2 to [strict] $*Klass
+  %4 = load [copy] %3
+  end_borrow %1
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%4) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %4
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// Same, but the `end_borrow` of the address root is outside the loaded value's liverange, so it
+// does not block.
+//
+// CHECK-LABEL: sil [ossa] @end_borrow_of_address_root_outside_liverange :
+// CHECK:         load_borrow
+// CHECK:       } // end sil function 'end_borrow_of_address_root_outside_liverange'
+sil [ossa] @end_borrow_of_address_root_outside_liverange : $@convention(thin) (@owned ClassLet) -> () {
+bb0(%0 : @owned $ClassLet):
+  %1 = begin_borrow %0
+  %g = function_ref @get_opaque_ptr : $@convention(thin) (@guaranteed ClassLet) -> Builtin.RawPointer
+  %2 = apply %g(%1) : $@convention(thin) (@guaranteed ClassLet) -> Builtin.RawPointer
+  %3 = pointer_to_address %2 to [strict] $*Klass
+  %4 = load [copy] %3
+  %f = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  apply %f(%4) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %4
+  end_borrow %1
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
