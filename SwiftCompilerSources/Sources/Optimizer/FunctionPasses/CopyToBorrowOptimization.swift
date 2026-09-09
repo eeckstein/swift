@@ -65,9 +65,10 @@ let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization")
 
   // Replacing a `load [copy]` with a `load_borrow` turns its `destroy_value`s into `end_borrow`s,
   // which - other than a `destroy_value` - don't block the replacement of another `load [copy]` from
-  // the same memory region (see `isEndOfLoadBorrowScope`). Therefore iterate until there is nothing
-  // left to do. This is required to optimize all loads of e.g. a multi-field struct which is loaded
-  // from an unsafe pointer, where all the loaded values are destroyed at the same place.
+  // the same memory region (see `isEndOfBorrowScopeNotHoldingLoadedAddress`). Therefore iterate
+  // until there is nothing left to do. This is required to optimize all loads of e.g. a multi-field
+  // struct which is loaded from an unsafe pointer, where all the loaded values are destroyed at the
+  // same place.
   var changedInIteration = true
   while changedInIteration {
     changedInIteration = false
@@ -486,7 +487,7 @@ private func collectInitialMemoryWriteBlocks(of load: LoadInst,
     }
     if inst.mayWrite(toAddress: load.address, aliasAnalysis),
        !inst.isEndBorrow(ofScope: baseBorrow),
-       !inst.isEndOfLoadBorrowScope,
+       !inst.isEndOfBorrowScopeNotHoldingLoadedAddress(worklist),
        // A `destroy_value` which ends the lifetime of the loaded value itself is replaced by an
        // `end_borrow` (or erased) by this optimization. Therefore it cannot write to the memory.
        // This happens when an aggregate is decomposed, e.g.
@@ -665,31 +666,59 @@ private extension Instruction {
     return endBorrow.borrow == beginBorrow.value
   }
 
-  /// True if this is an `end_borrow` of a `load_borrow`.
+  /// True if this is an `end_borrow` which cannot invalidate the address of the `load` which
+  /// `alreadyWalked` was seeded with.
   ///
-  /// Alias analysis conservatively reports a "write" for such an `end_borrow` to prevent other
+  /// Alias analysis conservatively reports a "write" for an `end_borrow` to prevent other
   /// optimizations from moving stores into the borrow scope. But the `end_borrow` itself neither
-  /// accesses memory nor releases anything. Therefore it cannot invalidate another - potentially
-  /// overlapping - `load_borrow` scope and we can ignore it when looking for memory writes.
+  /// accesses memory nor releases anything. So we can ignore it when looking for memory writes -
+  /// as long as it cannot end the borrow scope of the reference root which holds the load's
+  /// address. Otherwise the new `load_borrow` scope would extend beyond that borrow scope:
+  /// ```
+  ///   %1 = begin_borrow %0
+  ///   %2 = ref_element_addr %1, #field
+  ///   %3 = load_borrow %2
+  ///   end_borrow %1
+  ///   end_borrow %3              // ill formed: use of the address after `end_borrow %1`
+  /// ```
+  ///
+  /// Two kinds of borrow scopes are known not to hold the address:
+  /// * A `load_borrow` scope.
+  /// * A `begin_borrow` which `alreadyWalked` has reached, i.e. which lies _after_ the load. The
+  ///   address is an operand of the load, so it is defined before the load and therefore cannot be
+  ///   derived from such a `begin_borrow`.
   ///
   /// This is important to let this optimization cascade: after one `load [copy]` is replaced by a
   /// `load_borrow`, its `destroy_value`s become `end_borrow`s, which must not block replacing
-  /// another `load [copy]` from the same memory region.
+  /// another `load [copy]` from the same memory region. The same applies to `begin_borrow`s taken
+  /// of the loaded values, e.g.
+  /// ```
+  ///   %1 = load [copy] %addr     ; %addr derived from an UnsafeMutablePointer
+  ///   %2 = destructure_struct %1
+  ///   %3 = begin_borrow %2
+  ///   ...
+  ///   end_borrow %3              ; would otherwise block the *other* load from the same buffer
+  ///   destroy_value %2
+  /// ```
+  /// Two such loads from the same (unidentified) memory region used to block each other, which is
+  /// exactly the pattern a sort predicate on a non-trivial element type produces.
   ///
-  /// This is deliberately restricted to `load_borrow`:
-  /// * An `end_borrow` of a `store_borrow` ends the initialization of the destination address.
-  ///   Ignoring it lets the new `load_borrow` escape the `store_borrow` scope and creates ill
-  ///   formed SIL (see `store_borrow_aliased` in copy-to-borrow-optimization.sil).
-  /// * An `end_borrow` of a `begin_borrow` models a real effect: it can let the borrowed value be
-  ///   deallocated, which invalidates interior pointers into it. If the load's address is such an
-  ///   interior pointer, `baseBorrow` handles it (and `extendBorrowScope` widens the scope);
-  ///   otherwise alias analysis is only conservative because the address base is unidentified,
-  ///   and we don't want to second-guess that here.
-  var isEndOfLoadBorrowScope: Bool {
-    if let endBorrow = self as? EndBorrowInst {
-      return endBorrow.borrow is LoadBorrowInst
+  /// An `end_borrow` of a `store_borrow` never qualifies: that one does model a change of memory
+  /// state, because it ends the initialization of the destination address. Ignoring it lets the new
+  /// `load_borrow` escape the `store_borrow` scope and creates ill formed SIL (see
+  /// `store_borrow_aliased` in copy-to-borrow-optimization.sil).
+  func isEndOfBorrowScopeNotHoldingLoadedAddress(_ alreadyWalked: InstructionWorklist) -> Bool {
+    guard let endBorrow = self as? EndBorrowInst else {
+      return false
     }
-    return false
+    switch endBorrow.borrow {
+    case is LoadBorrowInst:
+      return true
+    case let beginBorrow as BeginBorrowInst:
+      return alreadyWalked.hasBeenPushed(beginBorrow)
+    default:
+      return false
+    }
   }
 }
 
