@@ -107,6 +107,13 @@ sil @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
 sil @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> () {
 [global:]
 }
+// Same as `guaranteed_user`, but it's known to not write to memory.
+sil @readonly_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> () {
+[global:]
+}
+sil @readonly_two_klass_user : $@convention(thin) (@guaranteed Klass, @guaranteed Klass) -> () {
+[global:]
+}
 sil @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
 sil @guaranteed_fakeoptional_klass_user : $@convention(thin) (@guaranteed FakeOptional<Klass>) -> ()
 sil @guaranteed_fakeoptional_classlet_user : $@convention(thin) (@guaranteed FakeOptional<ClassLet>) -> ()
@@ -3756,3 +3763,101 @@ bb3:
   return %9999
 }
 
+
+// Two overlapping `load [copy]`s from potentially aliasing memory. Once the first load is replaced,
+// its `destroy_value` becomes an `end_borrow`, which must not block the second load.
+//
+// CHECK-LABEL: sil [ossa] @two_overlapping_loads :
+// CHECK:         [[L1:%.*]] = load_borrow %{{.*}}
+// CHECK:         [[L2:%.*]] = load_borrow %{{.*}}
+// CHECK:         apply %{{.*}}([[L1]], [[L2]])
+// CHECK:         end_borrow
+// CHECK:         end_borrow
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'two_overlapping_loads'
+sil [ossa] @two_overlapping_loads : $@convention(thin) (Builtin.RawPointer, Builtin.RawPointer) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.RawPointer):
+  %2 = pointer_to_address %0 to [strict] $*Klass
+  %3 = pointer_to_address %1 to [strict] $*Klass
+  %4 = load [copy] %2
+  %5 = load [copy] %3
+  %f = function_ref @readonly_two_klass_user : $@convention(thin) (@guaranteed Klass, @guaranteed Klass) -> ()
+  apply %f(%4, %5) : $@convention(thin) (@guaranteed Klass, @guaranteed Klass) -> ()
+  destroy_value %4
+  destroy_value %5
+  %r = tuple ()
+  return %r
+}
+
+// Same, but a real write to the memory in between must still block the optimization.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_two_overlapping_loads_with_write :
+// CHECK:         load [copy]
+// CHECK:         load [copy]
+// CHECK:       } // end sil function 'dont_optimize_two_overlapping_loads_with_write'
+sil [ossa] @dont_optimize_two_overlapping_loads_with_write : $@convention(thin) (Builtin.RawPointer, Builtin.RawPointer, @owned Klass) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.RawPointer, %2 : @owned $Klass):
+  %3 = pointer_to_address %0 to [strict] $*Klass
+  %4 = pointer_to_address %1 to [strict] $*Klass
+  %5 = load [copy] %3
+  %6 = load [copy] %4
+  store %2 to [assign] %4
+  %f = function_ref @readonly_two_klass_user : $@convention(thin) (@guaranteed Klass, @guaranteed Klass) -> ()
+  apply %f(%5, %6) : $@convention(thin) (@guaranteed Klass, @guaranteed Klass) -> ()
+  destroy_value %5
+  destroy_value %6
+  %r = tuple ()
+  return %r
+}
+
+// A destructured aggregate: the `destroy_value`s of the individual fields are all part of the
+// load's own liverange and therefore must not be treated as writes to the loaded memory.
+//
+// CHECK-LABEL: sil [ossa] @load_and_destructure_aggregate :
+// CHECK:         [[L:%.*]] = load_borrow %{{.*}}
+// CHECK:         ([[A:%.*]], [[B:%.*]]) = destructure_struct [[L]]
+// CHECK:         apply %{{.*}}([[A]])
+// CHECK:         apply %{{.*}}([[B]])
+// CHECK-NOT:     destroy_value
+// CHECK:         end_borrow [[L]]
+// CHECK:       } // end sil function 'load_and_destructure_aggregate'
+sil [ossa] @load_and_destructure_aggregate : $@convention(thin) (Builtin.RawPointer) -> () {
+bb0(%0 : $Builtin.RawPointer):
+  %1 = pointer_to_address %0 to [strict] $*NativeObjectPair
+  %2 = load [copy] %1
+  (%3, %4) = destructure_struct %2
+  %f = function_ref @readonly_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  apply %f(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  apply %f(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %3
+  destroy_value %4
+  %r = tuple ()
+  return %r
+}
+
+// The `destroy_value %5` is an end of the loaded value's lifetime, but not an end of its liverange
+// (which continues into bb1). The only real liverange end - `destroy_value %4` - is in a block which
+// overwrites the memory. So there is no possible `load_borrow` liverange and we must bail out.
+// We used to create a `load_borrow` without any `end_borrow` plus an `undef` operand here.
+//
+// CHECK-LABEL: sil [ossa] @no_ends_left_for_load_borrow_liverange :
+// CHECK:         load [copy]
+// CHECK-NOT:     load_borrow
+// CHECK-NOT:     undef
+// CHECK:       } // end sil function 'no_ends_left_for_load_borrow_liverange'
+sil [ossa] @no_ends_left_for_load_borrow_liverange : $@convention(thin) (Builtin.RawPointer, @owned NativeObjectPair) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : @owned $NativeObjectPair):
+  %2 = pointer_to_address %0 to [strict] $*NativeObjectPair
+  %3 = load [copy] %2
+  (%4, %5) = destructure_struct %3
+  destroy_value %5
+  br bb1
+
+bb1:
+  store %1 to [assign] %2
+  %f = function_ref @readonly_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  apply %f(%4) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %4
+  %r = tuple ()
+  return %r
+}
