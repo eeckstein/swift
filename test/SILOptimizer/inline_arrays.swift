@@ -234,9 +234,19 @@ public final class Holder { var p = [E](repeating: E(), count: 64) }
 // CHECK-LABEL: } // end sil function '$s4test16a_borrowingParamys5UInt8VSayAA1EVG_S2itF'
 public func a_borrowingParam(_ a: borrowing [E], _ i: Int, _ j: Int) -> UInt8 { a[i].v[j] }
 
-// CHECK-LABEL: sil {{.*}} @$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itF
+public func call_a_consumingParam(_ x: [E]) -> UInt8 {
+  return a_consumingParam(x, 0, 0)
+}
+
+// specialized a_consumingParam that does not consume the array, called from original a_consumingParam.
+// CHECK-LABEL: sil shared {{.*}}@$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itFTf4gnn_n
+// CHECK-NOT:     alloc_stack
+// CHECK-LABEL: } // end sil function '$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itFTf4gnn_n'
+
+// CHECK-LABEL: sil {{.*}}@$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itF
 // CHECK-NOT:     alloc_stack
 // CHECK-LABEL: } // end sil function '$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itF'
+@inline(never)
 public func a_consumingParam(_ a: consuming [E], _ i: Int, _ j: Int) -> UInt8 { a.span[i].v[j] }
 
 // CHECK-LABEL: sil @$s4test11a_globalLetys5UInt8VSi_SitF
@@ -254,7 +264,3 @@ public func a_globalVar(_ i: Int, _ j: Int) -> UInt8 { gVar.span[i].v[j] }
 // CHECK-LABEL: } // end sil function '$s4test15a_classPropertyys5UInt8VAA6HolderC_S2itF'
 public func a_classProperty(_ h: borrowing Holder, _ i: Int, _ j: Int) -> UInt8 { h.p.span[i].v[j] }
 
-// specialized a_consumingParam that does not consume the array, called from original a_consumingParam.
-// CHECK-LABEL: sil shared @$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itFTf4gnn_n
-// CHECK-NOT:     alloc_stack
-// CHECK-LABEL: } // end sil function '$s4test16a_consumingParamys5UInt8VSayAA1EVGn_S2itFTf4gnn_n'
