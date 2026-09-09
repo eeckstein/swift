@@ -63,29 +63,40 @@ let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization")
 
   var changed = false
 
-  for inst in function.instructions {
-    switch inst {
-    case let load as LoadInst:
-      if !context.continueWithNextSubpassRun(for: load) {
-        return
-      }
-      if optimize(load: load, context) {
-        changed = true
-      }
-    case let copy as CopyValueInst:
-      if !context.continueWithNextSubpassRun(for: copy) {
-        return
-      }
-      if optimize(copy: copy, context) {
-        changed = true
+  // Replacing a `load [copy]` with a `load_borrow` turns its `destroy_value`s into `end_borrow`s,
+  // which - other than a `destroy_value` - don't block the replacement of another `load [copy]` from
+  // the same memory region (see `isEndOfLoadBorrowScope`). Therefore iterate until there is nothing
+  // left to do. This is required to optimize all loads of e.g. a multi-field struct which is loaded
+  // from an unsafe pointer, where all the loaded values are destroyed at the same place.
+  var changedInIteration = true
+  while changedInIteration {
+    changedInIteration = false
+
+    for inst in function.instructions {
+      switch inst {
+      case let load as LoadInst:
+        if !context.continueWithNextSubpassRun(for: load) {
+          return
+        }
+        if optimize(load: load, context) {
+          changedInIteration = true
+        }
+      case let copy as CopyValueInst:
+        if !context.continueWithNextSubpassRun(for: copy) {
+          return
+        }
+        if optimize(copy: copy, context) {
+          changedInIteration = true
+          break
+        }
+        if removeDead(copy: copy, context) {
+          changedInIteration = true
+        }
+      default:
         break
       }
-      if removeDead(copy: copy, context) {
-        changed = true
-      }
-    default:
-      break
     }
+    changed = changed || changedInIteration
   }
 
   if changed {
@@ -128,19 +139,24 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
   collectInitialMemoryWriteBlocks(of: load,
                                   within: liverangeOfLoadedValue,
                                   into: &memoryOverwrittenBlocks,
-                                  baseBorrow: baseBorrow,
+                                  ignoreEndBorrowsOf: baseBorrow,
+                                  ignoreDestroysOf: collectedUses.ends,
                                   context)
 
   memoryOverwrittenBlocks.propagateDown(toEndOf: liverangeOfLoadedValue)
 
-  if collectedUses.ends.outsideOf(memoryOverwrittenBlocks).isEmpty {
+  // Note that this must use exactly the same filters as the `loadBorrowLiverange` below. Otherwise
+  // we could end up with a liverange without any ends, which would create a `load_borrow` without
+  // `end_borrow`s and `undef` operands in `splitLiverange`.
+  // It's not sufficient that an end is outside of `memoryOverwrittenBlocks`: it also has to be an
+  // end of `liverangeOfLoadedValue`. For example, the `destroy_value` of a decomposed aggregate
+  // field is not an end of the liverange if the other fields are destroyed later.
+  let newEnds = collectedUses.ends.atEndOf(liverangeOfLoadedValue).outsideOf(memoryOverwrittenBlocks)
+  if newEnds.isEmpty {
     return false
   }
 
-  var loadBorrowLiverange = InstructionRange(
-    begin: load,
-    ends: collectedUses.ends.atEndOf(liverangeOfLoadedValue).outsideOf(memoryOverwrittenBlocks),
-    context)
+  var loadBorrowLiverange = InstructionRange(begin: load, ends: newEnds, context)
   defer { loadBorrowLiverange.deinitialize() }
 
   guard canSplitLiveranges(of: load, atExitsOf: loadBorrowLiverange, context),
@@ -453,7 +469,8 @@ private struct AllocStackUsesWalker : AddressDefUseWalker {
 private func collectInitialMemoryWriteBlocks(of load: LoadInst,
                                              within liverange: InstructionRange,
                                              into memoryOverwrittenBlocks: inout BasicBlockWorklist,
-                                             baseBorrow: BeginBorrowValue?,
+                                             ignoreEndBorrowsOf baseBorrow: BeginBorrowValue?,
+                                             ignoreDestroysOf ownEnds: IterableInstructionSet,
                                              _ context: FunctionPassContext
 ) {
   var worklist = InstructionWorklist(context)
@@ -468,7 +485,16 @@ private func collectInitialMemoryWriteBlocks(of load: LoadInst,
       continue
     }
     if inst.mayWrite(toAddress: load.address, aliasAnalysis),
-       !inst.isEndBorrow(ofScope: baseBorrow)
+       !inst.isEndBorrow(ofScope: baseBorrow),
+       !inst.isEndOfLoadBorrowScope,
+       // A `destroy_value` which ends the lifetime of the loaded value itself is replaced by an
+       // `end_borrow` (or erased) by this optimization. Therefore it cannot write to the memory.
+       // This happens when an aggregate is decomposed, e.g.
+       //   %1 = load [copy] %0
+       //   (%2, %3) = destructure_struct %1
+       //   destroy_value %2   // not the final end of the liverange - but still not a write
+       //   destroy_value %3
+       !(inst is DestroyValueInst && ownEnds.contains(inst))
     {
       memoryOverwrittenBlocks.pushIfNotVisited(inst.parentBlock)
     } else {
@@ -637,6 +663,33 @@ private extension Instruction {
       return false
     }
     return endBorrow.borrow == beginBorrow.value
+  }
+
+  /// True if this is an `end_borrow` of a `load_borrow`.
+  ///
+  /// Alias analysis conservatively reports a "write" for such an `end_borrow` to prevent other
+  /// optimizations from moving stores into the borrow scope. But the `end_borrow` itself neither
+  /// accesses memory nor releases anything. Therefore it cannot invalidate another - potentially
+  /// overlapping - `load_borrow` scope and we can ignore it when looking for memory writes.
+  ///
+  /// This is important to let this optimization cascade: after one `load [copy]` is replaced by a
+  /// `load_borrow`, its `destroy_value`s become `end_borrow`s, which must not block replacing
+  /// another `load [copy]` from the same memory region.
+  ///
+  /// This is deliberately restricted to `load_borrow`:
+  /// * An `end_borrow` of a `store_borrow` ends the initialization of the destination address.
+  ///   Ignoring it lets the new `load_borrow` escape the `store_borrow` scope and creates ill
+  ///   formed SIL (see `store_borrow_aliased` in copy-to-borrow-optimization.sil).
+  /// * An `end_borrow` of a `begin_borrow` models a real effect: it can let the borrowed value be
+  ///   deallocated, which invalidates interior pointers into it. If the load's address is such an
+  ///   interior pointer, `baseBorrow` handles it (and `extendBorrowScope` widens the scope);
+  ///   otherwise alias analysis is only conservative because the address base is unidentified,
+  ///   and we don't want to second-guess that here.
+  var isEndOfLoadBorrowScope: Bool {
+    if let endBorrow = self as? EndBorrowInst {
+      return endBorrow.borrow is LoadBorrowInst
+    }
+    return false
   }
 }
 
