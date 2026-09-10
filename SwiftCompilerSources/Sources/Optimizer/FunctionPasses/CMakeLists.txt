@@ -59,5 +59,6 @@ swift_compiler_sources(Optimizer
   TempRValueElimination.swift
   TrivialOwnershipElimination.swift
   PackTypeElimination.swift
+  UnownedCopyElimination.swift
   PackSpecialization.swift
 )

@@ -1,0 +1,243 @@
+// RUN: %target-sil-opt -unowned-copy-elimination %s | %FileCheck %s
+
+sil_stage canonical
+
+import Builtin
+import Swift
+
+class C {
+  var i: Int
+}
+
+struct S {
+  var obj: Builtin.NativeObject
+  var i: Int
+}
+
+class Box {
+  var obj: Builtin.NativeObject
+}
+
+sil [releasenone] @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+sil [releasenone] @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -> ()
+sil [releasenone] @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
+sil @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+sil @owned_user : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+
+// The self argument of an `@objc` thunk is passed unowned. Nothing in the liverange of the copy
+// can release the object, so the caller's reference keeps it alive.
+//
+// CHECK-LABEL: sil [ossa] @objc_thunk_self :
+// CHECK:         %1 = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK-NEXT:    function_ref
+// CHECK:         apply {{.*}}(%1)
+// CHECK-NEXT:    end_borrow %1
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'objc_thunk_self'
+sil [ossa] @objc_thunk_self : $@convention(objc_method) (C) -> Int {
+bb0(%0 : @unowned $C):
+  %1 = copy_value %0
+  %2 = function_ref @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
+  %3 = apply %2(%1) : $@convention(method) (@guaranteed C) -> Int
+  destroy_value %1
+  return %3
+}
+
+// A `begin_borrow` of the copy - which is what SILGen emits for an `@objc` thunk - is fine: it is
+// not a lifetime ending use of the copy.
+//
+// CHECK-LABEL: sil [ossa] @unowned_arg_with_begin_borrow :
+// CHECK:         %1 = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK-NEXT:    %2 = begin_borrow %1
+// CHECK:         end_borrow %2
+// CHECK-NEXT:    end_borrow %1
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'unowned_arg_with_begin_borrow'
+sil [ossa] @unowned_arg_with_begin_borrow : $@convention(objc_method) (C) -> Int {
+bb0(%0 : @unowned $C):
+  %1 = copy_value %0
+  %2 = begin_borrow %1
+  %3 = function_ref @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
+  %4 = apply %3(%2) : $@convention(method) (@guaranteed C) -> Int
+  end_borrow %2
+  destroy_value %1
+  return %4
+}
+
+// The value is not derived from an owned or guaranteed value at all: `unchecked_bitwise_cast` is
+// unowned. This is the shape which `_StringObject` creates for a bridged string.
+//
+// CHECK-LABEL: sil [ossa] @unowned_bitwise_cast :
+// CHECK:         %2 = unchecked_ownership_conversion %1, @unowned to @guaranteed
+// CHECK-NEXT:    function_ref
+// CHECK:         apply {{.*}}(%2)
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'unowned_bitwise_cast'
+sil [ossa] @unowned_bitwise_cast : $@convention(thin) (Builtin.Int64) -> () {
+bb0(%0 : $Builtin.Int64):
+  %1 = unchecked_bitwise_cast %0 to $Builtin.NativeObject
+  %2 = copy_value %1
+  %3 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %4 = apply %3(%2) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %2
+  %5 = tuple ()
+  return %5
+}
+
+// The copy is forwarded into a struct which is passed as a guaranteed argument. All forwarding
+// instructions must be converted from owned to guaranteed.
+//
+// CHECK-LABEL: sil [ossa] @forwarded_into_struct :
+// CHECK:         %2 = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK:         [[S:%[0-9]+]] = struct $S (%2, %1)
+// CHECK:         apply {{.*}}([[S]])
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'forwarded_into_struct'
+sil [ossa] @forwarded_into_struct : $@convention(thin) (Builtin.NativeObject, Int) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject, %1 : $Int):
+  %2 = copy_value %0
+  %3 = struct $S (%2, %1)
+  %4 = function_ref @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -> ()
+  %5 = apply %4(%3) : $@convention(thin) (@guaranteed S) -> ()
+  destroy_value %3
+  %6 = tuple ()
+  return %6
+}
+
+// A `destroy_value` of a value which is copied from the copy is balanced by its own `copy_value`,
+// so it cannot release the object.
+//
+// CHECK-LABEL: sil [ossa] @balanced_destroy_of_inner_copy :
+// CHECK:         %1 = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK-NEXT:    %2 = copy_value %1
+// CHECK:         destroy_value %2
+// CHECK:         end_borrow %1
+// CHECK:       } // end sil function 'balanced_destroy_of_inner_copy'
+sil [ossa] @balanced_destroy_of_inner_copy : $@convention(thin) (Builtin.NativeObject) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject):
+  %1 = copy_value %0
+  %2 = copy_value %1
+  %3 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %4 = apply %3(%2) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %2
+  %5 = apply %3(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %1
+  %6 = tuple ()
+  return %6
+}
+
+// The liverange spans a control flow diamond and ends with a `destroy_value` in each branch.
+//
+// CHECK-LABEL: sil [ossa] @multiple_destroys :
+// CHECK:         [[B:%[0-9]+]] = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK:       bb1:
+// CHECK:         end_borrow [[B]]
+// CHECK:       bb2:
+// CHECK:         end_borrow [[B]]
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'multiple_destroys'
+sil [ossa] @multiple_destroys : $@convention(thin) (Builtin.NativeObject, Builtin.Int1) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject, %1 : $Builtin.Int1):
+  %2 = copy_value %0
+  %3 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  cond_br %1, bb1, bb2
+
+bb1:
+  %5 = apply %3(%2) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %2
+  br bb3
+
+bb2:
+  destroy_value %2
+  br bb3
+
+bb3:
+  %9 = tuple ()
+  return %9
+}
+
+// Negative test: the called function can release the object, so the copy is needed.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_releasing_call :
+// CHECK:         %1 = copy_value %0
+// CHECK:         destroy_value %1
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_releasing_call'
+sil [ossa] @dont_optimize_releasing_call : $@convention(thin) (Builtin.NativeObject) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject):
+  %1 = copy_value %0
+  %2 = function_ref @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %1
+  %4 = tuple ()
+  return %4
+}
+
+// Negative test: an unrelated `destroy_value` in the liverange can release the object.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_unrelated_destroy :
+// CHECK:         %2 = copy_value %0
+// CHECK:         destroy_value %2
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_unrelated_destroy'
+sil [ossa] @dont_optimize_unrelated_destroy : $@convention(thin) (Builtin.NativeObject, @owned Builtin.NativeObject) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
+  %2 = copy_value %0
+  destroy_value %1
+  %4 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %2
+  %6 = tuple ()
+  return %6
+}
+
+// Negative test: the copy is consumed, so it cannot be replaced by a borrow.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_owned_use :
+// CHECK:         %1 = copy_value %0
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_owned_use'
+sil [ossa] @dont_optimize_owned_use : $@convention(thin) (Builtin.NativeObject) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject):
+  %1 = copy_value %0
+  %2 = function_ref @owned_user : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+  %4 = tuple ()
+  return %4
+}
+
+// Negative test: the copy is stored into a class property, which is a use the copy's lifetime
+// cannot be converted to a borrow for.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_stored_copy :
+// CHECK:         %2 = copy_value %0
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_stored_copy'
+sil [ossa] @dont_optimize_stored_copy : $@convention(thin) (Builtin.NativeObject, @guaranteed Box) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject, %1 : @guaranteed $Box):
+  %2 = copy_value %0
+  %3 = ref_element_addr %1, #Box.obj
+  store %2 to [assign] %3
+  %5 = tuple ()
+  return %5
+}
+
+// Negative test: this pass only handles copies of unowned values. Copies of owned or guaranteed
+// values are the job of the `copy-to-borrow-optimization` pass.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_copy_of_owned :
+// CHECK:         %1 = copy_value %0
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_copy_of_owned'
+sil [ossa] @dont_optimize_copy_of_owned : $@convention(thin) (@owned Builtin.NativeObject) -> () {
+bb0(%0 : @owned $Builtin.NativeObject):
+  %1 = copy_value %0
+  %2 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %1
+  destroy_value %0
+  %4 = tuple ()
+  return %4
+}
