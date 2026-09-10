@@ -62,5 +62,6 @@ swift_compiler_sources(Optimizer
   TrivialOwnershipElimination.swift
   Verifier.swift
   PackTypeElimination.swift
+  UnownedCopyElimination.swift
   PackSpecialization.swift
 )
