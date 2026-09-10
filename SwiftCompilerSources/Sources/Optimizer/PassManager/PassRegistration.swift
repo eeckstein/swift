@@ -119,6 +119,7 @@ private func registerSwiftPasses() {
   registerPass(removeSILGenLifetimesPass, { removeSILGenLifetimesPass.run($0) })
   registerPass(lifetimeResolutionPass, { lifetimeResolutionPass.run($0) })
   registerPass(copyToBorrowOptimization, { copyToBorrowOptimization.run($0) })
+  registerPass(unownedCopyElimination, { unownedCopyElimination.run($0) })
   registerPass(tempRValueElimination, { tempRValueElimination.run($0) })
   registerPass(mandatoryTempRValueElimination, { mandatoryTempRValueElimination.run($0) })
   registerPass(tempLValueElimination, { tempLValueElimination.run($0) })

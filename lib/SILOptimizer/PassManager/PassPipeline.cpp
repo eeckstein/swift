@@ -1058,6 +1058,11 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   P.startPipeline("non-OSSA");
 
   P.addKillInvalidDebugValues();
+
+  // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
+  // requires for unowned values actually need to become a retain/release pair.
+  P.addUnownedCopyElimination();
+
   P.addOwnershipModelEliminator();
 
   addLateLoopOptPassPipeline(P);
