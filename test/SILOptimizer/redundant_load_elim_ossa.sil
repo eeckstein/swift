@@ -2255,3 +2255,93 @@ bb3:
   %18 = tuple ()
   return %18
 }
+
+// Access scope instructions don't read or write memory. They must not prevent a `load [take]`
+// from being replaced with the value of a preceding store in another access scope.
+// CHECK-LABEL: sil [ossa] @take_across_access_scopes :
+// CHECK:         begin_access [modify] [dynamic] %1
+// CHECK-NEXT:    destroy_addr
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    begin_access [modify] [dynamic] %1
+// CHECK-NEXT:    alloc_ref
+// CHECK-NEXT:    store
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    return %0
+// CHECK-LABEL: } // end sil function 'take_across_access_scopes'
+sil [ossa] @take_across_access_scopes : $@convention(thin) (@owned B, @inout B) -> @owned B {
+bb0(%0 : @owned $B, %1 : $*B):
+  %2 = begin_access [modify] [dynamic] %1
+  store %0 to [assign] %2
+  end_access %2
+  %5 = begin_access [modify] [dynamic] %1
+  %6 = load [take] %5
+  %7 = alloc_ref $B
+  store %7 to [init] %5
+  end_access %5
+  return %6
+}
+
+// A `load_borrow` from a non-aliasing memory location must not prevent the `load [take]` from
+// being replaced.
+// CHECK-LABEL: sil [ossa] @take_across_unrelated_load_borrow :
+// CHECK-NOT:     load [take]
+// CHECK:         return %0
+// CHECK-LABEL: } // end sil function 'take_across_unrelated_load_borrow'
+sil [ossa] @take_across_unrelated_load_borrow : $@convention(thin) (@owned B, @inout B, @inout B) -> @owned B {
+bb0(%0 : @owned $B, %1 : $*B, %2 : $*B):
+  store %0 to [assign] %1
+  %4 = load_borrow %2
+  %5 = function_ref @useB : $@convention(thin) (@guaranteed B) -> ()
+  %6 = apply %5(%4) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %4
+  %8 = load [take] %1
+  %9 = alloc_ref $B
+  store %9 to [init] %1
+  return %8
+}
+
+// The available `load [copy]` is located in a read access scope. Turning it into a `load [take]`
+// would mutate memory which is protected from mutation by that scope.
+// CHECK-LABEL: sil [ossa] @dont_take_in_read_access_scope :
+// CHECK:         load [copy]
+// CHECK:         load [take]
+// CHECK-LABEL: } // end sil function 'dont_take_in_read_access_scope'
+sil [ossa] @dont_take_in_read_access_scope : $@convention(thin) (@inout B) -> @owned B {
+bb0(%0 : $*B):
+  %1 = begin_access [read] [dynamic] %0
+  %2 = load [copy] %1
+  end_access %1
+  %4 = begin_access [modify] [dynamic] %0
+  %5 = load [take] %4
+  destroy_value %5
+  %7 = alloc_ref $B
+  store %7 to [init] %4
+  end_access %4
+  return %2
+}
+
+// The materialization base is a `project_box` of an owned box. Re-creating the address at the
+// liverange border is not supported for such a base.
+// CHECK-LABEL: sil [ossa] @dont_hoist_load_take_with_box_base :
+// CHECK:         load_borrow %1
+// CHECK:         load [take] %1
+// CHECK-LABEL: } // end sil function 'dont_hoist_load_take_with_box_base'
+sil [ossa] @dont_hoist_load_take_with_box_base : $@convention(thin) () -> () {
+bb0:
+  %0 = alloc_box ${ var B }
+  %1 = project_box %0, 0
+  %2 = alloc_ref $B
+  store %2 to [init] %1
+  %4 = function_ref @writeB : $@convention(thin) (@inout B) -> ()
+  %5 = apply %4(%1) : $@convention(thin) (@inout B) -> ()
+  %6 = load_borrow %1
+  end_borrow %6
+  %8 = load [take] %1
+  %9 = function_ref @consumeB : $@convention(thin) (@owned B) -> ()
+  %10 = apply %9(%8) : $@convention(thin) (@owned B) -> ()
+  %11 = alloc_ref $B
+  store %11 to [init] %1
+  destroy_value %0
+  %14 = tuple ()
+  return %14
+}
