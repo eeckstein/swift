@@ -380,6 +380,16 @@ private extension LoadingInstruction {
           return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
         }
       }
+      if self.kind == .take {
+        // The memory lifetime is shrunk up to the available values. This means that the memory is
+        // mutated at the position of an available value. Therefore all available values must be
+        // located in a memory region which allows mutation.
+        for case .viaLoad(let availableLoad) in liverange.availableValues {
+          if availableLoad.address.isInImmutableAccessScope {
+            return DataflowResult(notRedundantWith: liverange.potentiallyRedundantSubpath)
+          }
+        }
+      }
       return .redundant(liverange.availableValues, containedLoadBorrows: containedLoadBorrows, exitBlocks: exitBlocks)
     }
   }
@@ -419,6 +429,37 @@ private extension LoadingInstruction {
       if !accessScope.contains(instruction) {
         return false
       }
+    } else if let reference = baseAddress.accessBase.reference {
+      switch reference.ownership {
+      case .none:
+        return true
+      case .owned, .unowned:
+        // Can happen with project_box -> not supported yet
+        return false
+      case .guaranteed:
+        // The base address is derived from a reference which is only valid within its ownership scope:
+        //
+        //   %ref = begin_borrow %1
+        //   %base = ref_element_addr %ref
+        //   end_borrow %ref                 <- %base must not be re-created after this point
+        //
+        // Dominance of `baseAddress` is not sufficient here: if the load is in a loop, the
+        // materialization point can be located after the end of the scope.
+        for borrowIntroducer in reference.getBorrowIntroducers(context) {
+          guard borrowIntroducer.hasLocalScope else {
+            // A borrow without a local scope, e.g. a guaranteed function argument, is valid
+            // throughout the whole function.
+            continue
+          }
+          let v = borrowIntroducer.value
+          var scope = InstructionRange(for: v, context)
+          defer { scope.deinitialize() }
+          scope.insert(contentsOf: borrowIntroducer.scopeEndingOperands.users)
+          guard scope.contains(instruction) else {
+            return false
+          }
+        }
+      }
     }
     return true
   }
@@ -428,6 +469,24 @@ private extension LoadingInstruction {
   func materializeAddress(_ builder: Builder) -> Value {
     let (baseAddress, path) = materializationBase!
     return baseAddress.createAddressProjection(path: path, builder: builder)
+  }
+}
+
+private extension Value {
+  /// True if this address is enclosed in an access scope which forbids mutating the memory.
+  var isInImmutableAccessScope: Bool {
+    return accessBaseWithScopes.scopes.contains {
+      guard case .access(let beginAccess) = $0 else {
+        // Non-access scopes, e.g. a `mark_dependence`, don't restrict mutation.
+        return false
+      }
+      switch beginAccess.accessKind {
+      case .modify, .deinit:
+        return false
+      case .read, .`init`:
+        return true
+      }
+    }
   }
 }
 
@@ -864,7 +923,7 @@ private struct Liverange {
       }
       fallthrough
 
-    case is FixLifetimeInst, is BeginAccessInst, is EndAccessInst:
+    case is FixLifetimeInst:
       // Those scope-ending instructions are only irrelevant if the preceding load is not changed.
       // If it is changed from `load [copy]` -> `load [take]` the memory effects of those scope-ending
       // instructions prevent that the `load [take]` will illegally mutate memory which is protected
@@ -872,6 +931,15 @@ private struct Liverange {
       if load.kind != .take {
         return .transparent
       }
+
+    case is BeginAccessInst, is EndAccessInst:
+      // Memory effects of access scope instructions are only defined to prevent the optimizer from
+      // moving loads and stores across a `begin_access`/`end_access`. Such instructions don't read
+      // or write the memory themselves. Therefore they never prevent a load from being redundant -
+      // not even a `load [take]`, which shrinks the memory lifetime up to the available value.
+      // But taking the value out of memory is not allowed within a non-mutating access scope. This
+      // is checked separately with `isInImmutableAccessScope` in `isRedundant`.
+      return .transparent
 
     case let precedingLoad as LoadInst:
       if precedingLoad == load {
