@@ -110,7 +110,7 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
     return false
   }
 
-  var collectedUses = Uses(context)
+  var collectedUses = OwnedToGuaranteedUses(context)
   defer { collectedUses.deinitialize() }
   if !collectedUses.collectUses(of: load) {
     return false
@@ -178,7 +178,7 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
 }
 
 private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bool {
-  var collectedUses = Uses(context)
+  var collectedUses = OwnedToGuaranteedUses(context)
   defer { collectedUses.deinitialize() }
   if !collectedUses.collectUses(of: copy) {
     return false
@@ -225,7 +225,10 @@ private func removeDead(copy: CopyValueInst, _ context: FunctionPassContext) -> 
   return true
 }
 
-private struct Uses {
+/// The (forward-extended) uses of an owned value which is about to be converted to a borrow.
+///
+/// Also used by the `unowned-copy-elimination` pass.
+struct OwnedToGuaranteedUses {
   let context: FunctionPassContext
 
   // Operand of all forwarding instructions, which - if possible - are converted from "owned" to "guaranteed"
@@ -590,7 +593,7 @@ private func splitBorrowScope(of beginBorrow: BeginBorrowInst,
 
 private extension LoadInst {
   func replaceWithLoadBorrow(within liverange: InstructionRange,
-                             collectedUses: Uses,
+                             collectedUses: OwnedToGuaranteedUses,
                              enclosingBorrow: Value? = nil
   ) {
     let context = collectedUses.context
@@ -609,7 +612,7 @@ private extension LoadInst {
   }
 }
 
-private func remove(copy: CopyValueInst, collectedUses: Uses, liverange: InstructionRange) {
+private func remove(copy: CopyValueInst, collectedUses: OwnedToGuaranteedUses, liverange: InstructionRange) {
   let context = collectedUses.context
   let fromValue = copy.fromValue
 
@@ -628,10 +631,10 @@ private func remove(copy: CopyValueInst, collectedUses: Uses, liverange: Instruc
   }
 }
 
-private func createEndBorrows(for beginBorrow: Value,
-                              atEndOf liverange: InstructionRange,
-                              collectedUses: Uses,
-                              enclosingBorrow: Value? = nil
+func createEndBorrows(for beginBorrow: Value,
+                      atEndOf liverange: InstructionRange,
+                      collectedUses: OwnedToGuaranteedUses,
+                      enclosingBorrow: Value? = nil
 ) {
   let context = collectedUses.context
 
