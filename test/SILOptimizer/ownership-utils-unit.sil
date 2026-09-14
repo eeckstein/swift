@@ -295,3 +295,94 @@ bb3:
   return %r
 }
 
+
+// A guaranteed phi can have several borrow introducers - here the two guaranteed function
+// arguments. `lookThroughForwardingInstructions` only looks through a `borrowed_from` with a single
+// enclosing value, so this needs `getBorrowIntroducers`.
+// CHECK-LABEL: sil [ossa] @extend_multiple_function_arg_introducers :
+// CHECK:       } // end sil function 'extend_multiple_function_arg_introducers'
+sil [ossa] @extend_multiple_function_arg_introducers : $@convention(thin) (@guaranteed C, @guaranteed C) -> () {
+bb0(%0 : @guaranteed $C, %1 : @guaranteed $C):
+  specify_test "extend_borrow_scope %4 %6 true"
+  cond_br undef, bb1, bb2
+
+bb1:
+  br bb3(%0 : $C)
+
+bb2:
+  br bb3(%1 : $C)
+
+bb3(%3 : @guaranteed $C):
+  %4 = borrowed %3 : $C from (%0 : $C, %1 : $C)
+  %5 = function_ref @make_c : $@convention(thin) (@guaranteed C) -> @owned C
+  %6 = apply %5(%4) : $@convention(thin) (@guaranteed C) -> @owned C
+  destroy_value %6
+  %r = tuple ()
+  return %r
+}
+
+// With several `begin_borrow` introducers, all of their `end_borrow`s must be moved out of the
+// range. The scopes are only extended after every introducer has been checked, so that no scope is
+// modified if one of them cannot be extended.
+// CHECK-LABEL: sil [ossa] @extend_multiple_begin_borrow_introducers :
+// CHECK:         apply
+// CHECK-NEXT:    debug_step
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NEXT:    destroy_value
+// CHECK:       } // end sil function 'extend_multiple_begin_borrow_introducers'
+sil [ossa] @extend_multiple_begin_borrow_introducers : $@convention(thin) (@owned S, @owned S) -> () {
+bb0(%0 : @owned $S, %1 : @owned $S):
+  specify_test "extend_borrow_scope %7 %9 true"
+  %2 = begin_borrow %0
+  %3 = begin_borrow %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  %4 = struct_extract %2 : $S, #S.c
+  br bb3(%4 : $C)
+
+bb2:
+  %5 = struct_extract %3 : $S, #S.c
+  br bb3(%5 : $C)
+
+bb3(%6 : @guaranteed $C):
+  %7 = borrowed %6 : $C from (%2 : $S, %3 : $S)
+  %8 = function_ref @make_c : $@convention(thin) (@guaranteed C) -> @owned C
+  %9 = apply %8(%7) : $@convention(thin) (@guaranteed C) -> @owned C
+  end_borrow %2
+  end_borrow %3
+  debug_step
+  destroy_value %9
+  destroy_value %0
+  destroy_value %1
+  %r = tuple ()
+  return %r
+}
+
+// A trivial value has no borrow scope, so the range is trivially overlapped.
+// CHECK-LABEL: sil [ossa] @extend_trivial_value :
+// CHECK:       } // end sil function 'extend_trivial_value'
+sil [ossa] @extend_trivial_value : $@convention(thin) () -> () {
+bb0:
+  specify_test "extend_borrow_scope %0 %1 true"
+  %0 = integer_literal $Builtin.Int32, 0
+  %1 = integer_literal $Builtin.Int32, 1
+  fix_lifetime %1
+  %r = tuple ()
+  return %r
+}
+
+// An owned value is not a borrow scope at all.
+// CHECK-LABEL: sil [ossa] @dont_extend_owned_value :
+// CHECK:       } // end sil function 'dont_extend_owned_value'
+sil [ossa] @dont_extend_owned_value : $@convention(thin) (@owned C) -> () {
+bb0(%0 : @owned $C):
+  specify_test "extend_borrow_scope %0 %2 false"
+  %1 = function_ref @make_c : $@convention(thin) (@guaranteed C) -> @owned C
+  %2 = apply %1(%0) : $@convention(thin) (@guaranteed C) -> @owned C
+  destroy_value %2
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
