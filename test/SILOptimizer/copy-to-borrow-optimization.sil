@@ -21,6 +21,7 @@ sil @get_owned_obj : $@convention(thin) () -> @owned Builtin.NativeObject
 sil @unreachable_guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> MyNever
 sil @inout_user : $@convention(thin) (@inout FakeOptional<NativeObjectPair>) -> ()
 sil @get_native_object : $@convention(thin) () -> @owned Builtin.NativeObject
+sil @deinit_barrier : $@convention(thin) () -> ()
 sil [ossa] @get_enum : $@convention(thin) () -> @owned EnumA
 
 struct NativeObjectPair {
@@ -3945,6 +3946,28 @@ bb0(%0 : @owned $ClassLet):
   destroy_value %4
   end_borrow %1
   destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// A `copy_value` of a value with `none` ownership - e.g. the payload-less case of a non-trivial
+// enum - is not a borrow and cannot be converted to one. `remove(copy:)` only handles owned and
+// guaranteed sources, so `optimize(copy:)` must bail out before reaching it.
+// Note that `extendBorrowScope` returns true for a trivial value, which is why the ownership has to
+// be checked in the pass itself. The `apply` is a deinit barrier which keeps `removeDead` from
+// deleting the copy, so that this test can observe the copy surviving.
+// CHECK-LABEL: sil [ossa] @dont_optimize_copy_of_trivial_enum :
+// CHECK:         [[E:%.*]] = enum $FakeOptional<Builtin.NativeObject>, #FakeOptional.none!enumelt
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[E]]
+// CHECK:         destroy_value [[C]]
+// CHECK:       } // end sil function 'dont_optimize_copy_of_trivial_enum'
+sil [ossa] @dont_optimize_copy_of_trivial_enum : $@convention(thin) () -> () {
+bb0:
+  %0 = enum $FakeOptional<Builtin.NativeObject>, #FakeOptional.none!enumelt
+  %1 = copy_value %0
+  %2 = function_ref @deinit_barrier : $@convention(thin) () -> ()
+  %3 = apply %2() : $@convention(thin) () -> ()
+  destroy_value %1
   %r = tuple ()
   return %r
 }
