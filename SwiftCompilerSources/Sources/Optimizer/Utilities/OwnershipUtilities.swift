@@ -51,9 +51,39 @@ func extendBorrowScope(of value: Value,
                        toOverlap range: InstructionRange,
                        _ context: FunctionPassContext) -> Bool
 {
-  guard let beginBorrow = BeginBorrowValue(value.lookThroughForwardingInstructions) else {
+  switch value.ownership {
+  case .owned, .unowned:
     return false
+  case .none:
+    return true
+  case .guaranteed:
+    var beginBorrows = Stack<BeginBorrowValue>(context)
+    defer { beginBorrows.deinitialize() }
+    beginBorrows.append(contentsOf: value.getBorrowIntroducers(context))
+
+    if let singleBeginBorrow = beginBorrows.singleElement {
+      return extendBorrowScope(ofBeginBorrow: singleBeginBorrow, toOverlap: range, context)
+    }
+
+    for beginBorrow in beginBorrows {
+      guard extendBorrowScope(ofBeginBorrow: beginBorrow, toOverlap: range, dryRun: true, context) else {
+        return false
+      }
+    }
+    for beginBorrow in beginBorrows {
+      let success = extendBorrowScope(ofBeginBorrow: beginBorrow, toOverlap: range, context)
+      assert(success, "extendBorrowScope failed in second run")
+    }
+    return true
   }
+}
+
+
+func extendBorrowScope(ofBeginBorrow beginBorrow: BeginBorrowValue,
+                       toOverlap range: InstructionRange,
+                       dryRun: Bool = false,
+                       _ context: FunctionPassContext) -> Bool
+{
   if case .functionArgument = beginBorrow {
     // The lifetime of a guaranteed function argument spans over the whole function.
     return true
@@ -93,6 +123,10 @@ func extendBorrowScope(of value: Value,
     return false
   }
   defer { insertionPoints.deinitialize() }
+
+  if dryRun {
+    return true
+  }
 
   // Move the `end_borrow`s out of the range.
   //
