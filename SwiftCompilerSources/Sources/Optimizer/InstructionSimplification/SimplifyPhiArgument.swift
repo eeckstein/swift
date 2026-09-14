@@ -24,6 +24,9 @@ extension Phi {
     if unwrapAggregate(context) {
       return
     }
+    if splitAggregate(context) {
+      return
+    }
   }
 
   /// If `phi` is a re-borrow phi where all incoming operands are `begin_borrow`s of the same
@@ -178,6 +181,100 @@ extension Phi {
     updateGuaranteedPhis(phis: [Phi(newArgument)!], context)
     return true
   }
+
+  /// "Splits" an owned phi argument which is an aggregate - a `struct` or `tuple` - and which is
+  /// only used by a `destructure` in the phi's block. The `destructure` is hoisted into all
+  /// predecessors, so that the elements are passed individually instead of the whole aggregate.
+  ///
+  /// ```
+  ///   bb1:
+  ///     %2 = tuple (%0, %1)
+  ///     br bb3(%2)
+  ///   bb2:
+  ///     br bb3(%3)                   // %3 : $(X, Y)
+  ///   bb3(%4 : @owned $(X, Y)):
+  ///     (%5, %6) = destructure_tuple %4
+  ///     ... // uses of %5 and %6
+  /// ```
+  /// ->
+  /// ```
+  ///   bb1:
+  ///     %2 = tuple (%0, %1)          // becomes dead after folding with the `destructure_tuple`
+  ///     (%7, %8) = destructure_tuple %2
+  ///     br bb3(%7, %8)
+  ///   bb2:
+  ///     (%9, %10) = destructure_tuple %3
+  ///     br bb3(%9, %10)
+  ///   bb3(%5 : @owned $X, %6 : @owned $Y):
+  ///     ... // uses of %5 and %6
+  /// ```
+  /// This is the counterpart of `unwrapAggregate` for the case that more than a single element of
+  /// the aggregate is used. It exposes the individual elements to other optimizations - most
+  /// importantly it lets SemanticARCOpts convert copies of guaranteed values, which feed such a
+  /// phi, to borrows.
+  private func splitAggregate(_ context: SimplifyContext) -> Bool {
+    // Only owned phis: a re-borrow phi cannot be destructured and a trivial aggregate doesn't
+    // benefit from splitting.
+    guard !isReborrow, borrowedFrom == nil, value.ownership == .owned,
+          // The aggregate must not be used for anything else than the `destructure`. Otherwise
+          // it would have to be re-formed in the phi's block, which is not a simplification.
+          let destructure = value.uses.singleUse?.instruction as? MultipleValueInstruction,
+          destructure is DestructureTupleInst || destructure is DestructureStructInst
+    else {
+      return false
+    }
+
+    let block = value.parentBlock
+    let index = value.index
+    let elementTypes = destructure.results.map { $0.type }
+
+    // Hoist the `destructure` into all predecessors: pass the elements instead of the aggregate.
+    // The predecessors are collected up-front because the branches are replaced in the loop.
+    var predecessorBlocks = Stack<BasicBlock>(context)
+    defer { predecessorBlocks.deinitialize() }
+    predecessorBlocks.append(contentsOf: predecessors)
+
+    for predecessor in predecessorBlocks {
+      let branch = predecessor.terminator as! BranchInst
+      let builder = Builder(before: branch, context)
+      let elements = builder.createDestructure(of: branch.operands[index].value,
+                                               like: destructure).results
+      var branchArguments = Array(branch.operands.values)
+      branchArguments.replaceSubrange(index...index, with: elements)
+      builder.createBranch(to: block, arguments: branchArguments)
+      context.erase(instruction: branch)
+    }
+
+    // Replace the single aggregate argument with one argument per element. The new arguments are
+    // inserted _after_ the old one, which is erased afterwards, so that they end up at the
+    // positions of the newly passed branch operands.
+    let newArguments = elementTypes.enumerated().map { (elementIndex, elementType) in
+      let ownership: Ownership = elementType.isTrivial(in: value.parentFunction) ? .none : .owned
+      return block.insertPhiArgument(atPosition: index + 1 + elementIndex, type: elementType,
+                                     ownership: ownership, context)
+    }
+    for (result, newArgument) in zip(destructure.results, newArguments) {
+      result.uses.replaceAll(with: newArgument, context)
+    }
+    context.erase(instruction: destructure)
+    block.eraseArgument(at: index, context)
+    return true
+  }
+}
+
+private extension Builder {
+  /// Creates a `destructure_tuple` or `destructure_struct` of `aggregate`, matching `destructure`.
+  func createDestructure(of aggregate: Value,
+                         like destructure: MultipleValueInstruction) -> MultipleValueInstruction {
+    switch destructure {
+    case is DestructureTupleInst:
+      return createDestructureTuple(tuple: aggregate)
+    case is DestructureStructInst:
+      return createDestructureStruct(struct: aggregate)
+    default:
+      fatalError("not a destructure instruction")
+    }
+  }
 }
 
 /// An instruction which extracts a single element from an aggregate value.
@@ -269,7 +366,11 @@ private func collectUnwraps(of aggregate: Value, into uniqueUnwrap: inout Unwrap
       if !collectUnwraps(of: beginBorrow, into: &uniqueUnwrap) {
         return false
       }
-    case is EndBorrowInst:
+    case let copy as CopyValueInst:
+      if !collectUnwraps(of: copy, into: &uniqueUnwrap) {
+        return false
+      }
+    case is EndBorrowInst, is DestroyValueInst:
       break
     default:
       guard use.index == 0, let unwrap = Unwrap(use.instruction) else {
@@ -316,7 +417,11 @@ private func removeUnwraps(of value: Value, _ context: SimplifyContext) {
         isFromVarDecl: beginBorrow.isFromVarDecl)
       beginBorrow.replace(with: newBorrow, context)
       removeUnwraps(of: newBorrow, context)
-    case is EndBorrowInst:
+    case let copy as CopyValueInst:
+      let newCopy = Builder(before: copy, context).createCopyValue(operand: copy.fromValue)
+      copy.replace(with: newCopy, context)
+      removeUnwraps(of: newCopy, context)
+    case is EndBorrowInst, is DestroyValueInst:
       break
     default:
       let unwrap = Unwrap(use.instruction)!
