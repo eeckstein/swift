@@ -315,12 +315,22 @@ bb3(%6 : @owned $S):
   return %7 : $C
 }
 
-// A `destructure` of which more than one result is used cannot be hoisted.
-// CHECK-LABEL: sil [ossa] @dont_unwrap_multiple_used_destructure_results
-// CHECK:       bb3({{%.*}} : @owned $TwoRefs):
-// CHECK-NEXT:    ({{.*}}) = destructure_struct
-// CHECK:       } // end sil function 'dont_unwrap_multiple_used_destructure_results'
-sil [ossa] @dont_unwrap_multiple_used_destructure_results : $@convention(thin) (@owned C, @owned C) -> () {
+// A `destructure` of which more than one result is used is not an "unwrap". Instead the phi is
+// split into one phi per element - see `Phi.splitAggregate`.
+// CHECK-LABEL: sil [ossa] @split_multiple_used_destructure_results
+// CHECK:       bb1:
+// CHECK-NEXT:    [[S1:%.*]] = struct $TwoRefs (%0 : $C, %1 : $C)
+// CHECK-NEXT:    ([[A1:%.*]], [[B1:%.*]]) = destructure_struct [[S1]]
+// CHECK-NEXT:    br bb3([[A1]] : $C, [[B1]] : $C)
+// CHECK:       bb2:
+// CHECK-NEXT:    [[S2:%.*]] = struct $TwoRefs (%1 : $C, %0 : $C)
+// CHECK-NEXT:    ([[A2:%.*]], [[B2:%.*]]) = destructure_struct [[S2]]
+// CHECK-NEXT:    br bb3([[A2]] : $C, [[B2]] : $C)
+// CHECK:       bb3([[A:%.*]] : @owned $C, [[B:%.*]] : @owned $C):
+// CHECK-NEXT:    destroy_value [[A]] : $C
+// CHECK-NEXT:    destroy_value [[B]] : $C
+// CHECK:       } // end sil function 'split_multiple_used_destructure_results'
+sil [ossa] @split_multiple_used_destructure_results : $@convention(thin) (@owned C, @owned C) -> () {
 bb0(%0 : @owned $C, %1 : @owned $C):
   cond_br undef, bb1, bb2
 
