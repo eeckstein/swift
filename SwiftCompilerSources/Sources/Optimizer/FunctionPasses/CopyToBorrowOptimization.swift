@@ -188,14 +188,20 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   defer { liverange.deinitialize() }
   liverange.insert(contentsOf: collectedUses.ends)
 
-  if copy.fromValue.ownership == .owned {
+  switch copy.fromValue.ownership {
+  case .owned:
     if !liverange.isFullyContainedIn(scopeOf: copy.fromValue) {
       return false
     }
-  } else {
+  case .guaranteed:
     guard extendBorrowScope(of: copy.fromValue, toOverlap: liverange, context) else {
       return false
     }
+  case .none, .unowned:
+    // A `copy_value` of a trivial value is a no-op which is removed by SimplifyCopyValue, and an
+    // unowned value cannot be borrowed. `remove(copy:)` below handles neither.
+    // Note that `extendBorrowScope` returns true for a trivial value, so this must be checked here.
+    return false
   }
 
   remove(copy: copy, collectedUses: collectedUses, liverange: liverange)
