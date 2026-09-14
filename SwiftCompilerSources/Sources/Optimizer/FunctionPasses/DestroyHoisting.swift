@@ -262,20 +262,10 @@ private extension InstructionRange {
           worklist.pushIfNotVisited(contentsOf: termInst.forwardedResults.lazy.filter({ $0.ownership != .none }))
 
         case let branch as BranchInst:
-          // A branch forwards the value into the phi argument of the destination block. The phi
-          // keeps the referenced object alive, so continue the liverange there. This is important
-          // for loops, where the forwarded value is passed to the loop header in each iteration.
-          let phi = branch.getArgument(for: use)
-          if phi.ownership == .owned,
-             // If the phi's block is not dominated by `initialDef`, the liverange would extend up
-             // to the function entry - which might cause compile time problems. It's not worth
-             // following uses beyond the `initialDef` anyway, because there are no destroys outside
-             // the dominating blocks.
-             initialDef.parentBlock.dominates(phi.parentBlock, context.dominatorTree)
-          {
-            worklist.pushIfNotVisited(phi)
-          } else {
-            self.insert(user)
+          self.insert(user)
+          let phi = branch.getPhi(for: use)
+          if phi.incomingValues.allSatisfy({ worklist.hasBeenPushed($0)}) {
+            worklist.pushIfNotVisited(phi.value)
           }
 
         // `begin_cow_mutation` and `end_cow_mutation` are not ForwardingInstructions, but they do
