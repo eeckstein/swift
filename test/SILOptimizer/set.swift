@@ -29,3 +29,22 @@ public func createNonEmptySet() -> Set<Int> {
     return [1, 2, 3]
 }
 
+// CHECK-LABEL: sil @$s4test6sumSetySiShySiGF :
+// CHECK-NOT:     retain
+// CHECK-NOT:     release
+// CHECK:       } // end sil function '$s4test6sumSetySiShySiGF'
+public func sumSet(_ s: Set<Int>) -> Int {
+  var n = 0
+  for m in s {
+    n &+= m
+  }
+  return n
+}
+
+// CHECK-LABEL: sil shared @$sSh10isDisjoint4withSbShyxG_tFSi_Tg5 :
+// CHECK-NOT:     retain
+// CHECK-NOT:     release
+// CHECK:       } // end sil function '$sSh10isDisjoint4withSbShyxG_tFSi_Tg5'
+public func isDisjointIntSet(_ a: Set<Int>, _ b: Set<Int>) -> Bool  {
+  return a.isDisjoint(with: b)
+}
