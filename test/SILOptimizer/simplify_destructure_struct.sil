@@ -199,3 +199,75 @@ bb0:
   return %r : $()
 }
 
+
+// An owned `struct` can be folded with a `destructure_struct` even if it has other uses, as long as
+// all of them end its lifetime: those uses are on mutually exclusive paths, so the `struct` is
+// re-created before each of them and the elements are still consumed exactly once per path.
+// CHECK-LABEL: sil [ossa] @fold_owned_with_two_consuming_uses :
+// CHECK:       bb0(%0 : @owned $String, %1 : $Int):
+// CHECK-NEXT:    cond_br
+// CHECK:       bb1:
+// CHECK-NEXT:    fix_lifetime %1
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK-NEXT:    [[S:%.*]] = struct $S (%0 : $String, %1 : $Int)
+// CHECK-NEXT:    destroy_value [[S]]
+// CHECK:       } // end sil function 'fold_owned_with_two_consuming_uses'
+sil [ossa] @fold_owned_with_two_consuming_uses : $@convention(thin) (@owned String, Int) -> () {
+bb0(%0 : @owned $String, %1 : $Int):
+  %2 = struct $S (%0 : $String, %1 : $Int)
+  cond_br undef, bb1, bb2
+
+bb1:
+  (%3, %4) = destructure_struct %2 : $S
+  fix_lifetime %4 : $Int
+  destroy_value %3 : $String
+  br bb3
+
+bb2:
+  destroy_value %2 : $S
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r : $()
+}
+
+// The same with two `destructure_struct`s: both are folded and only the `destroy_value` path needs
+// a re-created `struct`.
+// CHECK-LABEL: sil [ossa] @fold_owned_with_three_consuming_uses :
+// CHECK-NOT:     destructure_struct
+// CHECK:       bb1:
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       bb3:
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       bb4:
+// CHECK-NEXT:    [[S:%.*]] = struct $S (%0 : $String, %1 : $Int)
+// CHECK-NEXT:    destroy_value [[S]]
+// CHECK:       } // end sil function 'fold_owned_with_three_consuming_uses'
+sil [ossa] @fold_owned_with_three_consuming_uses : $@convention(thin) (@owned String, Int) -> () {
+bb0(%0 : @owned $String, %1 : $Int):
+  %2 = struct $S (%0 : $String, %1 : $Int)
+  cond_br undef, bb1, bb2
+
+bb1:
+  (%3, %4) = destructure_struct %2 : $S
+  destroy_value %3 : $String
+  br bb6
+
+bb2:
+  cond_br undef, bb3, bb4
+
+bb3:
+  (%5, %6) = destructure_struct %2 : $S
+  destroy_value %5 : $String
+  br bb6
+
+bb4:
+  destroy_value %2 : $S
+  br bb6
+
+bb6:
+  %r = tuple ()
+  return %r : $()
+}

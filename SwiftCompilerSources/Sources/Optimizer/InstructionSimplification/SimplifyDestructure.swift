@@ -46,10 +46,21 @@ extension DestructureStructInst: DestructureInstruction {
   }
 }
 
-private protocol ConstructureInstruction : SingleValueInstruction {}
+private protocol ConstructureInstruction : SingleValueInstruction {
+  func clone(_ builder: Builder) -> ConstructureInstruction
+}
 
-extension TupleInst: ConstructureInstruction {}
-extension StructInst: ConstructureInstruction {}
+extension TupleInst: ConstructureInstruction {
+  fileprivate func clone(_ builder: Builder) -> ConstructureInstruction {
+    return builder.createTuple(type: type, elements: Array(operands.values))
+  }
+}
+
+extension StructInst: ConstructureInstruction {
+  fileprivate func clone(_ builder: Builder) -> ConstructureInstruction {
+    return builder.createStruct(type: type, elements: Array(operands.values))
+  }
+}
 
 private extension DestructureInstruction {
   var aggregate: Value { operands[0].value }
@@ -140,21 +151,29 @@ private extension DestructureInstruction {
   }
 
   private func tryFoldWithConstructure(constructure: ConstructureInstruction, _ context: SimplifyContext) {
-    let singleConstructureUse = context.preserveDebugInfo ? constructure.uses.singleUse : constructure.uses.ignoreDebugUses.singleUse
-    let canEraseConstructure = singleConstructureUse?.instruction == self
-
-    if !canEraseConstructure && constructure.ownership == .owned {
-      // We cannot add more uses to this tuple/struct without inserting a copy.
-      return
+    for use in constructure.uses where !use.endsLifetime {
+      if !context.preserveDebugInfo && use.instruction is DebugValueInst {
+        continue
+      }
+      if constructure.ownership == .owned {
+        return
+      }
     }
 
     for (result, operand) in zip(self.results, constructure.operands) {
       result.uses.replaceAll(with: operand.value, context)
     }
 
-    context.erase(instruction: self)
-    if canEraseConstructure {
+    if constructure.ownership == .owned {
+      for use in constructure.uses where use.endsLifetime && use.instruction != self {
+        let builder = Builder(before: use.instruction, context)
+        let clonedConstructure = constructure.clone(builder)
+        use.set(to: clonedConstructure, context)
+      }
+      context.erase(instruction: self)
       context.erase(instruction: constructure)
+    } else {
+      context.erase(instruction: self)
     }
   }
 
