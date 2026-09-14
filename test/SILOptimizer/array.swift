@@ -36,3 +36,13 @@ public func testSwapViaWitness(_ a: inout [String], _ i: Int, _ j: Int) {
   swapit(&a, i, j)
 }
 
+// CHECK-LABEL: sil @$s4test11modifyArrayyySaySiGzF :
+// CHECK-NOT:     retain
+// CHECK-NOT:     release
+// CHECK:       } // end sil function '$s4test11modifyArrayyySaySiGzF'
+public func modifyArray(_ a: inout [Int]) {
+  for i in 0 ..< 256 {
+    a[i] = 1
+  }
+}
+
