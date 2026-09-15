@@ -6,6 +6,10 @@ import Builtin
 
 class C {}
 
+class Box {
+  @_hasStorage var c: C
+}
+
 struct S {
   let c: C
 }
@@ -79,6 +83,8 @@ exit:
 sil @make_c : $@convention(thin) (@guaranteed C) -> @owned C
 
 sil @write_to_addr : $@convention(thin) (@inout C) -> ()
+
+sil @write_to_box : $@convention(thin) (@inout Box) -> ()
 
 // CHECK-LABEL: sil [ossa] @extend_begin_borrow :
 // CHECK:         %1 = begin_borrow %0
@@ -182,6 +188,54 @@ bb0(%0 : $*C):
   destroy_value %3
   %5 = tuple ()
   return %5
+}
+
+// The address of the inner `load_borrow` is projected from the outer borrowed reference, so the
+// outer borrow scope has to be extended as well. The inner `end_borrow` must stay nested inside the
+// outer one.
+// CHECK-LABEL: sil [ossa] @extend_load_borrow_nested_in_load_borrow :
+// CHECK:         apply
+// CHECK-NEXT:    tuple
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    end_borrow %1
+// CHECK-NEXT:    destroy_value %5
+// CHECK:       } // end sil function 'extend_load_borrow_nested_in_load_borrow'
+sil [ossa] @extend_load_borrow_nested_in_load_borrow : $@convention(thin) (@in_guaranteed Box) -> () {
+bb0(%0 : $*Box):
+  specify_test "extend_borrow_scope %3 %5 true"
+  %1 = load_borrow %0
+  %2 = ref_element_addr %1 : $Box, #Box.c
+  %3 = load_borrow %2
+  %4 = function_ref @make_c : $@convention(thin) (@guaranteed C) -> @owned C
+  %5 = apply %4(%3) : $@convention(thin) (@guaranteed C) -> @owned C
+  end_borrow %3
+  end_borrow %1
+  %6 = tuple ()
+  destroy_value %5
+  return %6
+}
+
+// Same, but the outer borrow scope cannot be extended across the write to the box.
+// CHECK-LABEL: sil [ossa] @extend_load_borrow_nested_in_load_borrow_fail :
+// CHECK:         apply %4(%3)
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    end_borrow %1
+// CHECK:       } // end sil function 'extend_load_borrow_nested_in_load_borrow_fail'
+sil [ossa] @extend_load_borrow_nested_in_load_borrow_fail : $@convention(thin) (@inout Box) -> () {
+bb0(%0 : $*Box):
+  specify_test "extend_borrow_scope %3 %5 false"
+  %1 = load_borrow %0
+  %2 = ref_element_addr %1 : $Box, #Box.c
+  %3 = load_borrow %2
+  %4 = function_ref @make_c : $@convention(thin) (@guaranteed C) -> @owned C
+  %5 = apply %4(%3) : $@convention(thin) (@guaranteed C) -> @owned C
+  end_borrow %3
+  end_borrow %1
+  %6 = function_ref @write_to_box : $@convention(thin) (@inout Box) -> ()
+  apply %6(%0) : $@convention(thin) (@inout Box) -> ()
+  %7 = tuple ()
+  destroy_value %5
+  return %7
 }
 
 // CHECK-LABEL: sil [ossa] @dont_extend_nested_borrow_scopes :
