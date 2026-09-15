@@ -424,9 +424,11 @@ private extension LoadingInstruction {
     }
     if let beginAccess = baseAddress as? BeginAccessInst {
       // The re-created address must not be used outside of its access scope.
+      // Note that the address is re-created _before_ `instruction`. Therefore an `end_access`
+      // itself is still a valid insertion point - hence `inclusiveRangeContains`.
       var accessScope = InstructionRange(begin: beginAccess, ends: beginAccess.endAccessInstructions, context)
       defer { accessScope.deinitialize() }
-      if !accessScope.contains(instruction) {
+      if !accessScope.inclusiveRangeContains(instruction) {
         return false
       }
     } else if let reference = baseAddress.accessBase.reference {
