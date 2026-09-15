@@ -106,6 +106,17 @@ func extendBorrowScope(ofBeginBorrow beginBorrow: BeginBorrowValue,
 
   var insertionPoints: Stack<Instruction>
 
+  // If the borrowed address is a projection of another borrowed reference, that borrow scope must
+  // enclose this borrow scope. Therefore it needs to be extended as well:
+  // ```
+  //   %1 = begin_borrow %0
+  //   %2 = ref_element_addr %1, #field
+  //   %3 = load_borrow %2
+  //   end_borrow %1
+  //   end_borrow %3              // ill formed: use of the address after `end_borrow %1`
+  // ```
+  var enclosingBorrow: BeginBorrowValue? = nil
+
   switch beginBorrow {
   case .beginBorrow(let bbi):
     guard let ips = getInsertionPoints(for: bbi, endBorrowsToMove, rangeEndInstructions, context) else {
@@ -114,7 +125,9 @@ func extendBorrowScope(ofBeginBorrow beginBorrow: BeginBorrowValue,
     insertionPoints = ips
 
   case .loadBorrow(let loadBorrow):
-    guard let ips = getInsertionPoints(for: loadBorrow, endBorrowsToMove, rangeEndInstructions, context) else {
+    enclosingBorrow = loadBorrow.address.beginBorrowOfAddress
+    guard let ips = getInsertionPoints(for: loadBorrow, endBorrowsToMove, rangeEndInstructions,
+                                       ignoreEndBorrowsOf: enclosingBorrow, context) else {
       return false
     }
     insertionPoints = ips
@@ -124,15 +137,31 @@ func extendBorrowScope(ofBeginBorrow beginBorrow: BeginBorrowValue,
   }
   defer { insertionPoints.deinitialize() }
 
+  if let enclosingBorrow,
+     !extendBorrowScope(ofBeginBorrow: enclosingBorrow, toOverlap: range, dryRun: true, context) {
+    return false
+  }
+
   if dryRun {
     return true
+  }
+
+  if let enclosingBorrow {
+    let extended = extendBorrowScope(ofBeginBorrow: enclosingBorrow, toOverlap: range, context)
+    assert(extended, "extending the enclosing borrow scope failed after a successful dry run")
   }
 
   // Move the `end_borrow`s out of the range.
   //
   context.erase(instructions: endBorrowsToMove)
   for insertionPoint in insertionPoints {
-    Builder(before: insertionPoint, context).createEndBorrow(of: beginBorrow.value)
+    // The `end_borrow`s of the enclosing scopes may just have been moved to this insertion point.
+    // This scope is nested inside them, so its `end_borrow` must come first.
+    var insertBefore = insertionPoint
+    while let prev = insertBefore.previous, prev.isEndBorrow(ofScope: enclosingBorrow) {
+      insertBefore = prev
+    }
+    Builder(before: insertBefore, context).createEndBorrow(of: beginBorrow.value)
   }
   return true
 }
@@ -191,6 +220,7 @@ private func getInsertionPoints(for beginBorrow: BeginBorrowInst,
 private func getInsertionPoints(for loadBorrow: LoadBorrowInst,
                                 _ endBorrowsToMove: Stack<Instruction>,
                                 _ rangeEndInstructions: InstructionSet,
+                                ignoreEndBorrowsOf enclosingBorrow: BeginBorrowValue?,
                                 _ context: FunctionPassContext) -> Stack<Instruction>?
 {
   var worklist = InstructionWorklist(context)
@@ -204,7 +234,12 @@ private func getInsertionPoints(for loadBorrow: LoadBorrowInst,
     if rangeEndInstructions.contains(inst) {
       insertionPoints.append(inst)
     } else {
-      if inst.mayWrite(toAddress: loadBorrow.address, aliasAnalysis) {
+      // Alias analysis conservatively reports a "write" for the `end_borrow` of the reference which
+      // holds the loaded address. That's exactly the borrow scope which the caller extends along
+      // with this one, so it does not limit this borrow scope either.
+      if inst.mayWrite(toAddress: loadBorrow.address, aliasAnalysis),
+         !inst.isEndBorrow(ofScope: enclosingBorrow)
+      {
         insertionPoints.deinitialize()
         return nil
       }
@@ -214,7 +249,43 @@ private func getInsertionPoints(for loadBorrow: LoadBorrowInst,
   return insertionPoints
 }
 
+extension Instruction {
+  /// True if this is an `end_borrow` which ends the borrow scope of `beginBorrow` - or the scope of a
+  /// borrow which (transitively) holds the address that `beginBorrow` loads from.
+  ///
+  /// Such enclosing scopes must contain `beginBorrow`'s scope, therefore `extendBorrowScope` extends
+  /// them together with it. That's why callers which extend `beginBorrow`'s scope can treat all of
+  /// those `end_borrow`s alike: they neither limit the new scope nor may they precede its end.
+  func isEndBorrow(ofScope beginBorrow: BeginBorrowValue?) -> Bool {
+    guard let endBorrow = self as? EndBorrowInst else {
+      return false
+    }
+    var scope = beginBorrow
+    while let currentScope = scope {
+      if endBorrow.borrow == currentScope.value {
+        return true
+      }
+      // Only a `load_borrow`'s scope is enclosed by the borrow scope of the address' base reference.
+      guard case .loadBorrow(let loadBorrow) = currentScope else {
+        return false
+      }
+      scope = loadBorrow.address.beginBorrowOfAddress
+    }
+    return false
+  }
+}
+
 extension Value {
+  /// If this address is a projection of a borrowed reference, the `begin_borrow`/`load_borrow` which
+  /// introduces that reference's borrow scope. That scope must enclose the lifetime of anything
+  /// loaded from this address.
+  var beginBorrowOfAddress: BeginBorrowValue? {
+    if let baseReference = accessBase.reference {
+      return BeginBorrowValue(baseReference.lookThroughForwardingInstructions)
+    }
+    return nil
+  }
+
   /// Looks through forwarding instructions in the use-def chain and returns the original forwarded value.
   /// It looks through phi-arguments, terminator instructions and all kind of forwarding instructions
   /// which forward exactly one (non-trivial) operand.
