@@ -162,6 +162,7 @@ sil @use_a : $@convention(thin) (A) -> ()
 sil @use_twofield : $@convention(thin) (TwoField) -> ()
 sil @init_twofield : $@convention(thin) (@thin TwoField.Type) -> TwoField
 sil @consumeB : $@convention(thin) (@owned B) -> ()
+sil @getB : $@convention(thin) (@owned B) -> @owned B
 sil @useB : $@convention(thin) (@guaranteed B) -> ()
 sil @writeB : $@convention(thin) (@inout B) -> ()
 sil @throwingWriteB : $@convention(thin) (@inout B) -> (@owned B, @error Error)
@@ -2318,6 +2319,39 @@ bb0(%0 : $*B):
   store %7 to [init] %4
   end_access %4
   return %2
+}
+
+// The only liverange exit block begins with the `end_access` of the access scope which is used as
+// materialization base. The re-initializing store can still be inserted there - just before the
+// `end_access`.
+// CHECK-LABEL: sil [ossa] @take_in_loop_with_exit_at_end_access :
+// CHECK:         br bb1(%0 : $B)
+// CHECK:       bb1(%{{[0-9]+}} : @owned $B):
+// CHECK-NOT:     load [take]
+// CHECK:       bb3:
+// CHECK-NEXT:    store %{{[0-9]+}} to [init] %2
+// CHECK-NEXT:    end_access %2
+// CHECK-LABEL: } // end sil function 'take_in_loop_with_exit_at_end_access'
+sil [ossa] @take_in_loop_with_exit_at_end_access : $@convention(thin) (@owned B, @inout B) -> () {
+bb0(%0 : @owned $B, %1 : $*B):
+  %2 = begin_access [modify] [dynamic] %1
+  store %0 to [assign] %2
+  br bb1
+
+bb1:
+  %4 = load [take] %2
+  %5 = function_ref @getB : $@convention(thin) (@owned B) -> @owned B
+  %6 = apply %5(%4) : $@convention(thin) (@owned B) -> @owned B
+  store %6 to [init] %2
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  end_access %2
+  %10 = tuple ()
+  return %10
 }
 
 // The materialization base is a `project_box` of an owned box. Re-creating the address at the
