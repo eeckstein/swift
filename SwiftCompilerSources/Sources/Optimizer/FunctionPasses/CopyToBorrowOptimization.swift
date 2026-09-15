@@ -173,7 +173,7 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
   }
 
   load.replaceWithLoadBorrow(within: loadBorrowLiverange, collectedUses: collectedUses,
-                             enclosingBorrow: baseBorrow?.value)
+                             enclosingBorrow: baseBorrow)
   return true
 }
 
@@ -600,7 +600,7 @@ private func splitBorrowScope(of beginBorrow: BeginBorrowInst,
 private extension LoadInst {
   func replaceWithLoadBorrow(within liverange: InstructionRange,
                              collectedUses: OwnedToGuaranteedUses,
-                             enclosingBorrow: Value? = nil
+                             enclosingBorrow: BeginBorrowValue? = nil
   ) {
     let context = collectedUses.context
     let builder = Builder(before: self, context)
@@ -640,7 +640,7 @@ private func remove(copy: CopyValueInst, collectedUses: OwnedToGuaranteedUses, l
 func createEndBorrows(for beginBorrow: Value,
                       atEndOf liverange: InstructionRange,
                       collectedUses: OwnedToGuaranteedUses,
-                      enclosingBorrow: Value? = nil
+                      enclosingBorrow: BeginBorrowValue? = nil
 ) {
   let context = collectedUses.context
 
@@ -653,13 +653,11 @@ func createEndBorrows(for beginBorrow: Value,
   //
   for endInst in collectedUses.ends.atEndOf(liverange) {
     var insertionPoint = endInst
-    if let enclosingBorrow {
-      // If we already inserted `end_borrow`s for an enclosing scope - e.g. when the borrow scope of the
-      // load's base was extended - we need to make sure that the `end_borrow`s for this (inner) scope are
-      // inserted before the `end_borrow`s of the enclosing scope.
-      while let prev = insertionPoint.previous as? EndBorrowInst, prev.borrow == enclosingBorrow {
-        insertionPoint = prev
-      }
+    // If we already inserted `end_borrow`s for an enclosing scope - e.g. when the borrow scope of the
+    // load's base and everything enclosing it was extended - we need to make sure that the
+    // `end_borrow`s for this (inner) scope are inserted before the `end_borrow`s of those scopes.
+    while let prev = insertionPoint.previous, prev.isEndBorrow(ofScope: enclosingBorrow) {
+      insertionPoint = prev
     }
     let builder = Builder(before: insertionPoint, context)
     builder.createEndBorrow(of: beginBorrow)
@@ -667,14 +665,6 @@ func createEndBorrows(for beginBorrow: Value,
 }
 
 private extension Instruction {
-  /// True if this is an `end_borrow` which ends the borrow scope of `beginBorrow`.
-  func isEndBorrow(ofScope beginBorrow: BeginBorrowValue?) -> Bool {
-    guard let beginBorrow, let endBorrow = self as? EndBorrowInst else {
-      return false
-    }
-    return endBorrow.borrow == beginBorrow.value
-  }
-
   /// True if this is an `end_borrow` which cannot invalidate the address of the `load` which
   /// `alreadyWalked` was seeded with.
   ///
@@ -760,13 +750,6 @@ private extension BasicBlockWorklist {
 }
 
 private extension Value {
-  var beginBorrowOfAddress: BeginBorrowValue? {
-    if let baseReference = accessBase.reference {
-      return BeginBorrowValue(baseReference.lookThroughForwardingInstructions)
-    }
-    return nil
-  }
-
   /// True if this value is defined inside `range`. Note that for a terminator result - e.g. a `switch_enum`
   /// payload argument - the defining instruction is the terminator in the predecessor block.
   func isDefined(within range: InstructionRange) -> Bool {
