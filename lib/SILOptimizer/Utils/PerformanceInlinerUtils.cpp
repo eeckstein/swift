@@ -190,6 +190,22 @@ SILInstruction *ConstantTracker::getDef(SILValue val,
         continue;
       }
       return inst;
+    } else if (auto *result = dyn_cast<MultipleValueInstructionResult>(val)) {
+      // In OSSA an owned aggregate is taken apart with a `destructure_struct`
+      // or `destructure_tuple` instead of a `struct_extract`/`tuple_extract`.
+      // Treat such a result like the corresponding object projection.
+      SILInstruction *parent = result->getParent();
+      if (isa<DestructureStructInst>(parent)) {
+        projStack.push_back(
+            Projection(ProjectionKind::Struct, result->getIndex()));
+      } else if (isa<DestructureTupleInst>(parent)) {
+        projStack.push_back(
+            Projection(ProjectionKind::Tuple, result->getIndex()));
+      } else {
+        return nullptr;
+      }
+      val = parent->getOperand(0);
+      continue;
     } else if (SILValue param = getParam(val)) {
       // Continue in the caller.
       val = param;
