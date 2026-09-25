@@ -359,6 +359,7 @@ BridgedOwnedString BridgedPassContext::mangleAsyncRemoved(BridgedFunction functi
 }
 
 BridgedOwnedString BridgedPassContext::mangleWithSignatureSpecializedArgs(BridgedArrayRef bridgedArgSpecializations,
+                                                                          bool resultOwnedToGuaranteed,
                                                                           BridgedFunction function) const {
   SILFunction *f = function.getFunction();
   Mangle::FunctionSignatureSpecializationMangler Mangler(f->getASTContext(),
@@ -380,6 +381,11 @@ BridgedOwnedString BridgedPassContext::mangleWithSignatureSpecializedArgs(Bridge
         Mangler.setArgumentSROA(argIdx);
         break;
     }
+  }
+  if (resultOwnedToGuaranteed) {
+    // The mangling for a direct result which is not returned at +1. It demangles
+    // to "Return = Owned To Guaranteed".
+    Mangler.setReturnValueOwnedToUnowned();
   }
   return BridgedOwnedString(Mangler.mangle());
 }
