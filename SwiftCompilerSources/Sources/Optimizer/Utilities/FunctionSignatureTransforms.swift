@@ -47,6 +47,24 @@ struct ArgumentSpecialization {
   let kind: Kind
 }
 
+/// How the signature of a function can be optimized: a list of argument specializations plus
+/// - optionally - the conversion of the single direct `@owned` result to `@guaranteed`.
+struct FunctionSpecialization {
+  var arguments: [ArgumentSpecialization] = []
+
+  /// If not empty, the specialized function returns its direct result as `@guaranteed` (via
+  /// `return_borrow`) instead of `@owned`, which avoids a retain in the callee and the matching
+  /// release in the caller.
+  ///
+  /// The returned value is borrowed from the memory - or the value - of the arguments with these
+  /// indices. A caller may only use the returned borrow as long as it doesn't modify them.
+  var resultBorrowedFromArguments: [Int] = []
+
+  var resultOwnedToGuaranteed: Bool { !resultBorrowedFromArguments.isEmpty }
+
+  var isEmpty: Bool { arguments.isEmpty && !resultOwnedToGuaranteed }
+}
+
 /// Replace an apply with metatype arguments with an apply to a specialized function, where the
 /// metatype values are not passed, but rematerialized in the entry block of the specialized function
 ///
