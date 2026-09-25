@@ -237,6 +237,7 @@ struct BridgedPassContext {
   };
 
   BridgedOwnedString mangleWithSignatureSpecializedArgs(BridgedArrayRef bridgedArgSpecializations,
+                                                        bool resultOwnedToGuaranteed,
                                                         BridgedFunction function) const;
   BridgedOwnedString mangleWithClosureArgs(BridgedArrayRef closureArgManglings, BridgedFunction applySiteCallee) const;
   BridgedOwnedString mangleWithConstCaptureArgs(BridgedArrayRef bridgedConstArgs,

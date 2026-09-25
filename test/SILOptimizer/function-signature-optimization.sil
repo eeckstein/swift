@@ -271,3 +271,260 @@ bb0(%0 : @guaranteed $S):
   %r = tuple ()
   return %r
 }
+
+//===----------------------------------------------------------------------===//
+//                    Owned -> guaranteed result conversion
+//===----------------------------------------------------------------------===//
+
+// CHECK-LABEL: sil shared [ossa] @$s17owned_result_loadTf4nnnn_g : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S {
+// CHECK:       bb1:
+// CHECK-NEXT:    [[LB:%.*]] = load_borrow %0
+// CHECK-NEXT:    br bb3([[LB]])
+// CHECK:       bb2:
+// The self-recursive calls now go directly to the specialized function.
+// CHECK:         apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
+// CHECK-NOT:     destroy_value
+// CHECK:         [[A:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
+// CHECK-NEXT:    [[BB:%.*]] = begin_borrow [[A]]
+// CHECK-NEXT:    br bb3([[BB]])
+// CHECK:       bb3([[P:%.*]] : @reborrow $S):
+// CHECK-NEXT:    [[BF:%.*]] = borrowed [[P]] from ()
+// CHECK-NEXT:    return_borrow [[BF]] from_scopes ([[BF]])
+// CHECK:       } // end sil function '$s17owned_result_loadTf4nnnn_g'
+
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @owned_result_load :
+// CHECK:         [[A:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[A]]
+// CHECK-NEXT:    return [[C]]
+// CHECK:       } // end sil function 'owned_result_load'
+
+// A `load [copy]` from an `@inout` argument, joined with the result of a self-recursive call.
+// This is the shape of the `Walsh` benchmark's `walshImpl`.
+sil [ossa] @owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S {
+bb0(%0 : $*S, %1 : $*S, %2 : $Int, %3 : $Int):
+  %4 = struct_extract %2, #Int._value
+  %5 = struct_extract %3, #Int._value
+  %6 = builtin "cmp_eq_Int64"(%4, %5) : $Builtin.Int1
+  cond_br %6, bb1, bb2
+
+bb1:
+  %8 = load [copy] %0
+  br bb3(%8)
+
+bb2:
+  %10 = function_ref @owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S
+  %11 = apply %10(%1, %0, %2, %3) : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S
+  destroy_value %11
+  %13 = apply %10(%1, %0, %2, %3) : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S
+  br bb3(%13)
+
+bb3(%15 : @owned $S):
+  return %15
+}
+
+// CHECK-LABEL: sil [ossa] @call_owned_result_load :
+// CHECK:         [[F:%.*]] = function_ref @$s17owned_result_loadTf4nnnn_g :
+// CHECK:         [[A:%.*]] = apply [[F]](%0, %1, %2, %3)
+// CHECK:         fix_lifetime [[A]]
+// CHECK-NEXT:    tuple
+// CHECK:       } // end sil function 'call_owned_result_load'
+sil [ossa] @call_owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> () {
+bb0(%0 : $*S, %1 : $*S, %2 : $Int, %3 : $Int):
+  %4 = function_ref @owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S
+  %5 = apply %4(%0, %1, %2, %3) : $@convention(thin) (@inout S, @inout S, Int, Int) -> @owned S
+  fix_lifetime %5
+  destroy_value %5
+  %7 = tuple ()
+  return %7
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s27owned_result_guaranteed_argTf4n_g : $@convention(thin) (@guaranteed S) -> @guaranteed AnyObject {
+// CHECK:         [[E:%.*]] = struct_extract %0, #S.x
+// CHECK:         [[B:%.*]] = begin_borrow [[E]]
+// CHECK:         return_borrow [[B]] from_scopes ([[B]])
+// CHECK:       } // end sil function '$s27owned_result_guaranteed_argTf4n_g'
+
+// A `copy_value` of a value which the caller guarantees anyway.
+sil [ossa] @owned_result_guaranteed_arg : $@convention(thin) (@guaranteed S) -> @owned AnyObject {
+bb0(%0 : @guaranteed $S):
+  %1 = struct_extract %0, #S.y
+  fix_lifetime %1
+  %2 = struct_extract %0, #S.x
+  %3 = copy_value %2
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_owned_result_guaranteed_arg :
+// CHECK:         [[F:%.*]] = function_ref @$s27owned_result_guaranteed_argTf4n_g :
+// CHECK:         [[A:%.*]] = apply [[F]](%0)
+// CHECK:       } // end sil function 'call_owned_result_guaranteed_arg'
+sil [ossa] @call_owned_result_guaranteed_arg : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %2 = function_ref @owned_result_guaranteed_arg : $@convention(thin) (@guaranteed S) -> @owned AnyObject
+  %3 = apply %2(%0) : $@convention(thin) (@guaranteed S) -> @owned AnyObject
+  destroy_value %3
+  %5 = tuple ()
+  return %5
+}
+
+// The loaded memory is written to before the function returns, so the borrow scope of a
+// `load_borrow` could not be extended to the `return`.
+// CHECK-LABEL: sil [ossa] @dont_borrow_result_if_memory_written :
+// CHECK-NOT:     _g
+// CHECK:       } // end sil function 'dont_borrow_result_if_memory_written'
+sil [ossa] @dont_borrow_result_if_memory_written : $@convention(thin) (@inout S, @owned S) -> @owned S {
+bb0(%0 : $*S, %1 : @owned $S):
+  %2 = load [copy] %0
+  store %1 to [assign] %0
+  return %2
+}
+
+// CHECK-LABEL: sil [ossa] @call_dont_borrow_result_if_memory_written :
+// CHECK:         [[F:%.*]] = function_ref @dont_borrow_result_if_memory_written :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'call_dont_borrow_result_if_memory_written'
+sil [ossa] @call_dont_borrow_result_if_memory_written : $@convention(thin) (@inout S, @owned S) -> () {
+bb0(%0 : $*S, %1 : @owned $S):
+  %2 = function_ref @dont_borrow_result_if_memory_written : $@convention(thin) (@inout S, @owned S) -> @owned S
+  %3 = apply %2(%0, %1) : $@convention(thin) (@inout S, @owned S) -> @owned S
+  destroy_value %3
+  %5 = tuple ()
+  return %5
+}
+
+// A local allocation is gone when the function returns.
+// CHECK-LABEL: sil [ossa] @dont_borrow_result_from_local_memory :
+// CHECK-NOT:     _g
+// CHECK:       } // end sil function 'dont_borrow_result_from_local_memory'
+sil [ossa] @dont_borrow_result_from_local_memory : $@convention(thin) (@owned S) -> @owned S {
+bb0(%0 : @owned $S):
+  %1 = alloc_stack $S
+  store %0 to [init] %1
+  %3 = load [copy] %1
+  destroy_addr %1
+  dealloc_stack %1
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_dont_borrow_result_from_local_memory :
+// CHECK:         [[F:%.*]] = function_ref @dont_borrow_result_from_local_memory :
+// CHECK:         apply [[F]](%0)
+// CHECK:       } // end sil function 'call_dont_borrow_result_from_local_memory'
+sil [ossa] @call_dont_borrow_result_from_local_memory : $@convention(thin) (@owned S) -> () {
+bb0(%0 : @owned $S):
+  %1 = function_ref @dont_borrow_result_from_local_memory : $@convention(thin) (@owned S) -> @owned S
+  %2 = apply %1(%0) : $@convention(thin) (@owned S) -> @owned S
+  destroy_value %2
+  %4 = tuple ()
+  return %4
+}
+
+// The caller consumes the result, so it would have to copy it anyway.
+// CHECK-LABEL: sil [ossa] @dont_borrow_result_if_caller_consumes :
+// CHECK-NOT:     _g
+// CHECK:       } // end sil function 'dont_borrow_result_if_caller_consumes'
+sil [ossa] @dont_borrow_result_if_caller_consumes : $@convention(thin) (@inout S) -> @owned S {
+bb0(%0 : $*S):
+  %1 = load [copy] %0
+  return %1
+}
+
+// CHECK-LABEL: sil [ossa] @call_dont_borrow_result_if_caller_consumes :
+// CHECK:         [[F:%.*]] = function_ref @dont_borrow_result_if_caller_consumes :
+// CHECK:         apply [[F]](%0)
+// CHECK:       } // end sil function 'call_dont_borrow_result_if_caller_consumes'
+sil [ossa] @call_dont_borrow_result_if_caller_consumes : $@convention(thin) (@inout S) -> @owned S {
+bb0(%0 : $*S):
+  %1 = function_ref @dont_borrow_result_if_caller_consumes : $@convention(thin) (@inout S) -> @owned S
+  %2 = apply %1(%0) : $@convention(thin) (@inout S) -> @owned S
+  return %2
+}
+
+// The result of the re-directed recursive call is handed on to the caller with the
+// `return_borrow`, so the borrowed argument memory must not be modified before this function
+// returns.
+// CHECK-LABEL: sil [ossa] @dont_borrow_recursive_result_across_write :
+// CHECK-NOT:     _g
+// CHECK:       } // end sil function 'dont_borrow_recursive_result_across_write'
+sil [ossa] @dont_borrow_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S {
+bb0(%0 : $*S, %1 : $Builtin.Int1):
+  cond_br %1, bb1, bb2
+
+bb1:
+  %2 = load [copy] %0
+  br bb3(%2)
+
+bb2:
+  %4 = function_ref @dont_borrow_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %5 = apply %4(%0, %1) : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %6 = load [copy] %0
+  store %6 to [assign] %0
+  br bb3(%5)
+
+bb3(%8 : @owned $S):
+  return %8
+}
+
+// CHECK-LABEL: sil [ossa] @call_dont_borrow_recursive_result_across_write :
+// CHECK:         [[F:%.*]] = function_ref @dont_borrow_recursive_result_across_write :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'call_dont_borrow_recursive_result_across_write'
+sil [ossa] @call_dont_borrow_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> () {
+bb0(%0 : $*S, %1 : $Builtin.Int1):
+  %2 = function_ref @dont_borrow_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %3 = apply %2(%0, %1) : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  destroy_value %3
+  %5 = tuple ()
+  return %5
+}
+
+sil @s_user : $@convention(thin) (@guaranteed S) -> ()
+
+// The result of the *returned* recursive call stays valid, but the result of the first recursive
+// call is used across a write to the borrowed argument memory
+// CHECK-LABEL: sil shared [ossa] @$s34copy_recursive_result_across_writeTf4nn_g : $@convention(thin) (@inout S, Builtin.Int1) -> @guaranteed S {
+// CHECK:       bb2:
+// CHECK:         [[A1:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+// CHECK-NEXT:    [[C:%.*]] = load [copy] %0
+// CHECK:         store
+// CHECK:         apply {{.*}}([[A1]]) : $@convention(thin) (@guaranteed S) -> ()
+// CHECK:         destroy_value [[A1]]
+// CHECK:         [[A2:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, Builtin.Int1) -> @guaranteed S
+// CHECK-NEXT:    [[BB:%.*]] = begin_borrow [[A2]]
+// CHECK-NEXT:    br bb3([[BB]])
+// CHECK:       } // end sil function '$s34copy_recursive_result_across_writeTf4nn_g'
+sil [ossa] @copy_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S {
+bb0(%0 : $*S, %1 : $Builtin.Int1):
+  cond_br %1, bb1, bb2
+
+bb1:
+  %2 = load [copy] %0
+  br bb3(%2)
+
+bb2:
+  %4 = function_ref @copy_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %5 = apply %4(%0, %1) : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %6 = load [copy] %0
+  store %6 to [assign] %0
+  %8 = function_ref @s_user : $@convention(thin) (@guaranteed S) -> ()
+  %9 = apply %8(%5) : $@convention(thin) (@guaranteed S) -> ()
+  destroy_value %5
+  %11 = apply %4(%0, %1) : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  br bb3(%11)
+
+bb3(%13 : @owned $S):
+  return %13
+}
+
+// CHECK-LABEL: sil [ossa] @call_copy_recursive_result_across_write :
+// CHECK:         [[F:%.*]] = function_ref @$s34copy_recursive_result_across_writeTf4nn_g :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'call_copy_recursive_result_across_write'
+sil [ossa] @call_copy_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> () {
+bb0(%0 : $*S, %1 : $Builtin.Int1):
+  %2 = function_ref @copy_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  %3 = apply %2(%0, %1) : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S
+  destroy_value %3
+  %5 = tuple ()
+  return %5
+}

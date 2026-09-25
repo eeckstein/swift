@@ -871,7 +871,10 @@ void swift::findGuaranteedReferenceRoots(SILValue referenceValue,
     // ForwardingOperation.
     if (auto *apply =
             dyn_cast_or_null<ApplyInst>(value->getDefiningInstruction())) {
-      if (apply->hasGuaranteedResult()) {
+      // A borrow accessor returns a borrow of its self argument. A function
+      // without a self argument - e.g. a function-signature specialization
+      // which returns its result @guaranteed - is a root by itself.
+      if (apply->hasGuaranteedResult() && apply->hasSelfArgument()) {
         worklist.pushIfNotVisited(apply->getSelfArgument());
         continue;
       }

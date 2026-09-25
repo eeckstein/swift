@@ -16,7 +16,7 @@ import SIL
 let functionSignatureOptimization = ModulePass(name: "function-signature-optimization") {
   (moduleContext: ModulePassContext) in
 
-  var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
+  var functionSpecializations = Dictionary<Function, FunctionSpecialization>()
 
   for function in moduleContext.functions {
     guard function.hasOwnership,
@@ -47,7 +47,7 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
 }
 
 private func trySpecialize(apply: FullApplySite,
-                           cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
+                           cacheIn functionSpecializations: inout Dictionary<Function, FunctionSpecialization>,
                            _ moduleContext: ModulePassContext) -> Bool {
   guard let callee = apply.referencedFunction,
         callee.hasOwnership,
@@ -62,28 +62,58 @@ private func trySpecialize(apply: FullApplySite,
     return false
   }
 
-  let specializations: [ArgumentSpecialization]
-  if let existingSpecializations = functionSpecializations[callee] {
-    specializations = existingSpecializations
+  let specialization: FunctionSpecialization
+  if let existingSpecialization = functionSpecializations[callee] {
+    specialization = existingSpecialization
   } else {
-    specializations = moduleContext.transform(function: callee) { context in
-      getParameterSpecializations(for: callee, context)
+    specialization = moduleContext.transform(function: callee) { context in
+      getSpecialization(for: callee, context)
     }
-    functionSpecializations[callee] = specializations
+    functionSpecializations[callee] = specialization
+  }
+  if specialization.isEmpty {
+    return false
   }
 
   let benefit = moduleContext.transform(function: apply.parentFunction) { context in
-    apply.canBenefit(from: specializations, context)
+    apply.canBenefit(from: specialization, context)
   }
   guard benefit else {
     return false
   }
 
-  specialize(function: callee, with: specializations, callerSiteApply: apply, moduleContext)
+  let specializedFunction = specialize(function: callee, with: specialization, callerSiteApply: apply, moduleContext)
   moduleContext.transform(function: apply.parentFunction) { context in
-    context.inlineFunction(apply: apply, mandatoryInline: false)
+    if specialization.resultOwnedToGuaranteed {
+      let applyInst = apply as! ApplyInst
+      let builder = Builder(before: applyInst, context)
+      let calleeRef = builder.createFunctionRef(specializedFunction)
+      let newApply = builder.createApply(function: calleeRef, applyInst.substitutionMap,
+                                         arguments: Array(applyInst.arguments),
+                                         isNonThrowing: applyInst.isNonThrowing,
+                                         isNonAsync: applyInst.isNonAsync)
+      context.erase(instructions: applyInst.uses.filter(usersOfType: DestroyValueInst.self).users)
+      applyInst.replace(with: newApply, context)
+    } else {
+      context.inlineFunction(apply: apply, mandatoryInline: false)
+    }
   }
   return true
+}
+
+private func getSpecialization(for function: Function,
+                               _ context: FunctionPassContext) -> FunctionSpecialization {
+  var specialization = FunctionSpecialization()
+  specialization.arguments = getParameterSpecializations(for: function, context)
+
+  // TODO: combine the result conversion with argument specializations. Currently they can
+  // interfere with each other: e.g. a `guaranteedToOwned` argument can be the borrow source of
+  // the returned value, and self-recursive calls can only be re-directed to the specialized
+  // function if the argument list is unchanged.
+  if specialization.arguments.isEmpty {
+    specialization.resultBorrowedFromArguments = getResultBorrowSources(of: function, context)
+  }
+  return specialization
 }
 
 private func getParameterSpecializations(for function: Function,
@@ -236,14 +266,292 @@ private extension FunctionArgument {
   }
 }
 
+//===----------------------------------------------------------------------===//
+//                    Owned -> guaranteed result conversion
+//===----------------------------------------------------------------------===//
+
+/// Returns the indices of the arguments from whose memory - or value - the single direct `@owned`
+/// result of `function` is borrowed. If the result is empty, the result cannot be returned
+/// `@guaranteed`.
+///
+/// The result can be returned `@guaranteed` - i.e. without the callee retaining it - if the returned
+/// value is, on all paths, borrowed from something which the caller keeps alive anyway, e.g. loaded
+/// from an indirect argument:
+/// ```
+///   sil @f : $(@inout Array<Int>) -> @owned Array<Int> {
+///   bb0(%0 : $*Array<Int>):
+///     %1 = load [copy] %0
+///     return %1
+/// ```
+/// ->
+/// ```
+///   sil @f : $(@inout Array<Int>) -> @guaranteed Array<Int> {
+///   bb0(%0 : $*Array<Int>):
+///     %1 = load_borrow %0
+///     return_borrow %1 from_scopes (%1)
+/// ```
+/// The returned argument indices are the contract for callers: the borrow is only valid as long as
+/// the memory of those arguments is not modified (see `borrowedResultStaysValid`).
+private func getResultBorrowSources(of function: Function, _ context: FunctionPassContext) -> [Int] {
+  guard let returnInst = function.returnInstruction as? ReturnInst,
+        returnInst.returnedValue.ownership == .owned
+  else {
+    return []
+  }
+
+  var borrowingInstructions = Stack<SingleValueInstruction>(context)
+  defer { borrowingInstructions.deinitialize() }
+
+  guard collectBorrowingInstructions(of: returnInst.returnedValue, in: &borrowingInstructions, context) else {
+    return []
+  }
+
+  var borrowedArguments = IterableArgumentSet(context)
+  defer { borrowedArguments.deinitialize() }
+
+  guard collectBorrowedArguments(of: borrowingInstructions, in: &borrowedArguments, context),
+        !mayModifyMemory(after: borrowingInstructions, borrowedArguments: borrowedArguments, context) else {
+    return []
+  }
+
+  return borrowedArguments.map { $0.index }
+}
+
+private func collectBorrowingInstructions(of returnedValue: Value,
+                                          in results: inout Stack<SingleValueInstruction>,
+                                          _ context: FunctionPassContext) -> Bool
+{
+  var worklist = ValueWorklist(context)
+  defer { worklist.deinitialize() }
+
+  worklist.pushIfNotVisited(returnedValue)
+  while let value = worklist.pop() {
+    switch value {
+    case let load as LoadInst where load.loadOwnership == .copy:
+      results.append(load)
+
+    case let copy as CopyValueInst:
+      results.append(copy)
+
+    case let apply as ApplyInst where apply.referencedFunction == apply.parentFunction:
+      results.append(apply)
+
+    case let argument as Argument:
+      guard let phi = Phi(argument) else {
+        return false
+      }
+      worklist.pushIfNotVisited(contentsOf: phi.incomingValues)
+
+    default:
+      return false
+    }
+  }
+  return true
+}
+
+private func collectBorrowedArguments(of borrowingInstructions: Stack<SingleValueInstruction>,
+                                      in borrowedArguments: inout IterableArgumentSet,
+                                      _ context: FunctionPassContext) -> Bool
+{
+  for borrowingInst in borrowingInstructions {
+    switch borrowingInst {
+    case let load as LoadInst:
+      guard let argument = load.address.baseArgumentOfAddress else {
+        return false
+      }
+      borrowedArguments.insert(argument)
+
+    case let copy as CopyValueInst:
+      if borrowedArguments.insertBorrowIntroducers(of: copy.fromValue, context) == .unknownBorrowIntroducer {
+        return false
+      }
+
+    default:
+      break
+    }
+  }
+
+  var argumentAdded: Bool
+
+  repeat {
+    argumentAdded = false
+    for case let apply as ApplyInst in borrowingInstructions {
+      for argument in borrowedArguments {
+        let argumentValue = apply.operand(forCalleeArgumentIndex: argument.index)!.value
+        if argumentValue.type.isAddress {
+          guard let callerArgument = argumentValue.baseArgumentOfAddress else {
+            return false
+          }
+          if borrowedArguments.insert(callerArgument) {
+            argumentAdded = true
+          }
+        } else {
+          switch borrowedArguments.insertBorrowIntroducers(of: argumentValue, context) {
+          case .unknownBorrowIntroducer: return false
+          case .insertedNewArgument:     argumentAdded = true
+          case .nothingInserted:         break
+          }
+        }
+      }
+    }
+  } while argumentAdded
+
+  return true
+}
+
+private extension IterableArgumentSet {
+  enum InsertResult {
+    case nothingInserted, insertedNewArgument, unknownBorrowIntroducer
+  }
+
+  mutating func insertBorrowIntroducers(of value: Value, _ context: FunctionPassContext) -> InsertResult {
+    guard value.ownership == .guaranteed else {
+      return .unknownBorrowIntroducer
+    }
+    var result = InsertResult.nothingInserted
+    for introducer in value.getBorrowIntroducers(context) {
+      guard let argument = introducer.value as? FunctionArgument else {
+        return .unknownBorrowIntroducer
+      }
+      if insert(argument) {
+        result = .insertedNewArgument
+      }
+    }
+    return result
+  }
+}
+
+private func mayModifyMemory(after borrowingInstructions: Stack<SingleValueInstruction>,
+                             borrowedArguments: IterableArgumentSet,
+                             _ context: FunctionPassContext) -> Bool
+{
+  for borrowingInst in borrowingInstructions {
+    switch borrowingInst {
+    case let load as LoadInst:
+      if mayModifyMemory(load.address, after: load, until: nil, context) {
+        return true
+      }
+
+    case let apply as ApplyInst:
+      for argument in borrowedArguments {
+        let argumentValue = apply.operand(forCalleeArgumentIndex: argument.index)!.value
+        if argumentValue.type.isAddress,
+           mayModifyMemory(argumentValue, after: apply, until: nil, context)
+        {
+          return true
+        }
+      }
+
+    default:
+      break
+    }
+  }
+  return false
+}
+
+private extension ApplyInst {
+  var canConvertResultFromOwnedToGuaranteed: Bool {
+    uses.ignore(usersOfType: DestroyValueInst.self).allSatisfy { $0.canAccept(ownership: .guaranteed) }
+  }
+
+  func argumentScopesOverlapReturnLifetime(of argumentIndices: [Int], _ context: FunctionPassContext) -> Bool {
+    var returnLifetime = InstructionRange(begin: self, ends: uses.endingLifetime.users, context)
+    defer { returnLifetime.deinitialize() }
+
+    for arg in argumentIndices.lazy.map({ self.arguments[$0] }) {
+      if arg.type.isAddress {
+        if mayModifyMemory(arg, after: self, until: returnLifetime.insertedInstructions, context) {
+          return false
+        }
+      } else {
+        switch arg.ownership {
+        case .unowned:
+          return false
+        case .none:
+          break
+        case .owned:
+          if arg.uses.endingLifetime.users.contains(where: { returnLifetime.contains($0) }) {
+            return false
+          }
+        case .guaranteed:
+          for borrowIntroducer in arg.getBorrowIntroducers(context) {
+            if borrowIntroducer.scopeEndingOperands.users.contains(where: { returnLifetime.contains($0) }) {
+              return false
+            }
+          }
+        }
+      }
+    }
+    return true
+  }
+}
+
+/// Returns true if any instruction from `startInst` (exclusive) to `ends` (exclusive) may write to
+/// `address`. If `ends` is nil, all paths to the function exits are checked.
+private func mayModifyMemory(_ address: Value, after startInst: Instruction,
+                             until ends: InstructionSet?,
+                             _ context: FunctionPassContext) -> Bool {
+  let aliasAnalysis = context.aliasAnalysis
+  var worklist = InstructionWorklist(context)
+  defer { worklist.deinitialize() }
+  worklist.pushSuccessors(of: startInst)
+
+  while let inst = worklist.pop() {
+    if let ends, ends.contains(inst) {
+      continue
+    }
+    if inst.mayWrite(toAddress: address, aliasAnalysis) {
+      return true
+    }
+    worklist.pushSuccessors(of: inst)
+  }
+  return false
+}
+
+private extension LoadInst {
+  /// The index of the function argument whose memory this load reads, or nil if the loaded memory
+  /// is not owned by the caller.
+  var borrowSourceArgumentIndex: Int? {
+    switch address.enclosingAccessScope {
+    case .access, .dependence:
+      // A `load_borrow` must not be used after the end of its enclosing access scope, but the
+      // returned borrow escapes to the caller.
+      return nil
+    case .base(let accessBase):
+      if case .argument(let argument) = accessBase {
+        return argument.index
+      }
+      return nil
+    }
+  }
+}
+
 private extension FullApplySite {
-  func canBenefit(from parameterSpecializations: [ArgumentSpecialization], _ context: FunctionPassContext) -> Bool {
-    for spec in parameterSpecializations {
+  func canBenefit(from specialization: FunctionSpecialization, _ context: FunctionPassContext) -> Bool {
+    if specialization.resultOwnedToGuaranteed {
+      let applyInst = self as! ApplyInst
+      guard applyInst.canConvertResultFromOwnedToGuaranteed,
+            applyInst.argumentScopesOverlapReturnLifetime(of: specialization.resultBorrowedFromArguments, context)
+      else {
+        return false
+      }
+    }
+
+    for spec in specialization.arguments {
       if let arg = operand(forCalleeArgumentIndex: spec.argumentIndex),
          arg.canBenefit(from: spec.kind, context)
       {
         return true
       }
+    }
+    if specialization.resultOwnedToGuaranteed,
+       let applyInst = self as? ApplyInst,
+       // A `@guaranteed` result only helps if the caller doesn't have to own the returned value
+       // anyway. If it does, the removed retain in the callee is just moved to the caller.
+       !applyInst.uses.endingLifetime.isEmpty,
+       applyInst.uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst })
+    {
+      return true
     }
     return false
   }
@@ -304,17 +612,36 @@ private extension Value {
     }
     return true
   }
+
+  var baseArgumentOfAddress: Argument? {
+    switch enclosingAccessScope {
+    case .access, .dependence:
+      // A `load_borrow` must not be used after the end of its enclosing access scope, but the
+      // returned borrow escapes to the caller.
+      return nil
+    case .base(let accessBase):
+      guard case .argument(let argument) = accessBase else {
+        return nil
+      }
+      return argument
+    }
+  }
+
 }
 
 private func specialize(function: Function,
-                        with argumentSpecializations: [ArgumentSpecialization],
+                        with specialization: FunctionSpecialization,
                         callerSiteApply: FullApplySite,
-                        _ moduleContext: ModulePassContext)
+                        _ moduleContext: ModulePassContext) -> Function
 {
-  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: argumentSpecializations, from: function)
+  let argumentSpecializations = specialization.arguments
+  let specializedFuncName = moduleContext.mangle(
+      withSignatureSpecializedArguments: argumentSpecializations,
+      resultOwnedToGuaranteed: specialization.resultOwnedToGuaranteed,
+      from: function)
 
-  if moduleContext.lookupFunction(name: specializedFuncName) != nil {
-    return
+  if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
+    return existingFunction
   }
 
   var specializedParams = Array(function.convention.parameters)
@@ -365,9 +692,18 @@ private func specialize(function: Function,
                   convention.errorResult?.type.hasTypeParameter ?? false ||
                   (function.isGeneric && function.implicitlyUsesGenericParameter)
 
+  var specializedResults: [ResultInfo]? = nil
+  if specialization.resultOwnedToGuaranteed {
+    specializedResults = convention.formalResults.map {
+      ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
+                 hasLoweredAddresses: $0.hasLoweredAddresses)
+    }
+  }
+
   let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
       from: function, withName: specializedFuncName,
       withParams: specializedParams,
+      withResults: specializedResults,
       withRepresentation: specializedRepresentation,
       preserveGenericSignature: isGeneric)
 
@@ -414,6 +750,10 @@ private func specialize(function: Function,
     let fri = builder.createFunctionRef(specializedFunction)
 
     let newApplySite: Instruction
+    // The last instruction of the thunk which the argument cleanups must follow. If the result is
+    // returned `@guaranteed`, it must be copied _before_ the arguments are released, because the
+    // result's validity may depend on them.
+    var insertCleanupsAfter: Instruction
 
     switch callerSiteApply {
     case let applyInst as ApplyInst:
@@ -423,9 +763,18 @@ private func specialize(function: Function,
                                          isNonThrowing: applyInst.isNonThrowing,
                                          isNonAsync: applyInst.isNonAsync)
 
-      // TODO: handle return_borrow
-      builder.createReturn(of: newApply)
       newApplySite = newApply
+      insertCleanupsAfter = newApply
+      if specialization.resultOwnedToGuaranteed {
+        // The thunk keeps its `@owned` result convention, so it has to take ownership of the
+        // borrowed value returned by the specialized function.
+        let copy = builder.createCopyValue(operand: newApply)
+        insertCleanupsAfter = copy
+        builder.createReturn(of: copy)
+      } else {
+        // TODO: handle return_borrow
+        builder.createReturn(of: newApply)
+      }
 
     case let tryApply as TryApplyInst:
       let normalBlock = function.appendNewBlock(context)
@@ -435,6 +784,7 @@ private func specialize(function: Function,
                                              arguments: newApplyArgs,
                                              normalBlock: normalBlock, errorBlock: errorBlock,
                                              isNonAsync: tryApply.isNonAsync)
+      insertCleanupsAfter = newApplySite
 
       let retTy = function.mapTypeIntoEnvironment(specializedFunction.resultType)
       let returnVal = normalBlock.addArgument(type: retTy,
@@ -455,7 +805,7 @@ private func specialize(function: Function,
     default:
       fatalError("unsupported apply")
     }
-    Builder.insert(after: newApplySite, context) { builder in
+    Builder.insert(after: insertCleanupsAfter, context) { builder in
       for v in toCleanup {
         if v is BeginBorrowInst {
           builder.createEndBorrow(of: v)
@@ -517,8 +867,85 @@ private func specialize(function: Function,
         offset -= 1
       }
     }
+    if specialization.resultOwnedToGuaranteed {
+      convertResultToGuaranteed(in: specializedFunction,
+                                borrowedFrom: specialization.resultBorrowedFromArguments,
+                                specializedContext)
+    }
   }
   moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
+  return specializedFunction
+}
+
+/// Rewrites the body of `specializedFunction` so that it returns its result as a `@guaranteed`
+/// value with a `return_borrow` instead of consuming it with a `return`.
+private func convertResultToGuaranteed(in specializedFunction: Function,
+                                       borrowedFrom argumentIndices: [Int],
+                                       _ context: FunctionPassContext) {
+  let returnInst = specializedFunction.returnInstruction as! ReturnInst
+
+  var worklist = ValueWorklist(context)
+  defer { worklist.deinitialize() }
+
+  worklist.pushIfNotVisited(returnInst.returnedValue)
+  while let value = worklist.pop() {
+    switch value {
+    case let load as LoadInst where load.loadOwnership == .copy:
+      let builder = Builder(before: load, context)
+      let loadBorrow = builder.createLoadBorrow(fromAddress: load.address)
+      load.replace(with: loadBorrow, context)
+
+    case let copy as CopyValueInst:
+      let builder = Builder(before: copy, context)
+      let beginBorrow = builder.createBeginBorrow(of: copy.fromValue)
+      copy.replace(with: beginBorrow, context)
+
+    case let apply as ApplyInst:
+      let builder = Builder(before: apply, context)
+      let calleeRef = builder.createFunctionRef(specializedFunction)
+      let newApply = builder.createApply(function: calleeRef, apply.substitutionMap,
+                                         arguments: Array(apply.arguments),
+                                         isNonThrowing: apply.isNonThrowing,
+                                         isNonAsync: apply.isNonAsync)
+      let beginBorrow = builder.createBeginBorrow(of: newApply)
+      apply.replace(with: beginBorrow, context)
+
+    case let argument as Argument:
+      let phi = Phi(argument)!
+      worklist.pushIfNotVisited(contentsOf: phi.incomingValues)
+      phi.value.set(ownership: .guaranteed, context)
+      phi.value.set(reborrow: true, context)
+
+    default:
+      fatalError("Unexpected value: \(value)")
+    }
+  }
+
+  // `borrowed-from` instructions for the new guaranteed phis.
+  updateGuaranteedPhis(in: specializedFunction, context)
+
+  let enclosingScopes = Array<Value>(returnInst.returnedValue.getBorrowIntroducers(context).map {
+    let value = $0.value
+    if let phi = Phi(value), let bf = phi.borrowedFrom {
+      return bf
+    }
+    return value
+  })
+  let builder = Builder(before: returnInst, context)
+  builder.createReturnBorrow(of: returnInst.returnedValue, fromScopes: enclosingScopes)
+  context.erase(instruction: returnInst)
+}
+
+private extension Value {
+  /// True if this value introduces a borrow scope which ends within this function.
+  var isLocalBorrowScope: Bool {
+    switch self {
+    case is BeginBorrowInst, is LoadBorrowInst:
+      return true
+    default:
+      return false
+    }
+  }
 }
 
 private extension ParameterInfo {
