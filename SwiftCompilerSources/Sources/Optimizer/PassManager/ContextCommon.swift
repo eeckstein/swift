@@ -57,7 +57,9 @@ extension Context {
     bridgedPassContext.getModuleDecl().getAs(ModuleDecl.self)
   }
 
-  func mangle(withSignatureSpecializedArguments: [ArgumentSpecialization], from function: Function) -> String {
+  func mangle(withSignatureSpecializedArguments: [ArgumentSpecialization],
+              resultOwnedToGuaranteed: Bool = false,
+              from function: Function) -> String {
     let bridgedArgSpecs = withSignatureSpecializedArguments.map {
       let bridgedKind: BridgedPassContext.SignatureSpecializedArgMangling.Kind
       switch $0.kind {
@@ -69,7 +71,9 @@ extension Context {
       return BridgedPassContext.SignatureSpecializedArgMangling(argIdx: $0.argumentIndex, kind: bridgedKind)
     }
     return bridgedArgSpecs.withBridgedArrayRef { bridgedArgIndices in
-      String(taking: bridgedPassContext.mangleWithSignatureSpecializedArgs(bridgedArgIndices, function.bridged))
+      String(taking: bridgedPassContext.mangleWithSignatureSpecializedArgs(bridgedArgIndices,
+                                                                          resultOwnedToGuaranteed,
+                                                                          function.bridged))
     }
   }
 
