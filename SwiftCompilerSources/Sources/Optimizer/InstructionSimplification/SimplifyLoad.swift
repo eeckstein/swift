@@ -35,6 +35,9 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
     if replaceTrivialLoadOfAddrCast(context) {
       return
     }
+    if replaceReferenceLoadOfMetatypeAddrCast(context) {
+      return
+    }
     if tryRemoveAddressCast(context) {
       return
     }
@@ -213,6 +216,41 @@ extension LoadInst : OnoneSimplifiable, SILCombineSimplifiable {
     let builder = Builder(before: self, context)
     let newLoad = builder.createLoad(fromAddress: addrCast.fromAddress, ownership: .trivial)
     let cast = builder.createUncheckedTrivialBitCast(from: newLoad, to: type)
+    replace(with: cast, context)
+    return true
+  }
+
+  /// Replaces a load of a reference from an `unchecked_addr_cast` of a metatype address:
+  /// ```
+  ///   %1 = unchecked_addr_cast %0 : $*@thick AnyObject.Type to $*AnyObject
+  ///   %2 = load [copy] %1
+  /// ```
+  /// with a trivial load of the metatype followed by a value cast:
+  /// ```
+  ///   %1 = load [trivial] %0 : $*@thick AnyObject.Type
+  ///   %2 = unchecked_value_cast %1 to $AnyObject     // ownership: none
+  /// ```
+  /// Such code results from `unsafeBitCast(someClass.self, to: SomeRef.self)`.
+  /// This cast is only meaningful for Objective-C classes, whose class object is itself an
+  /// Objective-C object. The metatype of a native Swift class is _not_ a class instance.
+  /// The reference points to class metadata, which is immortal. Therefore the reference
+  /// doesn't need to be retained and released, which is expressed by the "none" ownership
+  /// of the forwarding `unchecked_value_cast`.
+  private func replaceReferenceLoadOfMetatypeAddrCast(_ context: SimplifyContext) -> Bool {
+    guard loadOwnership == .copy || loadOwnership == .take,
+          let addrCast = address as? UncheckedAddrCastInst,
+          addrCast.fromAddress.type.canonicalType.isMetatype ||
+            addrCast.fromAddress.type.canonicalType.isExistentialMetatype,
+          type.isReferenceCounted(in: parentFunction),
+          let fromSize = addrCast.fromAddress.type.objectType.getStaticSize(context: context),
+          let toSize = type.getStaticSize(context: context),
+          fromSize == toSize
+    else {
+      return false
+    }
+    let builder = Builder(before: self, context)
+    let newLoad = builder.createLoad(fromAddress: addrCast.fromAddress, ownership: .trivial)
+    let cast = builder.createUncheckedValueCast(from: newLoad, to: type)
     replace(with: cast, context)
     return true
   }
