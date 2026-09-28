@@ -325,7 +325,9 @@ bb3(%15 : @owned $S):
 // CHECK-LABEL: sil [ossa] @call_owned_result_load :
 // CHECK:         [[F:%.*]] = function_ref @$s17owned_result_loadTf4nnnn_g :
 // CHECK:         [[A:%.*]] = apply [[F]](%0, %1, %2, %3)
-// CHECK:         fix_lifetime [[A]]
+// CHECK:         [[B:%.*]] = begin_borrow [[A]]
+// CHECK:         fix_lifetime [[B]]
+// CHECK:         end_borrow [[B]]
 // CHECK-NEXT:    tuple
 // CHECK:       } // end sil function 'call_owned_result_load'
 sil [ossa] @call_owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> () {
