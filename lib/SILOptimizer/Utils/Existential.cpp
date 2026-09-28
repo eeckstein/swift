@@ -15,6 +15,7 @@
 #include "swift/AST/LocalArchetypeRequirementCollector.h"
 #include "swift/AST/ProtocolConformance.h"
 #include "swift/SIL/BasicBlockUtils.h"
+#include "swift/SIL/InstructionUtils.h"
 #include "llvm/ADT/SmallPtrSet.h"
 
 using namespace swift;

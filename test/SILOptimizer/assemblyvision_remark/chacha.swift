@@ -36,7 +36,6 @@ public func run_ChaCha(_ N: Int) {
 
 
   var plaintext = Array(repeating: UInt8(0), count: 30720) // expected-note {{of 'plaintext}}
-                                                           // expected-note @-1 {{of 'plaintext}}
   for _ in 1...N {
     ChaCha20.encrypt(bytes: &plaintext, key: key, nonce: nonce)
     print(plaintext.first!) // expected-remark @:11 {{heap allocated ref of type '}}
