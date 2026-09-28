@@ -808,7 +808,7 @@ private func specialize(function: Function,
       if tryApply.errorBlock.arguments.isEmpty {
         Builder(atEndOf: errorBlock, location: newApplySite.location, context).createThrowAddr()
       } else {
-        let errorInterfaceTy = function.convention.errorResult!.getReturnValueType(function: function)
+        let errorInterfaceTy = function.convention.errorResult!.getReturnValueType(of: function)
         let errorTy = function.mapTypeIntoEnvironment(errorInterfaceTy.rawType)
         let errorVal = errorBlock.addArgument(type: errorTy.loweredType(in: function),
                                               ownership: tryApply.errorBlock.arguments[0].ownership,
