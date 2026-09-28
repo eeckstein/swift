@@ -16,7 +16,8 @@ import SIL
 let functionSignatureOptimization = ModulePass(name: "function-signature-optimization") {
   (moduleContext: ModulePassContext) in
 
-  var functionSpecializations = Dictionary<Function, FunctionSpecialization>()
+  var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
+  var resultBorrowSources = Dictionary<Function, [Int]>()
 
   for function in moduleContext.functions {
     guard function.hasOwnership,
@@ -31,7 +32,9 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
       for inst in function.instructions {
         switch inst {
         case let apply as ApplyInst:
-          if trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext) {
+          if trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext) ||
+             tryConvertResultToGuaranteed(apply: apply, cacheIn: &resultBorrowSources, moduleContext)
+          {
             changed = true
           }
         case let tryApply as TryApplyInst:
@@ -47,81 +50,50 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
 }
 
 private func trySpecialize(apply: FullApplySite,
-                           cacheIn functionSpecializations: inout Dictionary<Function, FunctionSpecialization>,
+                           cacheIn functionSpecializations: inout Dictionary<Function, [ArgumentSpecialization]>,
                            _ moduleContext: ModulePassContext) -> Bool {
-  guard let callee = apply.referencedFunction,
-        callee.hasOwnership,
-        callee.shouldOptimize,
-        callee.isDefinition,
-        callee.blocks.contains(where: { $0.terminator.isFunctionExiting })
-  else {
+  guard let callee = apply.optimizableCallee else {
     return false
   }
 
-  if callee.convention.hasLifetimeDependencies() {
-    return false
-  }
-
-  let specialization: FunctionSpecialization
-  if let existingSpecialization = functionSpecializations[callee] {
-    specialization = existingSpecialization
+  let specializations: [ArgumentSpecialization]
+  if let existingSpecializations = functionSpecializations[callee] {
+    specializations = existingSpecializations
   } else {
-    specialization = moduleContext.transform(function: callee) { context in
-      getSpecialization(for: callee, context)
+    specializations = moduleContext.transform(function: callee) { context in
+      getParameterSpecializations(for: callee, context)
     }
-    functionSpecializations[callee] = specialization
-  }
-  if specialization.isEmpty {
-    return false
+    functionSpecializations[callee] = specializations
   }
 
   let benefit = moduleContext.transform(function: apply.parentFunction) { context in
-    apply.canBenefit(from: specialization, context)
+    apply.canBenefit(from: specializations, context)
   }
   guard benefit else {
     return false
   }
 
-  let specializedFunction = specialize(function: callee, with: specialization, callerSiteApply: apply, moduleContext)
+  specialize(function: callee, with: specializations, callerSiteApply: apply, moduleContext)
   moduleContext.transform(function: apply.parentFunction) { context in
-    if specialization.resultOwnedToGuaranteed {
-      let applyInst = apply as! ApplyInst
-      let builder = Builder(before: applyInst, context)
-      let calleeRef = builder.createFunctionRef(specializedFunction)
-      let newApply = builder.createApply(function: calleeRef, applyInst.substitutionMap,
-                                         arguments: Array(applyInst.arguments),
-                                         isNonThrowing: applyInst.isNonThrowing,
-                                         isNonAsync: applyInst.isNonAsync)
-      let beginBorrow = builder.createBeginBorrow(of: newApply)
-      for use in applyInst.uses {
-        if let destroy = use.instruction as? DestroyValueInst {
-          Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
-          context.erase(instruction: destroy)
-        } else if use.instruction != beginBorrow {
-          use.set(to: beginBorrow, context)
-        }
-      }
-      applyInst.replace(with: newApply, context)
-    } else {
-      context.inlineFunction(apply: apply, mandatoryInline: false)
-    }
+    context.inlineFunction(apply: apply, mandatoryInline: false)
   }
   return true
 }
 
-private func getSpecialization(for function: Function,
-                               _ context: FunctionPassContext) -> FunctionSpecialization {
-  var specialization = FunctionSpecialization()
-  specialization.arguments = getParameterSpecializations(for: function, context)
-
-  // TODO: combine the result conversion with argument specializations. Currently they can
-  // interfere with each other: e.g. a `guaranteedToOwned` argument can be the borrow source of
-  // the returned value, and self-recursive calls can only be re-directed to the specialized
-  // function if the argument list is unchanged.
-  if specialization.arguments.isEmpty {
-    specialization.resultBorrowedFromArguments = getResultBorrowSources(of: function, context)
+private extension FullApplySite {
+  /// The callee if it's a function whose signature can be optimized.
+  var optimizableCallee: Function? {
+    guard let callee = referencedFunction,
+          callee.hasOwnership,
+          callee.shouldOptimize,
+          callee.isDefinition,
+          callee.blocks.contains(where: { $0.terminator.isFunctionExiting }),
+          !callee.convention.hasLifetimeDependencies()
+    else {
+      return nil
+    }
+    return callee
   }
-  return specialization
 }
 
 private func getParameterSpecializations(for function: Function,
@@ -278,6 +250,59 @@ private extension FunctionArgument {
 //                    Owned -> guaranteed result conversion
 //===----------------------------------------------------------------------===//
 
+/// Replaces `apply` with an apply of a specialized callee which returns its single direct result as
+/// `@guaranteed` instead of `@owned`. This is done if the returned value is borrowed from the callee's
+/// arguments (see `getResultBorrowSources`) and the caller doesn't need to own the result.
+private func tryConvertResultToGuaranteed(apply: ApplyInst,
+                                          cacheIn resultBorrowSources: inout Dictionary<Function, [Int]>,
+                                          _ moduleContext: ModulePassContext) -> Bool {
+  guard let callee = apply.optimizableCallee else {
+    return false
+  }
+
+  let borrowSources: [Int]
+  if let existingBorrowSources = resultBorrowSources[callee] {
+    borrowSources = existingBorrowSources
+  } else {
+    borrowSources = moduleContext.transform(function: callee) { context in
+      return getResultBorrowSources(of: callee, context)
+    }
+    resultBorrowSources[callee] = borrowSources
+  }
+  if borrowSources.isEmpty {
+    return false
+  }
+
+  let benefit = moduleContext.transform(function: apply.parentFunction) { context in
+    apply.canBenefitFromGuaranteedResult(borrowedFrom: borrowSources, context)
+  }
+  guard benefit else {
+    return false
+  }
+
+  let specializedFunction = specializeWithGuaranteedResult(function: callee, borrowedFrom: borrowSources,
+                                                           callerSiteApply: apply, moduleContext)
+  moduleContext.transform(function: apply.parentFunction) { context in
+    let builder = Builder(before: apply, context)
+    let calleeRef = builder.createFunctionRef(specializedFunction)
+    let newApply = builder.createApply(function: calleeRef, apply.substitutionMap,
+                                       arguments: Array(apply.arguments),
+                                       isNonThrowing: apply.isNonThrowing,
+                                       isNonAsync: apply.isNonAsync)
+    let beginBorrow = builder.createBeginBorrow(of: newApply)
+    for use in apply.uses {
+      if let destroy = use.instruction as? DestroyValueInst {
+        Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
+        context.erase(instruction: destroy)
+      } else if use.instruction != beginBorrow {
+        use.set(to: beginBorrow, context)
+      }
+    }
+    apply.replace(with: newApply, context)
+  }
+  return true
+}
+
 /// Returns the indices of the arguments from whose memory - or value - the single direct `@owned`
 /// result of `function` is borrowed. If the result is empty, the result cannot be returned
 /// `@guaranteed`.
@@ -299,7 +324,7 @@ private extension FunctionArgument {
 ///     return_borrow %1 from_scopes (%1)
 /// ```
 /// The returned argument indices are the contract for callers: the borrow is only valid as long as
-/// the memory of those arguments is not modified (see `borrowedResultStaysValid`).
+/// the memory of those arguments is not modified (see `argumentScopesOverlapReturnLifetime`).
 private func getResultBorrowSources(of function: Function, _ context: FunctionPassContext) -> [Int] {
   guard let returnInst = function.returnInstruction as? ReturnInst,
         returnInst.returnedValue.ownership == .owned
@@ -461,6 +486,18 @@ private func mayModifyMemory(after borrowingInstructions: Stack<SingleValueInstr
 }
 
 private extension ApplyInst {
+  func canBenefitFromGuaranteedResult(borrowedFrom argumentIndices: [Int], _ context: FunctionPassContext) -> Bool {
+    guard canConvertResultFromOwnedToGuaranteed,
+          argumentScopesOverlapReturnLifetime(of: argumentIndices, context)
+    else {
+      return false
+    }
+    // A `@guaranteed` result only helps if the caller doesn't have to own the returned value
+    // anyway. If it does, the removed retain in the callee is just moved to the caller.
+    return !uses.endingLifetime.isEmpty &&
+           uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst })
+  }
+
   var canConvertResultFromOwnedToGuaranteed: Bool {
     !hasOwnedDirectGuaranteedArgument &&
       uses.ignore(usersOfType: DestroyValueInst.self).allSatisfy { $0.canAccept(ownership: .guaranteed) }
@@ -546,33 +583,13 @@ private extension LoadInst {
 }
 
 private extension FullApplySite {
-  func canBenefit(from specialization: FunctionSpecialization, _ context: FunctionPassContext) -> Bool {
-    if specialization.resultOwnedToGuaranteed {
-      guard let applyInst = self as? ApplyInst else {
-        return false
-      }
-      guard applyInst.canConvertResultFromOwnedToGuaranteed,
-            applyInst.argumentScopesOverlapReturnLifetime(of: specialization.resultBorrowedFromArguments, context)
-      else {
-        return false
-      }
-    }
-
-    for spec in specialization.arguments {
+  func canBenefit(from parameterSpecializations: [ArgumentSpecialization], _ context: FunctionPassContext) -> Bool {
+    for spec in parameterSpecializations {
       if let arg = operand(forCalleeArgumentIndex: spec.argumentIndex),
          arg.canBenefit(from: spec.kind, context)
       {
         return true
       }
-    }
-    if specialization.resultOwnedToGuaranteed,
-       let applyInst = self as? ApplyInst,
-       // A `@guaranteed` result only helps if the caller doesn't have to own the returned value
-       // anyway. If it does, the removed retain in the callee is just moved to the caller.
-       !applyInst.uses.endingLifetime.isEmpty,
-       applyInst.uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst })
-    {
-      return true
     }
     return false
   }
@@ -651,18 +668,15 @@ private extension Value {
 }
 
 private func specialize(function: Function,
-                        with specialization: FunctionSpecialization,
+                        with argumentSpecializations: [ArgumentSpecialization],
                         callerSiteApply: FullApplySite,
-                        _ moduleContext: ModulePassContext) -> Function
+                        _ moduleContext: ModulePassContext)
 {
-  let argumentSpecializations = specialization.arguments
-  let specializedFuncName = moduleContext.mangle(
-      withSignatureSpecializedArguments: argumentSpecializations,
-      resultOwnedToGuaranteed: specialization.resultOwnedToGuaranteed,
-      from: function)
+  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: argumentSpecializations,
+                                                 from: function)
 
-  if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
-    return existingFunction
+  if moduleContext.lookupFunction(name: specializedFuncName) != nil {
+    return
   }
 
   var specializedParams = Array(function.convention.parameters)
@@ -713,18 +727,9 @@ private func specialize(function: Function,
                   convention.errorResult?.type.hasTypeParameter ?? false ||
                   (function.isGeneric && function.implicitlyUsesGenericParameter)
 
-  var specializedResults: [ResultInfo]? = nil
-  if specialization.resultOwnedToGuaranteed {
-    specializedResults = convention.formalResults.map {
-      ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
-                 hasLoweredAddresses: $0.hasLoweredAddresses)
-    }
-  }
-
   let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
       from: function, withName: specializedFuncName,
       withParams: specializedParams,
-      withResults: specializedResults,
       withRepresentation: specializedRepresentation,
       preserveGenericSignature: isGeneric)
 
@@ -771,10 +776,6 @@ private func specialize(function: Function,
     let fri = builder.createFunctionRef(specializedFunction)
 
     let newApplySite: Instruction
-    // The last instruction of the thunk which the argument cleanups must follow. If the result is
-    // returned `@guaranteed`, it must be copied _before_ the arguments are released, because the
-    // result's validity may depend on them.
-    var insertCleanupsAfter: Instruction
 
     switch callerSiteApply {
     case let applyInst as ApplyInst:
@@ -784,18 +785,9 @@ private func specialize(function: Function,
                                          isNonThrowing: applyInst.isNonThrowing,
                                          isNonAsync: applyInst.isNonAsync)
 
+      // TODO: handle return_borrow
+      builder.createReturn(of: newApply)
       newApplySite = newApply
-      insertCleanupsAfter = newApply
-      if specialization.resultOwnedToGuaranteed {
-        // The thunk keeps its `@owned` result convention, so it has to take ownership of the
-        // borrowed value returned by the specialized function.
-        let copy = builder.createCopyValue(operand: newApply)
-        insertCleanupsAfter = copy
-        builder.createReturn(of: copy)
-      } else {
-        // TODO: handle return_borrow
-        builder.createReturn(of: newApply)
-      }
 
     case let tryApply as TryApplyInst:
       let normalBlock = function.appendNewBlock(context)
@@ -805,7 +797,6 @@ private func specialize(function: Function,
                                              arguments: newApplyArgs,
                                              normalBlock: normalBlock, errorBlock: errorBlock,
                                              isNonAsync: tryApply.isNonAsync)
-      insertCleanupsAfter = newApplySite
 
       let retTy = function.mapTypeIntoEnvironment(specializedFunction.resultType)
       let returnVal = normalBlock.addArgument(type: retTy,
@@ -826,7 +817,7 @@ private func specialize(function: Function,
     default:
       fatalError("unsupported apply")
     }
-    Builder.insert(after: insertCleanupsAfter, context) { builder in
+    Builder.insert(after: newApplySite, context) { builder in
       for v in toCleanup {
         if v is BeginBorrowInst {
           builder.createEndBorrow(of: v)
@@ -888,11 +879,61 @@ private func specialize(function: Function,
         offset -= 1
       }
     }
-    if specialization.resultOwnedToGuaranteed {
-      convertResultToGuaranteed(in: specializedFunction,
-                                borrowedFrom: specialization.resultBorrowedFromArguments,
-                                specializedContext)
+  }
+  moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
+}
+
+/// Creates a specialized version of `function` which returns its single direct result as `@guaranteed`.
+/// The original `function` becomes a thunk which calls the specialized function and copies the result.
+private func specializeWithGuaranteedResult(function: Function,
+                                            borrowedFrom argumentIndices: [Int],
+                                            callerSiteApply: ApplyInst,
+                                            _ moduleContext: ModulePassContext) -> Function
+{
+  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: [],
+                                                 resultOwnedToGuaranteed: true,
+                                                 from: function)
+
+  if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
+    return existingFunction
+  }
+
+  let specializedResults = function.convention.formalResults.map {
+    ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
+               hasLoweredAddresses: $0.hasLoweredAddresses)
+  }
+
+  let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
+      from: function, withName: specializedFuncName,
+      withParams: Array(function.convention.parameters),
+      withResults: specializedResults)
+
+  moduleContext.moveFunctionBody(from: function, to: specializedFunction)
+
+  moduleContext.transform(function: function) { context in
+    function.set(thunkKind: .signatureOptimizedThunk, context)
+
+    let newEntryBlock = function.appendNewBlock(context)
+    let newApplyArgs: [Value] = specializedFunction.arguments.map {
+      newEntryBlock.addFunctionArgument(type: $0.type, context)
     }
+    let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+    let fri = builder.createFunctionRef(specializedFunction)
+    let newApply = builder.createApply(function: fri,
+                                       function.isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
+                                       arguments: newApplyArgs,
+                                       isNonThrowing: callerSiteApply.isNonThrowing,
+                                       isNonAsync: callerSiteApply.isNonAsync)
+
+    // The thunk keeps its `@owned` result convention, so it has to take ownership of the
+    // borrowed value returned by the specialized function.
+    let copy = builder.createCopyValue(operand: newApply)
+    builder.createReturn(of: copy)
+  }
+
+  moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
+      (specializedFunction, specializedContext) in
+    convertResultToGuaranteed(in: specializedFunction, borrowedFrom: argumentIndices, specializedContext)
   }
   moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
   return specializedFunction
