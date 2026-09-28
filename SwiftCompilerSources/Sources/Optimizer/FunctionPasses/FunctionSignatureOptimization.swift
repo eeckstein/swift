@@ -92,7 +92,15 @@ private func trySpecialize(apply: FullApplySite,
                                          arguments: Array(applyInst.arguments),
                                          isNonThrowing: applyInst.isNonThrowing,
                                          isNonAsync: applyInst.isNonAsync)
-      context.erase(instructions: applyInst.uses.filter(usersOfType: DestroyValueInst.self).users)
+      let beginBorrow = builder.createBeginBorrow(of: newApply)
+      for use in applyInst.uses {
+        if let destroy = use.instruction as? DestroyValueInst {
+          Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
+          context.erase(instruction: destroy)
+        } else if use.instruction != beginBorrow {
+          use.set(to: beginBorrow, context)
+        }
+      }
       applyInst.replace(with: newApply, context)
     } else {
       context.inlineFunction(apply: apply, mandatoryInline: false)

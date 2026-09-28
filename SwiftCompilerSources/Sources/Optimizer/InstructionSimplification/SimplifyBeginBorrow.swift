@@ -80,6 +80,13 @@ private func tryReplaceBorrowWithOwnedOperand(beginBorrow: BeginBorrowInst, _ co
 ///     // ... uses of %0
 /// ```
 private func tryReplaceInnerBorrowScope(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) -> Bool {
+  if beginBorrow.borrowedValue is ApplyInst {
+    // Don't remove the explicit borrow scope of an apply with a `@guaranteed` return value.
+    // This borrow scope is inserted by FunctionSignatureOptimization to get the correct borrow
+    // introducers (= this `begin_borrow`) for a guaranteed function result.
+    // TODO: remove this workaround until the `apply` with the guaranteed result is itself a borrow introducer.
+    return false
+  }
   guard beginBorrow.scopeEndingOperands.allSatisfy({ $0.instruction is EndBorrowInst }) else {
     return false
   }
