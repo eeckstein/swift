@@ -705,3 +705,53 @@ bb0(%0 : $*B):
   return %2 : $Builtin.Int64
 }
 
+
+// CHECK-LABEL: sil [ossa] @reference_load_of_metatype_addr_cast :
+// CHECK:       bb0(%0 : $*@thick any AnyObject.Type):
+// CHECK-NEXT:    [[L:%.*]] = load [trivial] %0 : $*@thick any AnyObject.Type
+// CHECK-NEXT:    [[C:%.*]] = unchecked_value_cast [[L]] : $@thick any AnyObject.Type to $AnyObject
+// CHECK-NEXT:    return [[C]] : $AnyObject
+// CHECK:       } // end sil function 'reference_load_of_metatype_addr_cast'
+sil [ossa] @reference_load_of_metatype_addr_cast : $@convention(thin) (@in_guaranteed @thick AnyObject.Type) -> @owned AnyObject {
+bb0(%0 : $*@thick AnyObject.Type):
+  %1 = unchecked_addr_cast %0 : $*@thick AnyObject.Type to $*AnyObject
+  %2 = load [copy] %1 : $*AnyObject
+  return %2 : $AnyObject
+}
+
+// CHECK-LABEL: sil [ossa] @reference_take_of_class_metatype_addr_cast :
+// CHECK:       bb0(%0 : $*@thick B.Type):
+// CHECK-NEXT:    [[L:%.*]] = load [trivial] %0 : $*@thick B.Type
+// CHECK-NEXT:    [[C:%.*]] = unchecked_value_cast [[L]] : $@thick B.Type to $B
+// CHECK-NEXT:    return [[C]] : $B
+// CHECK:       } // end sil function 'reference_take_of_class_metatype_addr_cast'
+sil [ossa] @reference_take_of_class_metatype_addr_cast : $@convention(thin) (@in @thick B.Type) -> @owned B {
+bb0(%0 : $*@thick B.Type):
+  %1 = unchecked_addr_cast %0 : $*@thick B.Type to $*B
+  %2 = load [take] %1 : $*B
+  return %2 : $B
+}
+
+// Non-metatype source type: Builtin.Int64 — don't optimize.
+// CHECK-LABEL: sil [ossa] @dont_reference_load_of_non_metatype_addr_cast :
+// CHECK:         %1 = unchecked_addr_cast %0 : $*Builtin.Int64 to $*B
+// CHECK-NEXT:    %2 = load [copy] %1 : $*B
+// CHECK:       } // end sil function 'dont_reference_load_of_non_metatype_addr_cast'
+sil [ossa] @dont_reference_load_of_non_metatype_addr_cast : $@convention(thin) (@inout Builtin.Int64) -> @owned B {
+bb0(%0 : $*Builtin.Int64):
+  %1 = unchecked_addr_cast %0 : $*Builtin.Int64 to $*B
+  %2 = load [copy] %1 : $*B
+  return %2 : $B
+}
+
+// Different sizes: a thin metatype is empty — don't optimize.
+// CHECK-LABEL: sil [ossa] @dont_reference_load_of_thin_metatype_addr_cast :
+// CHECK:         %1 = unchecked_addr_cast %0 : $*@thin Int.Type to $*B
+// CHECK-NEXT:    %2 = load [copy] %1 : $*B
+// CHECK:       } // end sil function 'dont_reference_load_of_thin_metatype_addr_cast'
+sil [ossa] @dont_reference_load_of_thin_metatype_addr_cast : $@convention(thin) (@inout @thin Int.Type) -> @owned B {
+bb0(%0 : $*@thin Int.Type):
+  %1 = unchecked_addr_cast %0 : $*@thin Int.Type to $*B
+  %2 = load [copy] %1 : $*B
+  return %2 : $B
+}
