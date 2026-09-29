@@ -102,7 +102,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   defer { liverange.deinitialize() }
 
   createEndBorrows(for: borrow, atEndOf: liverange, collectedUses: collectedUses)
-  collectedUses.changeOwnedToGuaranteed(outerScope: borrow, within: liverange)
+  collectedUses.changeOwnedToGuaranteed(outerScopes: [.uncheckOwnershipConversion(borrow)], within: liverange)
   return true
 }
 
