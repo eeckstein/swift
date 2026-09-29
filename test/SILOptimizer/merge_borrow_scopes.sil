@@ -122,16 +122,19 @@ bb0(%0 : @owned $Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
   return %r : $()
 }
 
-// Borrow scopes in different basic blocks are not merged: the pass operates
-// per-block and does not propagate the scope dictionary across branches.
+// Borrow scopes in different basic blocks are merged if the first scope dominates the second one.
 //
-// CHECK-LABEL: sil [ossa] @dont_merge_across_blocks :
+// CHECK-LABEL: sil [ossa] @merge_across_blocks :
 // CHECK:       bb0
-// CHECK:         begin_borrow
-// CHECK:       bb1
-// CHECK:         begin_borrow
-// CHECK:       } // end sil function 'dont_merge_across_blocks'
-sil [ossa] @dont_merge_across_blocks : $@convention(thin) (@owned Builtin.NativeObject) -> () {
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         apply {{%.*}}([[B]])
+// CHECK-NEXT:    br bb1
+// CHECK:       bb1:
+// CHECK-NEXT:    apply {{%.*}}([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NOT:     begin_borrow
+// CHECK:       } // end sil function 'merge_across_blocks'
+sil [ossa] @merge_across_blocks : $@convention(thin) (@owned Builtin.NativeObject) -> () {
 bb0(%0 : @owned $Builtin.NativeObject):
   %use = function_ref @use_obj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
   %1 = begin_borrow %0 : $Builtin.NativeObject
@@ -146,3 +149,66 @@ bb1:
   %r = tuple ()
   return %r : $()
 }
+
+// An `end_borrow` is inserted on paths which don't reach the second scope.
+//
+// CHECK-LABEL: sil [ossa] @merge_across_blocks_with_exit :
+// CHECK:       bb0
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK-NEXT:    apply {{%.*}}([[B]])
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:       } // end sil function 'merge_across_blocks_with_exit'
+sil [ossa] @merge_across_blocks_with_exit : $@convention(thin) (@owned Builtin.NativeObject) -> () {
+bb0(%0 : @owned $Builtin.NativeObject):
+  %use = function_ref @use_obj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %1 = begin_borrow %0 : $Builtin.NativeObject
+  %2 = apply %use(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  end_borrow %1 : $Builtin.NativeObject
+  cond_br undef, bb1, bb2
+bb1:
+  destroy_value %0 : $Builtin.NativeObject
+  br bb3
+bb2:
+  %5 = begin_borrow %0 : $Builtin.NativeObject
+  %6 = apply %use(%5) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  end_borrow %5 : $Builtin.NativeObject
+  destroy_value %0 : $Builtin.NativeObject
+  br bb3
+bb3:
+  %r = tuple ()
+  return %r : $()
+}
+
+// Don't merge if none of the scopes dominates the other one.
+//
+// CHECK-LABEL: sil [ossa] @dont_merge_non_dominating_scopes :
+// CHECK:       bb1:
+// CHECK-NEXT:    begin_borrow
+// CHECK:       bb2:
+// CHECK-NEXT:    begin_borrow
+// CHECK:       } // end sil function 'dont_merge_non_dominating_scopes'
+sil [ossa] @dont_merge_non_dominating_scopes : $@convention(thin) (@owned Builtin.NativeObject) -> () {
+bb0(%0 : @owned $Builtin.NativeObject):
+  %use = function_ref @use_obj : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  cond_br undef, bb1, bb2
+bb1:
+  %1 = begin_borrow %0 : $Builtin.NativeObject
+  %2 = apply %use(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  end_borrow %1 : $Builtin.NativeObject
+  br bb3
+bb2:
+  %5 = begin_borrow %0 : $Builtin.NativeObject
+  %6 = apply %use(%5) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  end_borrow %5 : $Builtin.NativeObject
+  br bb3
+bb3:
+  destroy_value %0 : $Builtin.NativeObject
+  %r = tuple ()
+  return %r : $()
+}
+
