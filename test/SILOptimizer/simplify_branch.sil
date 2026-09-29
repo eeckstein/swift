@@ -295,8 +295,8 @@ bb3(%4 : $TwoInts):
 // CHECK:       bb3({{%.*}} : @owned $S):
 // CHECK-NEXT:    fix_lifetime
 // CHECK:       } // end sil function 'dont_unwrap_with_other_use'
-sil [ossa] @dont_unwrap_with_other_use : $@convention(thin) (@guaranteed C, @guaranteed C) -> @owned C {
-bb0(%0 : @guaranteed $C, %1 : @guaranteed $C):
+sil [ossa] @dont_unwrap_with_other_use : $@convention(thin) (@guaranteed C, @guaranteed S) -> @owned C {
+bb0(%0 : @guaranteed $C, %1 : @guaranteed $S):
   cond_br undef, bb1, bb2
 
 bb1:
@@ -305,8 +305,7 @@ bb1:
   br bb3(%3 : $S)
 
 bb2:
-  %4 = copy_value %1 : $C
-  %5 = struct $S (%4 : $C)
+  %5 = copy_value %1 : $S
   br bb3(%5 : $S)
 
 bb3(%6 : @owned $S):

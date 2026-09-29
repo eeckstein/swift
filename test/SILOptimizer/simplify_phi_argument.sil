@@ -477,3 +477,126 @@ bb3(%4 : @owned $S):
   destroy_value %4 : $S
   return %6 : $C
 }
+
+// Identical aggregates which feed a phi are sunk into the phi's block. Nested aggregates are sunk
+// step by step, so that the phi is removed completely.
+// CHECK-LABEL: sil [ossa] @sink_identical_nested_structs
+// CHECK:       bb1:
+// CHECK-NEXT:    br bb3
+// CHECK:       bb2:
+// CHECK-NEXT:    br bb3
+// CHECK:       bb3:
+// CHECK-NEXT:    [[S:%.*]] = struct $S (%0 : $C)
+// CHECK-NEXT:    [[T:%.*]] = tuple ([[S]] : $S, %1 : $Builtin.Int64)
+// CHECK-NEXT:    return [[T]] : $(S, Builtin.Int64)
+// CHECK:       } // end sil function 'sink_identical_nested_structs'
+sil [ossa] @sink_identical_nested_structs : $@convention(thin) (@owned C, Builtin.Int64) -> @owned (S, Builtin.Int64) {
+bb0(%0 : @owned $C, %1 : $Builtin.Int64):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = struct $S (%0 : $C)
+  %4 = tuple (%3 : $S, %1 : $Builtin.Int64)
+  br bb3(%4 : $(S, Builtin.Int64))
+
+bb2:
+  %6 = struct $S (%0 : $C)
+  %7 = tuple (%6 : $S, %1 : $Builtin.Int64)
+  br bb3(%7 : $(S, Builtin.Int64))
+
+bb3(%9 : @owned $(S, Builtin.Int64)):
+  return %9 : $(S, Builtin.Int64)
+}
+
+// If the aggregates differ in a single operand, only that operand is passed as phi argument.
+// CHECK-LABEL: sil [ossa] @sink_structs_with_different_operand
+// CHECK:       bb1:
+// CHECK-NEXT:    destroy_value %2
+// CHECK-NEXT:    br bb3(%1 : $C)
+// CHECK:       bb2:
+// CHECK-NEXT:    destroy_value %1
+// CHECK-NEXT:    br bb3(%2 : $C)
+// CHECK:       bb3([[A:%.*]] : @owned $C):
+// CHECK-NEXT:    [[S:%.*]] = struct $S2 (%0 : $C, [[A]] : $C)
+// CHECK-NEXT:    return [[S]] : $S2
+// CHECK:       } // end sil function 'sink_structs_with_different_operand'
+sil [ossa] @sink_structs_with_different_operand : $@convention(thin) (@owned C, @owned C, @owned C) -> @owned S2 {
+bb0(%0 : @owned $C, %1 : @owned $C, %2 : @owned $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  destroy_value %2 : $C
+  %4 = struct $S2 (%0 : $C, %1 : $C)
+  br bb3(%4 : $S2)
+
+bb2:
+  destroy_value %1 : $C
+  %7 = struct $S2 (%0 : $C, %2 : $C)
+  br bb3(%7 : $S2)
+
+bb3(%9 : @owned $S2):
+  return %9 : $S2
+}
+
+// Enums are not sunk.
+// CHECK-LABEL: sil [ossa] @dont_sink_enums
+// CHECK:       bb3({{%.*}} : @owned $E):
+// CHECK:       } // end sil function 'dont_sink_enums'
+sil [ossa] @dont_sink_enums : $@convention(thin) (@owned C, @owned C) -> @owned E {
+bb0(%0 : @owned $C, %1 : @owned $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  destroy_value %1 : $C
+  %4 = enum $E, #E.a!enumelt, %0 : $C
+  br bb3(%4 : $E)
+
+bb2:
+  destroy_value %0 : $C
+  %7 = enum $E, #E.a!enumelt, %1 : $C
+  br bb3(%7 : $E)
+
+bb3(%9 : @owned $E):
+  return %9 : $E
+}
+
+// Don't sink if the aggregates differ in more than one operand.
+// CHECK-LABEL: sil [ossa] @dont_sink_structs_with_two_different_operands
+// CHECK:       bb3({{%.*}} : @owned $S2):
+// CHECK:       } // end sil function 'dont_sink_structs_with_two_different_operands'
+sil [ossa] @dont_sink_structs_with_two_different_operands : $@convention(thin) (@owned C, @owned C) -> @owned S2 {
+bb0(%0 : @owned $C, %1 : @owned $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %2 = struct $S2 (%0 : $C, %1 : $C)
+  br bb3(%2 : $S2)
+
+bb2:
+  %4 = struct $S2 (%1 : $C, %0 : $C)
+  br bb3(%4 : $S2)
+
+bb3(%6 : @owned $S2):
+  return %6 : $S2
+}
+
+// Don't sink if an aggregate has other uses.
+// CHECK-LABEL: sil [ossa] @dont_sink_struct_with_other_uses
+// CHECK:       bb3({{%.*}} : @owned $S):
+// CHECK:       } // end sil function 'dont_sink_struct_with_other_uses'
+sil [ossa] @dont_sink_struct_with_other_uses : $@convention(thin) (@owned C) -> @owned S {
+bb0(%0 : @owned $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %2 = struct $S (%0 : $C)
+  fix_lifetime %2 : $S
+  br bb3(%2 : $S)
+
+bb2:
+  %4 = struct $S (%0 : $C)
+  br bb3(%4 : $S)
+
+bb3(%6 : @owned $S):
+  return %6 : $S
+}
