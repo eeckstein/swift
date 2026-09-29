@@ -27,6 +27,9 @@ extension Phi {
     if splitAggregate(context) {
       return
     }
+    if sinkIncomingAggregates(context) {
+      return
+    }
   }
 
   /// If `phi` is a re-borrow phi where all incoming operands are `begin_borrow`s of the same
@@ -98,6 +101,133 @@ extension Phi {
       }
     }
     return borrowedValue
+  }
+
+  /// If all incoming values are the same kind of aggregate instruction - `struct` or `tuple` -
+  /// which only differ in at most one operand, the aggregate is sunk into the phi's block.
+  /// A differing operand is passed as a new phi argument instead.
+  ///
+  /// ```
+  ///   bb1:
+  ///     %2 = struct $S (%0, %1)
+  ///     br bb3(%2)
+  ///   bb2:
+  ///     %3 = struct $S (%0, %4)
+  ///     br bb3(%3)
+  ///   bb3(%5 : @owned $S):
+  ///     ... // uses of %5
+  /// ```
+  /// ->
+  /// ```
+  ///   bb1:
+  ///     br bb3(%1)
+  ///   bb2:
+  ///     br bb3(%4)
+  ///   bb3(%6 : @owned $X):
+  ///     %5 = struct $S (%0, %6)
+  ///     ... // uses of %5
+  /// ```
+  /// If all operands are identical, no phi argument is needed anymore.
+  /// Nested aggregates are sunk step by step, because the new phi is simplified again.
+  ///
+  /// This is important for OSSA, where e.g. RedundantLoadElimination can create phis of
+  /// identical aggregates, which prevent other optimizations, like CSE of loads from the
+  /// aggregate's elements.
+  private func sinkIncomingAggregates(_ context: SimplifyContext) -> Bool {
+    // In non-OSSA this is done by SILCodeMotion.
+    // A guaranteed phi would need its borrow scopes to be re-created.
+    guard value.parentFunction.hasOwnership,
+          !isReborrow, borrowedFrom == nil, value.ownership != .guaranteed,
+          // Dead phis are removed by DCE, including the incoming aggregates. Sinking the aggregates
+          // would just leave dead instructions in the phi's block.
+          !value.uses.isEmpty,
+          let (firstAggregate, differentOperandIndex) = getSinkableIncomingAggregates()
+    else {
+      return false
+    }
+    let block = value.parentBlock
+    let index = value.index
+    var incomingAggregates = Stack<SingleValueInstruction>(context)
+    defer { incomingAggregates.deinitialize() }
+    incomingAggregates.append(contentsOf: incomingValues.map { $0 as! SingleValueInstruction })
+
+    var operands = Array(firstAggregate.operands.values)
+    if let differentOperandIndex {
+      // Pass the different operand instead of the aggregate.
+      for incomingOp in incomingOperands {
+        let aggregate = incomingOp.value as! SingleValueInstruction
+        incomingOp.set(to: aggregate.operands[differentOperandIndex].value, context)
+      }
+      let differentOperand = operands[differentOperandIndex]
+      operands[differentOperandIndex] = block.insertPhiArgument(
+        atPosition: index + 1, type: differentOperand.type, ownership: differentOperand.ownership, context)
+    }
+
+    let builder = Builder(atBeginOf: block, context)
+    let newAggregate: SingleValueInstruction
+    switch firstAggregate {
+    case is StructInst:
+      newAggregate = builder.createStruct(type: value.type, elements: operands)
+    case is TupleInst:
+      newAggregate = builder.createTuple(type: value.type, elements: operands)
+    default:
+      fatalError("unhandled aggregate instruction")
+    }
+    value.uses.replaceAll(with: newAggregate, context)
+
+    if differentOperandIndex != nil {
+      block.eraseArgument(at: index, context)
+    } else {
+      erasePhiArgument(phi: self, context)
+    }
+    for aggregate in incomingAggregates {
+      context.erase(instruction: aggregate)
+    }
+    return true
+  }
+
+  /// Returns the first incoming aggregate and the index of the operand which is different in the
+  /// incoming aggregates - or nil if all operands are identical.
+  private func getSinkableIncomingAggregates() -> (SingleValueInstruction, Int?)? {
+    var firstAggregate: SingleValueInstruction? = nil
+    var differentOperandIndex: Int? = nil
+    for incomingValue in incomingValues {
+      guard let aggregate = incomingValue as? SingleValueInstruction,
+            aggregate is StructInst || aggregate is TupleInst,
+            // The aggregate's only purpose must be to feed the phi.
+            aggregate.uses.singleUse != nil,
+            // E.g. a struct with only trivial fields has no ownership, even if the phi has ownership.
+            aggregate.ownership == value.ownership
+      else {
+        return nil
+      }
+      guard let first = firstAggregate else {
+        firstAggregate = aggregate
+        continue
+      }
+      guard type(of: aggregate) == type(of: first),
+            aggregate.operands.count == first.operands.count
+      else {
+        return nil
+      }
+      for (index, (op, firstOp)) in zip(aggregate.operands, first.operands).enumerated()
+        where op.value != firstOp.value
+      {
+        if let differentOperandIndex, differentOperandIndex != index {
+          return nil
+        }
+        // In OSSA the different operands are passed as an owned (or trivial) phi.
+        let ownership = op.value.ownership
+        if ownership != firstOp.value.ownership || (ownership != .owned && ownership != .none) {
+          return nil
+        }
+        differentOperandIndex = index
+      }
+    }
+    guard let firstAggregate else {
+      return nil
+    }
+    return (firstAggregate, differentOperandIndex)
   }
 
   /// "Unwraps" a phi argument if it is an aggregate - a `struct`, `tuple` or `enum` - which is
