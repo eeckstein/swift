@@ -2332,6 +2332,30 @@ bb0(%0 : @owned $S):
   return %0
 }
 
+// The outer scope of the copied `struct` is not found by `lookThroughForwardingInstructions`, because
+// the `struct` has multiple operands.
+// CHECK-LABEL: sil [ossa] @extend_outer_scope_of_multi_operand_struct :
+// CHECK:         [[LB:%.*]] = load_borrow %0
+// CHECK:         [[SB:%.*]] = store_borrow
+// CHECK:         apply undef([[SB]])
+// CHECK-NEXT:    end_borrow [[SB]]
+// CHECK-NEXT:    end_borrow [[LB]]
+// CHECK:       } // end sil function 'extend_outer_scope_of_multi_operand_struct'
+sil [ossa] @extend_outer_scope_of_multi_operand_struct : $@convention(thin) (@in_guaranteed Klass, Builtin.Int32) -> () {
+bb0(%0 : $*Klass, %1 : $Builtin.Int32):
+  %2 = load_borrow %0
+  %3 = struct $StructWithDataAndOwner (%1, %2)
+  %4 = copy_value %3
+  %5 = alloc_stack $StructWithDataAndOwner
+  store %4 to [init] %5
+  end_borrow %2
+  %8 = apply undef(%5) : $@convention(thin) (@in_guaranteed StructWithDataAndOwner) -> ()
+  destroy_addr %5
+  dealloc_stack %5
+  %11 = tuple ()
+  return %11
+}
+
 // CHECK-LABEL: sil [ossa] @remove_copy_of_forwarded_borrow :
 // CHECK:         [[DS:%.*]] = destructure_struct
 // CHECK-NOT:     copy_value
