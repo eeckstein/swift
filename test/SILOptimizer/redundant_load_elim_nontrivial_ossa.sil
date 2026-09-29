@@ -1761,3 +1761,85 @@ bb3:
   dealloc_stack %2 : $*Klass
   return %5 : $Klass
 }
+
+// A `destroy_addr` is split into `destroy_addr`s of the fields, if the value is only available via
+// stores to the fields.
+// CHECK-LABEL: sil [ossa] @destroy_addr_with_available_field_values :
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C1:%.*]] = copy_value %1
+// CHECK-NEXT:    br bb3([[C1]] : $Klass)
+// CHECK:       bb2:
+// CHECK-NEXT:    [[C2:%.*]] = copy_value %1
+// CHECK-NEXT:    br bb3([[C2]] : $Klass)
+// CHECK:       bb3([[A:%.*]] : @owned $Klass):
+// CHECK:         apply
+// CHECK-NOT:     destroy_addr
+// CHECK:         destroy_value [[A]]
+// CHECK:       } // end sil function 'destroy_addr_with_available_field_values'
+sil [ossa] @destroy_addr_with_available_field_values : $@convention(thin) (@inout NonTrivialStruct, @owned Klass) -> () {
+bb0(%0 : $*NonTrivialStruct, %1 : @owned $Klass):
+  %2 = struct_element_addr %0 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %3 = load [take] %2 : $*Klass
+  destroy_value %3 : $Klass
+  cond_br undef, bb1, bb2
+
+bb1:
+  %5 = copy_value %1 : $Klass
+  store %5 to [init] %2 : $*Klass
+  br bb3
+
+bb2:
+  %8 = copy_value %1 : $Klass
+  store %8 to [init] %2 : $*Klass
+  br bb3
+
+bb3:
+  %11 = function_ref @use_Klass : $@convention(thin) (@owned Klass) -> ()
+  %12 = apply %11(%1) : $@convention(thin) (@owned Klass) -> ()
+  destroy_addr %0 : $*NonTrivialStruct
+  %14 = function_ref @get_nontrivialstruct : $@convention(thin) () -> @owned NonTrivialStruct
+  %15 = apply %14() : $@convention(thin) () -> @owned NonTrivialStruct
+  store %15 to [init] %0 : $*NonTrivialStruct
+  %17 = tuple ()
+  return %17 : $()
+}
+
+// Trivial fields don't need a split `destroy_addr`.
+// CHECK-LABEL: sil [ossa] @destroy_addr_with_trivial_field :
+// CHECK:         [[K:%.*]] = apply
+// CHECK-NOT:     destroy_addr
+// CHECK:         destroy_value [[K]]
+// CHECK-NOT:     destroy_addr
+// CHECK:       } // end sil function 'destroy_addr_with_trivial_field'
+sil [ossa] @destroy_addr_with_trivial_field : $@convention(thin) (@guaranteed Klass, Int) -> () {
+bb0(%0 : @guaranteed $Klass, %1 : $Int):
+  %2 = alloc_stack $Agg3
+  %c = copy_value %0 : $Klass
+  %3 = struct $Agg3 (%c : $Klass, %1 : $Int)
+  store %3 to [init] %2 : $*Agg3
+  %5 = struct_element_addr %2 : $*Agg3, #Agg3.k
+  %6 = load [take] %5 : $*Klass
+  destroy_value %6 : $Klass
+  %7 = function_ref @borrow_and_produce_klass : $@convention(thin) (@guaranteed Klass) -> @owned Klass
+  %8 = apply %7(%0) : $@convention(thin) (@guaranteed Klass) -> @owned Klass
+  store %8 to [init] %5 : $*Klass
+  destroy_addr %2 : $*Agg3
+  dealloc_stack %2 : $*Agg3
+  %12 = tuple ()
+  return %12 : $()
+}
+
+// Don't split a `destroy_addr` if the fields are not available.
+// CHECK-LABEL: sil [ossa] @dont_split_destroy_addr :
+// CHECK:         destroy_addr %0 : $*TwoField
+// CHECK:       } // end sil function 'dont_split_destroy_addr'
+sil [ossa] @dont_split_destroy_addr : $@convention(thin) (@inout TwoField) -> () {
+bb0(%0 : $*TwoField):
+  destroy_addr %0 : $*TwoField
+  %2 = function_ref @init_twofield : $@convention(thin) (@thin TwoField.Type) -> @owned TwoField
+  %3 = metatype $@thin TwoField.Type
+  %4 = apply %2(%3) : $@convention(thin) (@thin TwoField.Type) -> @owned TwoField
+  store %4 to [init] %0 : $*TwoField
+  %6 = tuple ()
+  return %6 : $()
+}
