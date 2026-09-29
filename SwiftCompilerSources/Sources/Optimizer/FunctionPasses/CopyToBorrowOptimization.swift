@@ -309,11 +309,12 @@ struct OwnedToGuaranteedUses {
     return true
   }
 
-  func changeOwnedToGuaranteed(outerScope: Value, within liverange: InstructionRange) {
+  /// `outerScopes` are the borrow scopes which enclose the new guaranteed liverange.
+  func changeOwnedToGuaranteed(outerScopes: [BeginBorrowValue], within liverange: InstructionRange) {
     for forwardingUse in forwardingUses where liverange.inclusiveRangeContains(forwardingUse.instruction){
       switch forwardingUse.instruction {
       case let store as StoreInst:
-        changeStoreToStoreBorrow(store: store, outerScope: outerScope)
+        changeStoreToStoreBorrow(store: store, outerScopes: outerScopes)
       case let destroy as DestroyValueInst:
         context.erase(instruction: destroy)
       default:
@@ -322,7 +323,7 @@ struct OwnedToGuaranteedUses {
     }
   }
 
-  private func changeStoreToStoreBorrow(store: StoreInst, outerScope: Value) {
+  private func changeStoreToStoreBorrow(store: StoreInst, outerScopes: [BeginBorrowValue]) {
     let allocStack = store.destination
     let builder = Builder(before: store, context)
     let storeBorrow = builder.createStoreBorrow(source: store.source, destination: allocStack)
@@ -332,17 +333,16 @@ struct OwnedToGuaranteedUses {
       case storeBorrow, is DeallocStackInst:
         break
       case let destroy as DestroyAddrInst:
-        if let prev = destroy.previous,
-           let endBorrow = prev as? EndBorrowInst,
-           endBorrow.borrow == outerScope
+        // If we already inserted new `end_borrow`s for outer scopes (and their enclosing scopes) we need
+        // to make sure that the `end_borrow`s for the `store_borrow` (= an inner scope) are inserted
+        // before the `end_borrow`s of the outer scopes.
+        var insertionPoint: Instruction = destroy
+        while let prev = insertionPoint.previous,
+              outerScopes.contains(where: { prev.isEndBorrow(ofScope: $0) })
         {
-          // If we already inserted new `end_borrow`s for an outer scope we need to make sure that the
-          // `end_borrow`s for the `store_borrow` (= an inner scope) are inserted before the `end_borrow`s
-          // of the outer scope.
-          Builder(before: endBorrow, context).createEndBorrow(of: storeBorrow)
-        } else {
-          Builder(before: destroy, context).createEndBorrow(of: storeBorrow)
+          insertionPoint = prev
         }
+        Builder(before: insertionPoint, context).createEndBorrow(of: storeBorrow)
         context.erase(instruction: destroy)
       case let debugValue as DebugValueInst:
         if debugValue.parentBlock != storeBorrow.parentBlock || !storeBorrow.strictlyDominatesInBlock(debugValue) {
@@ -614,7 +614,7 @@ private extension LoadInst {
     uses.replaceAll(with: loadBorrow, context)
     context.erase(instruction: self)
 
-    collectedUses.changeOwnedToGuaranteed(outerScope: loadBorrow, within: liverange)
+    collectedUses.changeOwnedToGuaranteed(outerScopes: [.loadBorrow(loadBorrow)], within: liverange)
   }
 }
 
@@ -628,10 +628,13 @@ private func remove(copy: CopyValueInst, collectedUses: OwnedToGuaranteedUses, l
     let beginBorrow = builder.createBeginBorrow(of: fromValue)
     copy.replace(with: beginBorrow, context)
     createEndBorrows(for: beginBorrow, atEndOf: liverange, collectedUses: collectedUses)
-    collectedUses.changeOwnedToGuaranteed(outerScope: beginBorrow, within: liverange)
+    collectedUses.changeOwnedToGuaranteed(outerScopes: [.beginBorrow(beginBorrow)], within: liverange)
   case .guaranteed:
+    // Note that `lookThroughForwardingInstructions` is not sufficient to find the outer scopes, because
+    // `fromValue` can be forwarded by an instruction with multiple operands, e.g. a `struct`.
+    let outerScopes = Array(fromValue.getBorrowIntroducers(context))
     copy.replace(with: fromValue, context)
-    collectedUses.changeOwnedToGuaranteed(outerScope: fromValue.lookThroughForwardingInstructions, within: liverange)
+    collectedUses.changeOwnedToGuaranteed(outerScopes: outerScopes, within: liverange)
   case .none, .unowned:
     fatalError("unexpected ownership of copy source")
   }
