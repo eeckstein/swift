@@ -45,6 +45,28 @@ import SIL
 /// * The (forward-extended) lifetime of the copy ends with `destroy_value`(s).
 /// * No instruction within that lifetime can release the referenced object.
 ///
+/// Also, a copy of a guaranteed or unowned value is not needed if it is only passed to unowned uses,
+/// e.g. the self argument of an ObjC method call:
+/// ```
+///   %2 = load_borrow %0
+///   %3 = copy_value %2
+///   end_borrow %2
+///   %4 = objc_method %3, #C.foo!foreign
+///   %5 = apply %4(%3) : $@convention(objc_method) (C) -> ()
+///   destroy_value %3
+/// ```
+/// ->
+/// ```
+///   %2 = load_borrow %0
+///   %3 = unchecked_ownership_conversion %2, @guaranteed to @unowned
+///   end_borrow %2
+///   %4 = objc_method %3, #C.foo!foreign
+///   %5 = apply %4(%3) : $@convention(objc_method) (C) -> ()
+/// ```
+/// An unowned use only requires that the object is alive at the use. If the callee (potentially)
+/// releases the object, it must retain the unowned argument first. Therefore it's sufficient that
+/// nothing _before_ an unowned use can release the object.
+///
 /// This pass runs immediately before the `OwnershipModelEliminator`, which is the point where the
 /// implicit retain of an unowned value would become explicit.
 ///
@@ -58,16 +80,21 @@ let unownedCopyElimination = FunctionPass(name: "unowned-copy-elimination") {
   var changed = false
 
   for inst in function.instructions {
-    guard let copy = inst as? CopyValueInst,
-          copy.fromValue.ownership == .unowned
-    else {
+    guard let copy = inst as? CopyValueInst else {
       continue
     }
-    if !context.continueWithNextSubpassRun(for: copy) {
-      return
-    }
-    if optimize(copy: copy, context) {
-      changed = true
+    switch copy.fromValue.ownership {
+    case .guaranteed, .unowned:
+      if !context.continueWithNextSubpassRun(for: copy) {
+        return
+      }
+      if removeCopyWithOnlyUnownedUses(copy: copy, context) {
+        changed = true
+      } else if copy.fromValue.ownership == .unowned && optimize(copy: copy, context) {
+        changed = true
+      }
+    case .owned, .none:
+      break
     }
   }
 
@@ -104,6 +131,74 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   createEndBorrows(for: borrow, atEndOf: liverange, collectedUses: collectedUses)
   collectedUses.changeOwnedToGuaranteed(outerScopes: [.uncheckOwnershipConversion(borrow)], within: liverange)
   return true
+}
+
+/// Removes a copy of a guaranteed or unowned value which is only used by unowned uses (besides its
+/// destroys and debug uses).
+private func removeCopyWithOnlyUnownedUses(copy: CopyValueInst, _ context: FunctionPassContext) -> Bool {
+  var unownedUses = Stack<Instruction>(context)
+  defer { unownedUses.deinitialize() }
+
+  for use in copy.uses {
+    switch use.ownership {
+    case .unownedInstantaneousUse:
+      unownedUses.push(use.instruction)
+    case .debugUse:
+      break
+    case .destroyingConsume where use.instruction is DestroyValueInst:
+      break
+    default:
+      return false
+    }
+  }
+  // A copy which is only destroyed is handled by other optimizations.
+  if unownedUses.isEmpty {
+    return false
+  }
+
+  if mayReleaseReferencedObject(of: copy, before: unownedUses, context) {
+    return false
+  }
+
+  let unownedValue: Value
+  if copy.fromValue.ownership == .unowned {
+    unownedValue = copy.fromValue
+  } else {
+    let builder = Builder(before: copy, context)
+    unownedValue = builder.createUncheckedOwnershipConversion(operand: copy.fromValue, resultOwnership: .unowned)
+  }
+  for use in copy.uses {
+    if let destroy = use.instruction as? DestroyValueInst {
+      context.erase(instruction: destroy)
+    }
+  }
+  copy.replace(with: unownedValue, context)
+  return true
+}
+
+/// Returns true if any instruction between the `copy` and `uses` - excluding the `uses`
+/// themselves - can drop a reference to the object which `copy` refers to.
+private func mayReleaseReferencedObject(of copy: CopyValueInst,
+                                        before uses: Stack<Instruction>,
+                                        _ context: FunctionPassContext) -> Bool
+{
+  var worklist = InstructionWorklist(context)
+  defer { worklist.deinitialize() }
+
+  for use in uses {
+    worklist.pushPredecessors(of: use, ignoring: copy)
+  }
+
+  let calleeAnalysis = context.calleeAnalysis
+
+  while let inst = worklist.pop() {
+    // Note that a use which is followed by another use is checked when it's reached from the later use.
+    if inst.mayReleaseAnyObject(calleeAnalysis), !inst.isBalancedDestroy(of: copy) {
+      return true
+    }
+    worklist.pushPredecessors(of: inst, ignoring: copy)
+  }
+  return false
 }
 
 /// Returns true if any instruction between the `copy` and `ends` can drop a reference to the
