@@ -1843,3 +1843,37 @@ bb0(%0 : $*TwoField):
   %6 = tuple ()
   return %6 : $()
 }
+
+// The memory lifetime must not be shrunk into the reborrowed scope of a `load_borrow`.
+// CHECK-LABEL: sil [ossa] @dont_take_in_reborrowed_load_borrow_scope :
+// CHECK:       bb3([[R:%.*]] : @reborrow $Klass):
+// CHECK-NEXT:    [[B:%.*]] = borrowed [[R]] : $Klass from ()
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    load [take] %0
+// CHECK:       } // end sil function 'dont_take_in_reborrowed_load_borrow_scope'
+sil [ossa] @dont_take_in_reborrowed_load_borrow_scope : $@convention(thin) (@inout Klass, @owned Klass) -> () {
+bb0(%0 : $*Klass, %1 : @owned $Klass):
+  %2 = load_borrow %0 : $*Klass
+  cond_br undef, bb1, bb2
+
+bb1:
+  br bb3(%2 : $Klass)
+
+bb2:
+  end_borrow %2 : $Klass
+  destroy_value %1 : $Klass
+  br bb4
+
+bb3(%7 : @reborrow $Klass):
+  %8 = borrowed %7 : $Klass from ()
+  end_borrow %8 : $Klass
+  %10 = load_borrow %0 : $*Klass
+  end_borrow %10 : $Klass
+  destroy_addr %0 : $*Klass
+  store %1 to [init] %0 : $*Klass
+  br bb4
+
+bb4:
+  %15 = tuple ()
+  return %15 : $()
+}
