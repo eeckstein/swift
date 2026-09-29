@@ -23,6 +23,8 @@ sil [releasenone] @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -
 sil [releasenone] @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
 sil @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
 sil @owned_user : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+sil @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+sil [releasenone] @releasenone_unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
 
 // The self argument of an `@objc` thunk is passed unowned. Nothing in the liverange of the copy
 // can release the object, so the caller's reference keeps it alive.
@@ -224,8 +226,8 @@ bb0(%0 : @unowned $Builtin.NativeObject, %1 : @guaranteed $Box):
   return %5
 }
 
-// Negative test: this pass only handles copies of unowned values. Copies of owned or guaranteed
-// values are the job of the `copy-to-borrow-optimization` pass.
+// Negative test: this pass doesn't handle copies of owned values. Those are the job of the
+// `copy-to-borrow-optimization` pass.
 //
 // CHECK-LABEL: sil [ossa] @dont_optimize_copy_of_owned :
 // CHECK:         %1 = copy_value %0
@@ -240,4 +242,109 @@ bb0(%0 : @owned $Builtin.NativeObject):
   destroy_value %0
   %4 = tuple ()
   return %4
+}
+
+// The copy of a guaranteed value is only passed to unowned arguments. The last callee may release
+// the object, but then it must retain its unowned argument first.
+//
+// CHECK-LABEL: sil [ossa] @guaranteed_copy_with_unowned_uses :
+// CHECK:         %2 = load_borrow %0
+// CHECK-NEXT:    %3 = unchecked_ownership_conversion %2, @guaranteed to @unowned
+// CHECK-NEXT:    end_borrow %2
+// CHECK:         apply {{%[0-9]+}}(%3)
+// CHECK-NEXT:    apply {{%[0-9]+}}(%3)
+// CHECK-NOT:     copy_value
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'guaranteed_copy_with_unowned_uses'
+sil [ossa] @guaranteed_copy_with_unowned_uses : $@convention(thin) (@in_guaranteed Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = function_ref @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+  %2 = load_borrow %0
+  %3 = copy_value %2
+  end_borrow %2
+  debug_value %3, let, name "x"
+  %4 = function_ref @releasenone_unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+  %5 = apply %4(%3) : $@convention(thin) (Builtin.NativeObject) -> ()
+  %6 = apply %1(%3) : $@convention(thin) (Builtin.NativeObject) -> ()
+  destroy_value %3
+  %8 = tuple ()
+  return %8
+}
+
+// The copy of an unowned value which is only passed to unowned arguments is replaced by the
+// unowned value itself.
+//
+// CHECK-LABEL: sil [ossa] @unowned_copy_with_unowned_uses :
+// CHECK:         apply {{%[0-9]+}}(%0)
+// CHECK-NOT:     copy_value
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'unowned_copy_with_unowned_uses'
+sil [ossa] @unowned_copy_with_unowned_uses : $@convention(thin) (Builtin.NativeObject) -> () {
+bb0(%0 : @unowned $Builtin.NativeObject):
+  %1 = copy_value %0
+  %2 = function_ref @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (Builtin.NativeObject) -> ()
+  destroy_value %1
+  %5 = tuple ()
+  return %5
+}
+
+// Negative test: the object can be released before it is passed to the unowned argument.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_release_before_unowned_use :
+// CHECK:         %3 = copy_value %2
+// CHECK:         destroy_value %3
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_release_before_unowned_use'
+sil [ossa] @dont_optimize_release_before_unowned_use : $@convention(thin) (@in_guaranteed Builtin.NativeObject, @guaranteed Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject, %1 : @guaranteed $Builtin.NativeObject):
+  %2 = load_borrow %0
+  %3 = copy_value %2
+  end_borrow %2
+  %5 = function_ref @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %6 = apply %5(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %7 = function_ref @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+  %8 = apply %7(%3) : $@convention(thin) (Builtin.NativeObject) -> ()
+  destroy_value %3
+  %10 = tuple ()
+  return %10
+}
+
+// Negative test: the first unowned use can release the object before the second unowned use.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_release_between_unowned_uses :
+// CHECK:         %3 = copy_value %2
+// CHECK:         destroy_value %3
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_release_between_unowned_uses'
+sil [ossa] @dont_optimize_release_between_unowned_uses : $@convention(thin) (@in_guaranteed Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = function_ref @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
+  %2 = load_borrow %0
+  %3 = copy_value %2
+  end_borrow %2
+  %5 = apply %1(%3) : $@convention(thin) (Builtin.NativeObject) -> ()
+  %6 = apply %1(%3) : $@convention(thin) (Builtin.NativeObject) -> ()
+  destroy_value %3
+  %8 = tuple ()
+  return %8
+}
+
+// Negative test: the copy of a guaranteed value has a use which is not unowned.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_guaranteed_copy_with_guaranteed_use :
+// CHECK:         %3 = copy_value %2
+// CHECK:         destroy_value %3
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_guaranteed_copy_with_guaranteed_use'
+sil [ossa] @dont_optimize_guaranteed_copy_with_guaranteed_use : $@convention(thin) (@in_guaranteed Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %2 = load_borrow %0
+  %3 = copy_value %2
+  end_borrow %2
+  %5 = apply %1(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %3
+  %7 = tuple ()
+  return %7
 }
