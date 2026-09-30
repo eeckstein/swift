@@ -21,6 +21,7 @@ class Box {
 sil [releasenone] @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
 sil [releasenone] @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -> ()
 sil [releasenone] @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
+sil [releasenone] @guaranteed_optional_and_class_user : $@convention(method) (@guaranteed Optional<AnyObject>, @guaranteed C) -> Int8
 sil @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
 sil @owned_user : $@convention(thin) (@owned Builtin.NativeObject) -> ()
 sil @unowned_user : $@convention(thin) (Builtin.NativeObject) -> ()
@@ -43,6 +44,28 @@ bb0(%0 : @unowned $C):
   %3 = apply %2(%1) : $@convention(method) (@guaranteed C) -> Int
   destroy_value %1
   return %3
+}
+
+// Multiple arguments of an `@objc` thunk with nested copy lifetimes: the `destroy_value` of the
+// inner copy must not prevent the optimization of the outer copy.
+//
+// CHECK-LABEL: sil [ossa] @objc_thunk_multiple_args :
+// CHECK:         %2 = unchecked_ownership_conversion %0, @unowned to @guaranteed
+// CHECK-NEXT:    %3 = unchecked_ownership_conversion %1, @unowned to @guaranteed
+// CHECK:         apply {{.*}}(%2, %3)
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'objc_thunk_multiple_args'
+sil [ossa] @objc_thunk_multiple_args : $@convention(objc_method) (Optional<AnyObject>, C) -> Int8 {
+bb0(%0 : @unowned $Optional<AnyObject>, %1 : @unowned $C):
+  %2 = copy_value %0
+  %3 = copy_value %1
+  %4 = function_ref @guaranteed_optional_and_class_user : $@convention(method) (@guaranteed Optional<AnyObject>, @guaranteed C) -> Int8
+  %5 = apply %4(%2, %3) : $@convention(method) (@guaranteed Optional<AnyObject>, @guaranteed C) -> Int8
+  destroy_value %3
+  destroy_value %2
+  return %5
 }
 
 // A `begin_borrow` of the copy - which is what SILGen emits for an `@objc` thunk - is fine: it is
