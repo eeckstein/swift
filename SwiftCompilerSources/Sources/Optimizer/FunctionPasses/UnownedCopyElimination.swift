@@ -79,7 +79,16 @@ let unownedCopyElimination = FunctionPass(name: "unowned-copy-elimination") {
 
   var changed = false
 
-  for inst in function.instructions {
+  // Visit copies in reverse order, because copy lifetimes are typically nested, e.g. the argument
+  // copies in an `@objc` thunk:
+  // ```
+  //   %2 = copy_value %0
+  //   %3 = copy_value %1
+  //   apply %f(%2, %3)
+  //   destroy_value %3    // blocks the optimization of `%2`, unless `%3` is optimized first
+  //   destroy_value %2
+  // ```
+  for inst in function.reversedInstructions {
     guard let copy = inst as? CopyValueInst else {
       continue
     }
