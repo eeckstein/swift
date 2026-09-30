@@ -110,9 +110,9 @@ func printKlassTuplePair(x : (Klass, Klass)) {
     // We pattern match columns to ensure we get retain on the p and release on
     // the end ')'
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
-             // expected-remark @-4:26 {{retain of type 'Klass'}}
+             // expected-remark @-1:11 {{retain of type 'Klass'}}
              // expected-note @-5:26 {{of 'x'}}
-             // expected-remark @-6:26 {{retain of type 'Klass'}}
+             // expected-remark @-3:11 {{retain of type 'Klass'}}
              // expected-note @-7:26 {{of 'x'}}
              // expected-remark @-5:12 {{release of type}}
 }
@@ -120,14 +120,14 @@ func printKlassTuplePair(x : (Klass, Klass)) {
 func printKlassTupleLHS(x : (Klass, Klass)) {
     // We print the remarks at the 'p' and at the ending ')'.
     print(x.0) // expected-remark @:11 {{heap allocated ref of type}}
-               // expected-remark @-3:25 {{retain of type 'Klass'}}
+               // expected-remark @-1:11 {{retain of type 'Klass'}}
                // expected-note @-4:25 {{of 'x'}}
                // Release on Array<Any> for print.
                // expected-remark @-4:14 {{release of type}}
 }
 
 func returnKlassTupleLHS(x: (Klass, Klass)) -> Klass {
-    return x.0 // expected-remark @-1:26 {{retain of type 'Klass'}}
+    return x.0 // expected-remark @:5 {{retain of type 'Klass'}}
                // expected-note @-2:26 {{of 'x'}}
 }
 
