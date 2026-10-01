@@ -95,8 +95,24 @@ private func tryReplaceInnerBorrowScope(beginBorrow: BeginBorrowInst, _ context:
   return true
 }
 
+/// Removes the borrow scope of a `thin_to_thick_function` (or a `convert_function` of it):
+/// ```
+///   %1 = thin_to_thick_function %0
+///   %2 = convert_function %1         // ownership: none
+///   %3 = begin_borrow [lexical] %2
+///   // ... uses of %3
+///   end_borrow %3
+/// ```
+/// ->
+/// ```
+///   %1 = thin_to_thick_function %0
+///   %2 = convert_function %1
+///   // ... uses of %2
+/// ```
 private func removeBorrowOfThinFunction(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) {
-  guard let thin2thickFn = beginBorrow.borrowedValue as? ThinToThickFunctionInst,
+  let borrowedValue = beginBorrow.borrowedValue
+  guard borrowedValue.ownership == .none,
+        borrowedValue.lookThroughConvertFunctions is ThinToThickFunctionInst,
         // For simplicity don't go into the trouble of removing reborrow phi arguments.
         beginBorrow.uses.filter(usersOfType: BranchInst.self).isEmpty else
   {
@@ -104,8 +120,17 @@ private func removeBorrowOfThinFunction(beginBorrow: BeginBorrowInst, _ context:
   }
   // `thin_to_thick_function` has "none" ownership and is compatible with guaranteed values.
   // Therefore the `begin_borrow` is not needed.
-  beginBorrow.uses.ignore(usersOfType: EndBorrowInst.self).replaceAll(with: thin2thickFn, context)
+  beginBorrow.uses.ignore(usersOfType: EndBorrowInst.self).replaceAll(with: borrowedValue, context)
   context.erase(instructionIncludingAllUsers: beginBorrow)
+}
+
+private extension Value {
+  var lookThroughConvertFunctions: Value {
+    if let cfi = self as? ConvertFunctionInst, !cfi.withoutActuallyEscaping {
+      return cfi.fromFunction.lookThroughConvertFunctions
+    }
+    return self
+  }
 }
 
 /// Replace
