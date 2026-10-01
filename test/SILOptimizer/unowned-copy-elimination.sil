@@ -18,6 +18,8 @@ class Box {
   var obj: Builtin.NativeObject
 }
 
+sil_global @global_s : $S
+
 sil [releasenone] @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
 sil [releasenone] @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -> ()
 sil [releasenone] @guaranteed_class_user : $@convention(method) (@guaranteed C) -> Int
@@ -370,4 +372,138 @@ bb0(%0 : $*Builtin.NativeObject):
   destroy_value %3
   %7 = tuple ()
   return %7
+}
+
+// A `load [copy]` of a value which is kept alive by the memory location, because nothing in the
+// liverange can release it. The called function may write to the memory, but it cannot release
+// anything.
+//
+// CHECK-LABEL: sil [ossa] @load_copy :
+// CHECK:         %1 = load_borrow %0
+// CHECK-NEXT:    %2 = unchecked_ownership_conversion %1, @guaranteed to @unowned
+// CHECK-NEXT:    end_borrow %1
+// CHECK-NEXT:    %4 = unchecked_ownership_conversion %2, @unowned to @guaranteed
+// CHECK:         apply {{.*}}(%4)
+// CHECK-NEXT:    end_borrow %4
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'load_copy'
+sil [ossa] @load_copy : $@convention(thin) (@inout Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = load [copy] %0
+  %2 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %1
+  %5 = tuple ()
+  return %5
+}
+
+// A `load [copy]` of a struct from a global inside an access scope, which ends before the uses.
+//
+// CHECK-LABEL: sil [ossa] @load_copy_struct_in_access_scope :
+// CHECK:         begin_access [read]
+// CHECK-NEXT:    %2 = load_borrow %1
+// CHECK-NEXT:    %3 = unchecked_ownership_conversion %2, @guaranteed to @unowned
+// CHECK-NEXT:    end_borrow %2
+// CHECK-NEXT:    %5 = unchecked_ownership_conversion %3, @unowned to @guaranteed
+// CHECK-NEXT:    end_access %1
+// CHECK:         apply {{.*}}(%5)
+// CHECK-NEXT:    end_borrow %5
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'load_copy_struct_in_access_scope'
+sil [ossa] @load_copy_struct_in_access_scope : $@convention(thin) () -> () {
+bb0:
+  %0 = global_addr @global_s : $*S
+  %1 = begin_access [read] [dynamic] %0
+  %2 = load [copy] %1
+  end_access %1
+  %4 = function_ref @guaranteed_struct_user : $@convention(thin) (@guaranteed S) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@guaranteed S) -> ()
+  destroy_value %2
+  %7 = tuple ()
+  return %7
+}
+
+// Dead-end destroys don't release anything - neither the one of the load itself nor the one
+// of another value in the dead-end block.
+//
+// CHECK-LABEL: sil [ossa] @load_copy_with_dead_end_block :
+// CHECK:         %3 = load_borrow %0
+// CHECK-NEXT:    %4 = unchecked_ownership_conversion %3, @guaranteed to @unowned
+// CHECK-NEXT:    end_borrow %3
+// CHECK-NEXT:    %6 = unchecked_ownership_conversion %4, @unowned to @guaranteed
+// CHECK:       bb1:
+// CHECK:         apply {{.*}}(%6)
+// CHECK-NEXT:    end_borrow %6
+// CHECK:       bb2:
+// CHECK-NEXT:    destroy_value [dead_end] %1
+// CHECK-NEXT:    end_borrow %6
+// CHECK-NEXT:    unreachable
+// CHECK:       } // end sil function 'load_copy_with_dead_end_block'
+sil [ossa] @load_copy_with_dead_end_block : $@convention(thin) (@inout Builtin.NativeObject, @owned Builtin.NativeObject, Builtin.Int1) -> () {
+bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject, %2 : $Builtin.Int1):
+  %3 = load [copy] %0
+  cond_br %2, bb1, bb2
+
+bb1:
+  %5 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %6 = apply %5(%3) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %3
+  destroy_value %1
+  %9 = tuple ()
+  return %9
+
+bb2:
+  destroy_value [dead_end] %1
+  destroy_value [dead_end] %3
+  unreachable
+}
+
+// Negative test: the called function can release the loaded object.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_load_copy_releasing_call :
+// CHECK:         %1 = load [copy] %0
+// CHECK:         destroy_value %1
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_load_copy_releasing_call'
+sil [ossa] @dont_optimize_load_copy_releasing_call : $@convention(thin) (@inout Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = load [copy] %0
+  %2 = function_ref @releasing_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %1
+  %5 = tuple ()
+  return %5
+}
+
+// Negative test: the store destroys the old value in the memory location, which is the loaded object.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_load_copy_store_assign :
+// CHECK:         %2 = load [copy] %0
+// CHECK:         destroy_value %2
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_load_copy_store_assign'
+sil [ossa] @dont_optimize_load_copy_store_assign : $@convention(thin) (@inout Builtin.NativeObject, @owned Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject, %1 : @owned $Builtin.NativeObject):
+  %2 = load [copy] %0
+  store %1 to [assign] %0
+  %4 = function_ref @guaranteed_user : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@guaranteed Builtin.NativeObject) -> ()
+  destroy_value %2
+  %7 = tuple ()
+  return %7
+}
+
+// Negative test: the loaded value is consumed.
+//
+// CHECK-LABEL: sil [ossa] @dont_optimize_load_copy_owned_use :
+// CHECK:         %1 = load [copy] %0
+// CHECK-NOT:     unchecked_ownership_conversion
+// CHECK:       } // end sil function 'dont_optimize_load_copy_owned_use'
+sil [ossa] @dont_optimize_load_copy_owned_use : $@convention(thin) (@inout Builtin.NativeObject) -> () {
+bb0(%0 : $*Builtin.NativeObject):
+  %1 = load [copy] %0
+  %2 = function_ref @owned_user : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+  %3 = apply %2(%1) : $@convention(thin) (@owned Builtin.NativeObject) -> ()
+  %4 = tuple ()
+  return %4
 }
