@@ -34,6 +34,7 @@ sil @takeS1 : $@convention(thin) (@guaranteed S1) -> ()
 sil @takeS2 : $@convention(thin) (@guaranteed S2) -> ()
 sil @simple_func : $@convention(thin) () -> ()
 sil @use_closure : $@convention(thin) (@guaranteed @callee_guaranteed () -> ()) -> ()
+sil @use_subst_closure : $@convention(thin) (@guaranteed @callee_guaranteed @substituted <τ_0_0> () -> () for <Int>) -> ()
 
 // CHECK-LABEL: sil [ossa] @replace_simple :
 // CHECK-NOT:     begin_borrow
@@ -465,6 +466,27 @@ bb0:
   %4 = apply %3(%2) : $@convention(thin) (@guaranteed @callee_guaranteed () -> ()) -> ()
   %5 = apply %2(): $@callee_guaranteed () -> ()
   end_borrow %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @remove_borrow_of_converted_thin_function :
+// CHECK:         %1 = thin_to_thick_function
+// CHECK-NEXT:    %2 = convert_function %1
+// CHECK-NOT:     begin_borrow
+// CHECK:         %4 = apply %3(%2)
+// CHECK:         %5 = apply %2()
+// CHECK-LABEL: } // end sil function 'remove_borrow_of_converted_thin_function'
+sil [ossa] @remove_borrow_of_converted_thin_function : $@convention(thin) () -> () {
+bb0:
+  %0 = function_ref @simple_func : $@convention(thin) () -> ()
+  %1 = thin_to_thick_function %0 to $@callee_guaranteed () -> ()
+  %2 = convert_function %1 to $@callee_guaranteed @substituted <τ_0_0> () -> () for <Int>
+  %3 = begin_borrow %2
+  %4 = function_ref @use_subst_closure : $@convention(thin) (@guaranteed @callee_guaranteed @substituted <τ_0_0> () -> () for <Int>) -> ()
+  %5 = apply %4(%3) : $@convention(thin) (@guaranteed @callee_guaranteed @substituted <τ_0_0> () -> () for <Int>) -> ()
+  %6 = apply %3(): $@callee_guaranteed @substituted <τ_0_0> () -> () for <Int>
+  end_borrow %3
   %r = tuple ()
   return %r
 }
