@@ -675,6 +675,56 @@ bb0:
   return %999 : $()
 }
 
+sil [ossa] @closureWithIndirectArgs : $@convention(thin) (@in_guaranteed Builtin.Int64, @guaranteed Klass) -> @out Builtin.Int64
+
+// The convert_function only changes the representation of the function type (substituted vs.
+// unsubstituted). Therefore the partial_apply can be combined with the apply.
+// CHECK-LABEL: sil [ossa] @applied_converted_partial_apply :
+// CHECK:         [[F:%.*]] = function_ref @closureWithIndirectArgs
+// CHECK:         apply [[F]](%{{[0-9]+}}, %{{[0-9]+}}, %{{[0-9]+}}) : $@convention(thin) (@in_guaranteed Builtin.Int64, @guaranteed Klass) -> @out Builtin.Int64
+// CHECK:       } // end sil function 'applied_converted_partial_apply'
+sil [ossa] @applied_converted_partial_apply : $@convention(thin) (@owned Klass, @in_guaranteed Builtin.Int64) -> Builtin.Int64 {
+bb0(%0 : @owned $Klass, %1 : $*Builtin.Int64):
+  %fn = function_ref @closureWithIndirectArgs : $@convention(thin) (@in_guaranteed Builtin.Int64, @guaranteed Klass) -> @out Builtin.Int64
+  %pa = partial_apply [callee_guaranteed] %fn(%0) : $@convention(thin) (@in_guaranteed Builtin.Int64, @guaranteed Klass) -> @out Builtin.Int64
+  %cf = convert_function %pa : $@callee_guaranteed (@in_guaranteed Builtin.Int64) -> @out Builtin.Int64 to $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  %b = begin_borrow [lexical] %cf : $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  %cvt = convert_escape_to_noescape %b : $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64> to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  %out = alloc_stack $Builtin.Int64
+  %call = apply %cvt(%out, %1) : $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  destroy_value %cvt : $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  %r = load [trivial] %out : $*Builtin.Int64
+  dealloc_stack %out : $*Builtin.Int64
+  end_borrow %b : $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  destroy_value %cf : $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Builtin.Int64, Builtin.Int64>
+  return %r : $Builtin.Int64
+}
+
+class PABase {}
+class PADerived : PABase {}
+
+sil [ossa] @closureReturningDerived : $@convention(thin) (@guaranteed Klass) -> @owned PADerived
+
+// The convert_function changes the result type. The partial_apply cannot be combined with the
+// apply directly, but only after the result is casted.
+// CHECK-LABEL: sil [ossa] @combine_converted_partial_apply_with_result_cast :
+// CHECK:         [[F:%.*]] = function_ref @closureReturningDerived
+// CHECK:         [[A:%.*]] = apply [[F]](%0)
+// CHECK:         [[U:%.*]] = upcast [[A]] : $PADerived to $PABase
+// CHECK:         return [[U]]
+// CHECK:       } // end sil function 'combine_converted_partial_apply_with_result_cast'
+sil [ossa] @combine_converted_partial_apply_with_result_cast : $@convention(thin) (@owned Klass) -> @owned PABase {
+bb0(%0 : @owned $Klass):
+  %fn = function_ref @closureReturningDerived : $@convention(thin) (@guaranteed Klass) -> @owned PADerived
+  %pa = partial_apply [callee_guaranteed] %fn(%0) : $@convention(thin) (@guaranteed Klass) -> @owned PADerived
+  %cf = convert_function %pa : $@callee_guaranteed () -> @owned PADerived to $@callee_guaranteed () -> @owned PABase
+  %b = begin_borrow [lexical] %cf : $@callee_guaranteed () -> @owned PABase
+  %call = apply %b() : $@callee_guaranteed () -> @owned PABase
+  end_borrow %b : $@callee_guaranteed () -> @owned PABase
+  destroy_value %cf : $@callee_guaranteed () -> @owned PABase
+  return %call : $PABase
+}
+
 // CHECK-LABEL: sil shared [ossa] @appliedEscapeToNoEscapeNonTrivial : $@convention(thin) (@owned Klass) -> () {
 // CHECK: [[F:%.*]] = function_ref @indirectClosure_non_trivial : $@convention(thin) (@in Klass) -> @out Klass
 // CHECK: apply [[F]](%{{.*}}, %{{.*}}) : $@convention(thin) (@in Klass) -> @out Klass
