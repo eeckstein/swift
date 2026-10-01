@@ -59,7 +59,7 @@ sil [transparent] [thunk] [ossa] @$s4main3rec_5depth1fSSx_SiSSxXEtlFSSxXEfU_SS_T
 // CHECK:  %[[#B6:]] = begin_borrow %[[#B5]] : $@noescape @callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> @owned String for <String>
 
 // CHECK: bb1:                                              // Preds: bb0
-// CHECK:   %[[#B16:]] = apply %6(%[[#]]) : $@noescape @callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> @owned String for <String>
+// CHECK:   %[[#B16:]] = apply %[[#B3]](%[[#]], %2) : $@convention(thin) (@in_guaranteed String, @guaranteed @noescape @callee_guaranteed @substituted <τ_0_0> (@in_guaranteed τ_0_0) -> @owned String for <String>) -> @owned String
 // CHECK:   br bb3(%[[#B16]] : $String)
 
 // CHECK: bb2:                                              // Preds: bb0
