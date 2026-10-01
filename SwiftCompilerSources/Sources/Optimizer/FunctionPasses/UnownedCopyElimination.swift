@@ -45,6 +45,26 @@ import SIL
 /// * The (forward-extended) lifetime of the copy ends with `destroy_value`(s).
 /// * No instruction within that lifetime can release the referenced object.
 ///
+/// The same applies to a `load [copy]`: at the load the memory location holds a reference to the
+/// object. If nothing in the liverange can drop a reference, the object is kept alive - even if the
+/// memory location is modified, e.g. by moving its value to somewhere else:
+/// ```
+///   %1 = load [copy] %0
+///   %2 = apply %f(%1) : $@convention(method) (@guaranteed C) -> ()
+///   destroy_value %1
+/// ```
+/// ->
+/// ```
+///   %1 = load_borrow %0
+///   %2 = unchecked_ownership_conversion %1, @guaranteed to @unowned
+///   end_borrow %1
+///   %3 = unchecked_ownership_conversion %2, @unowned to @guaranteed
+///   %4 = apply %f(%3) : $@convention(method) (@guaranteed C) -> ()
+///   end_borrow %3
+/// ```
+/// Note that the `load_borrow` cannot extend over the whole liverange because the memory location
+/// may be modified within the liverange.
+///
 /// Also, a copy of a guaranteed or unowned value is not needed if it is only passed to unowned uses,
 /// e.g. the self argument of an ObjC method call:
 /// ```
@@ -89,20 +109,29 @@ let unownedCopyElimination = FunctionPass(name: "unowned-copy-elimination") {
   //   destroy_value %2
   // ```
   for inst in function.reversedInstructions {
-    guard let copy = inst as? CopyValueInst else {
-      continue
-    }
-    switch copy.fromValue.ownership {
-    case .guaranteed, .unowned:
-      if !context.continueWithNextSubpassRun(for: copy) {
+    switch inst {
+    case let copy as CopyValueInst:
+      switch copy.fromValue.ownership {
+      case .guaranteed, .unowned:
+        if !context.continueWithNextSubpassRun(for: copy) {
+          return
+        }
+        if removeCopyWithOnlyUnownedUses(copy: copy, context) {
+          changed = true
+        } else if copy.fromValue.ownership == .unowned && optimize(copy: copy, context) {
+          changed = true
+        }
+      case .owned, .none:
+        break
+      }
+    case let load as LoadInst where load.loadOwnership == .copy:
+      if !context.continueWithNextSubpassRun(for: load) {
         return
       }
-      if removeCopyWithOnlyUnownedUses(copy: copy, context) {
-        changed = true
-      } else if copy.fromValue.ownership == .unowned && optimize(copy: copy, context) {
+      if optimize(load: load, context) {
         changed = true
       }
-    case .owned, .none:
+    default:
       break
     }
   }
@@ -113,26 +142,44 @@ let unownedCopyElimination = FunctionPass(name: "unowned-copy-elimination") {
 }
 
 private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bool {
+  return replaceWithGuaranteedValue(copy, context) { _ in copy.fromValue }
+}
+
+private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
+  return replaceWithGuaranteedValue(load, context) { builder in
+    let loadBorrow = builder.createLoadBorrow(fromAddress: load.address)
+    let unownedValue = builder.createUncheckedOwnershipConversion(operand: loadBorrow, resultOwnership: .unowned)
+    builder.createEndBorrow(of: loadBorrow)
+    return unownedValue
+  }
+}
+
+/// Replaces the owned `value` - a `copy_value` or `load [copy]` - with a guaranteed value which is
+/// converted from the unowned value created by `createUnownedValue`.
+private func replaceWithGuaranteedValue(_ value: SingleValueInstruction,
+                                        _ context: FunctionPassContext,
+                                        createUnownedValue: (Builder) -> Value) -> Bool
+{
   var collectedUses = OwnedToGuaranteedUses(context)
   defer { collectedUses.deinitialize() }
-  if !collectedUses.collectUses(of: copy) {
+  if !collectedUses.collectUses(of: value) {
     return false
   }
 
-  // A copy which is never destroyed - e.g. because its lifetime ends in a dead-end block - doesn't
+  // A value which is never destroyed - e.g. because its lifetime ends in a dead-end block - doesn't
   // have a liverange we could create `end_borrow`s for.
   if collectedUses.ends.isEmpty {
     return false
   }
 
-  if mayReleaseReferencedObject(of: copy, endingAt: collectedUses.ends, context) {
+  if mayReleaseReferencedObject(of: value, endingAt: collectedUses.ends, context) {
     return false
   }
 
-  let builder = Builder(before: copy, context)
-  let borrow = builder.createUncheckedOwnershipConversion(operand: copy.fromValue,
+  let builder = Builder(before: value, context)
+  let borrow = builder.createUncheckedOwnershipConversion(operand: createUnownedValue(builder),
                                                           resultOwnership: .guaranteed)
-  copy.replace(with: borrow, context)
+  value.replace(with: borrow, context)
 
   var liverange = InstructionRange(begin: borrow, ends: collectedUses.ends, context)
   defer { liverange.deinitialize() }
@@ -210,9 +257,9 @@ private func mayReleaseReferencedObject(of copy: CopyValueInst,
   return false
 }
 
-/// Returns true if any instruction between the `copy` and `ends` can drop a reference to the
-/// object which `copy` refers to.
-private func mayReleaseReferencedObject(of copy: CopyValueInst,
+/// Returns true if any instruction between `value` and `ends` can drop a reference to the
+/// object which `value` refers to.
+private func mayReleaseReferencedObject(of value: SingleValueInstruction,
                                         endingAt ends: IterableInstructionSet,
                                         _ context: FunctionPassContext) -> Bool
 {
@@ -220,22 +267,22 @@ private func mayReleaseReferencedObject(of copy: CopyValueInst,
   defer { worklist.deinitialize() }
 
   for endInst in ends {
-    worklist.pushPredecessors(of: endInst, ignoring: copy)
+    worklist.pushPredecessors(of: endInst, ignoring: value)
   }
 
   let calleeAnalysis = context.calleeAnalysis
 
   while let inst = worklist.pop() {
     if inst.mayReleaseAnyObject(calleeAnalysis),
-       // Destroys of the copy's own (forward-extended) lifetime are replaced by `end_borrow`s -
+       // Destroys of the value's own (forward-extended) lifetime are replaced by `end_borrow`s -
        // or erased - by this optimization. This includes interior destroys, e.g. of a decomposed
        // aggregate where only the last field's destroy ends the liverange.
        !ends.contains(inst),
-       !inst.isBalancedDestroy(of: copy)
+       !inst.isBalancedDestroy(of: value)
     {
       return true
     }
-    worklist.pushPredecessors(of: inst, ignoring: copy)
+    worklist.pushPredecessors(of: inst, ignoring: value)
   }
   return false
 }
@@ -258,11 +305,15 @@ private extension Instruction {
       // conversion to owned or unowned it cannot release anything.
       return false
     }
+    if let destroy = self as? DestroyValueInst, destroy.isDeadEnd {
+      // A dead-end destroy is a no-op which only marks the end of a lifetime in a dead-end block.
+      return false
+    }
     return mayRelease
   }
 
   /// True if this is a `destroy_value` of a value which is copied - directly or indirectly - from
-  /// `copy`.
+  /// `copy` (a `copy_value` or `load [copy]`).
   ///
   /// Such a destroy is balanced by its own `copy_value`, so it cannot drop the reference which
   /// `copy` is about to give up. For example:
@@ -273,7 +324,7 @@ private extension Instruction {
   ///   ...
   ///   destroy_value %1
   /// ```
-  func isBalancedDestroy(of copy: CopyValueInst) -> Bool {
+  func isBalancedDestroy(of copy: SingleValueInstruction) -> Bool {
     guard let destroy = self as? DestroyValueInst else {
       return false
     }
