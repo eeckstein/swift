@@ -280,6 +280,21 @@ bool PartialApplyCombiner::combine() {
       continue;
     }
 
+    // Look through a `convert_function` which only changes the representation of
+    // the function type, e.g. from a substituted to an unsubstituted function type.
+    // In this case the lowered parameter and result types are identical and the
+    // apply's arguments can be passed directly to the partial_apply's callee.
+    if (auto *cvt = dyn_cast<ConvertFunctionInst>(user)) {
+      if (!cvt->withoutActuallyEscaping()) {
+        auto &mod = cvt->getModule();
+        auto fromTy = use->get()->getType().castTo<SILFunctionType>();
+        auto toTy = cvt->getType().castTo<SILFunctionType>();
+        if (fromTy->getUnsubstitutedType(mod) == toTy->getUnsubstitutedType(mod))
+          llvm::copy(cvt->getUses(), std::back_inserter(worklist));
+      }
+      continue;
+    }
+
     // Look through mark_dependence users of partial_apply [stack].
     if (auto *mdi = dyn_cast<MarkDependenceInst>(user)) {
       if (mdi->getValue() == use->get() &&
