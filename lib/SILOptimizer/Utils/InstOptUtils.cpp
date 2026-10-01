@@ -897,6 +897,12 @@ static bool useHasTransitiveOwnership(const SILInstruction *inst) {
   if (isa<MarkDependenceInst>(inst))
     return true;
 
+  // A convert_function only changes the function type. Bypassing a
+  // withoutActuallyEscaping conversion would loose the guarantee that the
+  // closure does not escape.
+  if (auto *cfi = dyn_cast<ConvertFunctionInst>(inst))
+    return !cfi->withoutActuallyEscaping();
+
   // Look through copy_value, begin_borrow, move_value. They are inert for our
   // purposes, but we need to look through it.
   return isa<CopyValueInst>(inst) || isa<BeginBorrowInst>(inst) ||
