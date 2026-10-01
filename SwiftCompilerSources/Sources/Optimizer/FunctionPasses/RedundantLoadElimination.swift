@@ -699,6 +699,8 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
     return builder.createLoad(fromAddress: addr, ownership: .take)
   case .viaCopyAddr:
     fatalError("copy_addr must be lowered before shrinking lifetime")
+  case .viaLoadBorrow:
+    fatalError("load_borrow cannot be an available value for a load [take]")
   }
 }
 
@@ -719,6 +721,8 @@ private enum DataflowResult {
 /// Either a `load` or `store` which is preceding the original load and provides the loaded value.
 private enum AvailableValue {
   case viaLoad(LoadInst)
+  /// Only used if the original load is a `load_borrow`.
+  case viaLoadBorrow(LoadBorrowInst)
   case viaStore(StoreInst)
   case viaCopyAddr(CopyAddrInst)
   case lifetimeBorder(Instruction)
@@ -726,6 +730,7 @@ private enum AvailableValue {
   var value: Value {
     switch self {
     case .viaLoad(let load):   return load
+    case .viaLoadBorrow(let loadBorrow): return loadBorrow
     case .viaStore(let store): return store.source
     case .viaCopyAddr:         fatalError("copy_addr must be lowered")
     case .lifetimeBorder:      fatalError("lifetimeBorder not supported")
@@ -737,6 +742,8 @@ private enum AvailableValue {
     switch self {
     case .viaLoad(let load):
       fromAddr = load.address
+    case .viaLoadBorrow(let loadBorrow):
+      fromAddr = loadBorrow.address
     case .viaStore(let store):
       fromAddr = store.destination
     case .viaCopyAddr(let copyAddr):
@@ -750,6 +757,7 @@ private enum AvailableValue {
   var instruction: Instruction {
     switch self {
     case .viaLoad(let load):         return load
+    case .viaLoadBorrow(let loadBorrow): return loadBorrow
     case .viaStore(let store):       return store
     case .viaCopyAddr(let copyAddr): return copyAddr
     case .lifetimeBorder(let inst):  return inst
@@ -759,6 +767,8 @@ private enum AvailableValue {
   func getBuilderForProjections(_ context: FunctionPassContext) -> Builder {
     switch self {
     case .viaLoad(let load):        return Builder(after: load, context)
+    // The projections must be created within the borrow scope of the `load_borrow`.
+    case .viaLoadBorrow(let loadBorrow): return Builder(after: loadBorrow, context)
     case .viaStore(let store):      return Builder(before: store, context)
     case .lifetimeBorder(let inst): return Builder(before: inst, context)
     case .viaCopyAddr:              fatalError("copy_addr must be lowered")
@@ -1023,6 +1033,18 @@ private struct Liverange {
       }
 
     case let loadBorrow as LoadBorrowInst:
+      if load.kind == .borrow {
+        // A preceding `load_borrow` can provide the value for a `load_borrow`, because the value
+        // is only used as value hint, which has "none" ownership.
+        if loadBorrow == load {
+          foundLoop = true
+          return .available
+        }
+        if loadBorrow.address.constantAccessPath.getMaterializableProjection(to: accessPath) != nil {
+          availableValues.append(.viaLoadBorrow(loadBorrow))
+          return .available
+        }
+      }
       if loadBorrows.contains(loadBorrow) {
         return .transparent
       }
