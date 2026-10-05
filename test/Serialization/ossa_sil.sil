@@ -22,7 +22,7 @@ bb0(%0 : $*X, %1 : @owned $X):
   return %r : $()
 }
 
-// CHECK-LABEL: sil [serialized] [canonical] [ossa] @test_unchecked_ref_cast
+// CHECK-LABEL: sil [serialized] [canonical] [stage=canonical] [ossa] @test_unchecked_ref_cast
 sil [serialized] [ossa] @test_unchecked_ref_cast : $@convention(thin) (@guaranteed AnyObject) -> @owned X {
 bb0(%0 : @guaranteed $AnyObject):
   // CHECK: %1 = unchecked_ref_cast %0 : $AnyObject to $X, forwarding: @unowned
@@ -35,7 +35,7 @@ struct Wrapper {
   var _k: X
 }
 
-// CHECK-LABEL: sil [serialized] [canonical] [ossa] @unchecked_ownership :
+// CHECK-LABEL: sil [serialized] [canonical] [stage=canonical] [ossa] @unchecked_ownership :
 // CHECK:         %2 = unchecked_ownership %1 : $Wrapper, forwarding: @none
 // CHECK-LABEL: } // end sil function 'unchecked_ownership'
 sil [serialized] [ossa] @unchecked_ownership : $@convention(thin) (@inout X, @owned Wrapper) -> () {
