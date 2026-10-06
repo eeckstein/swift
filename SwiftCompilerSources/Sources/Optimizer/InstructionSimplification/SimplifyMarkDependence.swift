@@ -67,17 +67,63 @@ private extension MarkDependenceInstruction {
   }
 
   func simplifyBaseOperand(_ context: SimplifyContext) {
-    /// In OSSA, the `base` is a borrow introducing operand. It is pretty complicated to change the base.
-    /// So, for simplicity, we only do this optimization when OSSA is already lowered.
-    if parentFunction.hasOwnership {
-      return
-    }
     // Replace the base operand with the operand of the base value if it's a certain kind of forwarding
     // instruction.
-    let rootBase = base.lookThroughEnumAndExistentialRef
-    if rootBase != base {
-      baseOperand.set(to: rootBase, context)
+    if parentFunction.hasOwnership {
+      while let operand = base.enumOrExistentialRefOperand {
+        switch (base.ownership, operand.ownership) {
+        case (.guaranteed, .guaranteed):
+          // The operand is in the same borrow scope as the forwarded value.
+          baseOperand.set(to: operand, context)
+        case (.owned, .owned):
+          guard removeOwnedForwardingBase(operand: operand, context) else {
+            return
+          }
+        default:
+          return
+        }
+      }
+      return
     }
+    while let operand = base.enumOrExistentialRefOperand {
+      baseOperand.set(to: operand, context)
+    }
+  }
+
+  /// Removes an owned forwarding instruction which is only used as the base and destroyed:
+  /// ```
+  ///   %2 = enum $Optional<C>, #Optional.some!enumelt, %1
+  ///   %3 = mark_dependence %0 on %2
+  ///   destroy_value %2
+  /// ```
+  /// ->
+  /// ```
+  ///   %3 = mark_dependence %0 on %1
+  ///   destroy_value %1
+  /// ```
+  private func removeOwnedForwardingBase(operand: Value, _ context: SimplifyContext) -> Bool {
+    let forwardingInst = base as! SingleValueInstruction
+    for use in forwardingInst.uses {
+      switch use.instruction {
+      case is DestroyValueInst:
+        break
+      case is DebugValueInst where !context.preserveDebugInfo:
+        break
+      default:
+        if use != baseOperand {
+          return false
+        }
+      }
+    }
+    baseOperand.set(to: operand, context)
+    for user in forwardingInst.users {
+      if let destroy = user as? DestroyValueInst {
+        Builder(before: destroy, context).createDestroyValue(operand: operand, isDeadEnd: destroy.isDeadEnd)
+      }
+    }
+    // The remaining users are `destroy_value` and `debug_value` instructions.
+    context.erase(instructionIncludingAllUsers: forwardingInst)
+    return true
   }
 }
 
@@ -98,19 +144,16 @@ private extension Value {
     }
   }
 
-  var lookThroughEnumAndExistentialRef: Value {
+  var enumOrExistentialRefOperand: Value? {
     switch self {
     case let e as EnumInst:
-      if let payload = e.payload {
-        return payload.lookThroughEnumAndExistentialRef
-      }
-      return self
+      return e.payload
     case let ier as InitExistentialRefInst:
-      return ier.instance.lookThroughEnumAndExistentialRef
+      return ier.instance
     case let oer as OpenExistentialRefInst:
-      return oer.existential.lookThroughEnumAndExistentialRef
+      return oer.existential
     default:
-      return self
+      return nil
     }
   }
 }

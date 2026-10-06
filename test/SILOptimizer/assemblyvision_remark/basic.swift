@@ -29,7 +29,7 @@ public func useGlobal() {
     let x = getGlobal()
     print(x) // expected-remark @:12 {{release of type}}
              // expected-remark @-1:11 {{heap allocated ref of type}}
-             // expected-remark @-2:12 {{release of type}}
+             // expected-remark @-2:5 {{release of type}}
              // expected-note@-4{{of 'x'}}
              // expected-remark @-4:11 {{retain of type}}
              // expected-note@-6{{of 'x'}}
@@ -50,14 +50,14 @@ func printStructWithOwner(x : StructWithOwner) {
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
              // expected-remark @-1 {{retain of type 'StructWithOwner'}}
              // expected-note @-3:27 {{of 'x'}}
-             // expected-remark @-3:12 {{release of type}}
+             // expected-remark @-3:5 {{release of type}}
 }
 
 func printStructWithOwnerOwner(x : StructWithOwner) {
     print(x.owner) // expected-remark @:11 {{heap allocated ref of type}}
                    // expected-remark @-1 {{retain of type 'Klass'}}
                    // expected-note @-3:32 {{of 'x.owner'}}
-                   // expected-remark @-3:18 {{release of type}}
+                   // expected-remark @-3:5 {{release of type}}
 }
 
 func returnStructWithOwnerOwner(x: StructWithOwner) -> Klass {
@@ -81,7 +81,7 @@ func printKlassPair(x : KlassPair) {
     print(x) // expected-remark @:11 {{heap allocated ref of type}}
              // expected-remark @-1:11 {{retain of type 'KlassPair'}}
              // expected-note @-5:21 {{of 'x'}}
-             // expected-remark @-3:12 {{release of type}}
+             // expected-remark @-3:5 {{release of type}}
 }
 
 func printKlassPairLHS(x : KlassPair) {
@@ -89,7 +89,7 @@ func printKlassPairLHS(x : KlassPair) {
     print(x.lhs) // expected-remark @:11 {{heap allocated ref of type}}
                  // expected-remark @-1:13 {{retain of type 'Klass'}}
                  // expected-note @-4:24 {{of 'x.lhs'}}
-                 // expected-remark @-3:16 {{release of type}}
+                 // expected-remark @-3:5 {{release of type}}
 }
 
 // We put the retain on the return here since it is part of the result
@@ -114,7 +114,7 @@ func printKlassTuplePair(x : (Klass, Klass)) {
              // expected-note @-5:26 {{of 'x'}}
              // expected-remark @-3:11 {{retain of type 'Klass'}}
              // expected-note @-7:26 {{of 'x'}}
-             // expected-remark @-5:12 {{release of type}}
+             // expected-remark @-5:5 {{release of type}}
 }
 
 func printKlassTupleLHS(x : (Klass, Klass)) {
@@ -123,7 +123,7 @@ func printKlassTupleLHS(x : (Klass, Klass)) {
                // expected-remark @-1:11 {{retain of type 'Klass'}}
                // expected-note @-4:25 {{of 'x'}}
                // Release on Array<Any> for print.
-               // expected-remark @-4:14 {{release of type}}
+               // expected-remark @-4:5 {{release of type}}
 }
 
 func returnKlassTupleLHS(x: (Klass, Klass)) -> Klass {
@@ -245,7 +245,7 @@ func alwaysInlineCallee(_ calleeX: Klass) {
     print(calleeX) // expected-remark @:11 {{heap allocated ref of type}}
                    // expected-remark @-1:11 {{retain of type 'Klass'}}
                    // expected-note @-3:27 {{of 'calleeX'}}
-                   // expected-remark @-3:18 {{release of type}}
+                   // expected-remark @-3:5 {{release of type}}
 }
 
 // We should have 3x rr remarks here on callerX and none on calleeX.  All of the
@@ -256,15 +256,15 @@ func alwaysInlineCaller(_ callerX: Klass) {
     alwaysInlineCallee(callerX) // expected-remark @:5 {{heap allocated ref of type}}
                                 // expected-remark @-1:5 {{retain of type 'Klass'}}
                                 // expected-note @-3:27 {{of 'callerX'}}
-                                // expected-remark @-3:31 {{release of type}}
+                                // expected-remark @-3:5 {{release of type}}
     print(callerX)              // expected-remark @:11 {{heap allocated ref of type}}
                                 // expected-remark @-1:11 {{retain of type 'Klass'}}
                                 // expected-note @-7:27 {{of 'callerX'}}
-                                // expected-remark @-3:18 {{release of type}}
+                                // expected-remark @-3:5 {{release of type}}
     alwaysInlineCallee(callerX) // expected-remark @:5 {{heap allocated ref of type}}
                                 // expected-remark @-1:5 {{retain of type 'Klass'}}
                                 // expected-note @-11:27 {{of 'callerX'}}
-                                // expected-remark @-3:31 {{release of type}}
+                                // expected-remark @-3:5 {{release of type}}
 }
 
 func allocateValue() {
@@ -275,7 +275,7 @@ func allocateValue() {
                     // expected-remark @-1:11 {{retain of type}}
                     // expected-note @-4:9 {{of 'k'}}
                     // expected-remark @-3:12 {{release of type}}
-                    // expected-remark @-4:12 {{release of type}}
+                    // expected-remark @-4:5 {{release of type}}
                     // expected-note @-7:9 {{of 'k'}}
 }
 
@@ -296,7 +296,7 @@ func simpleInOut() -> Klass {
 public func use<T>(_ t: inout T) { // expected-note @:22 {{from location 't'}}
     print(t); // expected-remark @:11 {{heap allocated ref of type}}
               // expected-remark @-1:11 {{Memory copy of value with type 'T'}}
-              // expected-remark @-2:12 {{release of type}}
+              // expected-remark @-2:5 {{release of type}}
 }
 
 @inline(never)

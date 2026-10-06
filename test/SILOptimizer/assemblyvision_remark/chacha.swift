@@ -39,7 +39,7 @@ public func run_ChaCha(_ N: Int) {
   for _ in 1...N {
     ChaCha20.encrypt(bytes: &plaintext, key: key, nonce: nonce)
     print(plaintext.first!) // expected-remark @:11 {{heap allocated ref of type '}}
-                            // expected-remark @-1:27 {{release of type '}}
+                            // expected-remark @-1:5 {{release of type '}}
   }
 } // expected-remark {{release of type '}}
   // expected-remark @-1 {{release of type '}}
