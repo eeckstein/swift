@@ -106,7 +106,7 @@ public func getGlobal() -> Klass {
 // CHECK-NEXT: Pass:            sil-assembly-vision-remark-gen
 // CHECK-NEXT: Name:            sil.memory
 // CHECK-NEXT: DebugLoc:        { File: '{{.*}}basic_yaml.swift', 
-// CHECK-NEXT:                    Line: [[# @LINE + 26 ]], Column: 12 }
+// CHECK-NEXT:                    Line: [[# @LINE + 26 ]], Column: 5 }
 // CHECK-NEXT: Function:        '$s12optrecordmod9useGlobalyyF'
 // CHECK-NEXT: Args:
 // CHECK-NEXT:   - String:          'release of type '''
@@ -137,6 +137,6 @@ public func useGlobal() {
              // expected-remark @-2:11 {{retain of type}}
              // expected-note @-6 {{of 'x'}}
              // expected-remark @-4:12 {{release of type}}
-             // expected-remark @-5:12 {{release of type}}
+             // expected-remark @-5:5 {{release of type}}
              // expected-note @-9 {{of 'x'}}
 }

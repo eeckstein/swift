@@ -33,7 +33,7 @@ public func testOptionalArray() {
   // CHECK:        [[ORIGINAL_OWNER:%.*]] = unchecked_ref_cast {{%.*}} : $Builtin.BridgeObject to $__ContiguousArrayStorageBase
   // CHECK-NEXT:   [[ORIGINAL_OWNER_EXISTENTIAL:%.*]] = init_existential_ref [[ORIGINAL_OWNER]]
   // CHECK-NEXT:   [[OWNER:%.+]] = enum $Optional<AnyObject>, #Optional.some!enumelt, [[ORIGINAL_OWNER_EXISTENTIAL]]
-  // CHECK-NEXT:   [[DEP_POINTER:%.+]] = mark_dependence [[POINTER]] : $UnsafeRawPointer on [[ORIGINAL_OWNER]]
+  // CHECK-NEXT:   [[DEP_POINTER:%.+]] = mark_dependence [[POINTER]] : $UnsafeRawPointer on [[OWNER]] : $Optional<AnyObject>
   // CHECK-NEXT:   [[OPT_POINTER:%.+]] = enum $Optional<UnsafeRawPointer>, #Optional.some!enumelt, [[DEP_POINTER]]
   // CHECK-NEXT:   br [[CALL_BRANCH:bb[0-9]+]]([[OPT_POINTER]] : $Optional<UnsafeRawPointer>, [[OWNER]] : $Optional<AnyObject>)
 
@@ -44,7 +44,7 @@ public func testOptionalArray() {
   // CHECK-NEXT: apply [[FN]]([[DEP_OPT_POINTER]])
   // CHECK-NOT: release
   // CHECK-NOT: {{^bb[0-9]+:}}
-  // CHECK: release_value {{%.+}} : $Optional<Array<Int>>
+  // CHECK: release_value [[OWNER]] : $Optional<AnyObject>
   // CHECK-NEXT: [[EMPTY:%.+]] = tuple ()
   // CHECK-NEXT: return [[EMPTY]]
 
