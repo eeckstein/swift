@@ -4300,12 +4300,12 @@ bb2(%5 : @owned $MyErrorType):
 }
 
 // CHECK-LABEL: sil [ossa] @mark_dependence_base
-// XHECK: bb0(
-// XHECK-NOT: init_existential_ref
-// XHECK-NOT: enum
-// XHECK-NEXT: mark_dependence
-// XHECK-NEXT: load
-// XHECK: return
+// CHECK: bb0(
+// CHECK-NOT: init_existential_ref
+// CHECK-NOT: enum
+// CHECK-NEXT: mark_dependence
+// CHECK-NEXT: load
+// CHECK: return
 sil [ossa] @mark_dependence_base : $@convention(thin) (@inout Builtin.Int64, @owned B) -> Builtin.Int64 {
 bb0(%0 : $*Builtin.Int64, %1 : @owned $B):
   %x = init_existential_ref %1 : $B : $B, $AnyObject
@@ -4334,10 +4334,11 @@ bb0(%0 : @guaranteed $B):
 //
 // CHECK-LABEL: sil [ossa] @mark_dependence_base1_lexical1 : {{.*}} {
 // CHECK:       {{bb[0-9]+}}([[ADDR:%[^,]+]] : $*Builtin.Int64, [[INSTANCE:%[^,]+]] : @owned $B):
-// CHECK:         [[OPTIONAL:%[^,]+]] = enum $FakeOptional<B>, #FakeOptional.some!enumelt, [[INSTANCE]]
-// CHECK:         [[DEPENDENT_ADDR:%[^,]+]] = mark_dependence [[ADDR]]
-// CHECK:         [[VALUE:%[^,]+]] = load [trivial] [[DEPENDENT_ADDR]]
-// CHECK:         return [[VALUE]]
+// CHECK-NOT:     enum
+// CHECK:         [[DEPENDENT_ADDR:%[^,]+]] = mark_dependence [[ADDR]] : $*Builtin.Int64 on [[INSTANCE]]
+// CHECK-NEXT:    [[VALUE:%[^,]+]] = load [trivial] [[DEPENDENT_ADDR]]
+// CHECK-NEXT:    destroy_value [[INSTANCE]]
+// CHECK-NEXT:    return [[VALUE]]
 // CHECK-LABEL: } // end sil function 'mark_dependence_base1_lexical1'
 sil [ossa] @mark_dependence_base1_lexical1 : $@convention(thin) (@inout Builtin.Int64, @owned B) -> Builtin.Int64 {
 bb0(%addr : $*Builtin.Int64, %instance : @owned $B):

@@ -8,6 +8,11 @@ import Swift
 class Foo {
 }
 
+struct S {
+  var a: Foo
+  var b: Int
+}
+
 
 sil [ossa] @_TFC4main3Food : $@convention(method) (@owned Foo) -> @owned Builtin.NativeObject {
 bb0(%0 : @owned $Foo):
@@ -94,6 +99,27 @@ bb0(%0 : @owned $Foo):
   debug_value %2 : $Foo, let, name "unused"
   %5 = tuple ()
   return %5 : $()
+}
+
+sil [ossa] [readonly] @readonly_returns_tuple : $@convention(thin) () -> (@owned S, @owned Foo)
+
+// CHECK-LABEL: sil [ossa] @look_through_destructures :
+// CHECK-NOT:     apply
+// CHECK-NOT:     destructure
+// CHECK-NOT:     destroy_value
+// CHECK:         tuple ()
+// CHECK-NEXT:    return
+// CHECK:       } // end sil function 'look_through_destructures'
+sil [ossa] @look_through_destructures : $@convention(thin) () -> () {
+bb0:
+  %0 = function_ref @readonly_returns_tuple : $@convention(thin) () -> (@owned S, @owned Foo)
+  %1 = apply %0() : $@convention(thin) () -> (@owned S, @owned Foo)
+  (%2, %3) = destructure_tuple %1 : $(S, Foo)
+  (%4, %5) = destructure_struct %2 : $S
+  destroy_value %4 : $Foo
+  destroy_value %3 : $Foo
+  %r = tuple ()
+  return %r : $()
 }
 
 sil_vtable Foo {

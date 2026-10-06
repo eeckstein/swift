@@ -24,6 +24,9 @@ extension BeginBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
       if tryReplaceBorrowWithOwnedOperand(beginBorrow: self, context) {
         return
       }
+      if tryRemoveBorrowedConvertFunction(beginBorrow: self, context) {
+        return
+      }
     case .guaranteed:
       if tryReplaceInnerBorrowScope(beginBorrow: self, context) {
         return
@@ -65,6 +68,73 @@ private func tryReplaceBorrowWithOwnedOperand(beginBorrow: BeginBorrowInst, _ co
     return true
   }
   return false
+}
+
+/// Removes an owned `convert_function` which is only borrowed, if all uses of the borrow scopes are
+/// `convert_function`s. This enables combining the `convert_function`s.
+/// ```
+///   %1 = convert_function %0 to $T1
+///   %2 = begin_borrow %1
+///   %3 = convert_function %2 to $T2
+///   // ... uses of %3
+///   end_borrow %2
+///   destroy_value %1
+/// ```
+/// ->
+/// ```
+///   %2 = begin_borrow %0
+///   %3 = convert_function %2 to $T2
+///   // ... uses of %3
+///   end_borrow %2
+///   destroy_value %0
+/// ```
+private func tryRemoveBorrowedConvertFunction(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) -> Bool {
+  guard let convert = beginBorrow.borrowedValue as? ConvertFunctionInst,
+        !convert.withoutActuallyEscaping,
+        convert.fromFunction.ownership == .owned
+  else {
+    return false
+  }
+  for use in convert.uses {
+    switch use.instruction {
+    case beginBorrow:
+      for borrowUse in beginBorrow.uses {
+        switch borrowUse.instruction {
+        case is EndBorrowInst:
+          break
+        case let cfi as ConvertFunctionInst where !cfi.withoutActuallyEscaping:
+          break
+        default:
+          return false
+        }
+      }
+    case is DestroyValueInst:
+      break
+    case is DebugValueInst where !context.preserveDebugInfo:
+      break
+    default:
+      return false
+    }
+  }
+
+  for use in convert.uses {
+    switch use.instruction {
+    case beginBorrow:
+      let builder = Builder(before: beginBorrow, context)
+      let newBorrow = builder.createBeginBorrow(of: convert.fromFunction,
+                                                isLexical: beginBorrow.isLexical,
+                                                hasPointerEscape: beginBorrow.hasPointerEscape)
+      beginBorrow.replace(with: newBorrow, context)
+    case is DestroyValueInst:
+      use.set(to: convert.fromFunction, context)
+    case let debugValue as DebugValueInst:
+      context.erase(instruction: debugValue)
+    default:
+      fatalError("unexpected user")
+    }
+  }
+  context.erase(instruction: convert)
+  return true
 }
 
 /// Removes a borrow scope if the borrowed operand is already a guaranteed value.
@@ -109,17 +179,19 @@ private func tryReplaceInnerBorrowScope(beginBorrow: BeginBorrowInst, _ context:
 ///   %2 = convert_function %1
 ///   // ... uses of %2
 /// ```
+/// The same is done for a `differentiable_function` with "none" ownership, i.e. where all
+/// operands are thin functions.
 private func removeBorrowOfThinFunction(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) {
   let borrowedValue = beginBorrow.borrowedValue
   guard borrowedValue.ownership == .none,
-        borrowedValue.lookThroughConvertFunctions is ThinToThickFunctionInst,
+        borrowedValue.lookThroughConvertFunctions.isThinFunction,
         // For simplicity don't go into the trouble of removing reborrow phi arguments.
         beginBorrow.uses.filter(usersOfType: BranchInst.self).isEmpty else
   {
     return
   }
-  // `thin_to_thick_function` has "none" ownership and is compatible with guaranteed values.
-  // Therefore the `begin_borrow` is not needed.
+  // `thin_to_thick_function` and `differentiable_function` of thin functions have "none" ownership
+  // and are compatible with guaranteed values. Therefore the `begin_borrow` is not needed.
   beginBorrow.uses.ignore(usersOfType: EndBorrowInst.self).replaceAll(with: borrowedValue, context)
   context.erase(instructionIncludingAllUsers: beginBorrow)
 }
@@ -130,6 +202,15 @@ private extension Value {
       return cfi.fromFunction.lookThroughConvertFunctions
     }
     return self
+  }
+
+  var isThinFunction: Bool {
+    switch self {
+    case is ThinToThickFunctionInst, is DifferentiableFunctionInst:
+      return true
+    default:
+      return false
+    }
   }
 }
 
