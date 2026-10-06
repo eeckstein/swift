@@ -21,9 +21,103 @@ extension CopyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
     if !context.preserveDebugInfo {
+      if tryRemoveCopyOfBorrow(copy: self, context) {
+        return
+      }
       tryRemoveProjectedCopy(copy: self, context)
     }
   }
+}
+
+/// Remove a `copy_value` of a borrowed owned value if the copy outlives the owned value.
+///
+/// ```
+///   %2 = begin_borrow %1
+///   %3 = copy_value %2                   // to be removed
+///   %4 = some_forwarding_instructions %3
+///   end_borrow %2                        // last use of the owned value
+///   use %4
+///   destroy_value %1                     // end of lifetime of the owned value
+///   destroy_value %4
+/// ```
+/// ->
+/// ```
+///   %2 = begin_borrow %1
+///   end_borrow %2
+///   %4 = some_forwarding_instructions %1 // moved after the last use of the owned value
+///   use %4
+///   destroy_value %4
+/// ```
+///
+/// This extends the owned value's lifetime to the end of the copy's lifetime. It never shortens
+/// any lifetime.
+///
+/// Preconditions:
+///   * The `destroy_value` of the owned value must be in the same basic block as the `copy_value`
+///   * There are no uses of the copy or its forwarding instructions before the last use of the
+///     owned value
+///
+private func tryRemoveCopyOfBorrow(copy: CopyValueInst, _ context: SimplifyContext) -> Bool {
+  let block = copy.parentBlock
+
+  guard let beginBorrow = copy.fromValue as? BeginBorrowInst else {
+    return false
+  }
+  let ownedValue = beginBorrow.borrowedValue
+
+  guard ownedValue.ownership == .owned,
+        // Find the destroy_value of the owned value in the same block as copy.
+        let destroy = ownedValue.uses.users(ofType: DestroyValueInst.self).first(where: { $0.parentBlock == block }),
+        let lastUse = findLastUse(of: ownedValue, before: destroy),
+        copy.strictlyDominatesInBlock(lastUse),
+        let boundary = lastUse.next,
+        checkForwardingChain(from: copy, outsideLiverangeEndingAt: boundary)
+  else {
+    return false
+  }
+
+  moveForwardingChain(from: copy, before: boundary, context)
+
+  copy.replace(with: ownedValue, context)
+
+  context.erase(instruction: destroy)
+  return true
+}
+
+/// Returns the last instruction before `destroy` in the block which uses `ownedValue`, including
+/// the ends of borrow scopes of `ownedValue`.
+/// Returns nil if `ownedValue` has borrowing uses other than `begin_borrow`.
+private func findLastUse(of ownedValue: Value, before destroy: DestroyValueInst) -> Instruction? {
+  var lastUse: Instruction? = nil
+
+  func update(with inst: Instruction) {
+    // Uses in other blocks are located before the destroy's block or outside the value's lifetime.
+    // Also some kind of uses, e.g. `debug_value`, can be located after the destroy.
+    guard inst.parentBlock == destroy.parentBlock,
+          inst.strictlyDominatesInBlock(destroy)
+    else {
+      return
+    }
+    if let current = lastUse, !current.strictlyDominatesInBlock(inst) {
+      return
+    }
+    lastUse = inst
+  }
+
+  for use in ownedValue.uses where use.instruction != destroy {
+    if let beginBorrow = use.instruction as? BeginBorrowInst {
+      for endInst in beginBorrow.endInstructions {
+        update(with: endInst)
+      }
+    } else if use.ownership == .borrow {
+      // Other borrowing instructions (e.g. `begin_apply`, `partial_apply [on_stack]`,
+      // `mark_dependence [nonescaping]`) keep `ownedValue` alive beyond the instruction itself.
+      // For simplicity we don't compute the ends of their scopes.
+      return nil
+    }
+    update(with: use.instruction)
+  }
+  return lastUse
 }
 
 /// Remove a `copy_value` from a projected owned value which outlives the enclosing owned value.
@@ -78,7 +172,7 @@ private func tryRemoveProjectedCopy(copy: CopyValueInst, _ context: SimplifyCont
     return
   }
 
-  guard checkForwardingChain(from: copy, to: destroy) else {
+  guard checkForwardingChain(from: copy, outsideLiverangeEndingAt: destroy) else {
     return
   }
 
@@ -108,17 +202,17 @@ private func tryRemoveProjectedCopy(copy: CopyValueInst, _ context: SimplifyCont
 }
 
 /// Returns true if every non-forwarding, non-debug use of `copy` and its forwarding
-/// chain is outside the owned value's liverange which ends at `destroy`.
-private func checkForwardingChain(from value: Value, to destroy: DestroyValueInst) -> Bool {
+/// chain is outside the owned value's liverange, i.e. at or after `boundary`.
+private func checkForwardingChain(from value: Value, outsideLiverangeEndingAt boundary: Instruction) -> Bool {
   for use in value.uses.ignoreDebugUses {
     let user = use.instruction
-    if user.parentBlock != destroy.parentBlock || destroy.strictlyDominatesInBlock(user) {
+    if user.parentBlock != boundary.parentBlock || boundary.dominatesInBlock(user) {
       continue
     }
     guard let fwdInst = user as? (SingleValueInstruction & ForwardingInstruction),
           fwdInst.singleForwardedOperand == use,
           fwdInst.operands.count == 1,
-          checkForwardingChain(from: fwdInst, to: destroy)
+          checkForwardingChain(from: fwdInst, outsideLiverangeEndingAt: boundary)
     else {
       return false
     }
@@ -127,21 +221,21 @@ private func checkForwardingChain(from value: Value, to destroy: DestroyValueIns
 }
 
 /// Moves every forwarding instruction in the chain starting at `copy` to just
-/// before `destroy`.
+/// before `boundary`.
 private func moveForwardingChain(from value: Value,
-                                 before destroy: DestroyValueInst,
+                                 before boundary: Instruction,
                                  _ context: SimplifyContext) {
   for use in value.uses {
     let user = use.instruction
-    if user.parentBlock != destroy.parentBlock || destroy.strictlyDominatesInBlock(user) {
+    if user.parentBlock != boundary.parentBlock || boundary.dominatesInBlock(user) {
       continue
     }
     switch user {
     case let debugValue as DebugValueInst:
-      debugValue.move(before: destroy, context)
+      debugValue.move(before: boundary, context)
     case let fwdInst as (SingleValueInstruction & ForwardingInstruction):
-      fwdInst.move(before: destroy, context)
-      moveForwardingChain(from: fwdInst, before: destroy, context)
+      fwdInst.move(before: boundary, context)
+      moveForwardingChain(from: fwdInst, before: boundary, context)
     default:
       fatalError("unhandled user")
     }

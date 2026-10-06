@@ -165,6 +165,53 @@ bb0(%0 : $*Builtin.Int64, %1 : $B):
   return %5
 }
 
+// CHECK-LABEL: sil [ossa] @mark_dependence_base_ossa :
+// CHECK-NOT:     init_existential_ref
+// CHECK-NOT:     enum
+// CHECK:         %2 = mark_dependence %0 on %1
+// CHECK-NEXT:    %3 = load [trivial] %2
+// CHECK-NEXT:    return %3
+// CHECK:       } // end sil function 'mark_dependence_base_ossa'
+sil [ossa] @mark_dependence_base_ossa : $@convention(thin) (@inout Builtin.Int64, @guaranteed B) -> Builtin.Int64 {
+bb0(%0 : $*Builtin.Int64, %1 : @guaranteed $B):
+  %2 = init_existential_ref %1 : $B : $B, $AnyObject
+  %3 = enum $Optional<AnyObject>, #Optional.some!enumelt, %2
+  %4 = mark_dependence %0 on %3
+  %5 = load [trivial] %4
+  return %5
+}
+
+// CHECK-LABEL: sil [ossa] @mark_dependence_base_ossa_owned :
+// CHECK-NOT:     init_existential_ref
+// CHECK-NOT:     enum
+// CHECK:         %2 = mark_dependence %0 on %1
+// CHECK-NEXT:    %3 = load [trivial] %2
+// CHECK-NEXT:    destroy_value %1
+// CHECK-NEXT:    return %3
+// CHECK:       } // end sil function 'mark_dependence_base_ossa_owned'
+sil [ossa] @mark_dependence_base_ossa_owned : $@convention(thin) (@inout Builtin.Int64, @owned B) -> Builtin.Int64 {
+bb0(%0 : $*Builtin.Int64, %1 : @owned $B):
+  %2 = init_existential_ref %1 : $B : $B, $AnyObject
+  %3 = enum $Optional<AnyObject>, #Optional.some!enumelt, %2
+  %4 = mark_dependence %0 on %3
+  %5 = load [trivial] %4
+  destroy_value %3
+  return %5
+}
+
+// CHECK-LABEL: sil [ossa] @mark_dependence_base_ossa_owned_other_use :
+// CHECK:         %3 = enum $Optional<AnyObject>, #Optional.some!enumelt, %2
+// CHECK:         %4 = mark_dependence %0 on %3
+// CHECK:       } // end sil function 'mark_dependence_base_ossa_owned_other_use'
+sil [ossa] @mark_dependence_base_ossa_owned_other_use : $@convention(thin) (@inout Builtin.Int64, @owned B) -> @owned Optional<AnyObject> {
+bb0(%0 : $*Builtin.Int64, %1 : @owned $B):
+  %2 = init_existential_ref %1 : $B : $B, $AnyObject
+  %3 = enum $Optional<AnyObject>, #Optional.some!enumelt, %2
+  %4 = mark_dependence %0 on %3
+  %5 = load [trivial] %4
+  return %3
+}
+
 // CHECK-LABEL: sil hidden [ossa] @testChainedDependence : $@convention(thin) (@guaranteed NEHolder) -> () {
 // CHECK: bb0(%0 : @noImplicitCopy @guaranteed $NEHolder):
 // CHECK:   ([[YIELD:%[0-9]+]], [[TOKEN:%[0-9]+]]) = begin_apply %{{.*}}(%{{.*}}) : $@yield_once @convention(method) (@guaranteed NEHolder) -> @lifetime(borrow 0) @yields @guaranteed NE

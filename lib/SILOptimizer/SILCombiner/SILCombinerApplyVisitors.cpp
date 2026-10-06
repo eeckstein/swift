@@ -701,6 +701,13 @@ SILCombiner::recursivelyCollectARCUsers(UserListTy &Uses, ValueBase *Value) {
       if (recursivelyCollectARCUsers(Uses, cast<SingleValueInstruction>(Inst)))
         continue;
     }
+    if (isa<DestructureStructInst>(Inst) || isa<DestructureTupleInst>(Inst)) {
+      Uses.push_back(Inst);
+      if (llvm::all_of(Inst->getResults(), [&](SILValue result) {
+            return recursivelyCollectARCUsers(Uses, result);
+          }))
+        continue;
+    }
     return false;
   }
   return true;
