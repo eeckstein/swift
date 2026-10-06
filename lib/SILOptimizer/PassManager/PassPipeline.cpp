@@ -840,9 +840,10 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
     P.addCopyPropagation();
   }
 
-  // Must run after the last CopyPropagation and Simplification pass, because both undo the
+  // Must run after CopyPropagation and Simplification, because both undo the
   // effect of LowerAddressInstructions: CopyPropagation re-creates `copy_addr` and the
   // load-simplification re-creates `destroy_addr`.
+  // Note that LowerAddressInstructions runs again at the end of the LateLoopOpt pipeline.
   P.addLowerAddressInstructions();
 
   P.addInitializeStaticGlobals();
@@ -862,8 +863,6 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
   // anymore after the last devirtualizer run.
   P.addLateDeadFunctionAndGlobalElimination();
 
-  // Perform the final lowering transformations.
-  P.addCodeSinking();
   // Optimize access markers for better LICM: might merge accesses
   // It will also set the no_nested_conflict for dynamic accesses
   P.addAccessEnforcementReleaseSinking();
@@ -895,9 +894,9 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
   P.addDeadDebugVariableElimination();
   P.addStripObjectHeaders();
 
-  // Try to hoist all releases, including epilogue releases. This should be
-  // after FSO.
-  P.addLateReleaseHoisting();
+  // Must run after the last SILCombine, because the load-simplification undoes the effect of
+  // LowerAddressInstructions by re-creating `destroy_addr`.
+  P.addLowerAddressInstructions();
 }
 
 // Run passes that
@@ -905,6 +904,7 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
 // - have no reason to run before any other SIL optimizations.
 // - don't require IRGen information.
 static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
+  P.addCodeSinking();
   // Optimize access markers for improved IRGen after all other optimizations.
   P.addOptimizeHopToExecutor();
   P.addAccessEnforcementReleaseSinking();
@@ -1059,13 +1059,13 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
 
   P.addKillInvalidDebugValues();
 
+  addLateLoopOptPassPipeline(P);
+
   // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
   // requires for unowned values actually need to become a retain/release pair.
   P.addUnownedCopyElimination();
 
   P.addOwnershipModelEliminator();
-
-  addLateLoopOptPassPipeline(P);
 
   addLastChanceOptPassPipeline(P);
 

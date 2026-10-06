@@ -1,0 +1,35 @@
+// RUN: %target-sil-opt -sil-print-types -enable-sil-verify-all %s -onone-simplification -simplify-instruction=begin_borrow | %FileCheck %s --check-prefix=CHECK --check-prefix=ONONE
+// RUN: %target-sil-opt -sil-print-types -enable-sil-verify-all %s -simplification -simplify-instruction=begin_borrow | %FileCheck %s --check-prefix=CHECK --check-prefix=OPT
+
+sil_stage canonical
+
+import Builtin
+import Swift
+import SwiftShims
+
+import _Differentiation
+
+sil @f : $@convention(thin) (Float) -> Float
+sil @f_jvp : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+sil @f_vjp : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+
+// CHECK-LABEL: sil [ossa] @remove_borrow_of_differentiable_thin_function :
+// CHECK:         [[D:%.*]] = differentiable_function
+// ONONE-NEXT:    begin_borrow
+// OPT-NOT:       begin_borrow
+// OPT:           apply [[D]](%0)
+// CHECK-LABEL: } // end sil function 'remove_borrow_of_differentiable_thin_function'
+sil [ossa] @remove_borrow_of_differentiable_thin_function : $@convention(thin) (Float) -> Float {
+bb0(%0 : $Float):
+  %1 = function_ref @f : $@convention(thin) (Float) -> Float
+  %2 = function_ref @f_jvp : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %3 = function_ref @f_vjp : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %4 = thin_to_thick_function %1 to $@noescape @callee_guaranteed (Float) -> Float
+  %5 = thin_to_thick_function %2 to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %6 = thin_to_thick_function %3 to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %7 = differentiable_function [parameters 0] [results 0] %4 with_derivative {%5, %6}
+  %8 = begin_borrow [lexical] %7
+  %9 = apply %8(%0) : $@differentiable(reverse) @noescape @callee_guaranteed (Float) -> Float
+  end_borrow %8
+  return %9
+}

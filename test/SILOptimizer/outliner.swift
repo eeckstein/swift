@@ -87,8 +87,8 @@ public func testOutlining() {
 // CHECK:         [[STRING_FROM_NSSTRING:%[^,]+]] = function_ref @$sSS10FoundationE36_unconditionallyBridgeFromObjectiveCySSSo8NSStringCSgFZ
 // CHECK:         [[STRING_TYPE:%[^,]+]] = metatype $@thin String.Type
 // CHECK:         [[STRING:%[^,]+]] = apply [[STRING_FROM_NSSTRING]]([[MAYBE_NSSTRING]], [[STRING_TYPE]])
-// CHECK:         release_value [[MAYBE_NSSTRING]]
 // CHECK:         [[SOME_STRING:%[^,]+]] = enum $Optional<String>, #Optional.some!enumelt, [[STRING]]
+// CHECK:         release_value [[MAYBE_NSSTRING]]
 // CHECK:         br [[EXIT:bb[0-9]+]]([[SOME_STRING]] : $Optional<String>)
 // CHECK:       [[NONE_BLOCK]]:                                              
 // CHECK:         [[NONE_STRING:%[^,]+]] = enum $Optional<String>, #Optional.none!enumelt
@@ -106,8 +106,8 @@ public func testOutlining() {
 // CHECK:  [[F:%.*]] = function_ref @$sSS10FoundationE36_unconditionallyBridgeFromObjectiveCySSSo8NSStringCSgFZ : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
 // CHECK:  [[MT:%.*]] = metatype $@thin String.Type
 // CHECK:  [[S:%.*]] = apply [[F]](%2, [[MT]]) : $@convention(method) (@guaranteed Optional<NSString>, @thin String.Type) -> @owned String
-// CHECK:  release_value %2 : $Optional<NSString>
 // CHECK:  [[O:%.*]] = enum $Optional<String>, #Optional.some!enumelt, [[S]] : $String
+// CHECK:  release_value %2 : $Optional<NSString>
 // CHECK:  br bb3([[O]] : $Optional<String>)
 // CHECK:bb2:
 // CHECK:  [[ON:%.*]] = enum $Optional<String>, #Optional.none!enumelt
@@ -121,10 +121,10 @@ public func testOutlining() {
 // CHECK:   %2 = objc_method %1 : $Gizmo, #Gizmo.stringProperty!setter.foreign : (Gizmo) -> (String?) -> ()
 // CHECK:   %3 = function_ref @$sSS10FoundationE19_bridgeToObjectiveCSo8NSStringCyF : $@convention(method) (@guaranteed String) -> @owned NSString
 // CHECK:   %4 = apply %3(%0) : $@convention(method) (@guaranteed String) -> @owned NSString
+// CHECK:   %5 = enum $Optional<NSString>, #Optional.some!enumelt, %4 : $NSString
 // CHECK:   release_value %0 : $String
-// CHECK:   %6 = enum $Optional<NSString>, #Optional.some!enumelt, %4 : $NSString
-// CHECK:   %7 = apply %2(%6, %1) : $@convention(objc_method) (Optional<NSString>, Gizmo) -> ()
-// CHECK:   strong_release %4 : $NSString
+// CHECK:   %7 = apply %2(%5, %1) : $@convention(objc_method) (Optional<NSString>, Gizmo) -> ()
+// CHECK:   release_value %5 : $Optional<NSString>
 // CHECK:   return %7 : $()
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvsToTembnn_'
 
@@ -163,7 +163,7 @@ public func testOutlining() {
 // CHECK-NOT:   release_value
 // CHECK:   %5 = enum $Optional<NSArray>, #Optional.some!enumelt, %4 : $NSArray
 // CHECK:   %6 = apply %2(%5, %1) : $@convention(objc_method) (Optional<NSArray>, Gizmo) -> @autoreleased Optional<AnyObject>
-// CHECK:   strong_release %4 : $NSArray
+// CHECK:   release_value %5 : $Optional<NSArray>
 // CHECK:   return %6 : $Optional<AnyObject>
 // CHECK: } // end sil function '$sSo5GizmoC11doSomethingyypSgSaySSGSgFToTembgnn_'
 
