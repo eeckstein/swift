@@ -18,6 +18,9 @@ extension Phi {
     if replacePhiWithIncomingValue(phi: self, context) {
       return
     }
+    if replacePhiCycleWithIncomingValue(context) {
+      return
+    }
     if replaceReborrowOfBeginBorrows(context) {
       return
     }
@@ -30,6 +33,60 @@ extension Phi {
     if sinkIncomingAggregates(context) {
       return
     }
+  }
+
+  /// Replaces a phi with a value if the phi is part of a group of phis - typically in nested
+  /// loops - whose incoming values are only that value or phis of the group:
+  /// ```
+  ///   bb1:
+  ///     br bb2(%0)
+  ///   bb2(%1 : $T):      // Predecessors: bb1, bb4
+  ///     cond_br %c, bb3, bb4(%1)
+  ///   bb3:
+  ///     br bb4(%1)
+  ///   bb4(%2 : $T):      // Predecessors: bb2, bb3
+  ///     br bb2(%2)
+  /// ```
+  /// Both, `%1` and `%2`, are always `%0`. Unlike in `replacePhiWithIncomingValue`, this is not
+  /// visible by just looking at the incoming values of a single phi.
+  ///
+  /// RedundantLoadElimination can create such phi cycles when forwarding a value which is loaded
+  /// in nested loops.
+  ///
+  /// This is only done for phis with "none" ownership. For owned phis it would require
+  /// copying the incoming value.
+  private func replacePhiCycleWithIncomingValue(_ context: SimplifyContext) -> Bool {
+    guard value.ownership == .none,
+          // For simplicity only handle OSSA, like `replacePhiWithIncomingValue` does.
+          // This avoids that we need to handle `cond_br` instructions.
+          value.parentFunction.hasOwnership,
+          let uniqueIncomingValue = getUniqueIncomingValueOfPhiCycle(context)
+    else {
+      return false
+    }
+    // In SSA the unique value which flows into the phi cycle dominates all phis of the cycle.
+    value.uses.replaceAll(with: uniqueIncomingValue, context)
+    erasePhiArgument(phi: self, context)
+    return true
+  }
+
+  private func getUniqueIncomingValueOfPhiCycle(_ context: SimplifyContext) -> Value? {
+    var uniqueIncomingValue: Value? = nil
+    var worklist = ValueWorklist(context)
+    defer { worklist.deinitialize() }
+
+    worklist.pushIfNotVisited(value)
+    while let v = worklist.pop() {
+      if let phi = Phi(v) {
+        worklist.pushIfNotVisited(contentsOf: phi.incomingValues)
+        continue
+      }
+      if let existingValue = uniqueIncomingValue, v != existingValue {
+        return nil
+      }
+      uniqueIncomingValue = v
+    }
+    return uniqueIncomingValue
   }
 
   /// If `phi` is a re-borrow phi where all incoming operands are `begin_borrow`s of the same
