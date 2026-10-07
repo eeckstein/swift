@@ -377,3 +377,61 @@ bb3:
   %r = tuple ()
   return %r
 }
+
+// The value hint is a phi in a loop, whose incoming value from the back edge is the loaded value
+// itself. As the load_borrow loads the value of its hint, the phi only passes around the
+// global value which doesn't have ownership.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_value_hint_chain_in_loop :
+// CHECK:       bb1([[PHI:%[0-9]+]] : $B):
+// CHECK-NOT:     load_borrow
+// CHECK:         apply %{{[0-9]+}}([[PHI]])
+// CHECK:       } // end sil function 'load_borrow_with_value_hint_chain_in_loop'
+sil [ossa] @load_borrow_with_value_hint_chain_in_loop : $@convention(thin) (@inout B) -> () {
+bb0(%0 : $*B):
+  %1 = global_value @gstatic_b : $B
+  store %1 to [assign] %0
+  br bb1(%1)
+
+bb1(%4 : $B):
+  %5 = load_borrow %0, value_hint %4
+  %6 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %6(%5) : $@convention(thin) (@guaranteed B) -> ()
+  %8 = unchecked_ownership %5, forwarding: @none
+  cond_br undef, bb2, bb3
+
+bb2:
+  end_borrow %5
+  br bb1(%8)
+
+bb3:
+  end_borrow %5
+  %r = tuple ()
+  return %r
+}
+
+// Same as above, but the value hint chain is faked "none" ownership of an owned value.
+// CHECK-LABEL: sil [ossa] @load_borrow_with_faked_value_hint_chain_in_loop :
+// CHECK:         load_borrow %0, value_hint
+// CHECK:       } // end sil function 'load_borrow_with_faked_value_hint_chain_in_loop'
+sil [ossa] @load_borrow_with_faked_value_hint_chain_in_loop : $@convention(thin) (@inout B, @owned B) -> () {
+bb0(%0 : $*B, %1 : @owned $B):
+  %2 = unchecked_ownership %1, forwarding: @none
+  store %1 to [assign] %0
+  br bb1(%2)
+
+bb1(%4 : $B):
+  %5 = load_borrow %0, value_hint %4
+  %6 = function_ref @use_b : $@convention(thin) (@guaranteed B) -> ()
+  apply %6(%5) : $@convention(thin) (@guaranteed B) -> ()
+  %8 = unchecked_ownership %5, forwarding: @none
+  cond_br undef, bb2, bb3
+
+bb2:
+  end_borrow %5
+  br bb1(%8)
+
+bb3:
+  end_borrow %5
+  %r = tuple ()
+  return %r
+}

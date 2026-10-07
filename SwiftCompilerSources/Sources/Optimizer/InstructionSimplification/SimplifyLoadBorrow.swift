@@ -212,6 +212,14 @@ private extension Value {
     worklist.pushIfNotVisited(self)
     while let value = worklist.pop() {
 
+      if let loadBorrow = value as? LoadBorrowInst, let valueHint = loadBorrow.valueHint {
+        // The `load_borrow` loads the same value as its value hint. This lets us follow value
+        // hint chains created by RLE in loops, where the hint of a `load_borrow` is a phi which
+        // gets an `unchecked_ownership` of the `load_borrow` (or of another `load_borrow` with
+        // the same hint) as incoming value.
+        worklist.pushIfNotVisited(valueHint)
+        continue
+      }
       if value.ownership != .none {
         // This also covers an `unchecked_ownership` of a value which still needs a lifetime,
         // because such an operand has ownership.
