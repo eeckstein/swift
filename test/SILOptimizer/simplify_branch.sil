@@ -25,6 +25,8 @@ struct Mixed {
   var c: C
 }
 
+sil @use_int : $@convention(thin) (Builtin.Int64) -> ()
+
 // CHECK-LABEL: sil @merge_blocks_same_location1
 // CHECK:         %0 = integer_literal $Builtin.Int64, 0
 // CHECK:         fix_lifetime %0 : $Builtin.Int64
@@ -135,6 +137,201 @@ bb2:
 
 bb3(%3 : $Builtin.Int64):
   return %3 : $Builtin.Int64
+}
+
+// Phis in a loop which only pass around the same value are replaced by that value.
+// None of the phis can be replaced by just looking at its own incoming values.
+// CHECK-LABEL: sil [ossa] @replace_phi_cycle_with_incoming
+// CHECK:       bb1:
+// CHECK:         function_ref @use_int
+// CHECK-NEXT:    apply %{{[0-9]+}}(%0)
+// CHECK-NEXT:    apply %{{[0-9]+}}(%0)
+// CHECK:         return %0
+// CHECK:       } // end sil function 'replace_phi_cycle_with_incoming'
+sil [ossa] @replace_phi_cycle_with_incoming : $@convention(thin) (Builtin.Int64) -> Builtin.Int64 {
+bb0(%0 : $Builtin.Int64):
+  br bb1(%0 : $Builtin.Int64, %0 : $Builtin.Int64)
+
+bb1(%2 : $Builtin.Int64, %3 : $Builtin.Int64):
+  %4 = function_ref @use_int : $@convention(thin) (Builtin.Int64) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (Builtin.Int64) -> ()
+  %6 = apply %4(%3) : $@convention(thin) (Builtin.Int64) -> ()
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb4(%2 : $Builtin.Int64)
+
+bb3:
+  br bb4(%3 : $Builtin.Int64)
+
+bb4(%10 : $Builtin.Int64):
+  cond_br undef, bb5, bb6
+
+bb5:
+  br bb1(%10 : $Builtin.Int64, %10 : $Builtin.Int64)
+
+bb6:
+  return %10 : $Builtin.Int64
+}
+
+// A phi cycle with two different incoming values must not be replaced.
+// CHECK-LABEL: sil [ossa] @dont_replace_phi_cycle_with_different_incoming
+// CHECK:       bb1([[P1:%[0-9]+]] : $Builtin.Int64, [[P2:%[0-9]+]] : $Builtin.Int64):
+// CHECK:         apply %{{[0-9]+}}([[P1]])
+// CHECK:         apply %{{[0-9]+}}([[P2]])
+// CHECK:       } // end sil function 'dont_replace_phi_cycle_with_different_incoming'
+sil [ossa] @dont_replace_phi_cycle_with_different_incoming : $@convention(thin) (Builtin.Int64, Builtin.Int64) -> Builtin.Int64 {
+bb0(%0 : $Builtin.Int64, %1 : $Builtin.Int64):
+  br bb1(%0 : $Builtin.Int64, %1 : $Builtin.Int64)
+
+bb1(%2 : $Builtin.Int64, %3 : $Builtin.Int64):
+  %4 = function_ref @use_int : $@convention(thin) (Builtin.Int64) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (Builtin.Int64) -> ()
+  %6 = apply %4(%3) : $@convention(thin) (Builtin.Int64) -> ()
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb4(%2 : $Builtin.Int64)
+
+bb3:
+  br bb4(%3 : $Builtin.Int64)
+
+bb4(%10 : $Builtin.Int64):
+  cond_br undef, bb5, bb6
+
+bb5:
+  br bb1(%10 : $Builtin.Int64, %10 : $Builtin.Int64)
+
+bb6:
+  return %10 : $Builtin.Int64
+}
+
+// Owned phi cycles are not replaced, because this would require copying the incoming value.
+// CHECK-LABEL: sil [ossa] @dont_replace_owned_phi_cycle
+// CHECK:       bb1(%{{[0-9]+}} : @owned $C):
+// CHECK:       bb4(%{{[0-9]+}} : @owned $C):
+// CHECK:       bb6(%{{[0-9]+}} : @owned $C):
+// CHECK:       } // end sil function 'dont_replace_owned_phi_cycle'
+sil [ossa] @dont_replace_owned_phi_cycle : $@convention(thin) (@owned C) -> @owned C {
+bb0(%0 : @owned $C):
+  br bb1(%0 : $C)
+
+bb1(%2 : @owned $C):
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb4(%2 : $C)
+
+bb3:
+  br bb6(%2 : $C)
+
+bb4(%6 : @owned $C):
+  cond_br undef, bb5, bb7
+
+bb5:
+  br bb1(%6 : $C)
+
+bb6(%9 : @owned $C):
+  br bb4(%9 : $C)
+
+bb7:
+  cond_br undef, bb8, bb9
+
+bb8:
+  br bb6(%6 : $C)
+
+bb9:
+  return %6 : $C
+}
+
+// Reborrow phi cycles are not replaced.
+// CHECK-LABEL: sil [ossa] @dont_replace_reborrow_phi_cycle
+// CHECK:       bb1(%{{[0-9]+}} : @reborrow $C):
+// CHECK:       bb4(%{{[0-9]+}} : @reborrow $C):
+// CHECK:       bb6(%{{[0-9]+}} : @reborrow $C):
+// CHECK:       } // end sil function 'dont_replace_reborrow_phi_cycle'
+sil [ossa] @dont_replace_reborrow_phi_cycle : $@convention(thin) (@owned C) -> () {
+bb0(%0 : @owned $C):
+  %1 = begin_borrow %0 : $C
+  br bb1(%1 : $C)
+
+bb1(%2 : @reborrow $C):
+  %3 = borrowed %2 : $C from (%0 : $C)
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb4(%3 : $C)
+
+bb3:
+  br bb6(%3 : $C)
+
+bb4(%6 : @reborrow $C):
+  %7 = borrowed %6 : $C from (%0 : $C)
+  cond_br undef, bb5, bb7
+
+bb5:
+  br bb1(%7 : $C)
+
+bb6(%9 : @reborrow $C):
+  %10 = borrowed %9 : $C from (%0 : $C)
+  br bb4(%10 : $C)
+
+bb7:
+  cond_br undef, bb8, bb9
+
+bb8:
+  br bb6(%7 : $C)
+
+bb9:
+  fix_lifetime %7 : $C
+  end_borrow %7 : $C
+  destroy_value %0 : $C
+  %r = tuple ()
+  return %r : $()
+}
+
+// Guaranteed phi cycles are not replaced.
+// CHECK-LABEL: sil [ossa] @dont_replace_guaranteed_phi_cycle
+// CHECK:       bb1(%{{[0-9]+}} : @guaranteed $C):
+// CHECK:       bb4(%{{[0-9]+}} : @guaranteed $C):
+// CHECK:       bb6(%{{[0-9]+}} : @guaranteed $C):
+// CHECK:       } // end sil function 'dont_replace_guaranteed_phi_cycle'
+sil [ossa] @dont_replace_guaranteed_phi_cycle : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = struct_extract %0 : $S, #S.c
+  br bb1(%1 : $C)
+
+bb1(%2 : @guaranteed $C):
+  %3 = borrowed %2 : $C from (%0 : $S)
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb4(%3 : $C)
+
+bb3:
+  br bb6(%3 : $C)
+
+bb4(%6 : @guaranteed $C):
+  %7 = borrowed %6 : $C from (%0 : $S)
+  cond_br undef, bb5, bb7
+
+bb5:
+  br bb1(%7 : $C)
+
+bb6(%9 : @guaranteed $C):
+  %10 = borrowed %9 : $C from (%0 : $S)
+  br bb4(%10 : $C)
+
+bb7:
+  cond_br undef, bb8, bb9
+
+bb8:
+  br bb6(%7 : $C)
+
+bb9:
+  fix_lifetime %7 : $C
+  %r = tuple ()
+  return %r : $()
 }
 
 // A re-borrow phi whose incoming operands are all `begin_borrow`s of the same value
