@@ -839,6 +839,9 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
   if (P.getOptions().CopyPropagation != CopyPropagationOption::Off) {
     P.addCopyPropagation();
   }
+  // Owned-to-guaranteed specialization leaves a `copy_value` of the guaranteed
+  // value in the caller which is only used by the call and destroyed afterwards.
+  P.addCopyToBorrowOptimization();
 
   // Must run after CopyPropagation and Simplification, because both undo the
   // effect of LowerAddressInstructions: CopyPropagation re-creates `copy_addr` and the
