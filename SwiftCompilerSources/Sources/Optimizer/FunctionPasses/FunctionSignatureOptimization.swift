@@ -18,6 +18,7 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
 
   var functionSpecializations = Dictionary<Function, [ArgumentSpecialization]>()
   var resultBorrowSources = Dictionary<Function, [Int]>()
+  var forwardedOwnedArguments = Dictionary<Function, Int?>()
 
   for function in moduleContext.functions {
     guard function.hasOwnership,
@@ -33,7 +34,9 @@ let functionSignatureOptimization = ModulePass(name: "function-signature-optimiz
         switch inst {
         case let apply as ApplyInst:
           if trySpecialize(apply: apply, cacheIn: &functionSpecializations, moduleContext) ||
-             tryConvertResultToGuaranteed(apply: apply, cacheIn: &resultBorrowSources, moduleContext)
+             tryConvertResultToGuaranteed(apply: apply, cacheIn: &resultBorrowSources, moduleContext) ||
+             tryConvertForwardedResultToGuaranteed(apply: apply, cacheIn: &forwardedOwnedArguments,
+                                                   moduleContext)
           {
             changed = true
           }
@@ -283,14 +286,66 @@ private func tryConvertResultToGuaranteed(apply: ApplyInst,
   let specializedFunction = specializeWithGuaranteedResult(function: callee, borrowedFrom: borrowSources,
                                                            callerSiteApply: apply, moduleContext)
   moduleContext.transform(function: apply.parentFunction) { context in
-    let builder = Builder(before: apply, context)
+    apply.replace(withGuaranteedResultApplyOf: specializedFunction, arguments: Array(apply.arguments), context)
+  }
+  return true
+}
+
+/// Replaces `apply` with an apply of a specialized callee which takes the `@owned` argument, from which
+/// the result is forwarded (see `getForwardedOwnedArgument`), as `@guaranteed` and returns its single direct
+/// result as `@guaranteed`. This is done if the caller passes a copy of a guaranteed value to the
+/// argument and doesn't need to own the result. The copy in the caller is removed.
+private func tryConvertForwardedResultToGuaranteed(apply: ApplyInst,
+                                                   cacheIn forwardedOwnedArguments: inout Dictionary<Function, Int?>,
+                                                   _ moduleContext: ModulePassContext) -> Bool {
+  guard let callee = apply.optimizableCallee else {
+    return false
+  }
+
+  let forwardedOwnedArgument: Int?
+  if let existingForwardedOwnedArgument = forwardedOwnedArguments[callee] {
+    forwardedOwnedArgument = existingForwardedOwnedArgument
+  } else {
+    forwardedOwnedArgument = getForwardedOwnedArgument(of: callee)
+    forwardedOwnedArguments[callee] = forwardedOwnedArgument
+  }
+  guard let argumentIndex = forwardedOwnedArgument else {
+    return false
+  }
+
+  let benefit = moduleContext.transform(function: apply.parentFunction) { context in
+    apply.canBenefitFromGuaranteedResult(forwardedFrom: argumentIndex, context)
+  }
+  guard benefit else {
+    return false
+  }
+
+  let specializedFunction = specializeWithGuaranteedResult(function: callee, forwardedFrom: argumentIndex,
+                                                           callerSiteApply: apply, moduleContext)
+  moduleContext.transform(function: apply.parentFunction) { context in
+    // Instead of the copy, pass the copied guaranteed value (see `canBenefitFromGuaranteedResult`).
+    let copy = apply.arguments[argumentIndex] as! CopyValueInst
+    var arguments = Array(apply.arguments)
+    arguments[argumentIndex] = copy.fromValue
+    apply.replace(withGuaranteedResultApplyOf: specializedFunction, arguments: arguments, context)
+    context.erase(instruction: copy)
+  }
+  return true
+}
+
+private extension ApplyInst {
+  /// Replaces this apply with an apply of `specializedFunction`, which returns the result as `@guaranteed`.
+  /// The destroys of the result are replaced by the end of a borrow scope.
+  func replace(withGuaranteedResultApplyOf specializedFunction: Function, arguments: [Value],
+               _ context: FunctionPassContext) {
+    let builder = Builder(before: self, context)
     let calleeRef = builder.createFunctionRef(specializedFunction)
-    let newApply = builder.createApply(function: calleeRef, apply.substitutionMap,
-                                       arguments: Array(apply.arguments),
-                                       isNonThrowing: apply.isNonThrowing,
-                                       isNonAsync: apply.isNonAsync)
+    let newApply = builder.createApply(function: calleeRef, substitutionMap,
+                                       arguments: arguments,
+                                       isNonThrowing: isNonThrowing,
+                                       isNonAsync: isNonAsync)
     let beginBorrow = builder.createBeginBorrow(of: newApply)
-    for use in apply.uses {
+    for use in uses {
       if let destroy = use.instruction as? DestroyValueInst {
         Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
         context.erase(instruction: destroy)
@@ -298,9 +353,67 @@ private func tryConvertResultToGuaranteed(apply: ApplyInst,
         use.set(to: beginBorrow, context)
       }
     }
-    apply.replace(with: newApply, context)
+    replace(with: newApply, context)
   }
-  return true
+}
+
+/// Returns the index of the `@owned` argument which is forwarded to the single direct `@owned` result
+/// of `function`, or nil if there is no such argument.
+///
+/// If a caller passes a copy of a guaranteed value to such an argument, both, the argument and the
+/// result can be converted to `@guaranteed`. This removes the copy in the caller and turns the
+/// destroys of the result into end-of-borrow-scopes:
+/// ```
+///   sil @f : $(@owned Array<Int>) -> @owned AnyObject {
+///   bb0(%0 : @owned $Array<Int>):
+///     %1 = destructure_struct %0
+///     ...
+///     %4 = init_existential_ref %3
+///     return %4
+/// ```
+/// ->
+/// ```
+///   sil @f : $(@guaranteed Array<Int>) -> @guaranteed AnyObject {
+///   bb0(%0 : @guaranteed $Array<Int>):
+///     %1 = destructure_struct %0     // forwards a guaranteed value
+///     ...
+///     %4 = init_existential_ref %3
+///     return_borrow %4 from_scopes ()
+/// ```
+private func getForwardedOwnedArgument(of function: Function) -> Int? {
+  guard let returnInst = function.returnInstruction as? ReturnInst,
+        returnInst.returnedValue.ownership == .owned
+  else {
+    return nil
+  }
+  var value = returnInst.returnedValue
+  while true {
+    // The forwarding chain must be the only use which ends the value's lifetime. Otherwise, e.g. a
+    // `destroy_value` in a dead-end block would end up destroying a guaranteed value.
+    guard value.uses.endingLifetime.singleElement != nil else {
+      return nil
+    }
+    if let argument = value as? FunctionArgument {
+      guard argument.convention == .directOwned,
+            !argument.type.isMoveOnly
+      else {
+        return nil
+      }
+      return argument.index
+    }
+    guard let fwdInst = value.definingInstruction as? ForwardingInstruction,
+          fwdInst.canForwardGuaranteedValues,
+          // All other results and operands must be trivial, because they are not converted to
+          // guaranteed values.
+          fwdInst.results.allSatisfy({ $0 == value || $0.ownership == .none }),
+          let forwardedOperand = fwdInst.forwardedOperands.lazy.filter({ $0.value.ownership != .none }).singleElement,
+          forwardedOperand.value.ownership == .owned,
+          fwdInst.operands.allSatisfy({ $0 == forwardedOperand || $0.value.ownership == .none })
+    else {
+      return nil
+    }
+    value = forwardedOperand.value
+  }
 }
 
 /// Returns the indices of the arguments from whose memory - or value - the single direct `@owned`
@@ -487,15 +600,29 @@ private func mayModifyMemory(after borrowingInstructions: Stack<SingleValueInstr
 
 private extension ApplyInst {
   func canBenefitFromGuaranteedResult(borrowedFrom argumentIndices: [Int], _ context: FunctionPassContext) -> Bool {
-    guard canConvertResultFromOwnedToGuaranteed,
-          argumentScopesOverlapReturnLifetime(of: argumentIndices, context)
+    return canConvertResultFromOwnedToGuaranteed &&
+           argumentScopesOverlapReturnLifetime(of: argumentIndices.map { arguments[$0] }, context) &&
+           isResultOnlyDestroyed
+  }
+
+  func canBenefitFromGuaranteedResult(forwardedFrom argumentIndex: Int, _ context: FunctionPassContext) -> Bool {
+    // The copy is removed and the copied value is passed to the `@guaranteed` argument instead.
+    // TODO: support owned copied values by inserting a borrow scope around the result's lifetime.
+    guard let copy = arguments[argumentIndex] as? CopyValueInst,
+          copy.uses.singleElement != nil,
+          copy.fromValue.ownership == .guaranteed
     else {
       return false
     }
-    // A `@guaranteed` result only helps if the caller doesn't have to own the returned value
-    // anyway. If it does, the removed retain in the callee is just moved to the caller.
-    return !uses.endingLifetime.isEmpty &&
-           uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst })
+    return canConvertResultFromOwnedToGuaranteed &&
+           argumentScopesOverlapReturnLifetime(of: [copy.fromValue], context) &&
+           isResultOnlyDestroyed
+  }
+
+  /// A `@guaranteed` result only helps if the caller doesn't have to own the returned value
+  /// anyway. If it does, the removed retain in the callee is just moved to the caller.
+  var isResultOnlyDestroyed: Bool {
+    !uses.endingLifetime.isEmpty && uses.endingLifetime.allSatisfy({ $0.instruction is DestroyValueInst })
   }
 
   var canConvertResultFromOwnedToGuaranteed: Bool {
@@ -510,11 +637,11 @@ private extension ApplyInst {
     argumentOperands.contains { convention(of: $0) == .directGuaranteed && $0.value.ownership == .owned }
   }
 
-  func argumentScopesOverlapReturnLifetime(of argumentIndices: [Int], _ context: FunctionPassContext) -> Bool {
+  func argumentScopesOverlapReturnLifetime(of argumentValues: [Value], _ context: FunctionPassContext) -> Bool {
     var returnLifetime = InstructionRange(begin: self, ends: uses.endingLifetime.users, context)
     defer { returnLifetime.deinitialize() }
 
-    for arg in argumentIndices.lazy.map({ self.arguments[$0] }) {
+    for arg in argumentValues {
       if arg.type.isAddress {
         if mayModifyMemory(arg, after: self, until: returnLifetime.insertedInstructions, context) {
           return false
@@ -911,24 +1038,8 @@ private func specializeWithGuaranteedResult(function: Function,
   moduleContext.moveFunctionBody(from: function, to: specializedFunction)
 
   moduleContext.transform(function: function) { context in
-    function.set(thunkKind: .signatureOptimizedThunk, context)
-
-    let newEntryBlock = function.appendNewBlock(context)
-    let newApplyArgs: [Value] = specializedFunction.arguments.map {
-      newEntryBlock.addFunctionArgument(type: $0.type, context)
-    }
-    let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
-    let fri = builder.createFunctionRef(specializedFunction)
-    let newApply = builder.createApply(function: fri,
-                                       function.isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
-                                       arguments: newApplyArgs,
-                                       isNonThrowing: callerSiteApply.isNonThrowing,
-                                       isNonAsync: callerSiteApply.isNonAsync)
-
-    // The thunk keeps its `@owned` result convention, so it has to take ownership of the
-    // borrowed value returned by the specialized function.
-    let copy = builder.createCopyValue(operand: newApply)
-    builder.createReturn(of: copy)
+    createGuaranteedResultThunk(in: function, calling: specializedFunction, callerSiteApply: callerSiteApply,
+                                context)
   }
 
   moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
@@ -937,6 +1048,102 @@ private func specializeWithGuaranteedResult(function: Function,
   }
   moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
   return specializedFunction
+}
+
+/// Creates a specialized version of `function` which takes the `@owned` argument at `argumentIndex`
+/// as `@guaranteed` and returns its single direct result, which is forwarded from this argument, as
+/// `@guaranteed`. The original `function` becomes a thunk which calls the specialized function and
+/// copies the result.
+private func specializeWithGuaranteedResult(function: Function,
+                                            forwardedFrom argumentIndex: Int,
+                                            callerSiteApply: ApplyInst,
+                                            _ moduleContext: ModulePassContext) -> Function
+{
+  let specializedFuncName = moduleContext.mangle(
+      withSignatureSpecializedArguments: [ArgumentSpecialization(argumentIndex: argumentIndex,
+                                                                 kind: .ownedToGuaranteed)],
+      resultOwnedToGuaranteed: true,
+      from: function)
+
+  if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
+    return existingFunction
+  }
+
+  var specializedParams = Array(function.convention.parameters)
+  let paramIdx = function.argumentConventions.parameterIndex(ofArgumentIndex: argumentIndex)!
+  specializedParams[paramIdx] = specializedParams[paramIdx].with(convention: .directGuaranteed)
+
+  let specializedResults = function.convention.formalResults.map {
+    ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
+               hasLoweredAddresses: $0.hasLoweredAddresses)
+  }
+
+  let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
+      from: function, withName: specializedFuncName,
+      withParams: specializedParams,
+      withResults: specializedResults)
+
+  moduleContext.moveFunctionBody(from: function, to: specializedFunction)
+
+  moduleContext.transform(function: function) { context in
+    createGuaranteedResultThunk(in: function, calling: specializedFunction, callerSiteApply: callerSiteApply,
+                                borrowing: argumentIndex, context)
+  }
+
+  moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
+      (specializedFunction, specializedContext) in
+    let returnInst = specializedFunction.returnInstruction as! ReturnInst
+    convertForwardingChainToGuaranteed(from: specializedFunction.arguments[argumentIndex],
+                                       to: returnInst.returnedValue, specializedContext)
+
+    // The borrow scope of the guaranteed argument doesn't end in the function.
+    let builder = Builder(before: returnInst, specializedContext)
+    builder.createReturnBorrow(of: returnInst.returnedValue, fromScopes: [])
+    specializedContext.erase(instruction: returnInst)
+  }
+  moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
+  return specializedFunction
+}
+
+/// Creates the body of `function` as a thunk which calls `specializedFunction`, which returns the
+/// result as `@guaranteed`.
+/// If `borrowedArgument` is not nil, `specializedFunction` takes this owned argument of `function` as
+/// `@guaranteed` and its result is borrowed from it.
+private func createGuaranteedResultThunk(in function: Function, calling specializedFunction: Function,
+                                         callerSiteApply: ApplyInst,
+                                         borrowing borrowedArgument: Int? = nil,
+                                         _ context: FunctionPassContext) {
+  function.set(thunkKind: .signatureOptimizedThunk, context)
+
+  let newEntryBlock = function.appendNewBlock(context)
+  var newApplyArgs: [Value] = specializedFunction.arguments.map {
+    newEntryBlock.addFunctionArgument(type: $0.type, context)
+  }
+  let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+
+  // The returned value is borrowed from the argument. Therefore the owned argument must be
+  // borrowed for the lifetime of the returned value.
+  var argumentBorrow: BeginBorrowInst? = nil
+  if let borrowedArgument {
+    argumentBorrow = builder.createBeginBorrow(of: newApplyArgs[borrowedArgument])
+    newApplyArgs[borrowedArgument] = argumentBorrow!
+  }
+
+  let fri = builder.createFunctionRef(specializedFunction)
+  let newApply = builder.createApply(function: fri,
+                                     function.isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
+                                     arguments: newApplyArgs,
+                                     isNonThrowing: callerSiteApply.isNonThrowing,
+                                     isNonAsync: callerSiteApply.isNonAsync)
+
+  // The thunk keeps its `@owned` result convention, so it has to take ownership of the
+  // borrowed value returned by the specialized function.
+  let copy = builder.createCopyValue(operand: newApply)
+  if let argumentBorrow {
+    builder.createEndBorrow(of: argumentBorrow)
+    builder.createDestroyValue(operand: argumentBorrow.borrowedValue)
+  }
+  builder.createReturn(of: copy)
 }
 
 /// Rewrites the body of `specializedFunction` so that it returns its result as a `@guaranteed`
@@ -996,6 +1203,19 @@ private func convertResultToGuaranteed(in specializedFunction: Function,
   let builder = Builder(before: returnInst, context)
   builder.createReturnBorrow(of: returnInst.returnedValue, fromScopes: enclosingScopes)
   context.erase(instruction: returnInst)
+}
+
+/// Converts the owned `argument` and the chain of forwarding instructions from the argument to
+/// `returnedValue` to guaranteed (see `getForwardedOwnedArgument`).
+private func convertForwardingChainToGuaranteed(from argument: FunctionArgument, to returnedValue: Value,
+                                                _ context: FunctionPassContext) {
+  var value = returnedValue
+  while value != argument {
+    let fwdInst = value.definingInstruction as! ForwardingInstruction
+    fwdInst.setForwardingOwnership(to: .guaranteed, context)
+    value = fwdInst.forwardedOperands.first(where: { $0.value.ownership != .none })!.value
+  }
+  argument.set(ownership: .guaranteed, context)
 }
 
 private extension Value {
