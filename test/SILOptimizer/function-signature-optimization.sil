@@ -21,6 +21,10 @@ struct S2 {
   var y: AnyObject
 }
 
+struct Wrapper {
+  var x: AnyObject
+}
+
 // CHECK-LABEL: sil shared [ossa] @$s8dead_argTf4dn_n : $@convention(thin) (Int) -> Int {
 // CHECK:       bb0(%0 : $Int):
 // CHECK-NEXT:    return %0
@@ -367,6 +371,84 @@ bb0(%0 : @guaranteed $S):
   destroy_value %3
   %5 = tuple ()
   return %5
+}
+
+// CHECK-LABEL: sil shared [ossa] @$s19forwarded_owned_argTf4gn_g : $@convention(thin) (@guaranteed Wrapper, Int) -> @guaranteed S2 {
+// CHECK:       bb0(%0 : @guaranteed $Wrapper, %1 : $Int):
+// CHECK:         [[E:%.*]] = destructure_struct %0
+// CHECK:         [[S:%.*]] = struct $S2 (%1, [[E]])
+// CHECK:         return_borrow [[S]] from_scopes ()
+// CHECK:       } // end sil function '$s19forwarded_owned_argTf4gn_g'
+
+// CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @forwarded_owned_arg :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         [[A:%.*]] = apply {{%.*}}([[B]], %1)
+// CHECK:         [[C:%.*]] = copy_value [[A]]
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value %0
+// CHECK:         return [[C]]
+// CHECK:       } // end sil function 'forwarded_owned_arg'
+
+// The result is forwarded from an owned argument.
+sil [ossa] @forwarded_owned_arg : $@convention(thin) (@owned Wrapper, Int) -> @owned S2 {
+bb0(%0 : @owned $Wrapper, %1 : $Int):
+  %2 = destructure_struct %0
+  %3 = struct $S2 (%1, %2)
+  return %3
+}
+
+// The copy of the guaranteed argument is removed.
+// CHECK-LABEL: sil [ossa] @call_forwarded_owned_arg :
+// CHECK-NOT:     copy_value
+// CHECK:         [[F:%.*]] = function_ref @$s19forwarded_owned_argTf4gn_g :
+// CHECK:         [[A:%.*]] = apply [[F]](%0, %1)
+// CHECK:         [[B:%.*]] = begin_borrow [[A]]
+// CHECK:         fix_lifetime [[B]]
+// CHECK:         end_borrow [[B]]
+// CHECK-NOT:     destroy_value
+// CHECK:       } // end sil function 'call_forwarded_owned_arg'
+sil [ossa] @call_forwarded_owned_arg : $@convention(thin) (@guaranteed Wrapper, Int) -> () {
+bb0(%0 : @guaranteed $Wrapper, %1 : $Int):
+  %2 = copy_value %0
+  %3 = function_ref @forwarded_owned_arg : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  %4 = apply %3(%2, %1) : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  fix_lifetime %4
+  destroy_value %4
+  %7 = tuple ()
+  return %7
+}
+
+// The argument is not a copy, so the conversion would not remove a copy.
+// CHECK-LABEL: sil [ossa] @dont_convert_forwarded_owned_arg_without_copy :
+// CHECK:         [[F:%.*]] = function_ref @forwarded_owned_arg :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'dont_convert_forwarded_owned_arg_without_copy'
+sil [ossa] @dont_convert_forwarded_owned_arg_without_copy : $@convention(thin) (@owned Wrapper, Int) -> () {
+bb0(%0 : @owned $Wrapper, %1 : $Int):
+  %3 = function_ref @forwarded_owned_arg : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  %4 = apply %3(%0, %1) : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  fix_lifetime %4
+  destroy_value %4
+  %7 = tuple ()
+  return %7
+}
+
+// A copy of an owned value would need a borrow scope around the result's lifetime.
+// CHECK-LABEL: sil [ossa] @dont_convert_forwarded_owned_arg_with_owned_copy :
+// CHECK:         [[C:%.*]] = copy_value %0
+// CHECK:         [[F:%.*]] = function_ref @forwarded_owned_arg :
+// CHECK:         apply [[F]]([[C]], %1)
+// CHECK:       } // end sil function 'dont_convert_forwarded_owned_arg_with_owned_copy'
+sil [ossa] @dont_convert_forwarded_owned_arg_with_owned_copy : $@convention(thin) (@owned Wrapper, Int) -> () {
+bb0(%0 : @owned $Wrapper, %1 : $Int):
+  %2 = copy_value %0
+  %3 = function_ref @forwarded_owned_arg : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  %4 = apply %3(%2, %1) : $@convention(thin) (@owned Wrapper, Int) -> @owned S2
+  fix_lifetime %4
+  destroy_value %4
+  destroy_value %0
+  %7 = tuple ()
+  return %7
 }
 
 // An apply with a `@guaranteed` result requires its direct `@guaranteed` arguments to be guaranteed
