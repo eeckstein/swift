@@ -369,6 +369,16 @@ struct AliasAnalysis {
       }
       return defaultEffects(of: destroy, on: memLoc)
 
+    case let destroyAddr as DestroyAddrInst:
+      if destroyAddr.destroyedAddress.type.isTrivial(in: destroyAddr.parentFunction) {
+        // Destroying a trivial value cannot call a deinit. It only ends the lifetime of the destroyed memory.
+        if memLoc.mayAlias(with: destroyAddr.destroyedAddress, self) {
+          return inst.memoryEffects
+        }
+        return .noEffects
+      }
+      return defaultEffects(of: destroyAddr, on: memLoc)
+
     default:
       let effects = inst.memoryEffects
       if effects == .noEffects {
