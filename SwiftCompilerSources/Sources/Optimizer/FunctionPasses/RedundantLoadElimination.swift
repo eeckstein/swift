@@ -345,15 +345,6 @@ private extension LoadingInstruction {
 }
 
 private func replace(load: LoadingInstruction, with availableValues: [AvailableValue], _ context: FunctionPassContext) {
-  var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownership, context)
-  defer { ssaUpdater.deinitialize() }
-
-  for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
-    let block = availableValue.instruction.parentBlock
-    let availableValue = provideValue(for: load, from: availableValue, context)
-    ssaUpdater.addAvailableValue(availableValue, in: block)
-  }
-
   let newValue: Value
   if availableValues.count == 1 {
     // A single available value means that this available value is located _before_ the load. E.g.:
@@ -362,8 +353,21 @@ private func replace(load: LoadingInstruction, with availableValues: [AvailableV
     //     ...
     //     %2 = load %addr     // The load
     //
-    newValue = ssaUpdater.getValue(atEndOf: load.parentBlock)
+    // All paths to the load go through the single available value, i.e. it dominates the load.
+    // Therefore no phis are needed and we don't need the SSAUpdater, which would walk all blocks
+    // between the available value and the load.
+    let availableValue = availableValues.replaceCopyAddrsWithLoadsAndStores(context)[0]
+    newValue = provideValue(for: load, from: availableValue, context)
   } else {
+    var ssaUpdater = SSAUpdater(type: load.type, ownership: load.ownership, context)
+    defer { ssaUpdater.deinitialize() }
+
+    for availableValue in availableValues.replaceCopyAddrsWithLoadsAndStores(context) {
+      let block = availableValue.instruction.parentBlock
+      let availableValue = provideValue(for: load, from: availableValue, context)
+      ssaUpdater.addAvailableValue(availableValue, in: block)
+    }
+
     // In case of multiple available values, if an available value is defined in the same basic block
     // as the load, this available is located _after_ the load. E.g.:
     //
@@ -561,6 +565,9 @@ private struct InstructionScanner {
   private let storageDefBlock: BasicBlock?
   private let aliasAnalysis: AliasAnalysis
 
+  // Computed once, because it's the same for all visited instructions.
+  private let loadAddressIsImmutable: Bool
+
   private(set) var potentiallyRedundantSubpath: AccessPath? = nil
   private(set) var availableValues = Array<AvailableValue>()
 
@@ -569,6 +576,7 @@ private struct InstructionScanner {
     self.accessPath = accessPath
     self.storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
     self.aliasAnalysis = aliasAnalysis
+    self.loadAddressIsImmutable = load.address.isImmutableAddress
   }
 
   enum ScanResult {
@@ -674,11 +682,12 @@ private struct InstructionScanner {
     if load.loadOwnership == .take {
       // In case of `take`, don't allow reading instructions in the liverange.
       // Otherwise we cannot shrink the memory liverange afterwards.
-      if instruction.mayReadOrWrite(address: load.address, aliasAnalysis) {
+      let effect = aliasAnalysis.getMemoryEffect(of: instruction, on: load.address)
+      if effect.read || (effect.write && !loadAddressIsImmutable) {
         return .overwritten
       }
-    } else {
-      if instruction.mayWrite(toAddress: load.address, aliasAnalysis) {
+    } else if !loadAddressIsImmutable {
+      if aliasAnalysis.getMemoryEffect(of: instruction, on: load.address).write {
         return .overwritten
       }
     }

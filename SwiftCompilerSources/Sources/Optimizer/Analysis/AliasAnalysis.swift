@@ -896,7 +896,8 @@ private struct EscapesToInstructionVisitor : EscapeVisitor {
   var followLoads: Bool { !isAddress }
 }
 
-private extension Value {
+extension Value {
+  /// True if the memory at this address cannot be written, e.g. an indirect-in-guaranteed argument.
   var isImmutableAddress: Bool {
     switch accessBase {
     case .argument(let arg):
