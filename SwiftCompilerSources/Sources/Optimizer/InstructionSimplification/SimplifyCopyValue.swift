@@ -136,6 +136,8 @@ private func findLastUse(of ownedValue: Value, before destroy: DestroyValueInst)
 /// The copied value can then be replaced by the corresponding element of the destructure.
 /// The remaining elements are element-wise destroyed.
 /// Any forwarding instructions of the copied value are moved out of the owned value's liferange.
+/// Reference casts (`upcast`, `unchecked_ref_cast`) between the projections and the `copy_value`
+/// are re-created on the destructured element.
 
 /// ```
 ///   %2 = begin_borrow %1
@@ -154,7 +156,7 @@ private func findLastUse(of ownedValue: Value, before destroy: DestroyValueInst)
 private func tryRemoveProjectedCopy(copy: CopyValueInst, _ context: SimplifyContext) {
   let block = copy.parentBlock
 
-  let (projectionPath, root) = getProjectionPath(of: copy.fromValue)
+  let (projectionPath, root) = getProjectionPath(of: copy.fromValue.lookThroughReferenceCasts)
 
   guard !projectionPath.isEmpty,
         projectionPath.isMaterializable,
@@ -193,16 +195,19 @@ private func tryRemoveProjectedCopy(copy: CopyValueInst, _ context: SimplifyCont
 
   let builder = Builder(before: destroy, context)
   let finalFieldElement = createDestructureChain(of: ownedValue, path: projectionPath, builder)
+  let castedElement = createReferenceCasts(of: copy.fromValue, on: finalFieldElement, builder)
 
   moveForwardingChain(from: copy, before: destroy, context)
 
-  copy.replace(with: finalFieldElement, context)
+  copy.replace(with: castedElement, context)
 
   context.erase(instruction: destroy)
 }
 
 /// Returns true if every non-forwarding, non-debug use of `copy` and its forwarding
 /// chain is outside the owned value's liverange, i.e. at or after `boundary`.
+/// Forwarding instructions with multiple operands, e.g. `struct`, are accepted if all other
+/// operands are trivial, because those can be moved together with the instruction.
 private func checkForwardingChain(from value: Value, outsideLiverangeEndingAt boundary: Instruction) -> Bool {
   for use in value.uses.ignoreDebugUses {
     let user = use.instruction
@@ -210,8 +215,8 @@ private func checkForwardingChain(from value: Value, outsideLiverangeEndingAt bo
       continue
     }
     guard let fwdInst = user as? (SingleValueInstruction & ForwardingInstruction),
-          fwdInst.singleForwardedOperand == use,
-          fwdInst.operands.count == 1,
+          fwdInst.forwardedOperands.contains(where: { $0 == use }),
+          fwdInst.operands.allSatisfy({ $0 == use || $0.value.ownership == .none }),
           checkForwardingChain(from: fwdInst, outsideLiverangeEndingAt: boundary)
     else {
       return false
@@ -239,6 +244,33 @@ private func moveForwardingChain(from value: Value,
     default:
       fatalError("unhandled user")
     }
+  }
+}
+
+private extension Value {
+  var lookThroughReferenceCasts: Value {
+    switch self {
+    case let upcast as UpcastInst:
+      return upcast.fromInstance.lookThroughReferenceCasts
+    case let refCast as UncheckedRefCastInst:
+      return refCast.fromInstance.lookThroughReferenceCasts
+    default:
+      return self
+    }
+  }
+}
+
+/// Re-creates the reference casts of `value` (see `lookThroughReferenceCasts`) on `element`.
+private func createReferenceCasts(of value: Value, on element: Value, _ builder: Builder) -> Value {
+  switch value {
+  case let upcast as UpcastInst:
+    let operand = createReferenceCasts(of: upcast.fromInstance, on: element, builder)
+    return builder.createUpcast(from: operand, to: upcast.type)
+  case let refCast as UncheckedRefCastInst:
+    let operand = createReferenceCasts(of: refCast.fromInstance, on: element, builder)
+    return builder.createUncheckedRefCast(from: operand, to: refCast.type)
+  default:
+    return element
   }
 }
 
