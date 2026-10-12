@@ -750,9 +750,11 @@ extension StoreInst {
     context.erase(instruction: self)
   }
 
+  /// Splits the store along `projectionPath` and returns the store of the projected element.
+  ///
+  /// For an `.enumCase` component of a `store [assign]` the memory must contain a value of that enum case
+  /// and projecting the payload address must not be destructive.
   func split(alongPath projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> StoreInst {
-    precondition(storeOwnership != .assign)
-
     let (fieldKind, index, subPath) = projectionPath.pop()
     var projectedStore: StoreInst? = nil
 
@@ -789,6 +791,21 @@ extension StoreInst {
           projectedStore = s
         }
       }
+    case .enumCase:
+      let builder = Builder(before: self, context)
+      let ty = source.type.getEnumCasePayload(of: index, in: parentFunction)!
+      let payload = builder.createUncheckedEnumData(enum: source, caseIndex: index, resultType: ty)
+      let payloadAddr: Value
+      if storeOwnership == .assign {
+        // The memory must already contain a value of that enum case.
+        assert(!(source.type.nominal as! EnumDecl).gettingPayloadAddressIsDestructive(in: parentFunction))
+        payloadAddr = builder.createUncheckedInPlaceEnumDataAddr(enumAddress: destination, caseIndex: index)
+      } else {
+        payloadAddr = builder.createInitEnumDataAddr(enumAddress: destination, caseIndex: index, type: ty.addressType)
+      }
+      let ownership = splitOwnership(for: payload)
+      projectedStore = builder.createStore(source: payload, destination: payloadAddr, ownership: ownership)
+      builder.createInjectEnumAddr(enumAddress: destination, caseIndex: index)
     default:
       fatalError("unsupported projection")
     }
@@ -839,10 +856,13 @@ extension LoadInst {
     }
   }
   
+  /// Splits the load along `projectionPath` and returns the load of the projected element.
+  ///
+  /// For an `.enumCase` component the payload is projected with an `unchecked_inplace_enum_data_addr`.
+  /// Therefore this is only supported for enums where projecting the payload address is not destructive.
+  /// Also, the loaded value must be of that enum case.
   func split(alongPath projectionPath: SmallProjectionPath, _ context: FunctionPassContext) -> LoadInst {
     let (fieldKind, index, pathRemainder) = projectionPath.pop()
-    
-    var elements: [LoadInst]
     
     switch fieldKind {
     case .root:
@@ -851,14 +871,22 @@ extension LoadInst {
       assert(!(type.nominal as! StructDecl).hasUnreferenceableStorage)
       let fields = type.getNominalFields(in: parentFunction)!
 
-      elements = splitStruct(fields: fields, context)
+      let elements = splitStruct(fields: fields, context)
+      return elements[index].split(alongPath: pathRemainder, context)
     case .tupleField where type.isTuple:
-      elements = splitTuple(context)
+      let elements = splitTuple(context)
+      return elements[index].split(alongPath: pathRemainder, context)
+    case .enumCase where type.isEnum:
+      assert(!(type.nominal as! EnumDecl).gettingPayloadAddressIsDestructive(in: parentFunction))
+      let builder = Builder(before: self, context)
+      let payloadAddr = builder.createUncheckedInPlaceEnumDataAddr(enumAddress: address, caseIndex: index)
+      let payload = builder.createLoad(fromAddress: payloadAddr, ownership: self.splitOwnership(for: payloadAddr))
+      let newEnum = builder.createEnum(caseIndex: index, payload: payload, enumType: self.type)
+      self.replace(with: newEnum, context)
+      return payload.split(alongPath: pathRemainder, context)
     default:
       fatalError("unsupported projection")
     }
-    
-    return elements[index].split(alongPath: pathRemainder, context)
   }
   
   private func splitStruct(fields: NominalFieldsArray, _ context: FunctionPassContext) -> [LoadInst] {
