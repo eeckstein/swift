@@ -38,6 +38,9 @@ enum NCE: ~Copyable {
 protocol P: C {}
 class C: P {}
 class D: C {}
+class F {
+  let f: C
+}
 
 sil @cl : $@convention(thin) () -> Int
 
@@ -450,6 +453,135 @@ bb3(%6 : $Int, %7 : @owned $C, %8 : $Int):
   destroy_value %7
   %10 = tuple ()
   return %10
+}
+
+// CHECK-LABEL: sil [ossa] @hoist_over_phi_with_reborrow :
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C1:%.*]] = copy_value %0
+// CHECK-NEXT:    [[B1:%.*]] = begin_borrow [lexical] [[C1]]
+// CHECK-NEXT:    end_borrow [[B1]]
+// CHECK-NEXT:    destroy_value [[C1]]
+// CHECK-NEXT:    br bb3
+// CHECK:       bb2:
+// CHECK-NEXT:    [[C2:%.*]] = copy_value %1
+// CHECK-NEXT:    [[B2:%.*]] = begin_borrow [lexical] [[C2]]
+// CHECK-NEXT:    end_borrow [[B2]]
+// CHECK-NEXT:    destroy_value [[C2]]
+// CHECK-NEXT:    br bb3
+// CHECK:       bb3:
+// CHECK-NEXT:    tuple
+// CHECK:       } // end sil function 'hoist_over_phi_with_reborrow'
+sil [ossa] @hoist_over_phi_with_reborrow : $@convention(thin) (@guaranteed C, @guaranteed C) -> () {
+bb0(%0 : @guaranteed $C, %1 : @guaranteed $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = copy_value %0
+  %4 = begin_borrow [lexical] %3
+  br bb3(%3, %4)
+
+bb2:
+  %6 = copy_value %1
+  %7 = begin_borrow [lexical] %6
+  br bb3(%6, %7)
+
+bb3(%9 : @owned $C, %10 : @reborrow $C):
+  %11 = borrowed %10 from (%9)
+  end_borrow %11
+  destroy_value %9
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_hoist_over_phi_with_used_reborrow :
+// CHECK:       bb3([[PHI:%.*]] : @owned $C, [[RB:%.*]] : @reborrow $C):
+// CHECK-NEXT:    [[BF:%.*]] = borrowed [[RB]] from ([[PHI]])
+// CHECK-NEXT:    fix_lifetime [[BF]]
+// CHECK-NEXT:    end_borrow [[BF]]
+// CHECK-NEXT:    destroy_value [[PHI]]
+// CHECK:       } // end sil function 'dont_hoist_over_phi_with_used_reborrow'
+sil [ossa] @dont_hoist_over_phi_with_used_reborrow : $@convention(thin) (@guaranteed C, @guaranteed C) -> () {
+bb0(%0 : @guaranteed $C, %1 : @guaranteed $C):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = copy_value %0
+  %4 = begin_borrow %3
+  br bb3(%3, %4)
+
+bb2:
+  %6 = copy_value %1
+  %7 = begin_borrow %6
+  br bb3(%6, %7)
+
+bb3(%9 : @owned $C, %10 : @reborrow $C):
+  %11 = borrowed %10 from (%9)
+  fix_lifetime %11
+  end_borrow %11
+  destroy_value %9
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_hoist_over_phi_with_reborrow_enclosing_other_phi :
+// CHECK:       bb3([[PHI:%.*]] : @owned $S, [[RB:%.*]] : @reborrow $S, [[G:%.*]] : @guaranteed $C):
+// CHECK:         destroy_value [[PHI]]
+// CHECK:       } // end sil function 'dont_hoist_over_phi_with_reborrow_enclosing_other_phi'
+sil [ossa] @dont_hoist_over_phi_with_reborrow_enclosing_other_phi : $@convention(thin) (@guaranteed S, @guaranteed S) -> () {
+bb0(%0 : @guaranteed $S, %1 : @guaranteed $S):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = copy_value %0
+  %4 = begin_borrow %3
+  %5 = struct_extract %4, #S.a
+  br bb3(%3, %4, %5)
+
+bb2:
+  %6 = copy_value %1
+  %7 = begin_borrow %6
+  %8 = struct_extract %7, #S.a
+  br bb3(%6, %7, %8)
+
+bb3(%9 : @owned $S, %10 : @reborrow $S, %11 : @guaranteed $C):
+  %12 = borrowed %10 from (%9)
+  %13 = borrowed %11 from (%10)
+  end_borrow %12
+  destroy_value %9
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_hoist_over_phi_with_nested_load_borrow_reborrow :
+// CHECK:       bb3([[PHI:%.*]] : @owned $F, [[RB:%.*]] : @reborrow $F, [[LB:%.*]] : @reborrow $C):
+// CHECK:         destroy_value [[PHI]]
+// CHECK:       } // end sil function 'dont_hoist_over_phi_with_nested_load_borrow_reborrow'
+sil [ossa] @dont_hoist_over_phi_with_nested_load_borrow_reborrow : $@convention(thin) (@guaranteed F, @guaranteed F) -> () {
+bb0(%0 : @guaranteed $F, %1 : @guaranteed $F):
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = copy_value %0
+  %4 = begin_borrow %3
+  %5 = ref_element_addr [immutable] %4, #F.f
+  %6 = load_borrow %5
+  br bb3(%3, %4, %6)
+
+bb2:
+  %8 = copy_value %1
+  %9 = begin_borrow %8
+  %10 = ref_element_addr [immutable] %9, #F.f
+  %11 = load_borrow %10
+  br bb3(%8, %9, %11)
+
+bb3(%13 : @owned $F, %14 : @reborrow $F, %15 : @reborrow $C):
+  %16 = borrowed %14 from (%13)
+  %17 = borrowed %15 from ()
+  end_borrow %17
+  end_borrow %16
+  destroy_value %13
+  %r = tuple ()
+  return %r
 }
 
 // CHECK-LABEL: sil [ossa] @dont_hoist_over_non_phi_arg :

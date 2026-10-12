@@ -60,16 +60,48 @@ extension DestroyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
   ///   ...
   /// ```
   ///
+  /// Re-borrow phis which are borrowed from the phi and which are only ended in the phi's block,
+  /// are removed as well:
+  ///
+  /// ```
+  /// bb1:
+  ///   %2 = begin_borrow %0
+  ///   br bb3(%0, %2)
+  /// ...
+  /// bb3(%3 : @owned T, %4 : @reborrow T):
+  ///   %5 = borrowed %4 from (%3)
+  ///   end_borrow %5
+  ///   destroy_value %3
+  /// ```
+  /// ->
+  /// ```
+  /// bb1:
+  ///   %2 = begin_borrow %0
+  ///   end_borrow %2
+  ///   destroy_value %0
+  ///   br bb3
+  /// ...
+  /// ```
+  ///
   private func tryHoistDestroysIntoPredecessors(of phi: Phi, _ context: SimplifyContext) {
     let phiBlock = phi.value.parentBlock
 
     guard phiBlock == parentBlock,
           // Dead-end destroys are no-ops, anyway. Don't try to move them away from an `unreachable` instruction.
           !isDeadEnd,
-          phi.value.isOnlyDestroyed(ignoringFixLifetime: false, context),
+          let reborrows = phi.endedReborrows(context),
           !isDeinitBarrierInBlock(before: self, context)
     else {
       return
+    }
+
+    for reborrow in reborrows {
+      for incomingOp in reborrow.incomingOperands {
+        Builder(before: incomingOp.instruction, context).createEndBorrow(of: incomingOp.value)
+      }
+      // Users of the `borrowed_from` are `end_borrow` and `debug_value` instructions.
+      context.erase(instructionIncludingAllUsers: reborrow.borrowedFrom!)
+      erasePhiArgument(phi: reborrow, context)
     }
 
     for incomingOp in phi.incomingOperands {
@@ -80,6 +112,51 @@ extension DestroyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
     context.erase(instructions: phi.value.users)
 
     erasePhiArgument(phi: phi, context)
+  }
+}
+
+private extension Phi {
+  /// Returns the re-borrow phis which are borrowed from this phi, in case this phi is only used by
+  /// `destroy_value`s and such re-borrows, which are only ended by `end_borrow`s in the phi's block.
+  /// Returns nil if this phi has other uses.
+  func endedReborrows(_ context: SimplifyContext) -> [Phi]? {
+    var reborrows = [Phi]()
+    for use in value.uses {
+      switch use.instruction {
+      case is DestroyValueInst:
+        break
+      case is DebugValueInst where !context.preserveDebugInfo:
+        break
+      case let borrowedFrom as BorrowedFromInst:
+        guard use.index != 0,
+              borrowedFrom.borrowedPhi.isReborrow,
+              // The re-borrow must not be an enclosing value of other guaranteed phis.
+              borrowedFrom.borrowedValue.uses.singleUse != nil,
+              borrowedFrom.uses.allSatisfy({
+                ($0.instruction is EndBorrowInst && $0.instruction.parentBlock == value.parentBlock) ||
+                ($0.instruction is DebugValueInst && !context.preserveDebugInfo)
+              })
+        else {
+          return nil
+        }
+        // The phi can be used as multiple enclosing values of the same `borrowed_from`.
+        if !reborrows.contains(where: { $0.value == borrowedFrom.borrowedValue }) {
+          reborrows.append(borrowedFrom.borrowedPhi)
+        }
+      default:
+        return nil
+      }
+    }
+    // Other re-borrows in the phi's block may be nested in the lifetime of this phi or in the removed
+    // borrow scopes (e.g. a `load_borrow` from a field of the borrowed reference). Ending the
+    // lifetimes in the predecessors would then violate the nesting.
+    let otherReborrowExists = value.parentBlock.arguments.contains { arg in
+      arg.isReborrow && !reborrows.contains(where: { $0.value == arg })
+    }
+    if otherReborrowExists {
+      return nil
+    }
+    return reborrows
   }
 }
 
