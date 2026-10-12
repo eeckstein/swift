@@ -104,7 +104,12 @@ private func getParameterSpecializations(for function: Function,
 ) -> [ArgumentSpecialization] {
   var specializations = [ArgumentSpecialization]()
   for (argIndex, arg) in function.arguments.enumerated() {
-    if function.argumentConventions.parameterIndex(ofArgumentIndex: argIndex) == nil {
+    guard let paramIndex = function.argumentConventions.parameterIndex(ofArgumentIndex: argIndex) else {
+      continue
+    }
+    // Skip the implicit isolation parameter of `nonisolated(nonsending)` functions because
+    // removing it would also change isolation.
+    if function.convention.parameters[paramIndex].hasOption(.implicitLeading) {
       continue
     }
     if let specKind = getSpecializationKind(for: arg, context) {
