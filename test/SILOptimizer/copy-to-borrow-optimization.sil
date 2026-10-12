@@ -1758,6 +1758,25 @@ bb0(%0 : @guaranteed $C):
   return %retval : $()
 }
 
+// CHECK-LABEL: sil [ossa] @store_borrow_with_vector_base_addr :
+// CHECK:         load_borrow %0
+// CHECK:         store_borrow
+// CHECK-LABEL: } // end sil function 'store_borrow_with_vector_base_addr'
+sil [ossa] @store_borrow_with_vector_base_addr : $@convention(thin) (@in_guaranteed InlineArray<2, C>, Builtin.Word) -> @owned C {
+bb0(%0 : $*InlineArray<2, C>, %1 : $Builtin.Word):
+  %2 = load [copy] %0
+  %3 = alloc_stack $InlineArray<2, C>
+  %4 = store_borrow %2 to %3
+  %5 = struct_element_addr %4, #InlineArray._storage
+  %6 = vector_base_addr %5
+  %7 = index_addr [projection] %6, %1
+  %8 = load [copy] %7
+  end_borrow %4
+  destroy_value %2
+  dealloc_stack %3
+  return %8
+}
+
 // The borrow scope of the load's base is extended to cover the lifetime of the `load_borrow`.
 //
 // CHECK-LABEL: sil [ossa] @load_extends_borrow_scope :

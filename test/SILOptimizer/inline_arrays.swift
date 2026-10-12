@@ -272,7 +272,7 @@ let gString: InlineArray<2, String> = ["aaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbb
 let gClass: InlineArray<2, Box> = [Box(), Box()]
 let gOptClass: InlineArray<2, Box?> = [nil, nil]
 
-// CHECK-LABEL: sil {{.*}} @$s4test8g_stringySSSiF : $@convention(thin) (Int) -> @owned String {
+// CHECK-LABEL: sil {{.*}}@$s4test8g_stringySSSiF : $@convention(thin) (Int) -> @owned String {
 // CHECK-NOT:     alloc_stack
 // CHECK-NOT:     _borrow
 // CHECK-LABEL: } // end sil function '$s4test8g_stringySSSiF'
@@ -280,7 +280,7 @@ public func g_string(_ i: Int) -> String {
   gString[i]
 }
 
-// CHECK-LABEL: sil {{.*}} @$s4test7g_classyAA3BoxCSiF : $@convention(thin) (Int) -> @owned Box {
+// CHECK-LABEL: sil {{.*}}@$s4test7g_classyAA3BoxCSiF : $@convention(thin) (Int) -> @owned Box {
 // CHECK-NOT:     alloc_stack
 // CHECK-NOT:     _borrow
 // CHECK-LABEL: } // end sil function '$s4test7g_classyAA3BoxCSiF'
@@ -288,7 +288,7 @@ public func g_class(_ i: Int) -> Box {
   gClass[i]
 }
 
-// CHECK-LABEL: sil {{.*}} @$s4test10g_optclassyAA3BoxCSgSiF : $@convention(thin) (Int) -> @owned Optional<Box> {
+// CHECK-LABEL: sil {{.*}}@$s4test10g_optclassyAA3BoxCSgSiF : $@convention(thin) (Int) -> @owned Optional<Box> {
 // CHECK-NOT:     alloc_stack
 // CHECK-NOT:     _borrow
 // CHECK-LABEL: } // end sil function '$s4test10g_optclassyAA3BoxCSgSiF'
