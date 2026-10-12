@@ -663,3 +663,23 @@ bb0(%0 : $*S, %1 : $Builtin.Int1):
   %5 = tuple ()
   return %5
 }
+
+// The implicit isolation parameter of a `nonisolated(nonsending)` function must not be removed.
+// CHECK-LABEL: sil shared [ossa] @$s15nonsending_funcTf4nd_n : $@convention(thin) @caller_isolated @async (@sil_isolated @sil_implicit_leading_param @guaranteed Builtin.ImplicitActor) -> () {
+// CHECK:       } // end sil function '$s15nonsending_funcTf4nd_n'
+sil [ossa] @nonsending_func : $@convention(thin) @caller_isolated @async (@sil_isolated @sil_implicit_leading_param @guaranteed Builtin.ImplicitActor, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $Builtin.ImplicitActor, %1 : @guaranteed $AnyObject):
+  %2 = tuple ()
+  return %2
+}
+
+// CHECK-LABEL: sil [ossa] @call_nonsending_func :
+// CHECK:         [[F:%.*]] = function_ref @$s15nonsending_funcTf4nd_n :
+// CHECK:         apply [[F]](%0)
+// CHECK:       } // end sil function 'call_nonsending_func'
+sil [ossa] @call_nonsending_func : $@convention(thin) @async (@guaranteed Builtin.ImplicitActor, @guaranteed AnyObject) -> () {
+bb0(%0 : @guaranteed $Builtin.ImplicitActor, %1 : @guaranteed $AnyObject):
+  %2 = function_ref @nonsending_func : $@convention(thin) @caller_isolated @async (@sil_isolated @sil_implicit_leading_param @guaranteed Builtin.ImplicitActor, @guaranteed AnyObject) -> ()
+  %3 = apply %2(%0, %1) : $@convention(thin) @caller_isolated @async (@sil_isolated @sil_implicit_leading_param @guaranteed Builtin.ImplicitActor, @guaranteed AnyObject) -> ()
+  return %3
+}
