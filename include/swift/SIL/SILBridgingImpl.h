@@ -1204,6 +1204,10 @@ bool BridgedFunction::isEffectivelyExhaustiveEnumDecl(BridgedDeclObj decl) const
       getFunction()->getResilienceExpansion());
 }
 
+bool BridgedFunction::isDestructiveEnumDecl(BridgedDeclObj decl) const {
+  return swift::UncheckedEnumDataAddrInstBase::isDestructive(decl.getAs<swift::EnumDecl>(), getFunction());
+}
+
 BridgedType BridgedFunction::getLoweredType(BridgedASTType type, bool maximallyAbstracted) const {
   if (maximallyAbstracted) {
     return BridgedType(getFunction()->getLoweredType(swift::Lowering::AbstractionPattern::getOpaque(), type.type));
@@ -3277,6 +3281,11 @@ BridgedInstruction BridgedBuilder::createUncheckedTakeEnumDataAddr(BridgedValue 
 BridgedInstruction BridgedBuilder::createUncheckedInPlaceEnumDataAddr(BridgedValue enumAddr, SwiftInt caseIdx) const {
   swift::SILValue en = enumAddr.getSILValue();
   return {unbridged().createUncheckedInPlaceEnumDataAddr(regularLoc(), en, en->getType().getEnumElement(caseIdx))};
+}
+
+BridgedInstruction BridgedBuilder::createInjectEnumAddr(BridgedValue enumAddr, SwiftInt caseIdx) const {
+  swift::SILValue en = enumAddr.getSILValue();
+  return {unbridged().createInjectEnumAddr(regularLoc(), en, en->getType().getEnumElement(caseIdx))};
 }
 
 BridgedInstruction BridgedBuilder::createUncheckedBorrowEnumDataAddr(BridgedValue enumAddr, BridgedValue scratchAddr, SwiftInt caseIdx) const {

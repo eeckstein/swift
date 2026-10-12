@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AST
 import SIL
 
 /// 1. replaces a `load [copy]` with a `load_borrow` if possible:
@@ -54,10 +55,35 @@ import SIL
 ///   destroy_value %2   // the only use of %2
 /// ```
 ///
+/// 3. removes the store of the non-trivial field of a `store [assign]` if this field is stored back
+///    unchanged from a `load [copy]` of the same memory location, e.g. when updating trivial fields of
+///    a struct:
+///
+/// ```
+///   %1 = load [copy] %0
+///   (%2, %3) = destructure_struct %1    // %2 is non-trivial, %3 is trivial
+///   // no writes to %0
+///   %4 = struct $S (%2, %newTrivialField)
+///   store %4 to [assign] %0
+/// ```
+/// ->
+/// ```
+///   %1 = struct_element_addr %0, #S.nonTrivialField
+///   %2 = load_borrow %1
+///   end_borrow %2
+///   %3 = struct_element_addr %0, #S.trivialField
+///   store %newTrivialField to [trivial] %3
+/// ```
+/// This doesn't shorten the lifetime of any object, because all references of the loaded value are
+/// still in the memory location. Therefore, unlike destroy hoisting, it doesn't need to respect
+/// deinit barriers.
+/// Splitting the load and store doesn't work for enums where projecting the payload address is
+/// destructive. Such cases are handled by `lateCopyToBorrowOptimization`.
+///
 let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization") {
   (function: Function, context: FunctionPassContext) in
 
-  if !function.hasOwnership {
+  guard function.hasOwnership else {
     return
   }
 
@@ -75,11 +101,13 @@ let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization")
 
     for inst in function.instructions {
       switch inst {
-      case let load as LoadInst:
+      case let load as LoadInst where load.loadOwnership == .copy:
         if !context.continueWithNextSubpassRun(for: load) {
           return
         }
         if optimize(load: load, context) {
+          changedInIteration = true
+        } else if optimizeLoadStorePair(load: load, context) {
           changedInIteration = true
         }
       case let copy as CopyValueInst:
@@ -105,11 +133,346 @@ let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization")
   }
 }
 
-private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
-  if load.loadOwnership != .copy {
+/// Like the load-store pair optimization (3.) in `copyToBorrowOptimization`, but also handles enums
+/// where projecting the payload address is destructive:
+///
+/// ```
+///   %1 = load [copy] %0
+///   %2 = unchecked_enum_data %1, #E.a
+///   (%3, %4) = destructure_struct %2    // %3 is non-trivial, %4 is trivial
+///   // no writes to %0
+///   %5 = struct $S (%3, %newTrivialField)
+///   %6 = enum $E, #E.a, %5
+///   store %6 to [assign] %0
+/// ```
+/// ->
+/// ```
+///   %1 = load_borrow %0
+///   %2 = unchecked_enum_data %1, #E.a
+///   (%3, %4) = destructure_struct %2
+///   %5 = struct $S (%3, %newTrivialField)
+///   %6 = enum $E, #E.a, %5
+///   %7 = unchecked_ownership %6, forwarding: @none
+///   end_borrow %1
+///   store %7 to [trivial] %0
+/// ```
+/// The `store [trivial]` of a non-trivial value is not checked by the ownership verifier. This is
+/// correct because the stored value contains the same (single) reference as the old value in memory.
+/// The pass must run right before the `OwnershipModelEliminator` so that other OSSA passes are not
+/// confused by the unsafe ownership instructions.
+///
+let lateCopyToBorrowOptimization = FunctionPass(name: "late-copy-to-borrow-optimization") {
+  (function: Function, context: FunctionPassContext) in
+
+  guard function.hasOwnership else {
+    return
+  }
+
+  var changed = false
+  for inst in function.instructions {
+    switch inst {
+    case let load as LoadInst where load.loadOwnership == .copy:
+      if !context.continueWithNextSubpassRun(for: load) {
+        return
+      }
+      if unsafeOptimizeLoadStorePair(load: load, context) {
+        changed = true
+      }
+    default:
+      break
+    }
+  }
+
+  if changed {
+    updateBorrowedFrom(in: function, context)
+  }
+}
+
+private typealias LoadConsumers = Stack<(Instruction, constructionPath: SmallProjectionPath)>
+
+private func optimizeLoadStorePair(load: LoadInst, _ context: FunctionPassContext) -> Bool {
+  var consumers = LoadConsumers(context)
+  defer { consumers.deinitialize() }
+
+  guard let destructionPath = analyzeLoadStorePair(load: load, consumers: &consumers,
+                                                   acceptDestructiveEnums: false, context)
+  else {
     return false
   }
 
+  let elementLoad = load.split(alongPath: destructionPath, context)
+
+  let loadBorrow = Builder(before: elementLoad, context).createLoadBorrow(fromAddress: elementLoad.address)
+
+  for (endInst, constructionPath) in consumers {
+    switch endInst {
+    case let store as StoreInst:
+      assert(store.storeOwnership == .assign, "only store [assign] is accepted in walkDownConstruction")
+      let elementStore = store.split(alongPath: constructionPath, context)
+      assert(elementLoad.type == elementStore.source.type, "something went wrong with projections")
+      Builder(before: elementStore, context).createEndBorrow(of: loadBorrow)
+      context.erase(instruction: elementStore)
+    case let destroy as DestroyValueInst:
+      Builder(before: destroy, context).createEndBorrow(of: loadBorrow)
+      context.erase(instruction: destroy)
+    default:
+      fatalError("unexpected end instruction")
+    }
+  }
+
+  convertToGuaranteedForwardingChain(value: elementLoad, loadBorrow: loadBorrow, context)
+
+  elementLoad.replace(with: loadBorrow, context)
+  return true
+}
+
+private func unsafeOptimizeLoadStorePair(load: LoadInst, _ context: FunctionPassContext) -> Bool {
+  var consumers = LoadConsumers(context)
+  defer { consumers.deinitialize() }
+
+  guard analyzeLoadStorePair(load: load, consumers: &consumers, acceptDestructiveEnums: true, context) != nil else {
+    return false
+  }
+
+  let loadBorrow = Builder(before: load, context).createLoadBorrow(fromAddress: load.address)
+
+  for (endInst, _) in consumers {
+    switch endInst {
+    case let store as StoreInst:
+      assert(store.storeOwnership == .assign, "only store [assign] is accepted in walkDownConstruction")
+      let builder = Builder(before: store, context)
+      let uncheckedSource = builder.createUncheckedOwnership(operand: store.source, forwardingOwnership: .none)
+      builder.createEndBorrow(of: loadBorrow)
+      store.sourceOperand.set(to: uncheckedSource, context)
+      store.set(ownership: .trivial, context)
+    case let destroy as DestroyValueInst:
+      Builder(before: destroy, context).createEndBorrow(of: loadBorrow)
+      context.erase(instruction: destroy)
+    default:
+      fatalError("unexpected end instruction")
+    }
+  }
+
+  convertToGuaranteedForwardingChain(value: load, loadBorrow: loadBorrow, context)
+
+  load.replace(with: loadBorrow, context)
+  return true
+}
+
+/// Checks if the non-trivial part of the loaded value is only stored back unchanged to the same memory
+/// location (or destroyed) and that the memory is not written in between.
+/// Returns the projection path of the non-trivial part in the loaded value and collects the `store`s
+/// and `destroy_value`s in `consumers`.
+/// If the loaded address is a projection of a borrowed reference, the borrow scope is extended to
+/// enclose the load-store pair.
+private func analyzeLoadStorePair(load: LoadInst,
+                                  consumers: inout LoadConsumers,
+                                  acceptDestructiveEnums: Bool,
+                                  _ context: FunctionPassContext) -> SmallProjectionPath?
+{
+  guard let destructionPath = walkDownDestruction(of: load, consumers: &consumers,
+                                                  acceptDestructiveEnums: acceptDestructiveEnums)
+  else {
+    return nil
+  }
+
+  for (endInst, constructionPath) in consumers {
+    if let store = endInst as? StoreInst {
+      guard store.writesToAddress(of: load, destructionPath: destructionPath, constructionPath: constructionPath) else {
+        return nil
+      }
+    }
+  }
+
+  if isMemoryWritten(between: load, and: consumers.lazy.map{ $0.0 }, context) {
+    return nil
+  }
+
+  if let baseBorrow = load.address.beginBorrowOfAddress {
+    var liverange = InstructionRange(begin: load, ends: consumers.lazy.map(\.0), context)
+    defer { liverange.deinitialize() }
+    guard extendBorrowScope(of: baseBorrow.value, toOverlap: liverange, context) else {
+      return nil
+    }
+  }
+  return destructionPath
+}
+
+private func walkDownDestruction(of value: Value,
+                                 consumers: inout LoadConsumers,
+                                 acceptDestructiveEnums: Bool
+                                 ) -> SmallProjectionPath?
+{
+  var resultPath: SmallProjectionPath? = nil
+
+  for use in value.uses {
+    switch use.instruction {
+    case let ds as DestructureStructInst:
+      guard resultPath == nil,
+            let forwardedResult = ds.singleOwnedResult,
+            let destructionPath = walkDownDestruction(of: forwardedResult, consumers: &consumers,
+                                                      acceptDestructiveEnums: acceptDestructiveEnums)
+      else {
+        return nil
+      }
+      resultPath = destructionPath.push(.structField, index: forwardedResult.index)
+    case let dt as DestructureTupleInst:
+      guard resultPath == nil,
+            let forwardedResult = dt.singleOwnedResult,
+            let destructionPath = walkDownDestruction(of: forwardedResult, consumers: &consumers,
+                                                      acceptDestructiveEnums: acceptDestructiveEnums)
+      else {
+        return nil
+      }
+      resultPath = destructionPath.push(.tupleField, index: forwardedResult.index)
+    case let ued as UncheckedEnumDataInst:
+      guard resultPath == nil,
+            acceptDestructiveEnums || !ued.enum.type.isEnumWithDestructivePayloadProjection(in: ued.parentFunction),
+            let destructionPath = walkDownDestruction(of: ued, consumers: &consumers,
+                                                      acceptDestructiveEnums: acceptDestructiveEnums)
+      else {
+        return nil
+      }
+      resultPath = destructionPath.push(.enumCase, index: ued.caseIndex)
+    default:
+      guard walkDownConstruction(ofOperand: use, path: SmallProjectionPath(), consumers: &consumers,
+                                 acceptDestructiveEnums: acceptDestructiveEnums)
+      else {
+        return nil
+      }
+      if use.endsLifetime, !(use.instruction is DestroyValueInst) {
+        guard resultPath == nil else {
+          return nil
+        }
+        resultPath = SmallProjectionPath()
+      }
+    }
+  }
+  return resultPath
+}
+
+private func walkDownConstruction(of value: Value,
+                                  path: SmallProjectionPath,
+                                  consumers: inout LoadConsumers,
+                                  acceptDestructiveEnums: Bool
+                                  ) -> Bool
+{
+  return value.uses.allSatisfy {
+    walkDownConstruction(ofOperand: $0, path: path, consumers: &consumers,
+                         acceptDestructiveEnums: acceptDestructiveEnums)
+  }
+}
+
+private func walkDownConstruction(ofOperand use: Operand,
+                                  path: SmallProjectionPath,
+                                  consumers: inout LoadConsumers,
+                                  acceptDestructiveEnums: Bool
+                                  ) -> Bool
+{
+  guard use.endsLifetime else {
+    return use.canAccept(ownership: .guaranteed)
+  }
+  guard use.instruction.operands.allSatisfy({ $0 == use || $0.value.ownership == .none }) else {
+    return false
+  }
+  switch use.instruction {
+  case let si as StructInst:
+    return walkDownConstruction(of: si, path: path.push(.structField, index: use.index), consumers: &consumers,
+                                acceptDestructiveEnums: acceptDestructiveEnums)
+  case let ti as TupleInst:
+    return walkDownConstruction(of: ti, path: path.push(.tupleField, index: use.index), consumers: &consumers,
+                                acceptDestructiveEnums: acceptDestructiveEnums)
+  case let ei as EnumInst:
+    // The enum payload can be projected from the loaded address and not from the loaded value.
+    // Therefore it's not sufficient to check for destructive enums only in `walkDownDestruction`.
+    guard acceptDestructiveEnums || !ei.type.isEnumWithDestructivePayloadProjection(in: ei.parentFunction) else {
+      return false
+    }
+    return walkDownConstruction(of: ei, path: path.push(.enumCase, index: ei.caseIndex), consumers: &consumers,
+                                acceptDestructiveEnums: acceptDestructiveEnums)
+  case let store as StoreInst:
+    // A `store [init]` to the loaded memory location is not a no-op, because it doesn't destroy the
+    // old value. It adds a reference to the memory, e.g. in `p.initialize(to: p.pointee)` which
+    // retains an unretained reference (the memory is reached via an unsafe pointer).
+    guard store.storeOwnership == .assign else {
+      return false
+    }
+    consumers.append((store, constructionPath: path))
+    return true
+  case is DestroyValueInst:
+    consumers.append((use.instruction, constructionPath: path))
+    return true
+  default:
+    return false
+  }
+}
+
+/// Returns true if the memory location of `load` may be written on any path from the `load` to the `store`.
+private func isMemoryWritten(between load: LoadInst,
+                             and ends: some Sequence<Instruction>,
+                             _ context: FunctionPassContext) -> Bool
+{
+  let aliasAnalysis = context.aliasAnalysis
+  var worklist = InstructionWorklist(context)
+  defer { worklist.deinitialize() }
+
+  for endInst in ends {
+    worklist.pushPredecessors(of: endInst, ignoring: load)
+  }
+
+  while let inst = worklist.pop() {
+    switch inst {
+    case is FixLifetimeInst:
+      break
+    default:
+      if inst.mayWrite(toAddress: load.address, aliasAnalysis) {
+        return true
+      }
+    }
+    worklist.pushPredecessors(of: inst, ignoring: load)
+  }
+  return false
+}
+
+private func convertToGuaranteedForwardingChain(value: Value, loadBorrow: LoadBorrowInst, _ context: FunctionPassContext) {
+  for user in value.uses.endingLifetime.users {
+    switch user {
+    case let fwd as ForwardingInstruction & MultipleValueInstruction:
+      convertToGuaranteedForwardingChain(value: fwd.singleOwnedResult!, loadBorrow: loadBorrow, context)
+      fwd.setForwardingOwnership(to: .guaranteed, context)
+    case let fwd as ForwardingInstruction & SingleValueInstruction:
+      convertToGuaranteedForwardingChain(value: fwd, loadBorrow: loadBorrow, context)
+      fwd.setForwardingOwnership(to: .guaranteed, context)
+    default:
+      fatalError("unsupported instruction")
+    }
+  }
+}
+
+private extension StoreInst {
+  func writesToAddress(of load: LoadInst,
+                       destructionPath: SmallProjectionPath,
+                       constructionPath: SmallProjectionPath) -> Bool
+  {
+    let loadAccess = load.address.getAccessPath(fromInitialPath: destructionPath)
+    let storeAccess = self.destination.getAccessPath(fromInitialPath: constructionPath)
+    return loadAccess.isEqual(to: storeAccess)
+  }
+}
+
+private extension Type {
+  func isEnumWithDestructivePayloadProjection(in function: Function) -> Bool {
+    (nominal as! EnumDecl).gettingPayloadAddressIsDestructive(in: function)
+  }
+}
+
+private extension MultipleValueInstruction {
+  var singleOwnedResult: MultipleValueInstructionResult? {
+    results.lazy.filter{ $0.ownership == .owned }.singleElement as? MultipleValueInstructionResult
+  }
+}
+
+private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
   var collectedUses = OwnedToGuaranteedUses(context)
   defer { collectedUses.deinitialize() }
   if !collectedUses.collectUses(of: load) {

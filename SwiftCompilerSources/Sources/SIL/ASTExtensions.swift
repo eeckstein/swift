@@ -67,6 +67,10 @@ extension EnumDecl {
   public func isEffectivelyExhaustive(in function: Function) -> Bool {
     function.bridged.isEffectivelyExhaustiveEnumDecl(bridged)
   }
+
+  public func gettingPayloadAddressIsDestructive(in function: Function) -> Bool {
+    function.bridged.isDestructiveEnumDecl(bridged)
+  }
 }
 
 extension ClassDecl {

@@ -1070,6 +1070,8 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
 
   addLateLoopOptPassPipeline(P);
 
+  P.addLateCopyToBorrowOptimization();
+
   // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
   // requires for unowned values actually need to become a retain/release pair.
   P.addUnownedCopyElimination();

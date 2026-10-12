@@ -1,4 +1,4 @@
-// RUN: %target-sil-opt -copy-to-borrow-optimization %s | %FileCheck %s
+// RUN: %target-sil-opt -sil-verify-all -copy-to-borrow-optimization %s | %FileCheck %s
 
 sil_stage canonical
 
@@ -4096,4 +4096,438 @@ bb2:
   apply %w(%0) : $@convention(thin) (@inout Klass) -> ()
   destroy_value [dead_end] %4
   unreachable
+}
+
+struct CAndInt {
+  var c: C
+  var i: Int
+}
+
+enum CAndIntEnum {
+  case a(CAndInt)
+  case b(Int)
+}
+
+sil @inout_cint_user : $@convention(thin) (@inout_aliasable CAndInt) -> ()
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_field :
+// CHECK:         [[A1:%.*]] = struct_element_addr %0, #CAndInt.c
+// CHECK:         [[LB:%.*]] = load_borrow [[A1]]
+// CHECK:         end_borrow [[LB]]
+// CHECK-NEXT:    [[A2:%.*]] = struct_element_addr %0, #CAndInt.i
+// CHECK-NEXT:    store {{.*}} to [trivial] [[A2]]
+// CHECK-NOT:     store
+// CHECK:       } // end sil function 'store_unchanged_field'
+sil [ossa] @store_unchanged_field : $@convention(thin) (@inout_aliasable CAndInt, Int, Builtin.RawPointer) -> () {
+bb0(%0 : $*CAndInt, %1 : $Int, %2 : $Builtin.RawPointer):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  br bb1
+
+bb1:
+  %6 = pointer_to_address %2 to [strict] $*Int
+  %7 = load [trivial] %6
+  fix_lifetime %4
+  %8 = integer_literal $Builtin.Int1, 0
+  cond_br %8, bb1a, bb2
+
+bb1a:
+  br bb1
+
+bb2:
+  %9 = struct $CAndInt (%4, %7)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+class CWithInt {
+  @_hasStorage var i: Int
+}
+
+struct CWithIntAndInt {
+  var c: CWithInt
+  var i: Int
+}
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_field_with_class_field_read :
+// CHECK:         [[A1:%.*]] = struct_element_addr %0, #CWithIntAndInt.c
+// CHECK:         [[LB:%.*]] = load_borrow [[A1]]
+// CHECK:         end_borrow [[LB]]
+// CHECK-NEXT:    [[A:%.*]] = struct_element_addr %0, #CWithIntAndInt.i
+// CHECK-NEXT:    store {{%.*}} to [trivial] [[A]]
+// CHECK:       } // end sil function 'store_unchanged_field_with_class_field_read'
+sil [ossa] @store_unchanged_field_with_class_field_read : $@convention(thin) (@inout_aliasable CWithIntAndInt) -> () {
+bb0(%0 : $*CWithIntAndInt):
+  %1 = load [copy] %0
+  (%2, %3) = destructure_struct %1
+    %4 = begin_borrow %2
+  %5 = ref_element_addr %4, #CWithInt.i
+  %6 = load [trivial] %5
+  end_borrow %4
+  %8 = struct $CWithIntAndInt (%2, %6)
+  store %8 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_field_of_enum_payload_address :
+// CHECK:         [[A:%.*]] = unchecked_take_enum_data_addr %0
+// CHECK:         [[A1:%.*]] = struct_element_addr [[A]], #CAndInt.c
+// CHECK:         [[LB:%.*]] = load_borrow [[A1]]
+// CHECK:         end_borrow [[LB]]
+// CHECK-NEXT:    [[I:%.*]] = struct_element_addr [[A]], #CAndInt.i
+// CHECK-NEXT:    store {{.*}} to [trivial] [[I]]
+// CHECK-NEXT:    inject_enum_addr %0
+// CHECK:       } // end sil function 'store_unchanged_field_of_enum_payload_address'
+sil [ossa] @store_unchanged_field_of_enum_payload_address : $@convention(thin) (@inout CAndIntEnum, Int) -> () {
+bb0(%0 : $*CAndIntEnum, %1 : $Int):
+  %2 = unchecked_take_enum_data_addr %0, #CAndIntEnum.a!enumelt
+  %3 = load [copy] %2
+  (%4, %5) = destructure_struct %3
+  %6 = struct $CAndInt (%4, %1)
+  store %6 to [assign] %2
+  inject_enum_addr %0, #CAndIntEnum.a!enumelt
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_field_with_read :
+// CHECK:         [[A1:%.*]] = struct_element_addr %0, #CAndInt.c
+// CHECK:         [[LB:%.*]] = load_borrow [[A1]]
+// CHECK:         load [trivial]
+// CHECK:         end_borrow [[LB]]
+// CHECK-NEXT:    [[A:%.*]] = struct_element_addr %0, #CAndInt.i
+// CHECK-NEXT:    store {{%.*}} to [trivial] [[A]]
+// CHECK:       } // end sil function 'store_unchanged_field_with_read'
+sil [ossa] @store_unchanged_field_with_read : $@convention(thin) (@inout_aliasable CAndInt) -> Int {
+bb0(%0 : $*CAndInt):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  %6 = struct_element_addr %0, #CAndInt.i
+  %7 = load [trivial] %6
+  %9 = struct $CAndInt (%4, %7)
+  store %9 to [assign] %0
+  return %7
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_store_if_memory_is_written :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_if_memory_is_written'
+sil [ossa] @dont_remove_store_if_memory_is_written : $@convention(thin) (@inout_aliasable CAndInt, Int) -> () {
+bb0(%0 : $*CAndInt, %1 : $Int):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  %f = function_ref @inout_cint_user : $@convention(thin) (@inout_aliasable CAndInt) -> ()
+  %a = apply %f(%0) : $@convention(thin) (@inout_aliasable CAndInt) -> ()
+  %9 = struct $CAndInt (%4, %1)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_store_of_changed_field :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_of_changed_field'
+sil [ossa] @dont_remove_store_of_changed_field : $@convention(thin) (@inout NativeObjectPair, @owned Builtin.NativeObject) -> () {
+bb0(%0 : $*NativeObjectPair, %1 : @owned $Builtin.NativeObject):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  destroy_value %5
+  %9 = struct $NativeObjectPair (%4, %1)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_store_to_other_address :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %1
+// CHECK:       } // end sil function 'dont_remove_store_to_other_address'
+sil [ossa] @dont_remove_store_to_other_address : $@convention(thin) (@inout CAndInt, @inout CAndInt, Int) -> () {
+bb0(%0 : $*CAndInt, %1 : $*CAndInt, %2 : $Int):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  %9 = struct $CAndInt (%4, %2)
+  store %9 to [assign] %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_field_with_dead_end_path :
+// CHECK:         [[A1:%.*]] = struct_element_addr %0, #CAndInt.c
+// CHECK:         [[LB:%.*]] = load_borrow [[A1]]
+// CHECK:       bb1:
+// CHECK:         end_borrow [[LB]]
+// CHECK:         store {{.*}} to [trivial]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[LB]]
+// CHECK-NEXT:    unreachable
+// CHECK:       } // end sil function 'store_unchanged_field_with_dead_end_path'
+sil [ossa] @store_unchanged_field_with_dead_end_path : $@convention(thin) (@inout_aliasable CAndInt, Int, Builtin.Int1) -> () {
+bb0(%0 : $*CAndInt, %1 : $Int, %2 : $Builtin.Int1):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  cond_br %2, bb1, bb2
+
+bb1:
+  %9 = struct $CAndInt (%4, %1)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+
+bb2:
+  destroy_value [dead_end] %4
+  unreachable
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_store_with_phi :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_with_phi'
+sil [ossa] @dont_remove_store_with_phi : $@convention(thin) (@inout_aliasable CAndInt, Int) -> () {
+bb0(%0 : $*CAndInt, %1 : $Int):
+  %3 = load [copy] %0
+  (%4, %5) = destructure_struct %3
+  br bb1(%4)
+
+bb1(%6 : @owned $C):
+  %9 = struct $CAndInt (%6, %1)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+struct CAndIntEnumWrapper {
+  var e: CAndIntEnum
+}
+
+// CHECK-LABEL: sil [ossa] @dont_store_unchanged_field_through_destructive_enum :
+// CHECK:         load [copy] %0
+// CHECK:       } // end sil function 'dont_store_unchanged_field_through_destructive_enum'
+sil [ossa] @dont_store_unchanged_field_through_destructive_enum : $@convention(thin) (@inout_aliasable CAndIntEnumWrapper, Int) -> () {
+bb0(%0 : $*CAndIntEnumWrapper, %1 : $Int):
+  %2 = load [copy] %0
+  %3 = destructure_struct %2
+  %4 = unchecked_enum_data %3, #CAndIntEnum.a!enumelt
+  (%5, %6) = destructure_struct %4
+  %7 = struct $CAndInt (%5, %1)
+  %8 = enum $CAndIntEnum, #CAndIntEnum.a!enumelt, %7
+  %9 = struct $CAndIntEnumWrapper (%8)
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// The enum payload is projected from the loaded address and not from the loaded value. Splitting the
+// store would require a destructive payload projection.
+// CHECK-LABEL: sil [ossa] @dont_store_unchanged_field_of_destructive_enum_payload_address :
+// CHECK:         load [copy]
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK-NOT:     unchecked_inplace_enum_data_addr
+// CHECK:       } // end sil function 'dont_store_unchanged_field_of_destructive_enum_payload_address'
+sil [ossa] @dont_store_unchanged_field_of_destructive_enum_payload_address : $@convention(thin) (@inout CAndIntEnum, Int) -> () {
+bb0(%0 : $*CAndIntEnum, %1 : $Int):
+  %2 = unchecked_take_enum_data_addr %0, #CAndIntEnum.a!enumelt
+  %3 = load [copy] %2
+  (%4, %5) = destructure_struct %3
+  %6 = struct $CAndInt (%4, %1)
+  %7 = enum $CAndIntEnum, #CAndIntEnum.a!enumelt, %6
+  store %7 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+enum CIntOrC {
+  case a(C, Int)
+  case b(C)
+}
+
+// The non-trivial payload is stored to a different enum case.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_to_different_enum_case :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_to_different_enum_case'
+sil [ossa] @dont_remove_store_to_different_enum_case : $@convention(thin) (@inout CIntOrC) -> () {
+bb0(%0 : $*CIntOrC):
+  %1 = load [copy] %0
+  %2 = unchecked_enum_data %1, #CIntOrC.a!enumelt
+  (%3, %4) = destructure_tuple %2
+  %5 = enum $CIntOrC, #CIntOrC.b!enumelt, %3
+  store %5 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+struct TwoCAndInt {
+  var x: CAndInt
+  var y: CAndInt
+}
+
+// The loaded value is stored to a different field.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_to_different_field :
+// CHECK:         load [copy]
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_to_different_field'
+sil [ossa] @dont_remove_store_to_different_field : $@convention(thin) (@inout TwoCAndInt, @owned CAndInt) -> () {
+bb0(%0 : $*TwoCAndInt, %1 : @owned $CAndInt):
+  %2 = struct_element_addr %0, #TwoCAndInt.x
+  %3 = load [copy] %2
+  %4 = struct $TwoCAndInt (%1, %3)
+  store %4 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// The store's destination is not the same location as the loaded address.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_to_containing_address :
+// CHECK:         load [copy]
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_to_containing_address'
+sil [ossa] @dont_remove_store_to_containing_address : $@convention(thin) (@inout TwoCAndInt, @owned CAndInt) -> () {
+bb0(%0 : $*TwoCAndInt, %1 : @owned $CAndInt):
+  %2 = struct_element_addr %0, #TwoCAndInt.x
+  %3 = load [copy] %2
+  %4 = struct $TwoCAndInt (%3, %1)
+  store %4 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// The enum payload projection at the load may invalidate the enum. On the destroy path the enum
+// would not be re-validated.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_of_enum_payload_field_with_destroy_path :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_of_enum_payload_field_with_destroy_path'
+sil [ossa] @dont_remove_store_of_enum_payload_field_with_destroy_path : $@convention(thin) (@inout CIntOrC, Int) -> @owned CIntOrC {
+bb0(%0 : $*CIntOrC, %1 : $Int):
+  %2 = load [copy] %0
+  cond_br undef, bb1, bb2
+bb1:
+  %4 = unchecked_enum_data %2, #CIntOrC.a!enumelt
+  (%5, %6) = destructure_tuple %4
+  %7 = tuple (%5, %1)
+  %8 = enum $CIntOrC, #CIntOrC.a!enumelt, %7
+  store %8 to [assign] %0
+  br bb3
+bb2:
+  destroy_value %2
+  br bb3
+bb3:
+  %12 = load [copy] %0
+  return %12
+}
+
+sil @read_cintorc : $@convention(thin) (@in_guaranteed CIntOrC) -> ()
+
+// The enum payload projection at the load may invalidate the enum. It must not be read before it's
+// re-validated at the store.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_of_enum_payload_field_with_read :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_of_enum_payload_field_with_read'
+sil [ossa] @dont_remove_store_of_enum_payload_field_with_read : $@convention(thin) (@inout CIntOrC, Int) -> () {
+bb0(%0 : $*CIntOrC, %1 : $Int):
+  %2 = load [copy] %0
+  %3 = function_ref @read_cintorc : $@convention(thin) (@in_guaranteed CIntOrC) -> ()
+  %4 = apply %3(%0) : $@convention(thin) (@in_guaranteed CIntOrC) -> ()
+  %5 = unchecked_enum_data %2, #CIntOrC.a!enumelt
+  (%6, %7) = destructure_tuple %5
+  %8 = tuple (%6, %1)
+  %9 = enum $CIntOrC, #CIntOrC.a!enumelt, %8
+  store %9 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+enum CIntEnum {
+  case a(C, Int)
+  case b
+}
+
+
+// CHECK-LABEL: sil [ossa] @store_unchanged_enum_payload_field_with_dead_end_path :
+// CHECK:         [[P:%.*]] = unchecked_inplace_enum_data_addr %0, #CIntEnum.a!enumelt
+// CHECK-NEXT:    [[A:%.*]] = tuple_element_addr [[P]], 0
+// CHECK-NEXT:    [[LB:%.*]] = load_borrow [[A]]
+// CHECK:       bb1:
+// CHECK:         [[P2:%.*]] = unchecked_inplace_enum_data_addr %0, #CIntEnum.a!enumelt
+// CHECK:         end_borrow [[LB]]
+// CHECK-NEXT:    [[I:%.*]] = tuple_element_addr [[P2]], 1
+// CHECK-NEXT:    store {{.*}} to [trivial] [[I]]
+// CHECK-NEXT:    inject_enum_addr %0, #CIntEnum.a!enumelt
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[LB]]
+// CHECK-NEXT:    unreachable
+// CHECK:       } // end sil function 'store_unchanged_enum_payload_field_with_dead_end_path'
+sil [ossa] @store_unchanged_enum_payload_field_with_dead_end_path : $@convention(thin) (@inout CIntEnum, Int) -> () {
+bb0(%0 : $*CIntEnum, %1 : $Int):
+  %2 = load [copy] %0
+  cond_br undef, bb1, bb2
+bb1:
+  %4 = unchecked_enum_data %2, #CIntEnum.a!enumelt
+  (%5, %6) = destructure_tuple %4
+  %7 = tuple (%5, %1)
+  %8 = enum $CIntEnum, #CIntEnum.a!enumelt, %7
+  store %8 to [assign] %0
+  %r = tuple ()
+  return %r
+bb2:
+  destroy_value [dead_end] %2
+  unreachable
+}
+
+struct EnumAndC {
+  var e: CAndIntEnum
+  var c: C
+}
+
+// The memory may contain a different enum case.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_of_enum_without_unchanged_field :
+// CHECK:         load [copy] %0
+// CHECK:         store {{%.*}} to [assign] %0
+// CHECK:       } // end sil function 'dont_remove_store_of_enum_without_unchanged_field'
+sil [ossa] @dont_remove_store_of_enum_without_unchanged_field : $@convention(thin) (@inout_aliasable EnumAndC, Int) -> () {
+bb0(%0 : $*EnumAndC, %1 : $Int):
+  %2 = load [copy] %0
+  (%3, %4) = destructure_struct %2
+  destroy_value %3
+  %5 = enum $CAndIntEnum, #CAndIntEnum.b!enumelt, %1
+  %6 = struct $EnumAndC (%5, %4)
+  store %6 to [assign] %0
+  %r = tuple ()
+  return %r
+}
+
+// A `store [init]` doesn't destroy the old value in memory. Removing it would remove a retain,
+// e.g. in `p.initialize(to: p.pointee)`.
+// CHECK-LABEL: sil [ossa] @dont_remove_store_init :
+// CHECK:         load [copy]
+// CHECK:         store {{%.*}} to [init]
+// CHECK:       } // end sil function 'dont_remove_store_init'
+sil [ossa] @dont_remove_store_init : $@convention(thin) (Builtin.RawPointer) -> () {
+bb0(%0 : $Builtin.RawPointer):
+  %1 = pointer_to_address %0 to [strict] $*C
+  %2 = load [copy] %1
+  store %2 to [init] %1
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_remove_store_init_of_unchanged_field :
+// CHECK:         load [copy]
+// CHECK:         store {{%.*}} to [init]
+// CHECK:       } // end sil function 'dont_remove_store_init_of_unchanged_field'
+sil [ossa] @dont_remove_store_init_of_unchanged_field : $@convention(thin) (Builtin.RawPointer, Int) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Int):
+  %2 = pointer_to_address %0 to [strict] $*CAndInt
+  %3 = load [copy] %2
+  (%4, %5) = destructure_struct %3
+  %6 = struct $CAndInt (%4, %1)
+  store %6 to [init] %2
+  %r = tuple ()
+  return %r
 }

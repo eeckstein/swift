@@ -642,6 +642,7 @@ struct BridgedFunction {
   BRIDGED_INLINE void setIsPerformanceConstraint(bool isPerfConstraint) const;
   BRIDGED_INLINE bool isResilientNominalDecl(BridgedDeclObj decl) const;
   BRIDGED_INLINE bool isEffectivelyExhaustiveEnumDecl(BridgedDeclObj decl) const;
+  BRIDGED_INLINE bool isDestructiveEnumDecl(BridgedDeclObj decl) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedType getLoweredType(BridgedASTType type, bool maximallyAbstracted) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedType
   getLoweredTypeWithAbstractionPattern(BridgedCanType type) const;
@@ -1522,6 +1523,8 @@ struct BridgedBuilder{
                                                                                         SwiftInt caseIdx) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedInstruction createUncheckedInPlaceEnumDataAddr(BridgedValue enumAddr,
                                                                                         SwiftInt caseIdx) const;
+  SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedInstruction createInjectEnumAddr(BridgedValue enumAddr,
+                                                                            SwiftInt caseIdx) const;
   SWIFT_IMPORT_UNSAFE BRIDGED_INLINE BridgedInstruction createUncheckedBorrowEnumDataAddr(BridgedValue enumAddr,
                                                                                         BridgedValue scratchAddr,
                                                                                         SwiftInt caseIdx) const;
