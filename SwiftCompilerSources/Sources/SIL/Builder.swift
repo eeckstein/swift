@@ -629,6 +629,12 @@ public struct Builder {
     return notifyNew(uteda.getAs(UncheckedBorrowEnumDataAddrInst.self))
   }
 
+  @discardableResult
+  public func createInjectEnumAddr(enumAddress: Value, caseIndex: Int) -> InjectEnumAddrInst {
+    let inject = bridged.createInjectEnumAddr(enumAddress.bridged, caseIndex)
+    return notifyNew(inject.getAs(InjectEnumAddrInst.self))
+  }
+
   public func createUncheckedInPlaceEnumDataAddr(enumAddress: Value,
                                               caseIndex: Int) -> UncheckedInPlaceEnumDataAddrInst {
     let uteda = bridged.createUncheckedInPlaceEnumDataAddr(enumAddress.bridged, caseIndex)

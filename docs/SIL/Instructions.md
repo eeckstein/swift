@@ -1196,7 +1196,9 @@ unchecked_ownership %1 : $T
 ```
 
 unchecked_ownership disables the ownership verification of it's operand. This used in cases 
-we cannot resolve ownership until a mandatory pass runs. This is only valid in Raw SIL. 
+we cannot resolve ownership until a mandatory pass runs. It is also used by late optimizations
+which run right before the ownership model eliminator, e.g. to store a non-trivial value with a
+`store [trivial]`. This is only valid in OSSA.
 
 ### copy_addr
 
