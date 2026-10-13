@@ -209,3 +209,45 @@ bb3(%8 : $Int):
 
 sil_vtable X {
 }
+
+// CHECK-LABEL: sil [ossa] @test_ossa_copied_source :
+// CHECK:         [[O:%.*]] = open_existential_ref %0
+// CHECK-NEXT:    [[C:%.*]] = copy_value [[O]]
+// CHECK-NEXT:    checked_cast_br @opened({{[0-9]+}}, any P) Self in [[C]] : $@opened({{[0-9]+}}, any P) Self to X, bb1, bb2
+// CHECK:       bb2([[A:%.*]] : @owned $@opened({{[0-9]+}}, any P) Self):
+// CHECK-NEXT:    [[E:%.*]] = init_existential_ref [[A]]
+// CHECK-NEXT:    destroy_value [[E]]
+// CHECK:       } // end sil function 'test_ossa_copied_source'
+sil [ossa] @test_ossa_copied_source : $@convention(thin) (@guaranteed any P) -> @owned X {
+bb0(%0 : @guaranteed $any P):
+  %1 = open_existential_ref %0 : $any P to $@opened(1, any P) Self
+  %2 = init_existential_ref %1 : $@opened(1, any P) Self : $@opened(1, any P) Self, $AnyObject
+  %3 = copy_value %2 : $AnyObject
+  checked_cast_br AnyObject in %3 : $AnyObject to X, bb1, bb2
+
+bb1(%5 : @owned $X):
+  return %5 : $X
+
+bb2(%7 : @owned $AnyObject):
+  destroy_value %7 : $AnyObject
+  unreachable
+}
+
+// CHECK-LABEL: sil [ossa] @test_ossa_copied_owned_source :
+// CHECK:         [[C:%.*]] = copy_value
+// CHECK:         checked_cast_br AnyObject in [[C]] : $AnyObject to X, bb1, bb2
+// CHECK:       } // end sil function 'test_ossa_copied_owned_source'
+sil [ossa] @test_ossa_copied_owned_source : $@convention(thin) (@owned B) -> @owned X {
+bb0(%0 : @owned $B):
+  %1 = init_existential_ref %0 : $B : $B, $AnyObject
+  %2 = copy_value %1 : $AnyObject
+  destroy_value %1 : $AnyObject
+  checked_cast_br AnyObject in %2 : $AnyObject to X, bb1, bb2
+
+bb1(%5 : @owned $X):
+  return %5 : $X
+
+bb2(%7 : @owned $AnyObject):
+  destroy_value %7 : $AnyObject
+  unreachable
+}
