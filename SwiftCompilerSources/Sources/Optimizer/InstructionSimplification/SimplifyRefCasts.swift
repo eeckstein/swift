@@ -113,11 +113,52 @@ private extension UnaryInstruction {
         if !tryReplaceSource(withOperandOf: uc, context) {
           return
         }
+      case let copy as CopyValueInst:
+        if !tryReplaceCopiedSource(copy, context) {
+          return
+        }
       default:
         return
       }
     }
 
+  }
+
+  /// In OSSA the (owned) source operand can be a copy of a guaranteed `upcast` or `init_existential_ref`:
+  /// ```
+  ///   %2 = init_existential_ref %1 : $@opened("P") Self : $@opened("P") Self, $AnyObject
+  ///   %3 = copy_value %2
+  ///   checked_cast_br AnyObject in %3 : $AnyObject to Derived, bb1, bb2
+  /// ```
+  /// Copy the original value instead:
+  /// ```
+  ///   %3 = copy_value %1
+  ///   checked_cast_br @opened("P") Self in %3 : $@opened("P") Self to Derived, bb1, bb2
+  /// ```
+  private func tryReplaceCopiedSource(_ copy: CopyValueInst, _ context: SimplifyContext) -> Bool {
+    guard parentFunction.hasOwnership,
+          let inst = copy.fromValue as? SingleValueInstruction,
+          inst is InitExistentialRefInst || inst is UpcastInst,
+          // An owned `inst` consumes its operand. A guaranteed `inst` is enclosed by its operand's
+          // lifetime, which is therefore alive at the `copy`.
+          inst.ownership == .guaranteed,
+          copy.uses.ignoreDebugUses.singleUse?.instruction == self
+    else {
+      return false
+    }
+    let newCopy = Builder(before: copy, context).createCopyValue(operand: inst.operands[0].value)
+    operand.set(to: newCopy, context)
+    if let ccb = self as? CheckedCastBranchInst {
+      insertCompensatingInstructions(for: inst, in: ccb.failureBlock, argumentOwnership: .owned, context)
+      if operand.value.type.isLegalFormalType {
+        ccb.updateSourceFormalTypeFromOperandLoweredType()
+      }
+    }
+    context.erase(instructionIncludingAllUsers: copy)
+    if inst.uses.ignoreDebugUses.isEmpty {
+      context.erase(instructionIncludingAllUsers: inst)
+    }
+    return true
   }
 
   private func tryReplaceSource(withOperandOf inst: SingleValueInstruction, _ context: SimplifyContext) -> Bool {
@@ -136,7 +177,8 @@ private extension UnaryInstruction {
       if let ccb = self as? CheckedCastBranchInst {
         // In OSSA, the source value is passed as block argument to the failure block.
         // We have to re-create the skipped source instruction in the failure block.
-        insertCompensatingInstructions(for: inst, in: ccb.failureBlock, context)
+        insertCompensatingInstructions(for: inst, in: ccb.failureBlock,
+                                       argumentOwnership: replacement.ownership, context)
       }
     } else {
       operand.set(to: replacement, context)
@@ -171,10 +213,11 @@ private extension UnaryInstruction {
 /// failure_block(%newArg : $Derived):
 ///   %3 = upcast %newArg : $Derived to $Base
 /// ```
-private func insertCompensatingInstructions(for inst: Instruction, in failureBlock: BasicBlock, _ context: SimplifyContext) {
+private func insertCompensatingInstructions(for inst: Instruction, in failureBlock: BasicBlock,
+                                            argumentOwnership: Ownership, _ context: SimplifyContext) {
   assert(failureBlock.arguments.count == 1)
   let sourceValue = inst.operands[0].value
-  let newArg = failureBlock.addArgument(type: sourceValue.type, ownership: sourceValue.ownership, context)
+  let newArg = failureBlock.addArgument(type: sourceValue.type, ownership: argumentOwnership, context)
   let builder = Builder(atBeginOf: failureBlock, context)
   let newInst: SingleValueInstruction
   switch inst {
