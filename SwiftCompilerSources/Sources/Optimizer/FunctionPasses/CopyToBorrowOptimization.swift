@@ -547,13 +547,14 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
     return false
   }
 
-  var liverange = InstructionRange(begin: copy, context)
+  var liverange = InstructionRange(begin: copy, ends: collectedUses.ends, context)
   defer { liverange.deinitialize() }
-  liverange.insert(contentsOf: collectedUses.ends)
 
   switch copy.fromValue.ownership {
   case .owned:
-    if !liverange.isFullyContainedIn(scopeOf: copy.fromValue) {
+    guard liverange.isFullyContainedIn(scopeOf: copy.fromValue) ||
+          sinkDestroys(of: copy.fromValue, toEndOf: liverange, context)
+    else {
       return false
     }
   case .guaranteed:
@@ -568,6 +569,55 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   }
 
   remove(copy: copy, collectedUses: collectedUses, liverange: liverange)
+  return true
+}
+
+/// Moves `destroy_value`s of the owned `value` which are inside the `liverange` of its copy to the
+/// end of the `liverange`, if the `liverange` also ends in their (dead-end) blocks:
+/// ```
+///   %1 = copy_value %0
+///   ...
+///   destroy_value %0             // inside the liverange of %1
+///   apply %noreturn()
+///   destroy_value [dead_end] %1
+///   unreachable
+/// ```
+/// ->
+/// ```
+///   %1 = copy_value %0
+///   ...
+///   apply %noreturn()
+///   destroy_value [dead_end] %1
+///   destroy_value %0
+///   unreachable
+/// ```
+/// The object stays alive until the end of the copy's liverange anyway. So extending the lifetime
+/// of `value` to this point doesn't change semantics.
+///
+/// This is only done in dead-end blocks. Otherwise, if `value` is destroyed within the copy's liverange,
+/// the copy is rather a "move", which is better handled by CopyPropagation. Turning it into a borrow
+/// would require a copy for forwarded values which escape, e.g. are stored to memory.
+private func sinkDestroys(of value: Value, toEndOf liverange: InstructionRange,
+                          _ context: FunctionPassContext) -> Bool
+{
+  let deadEndBlocks = context.deadEndBlocks
+  for use in value.uses.endingLifetime where liverange.contains(use.instruction) {
+    guard let destroy = use.instruction as? DestroyValueInst,
+          deadEndBlocks.isDeadEnd(destroy.parentBlock),
+          !liverange.inclusiveRangeContains(destroy.parentBlock.terminator)
+    else {
+      return false
+    }
+  }
+  for use in value.uses.endingLifetime where liverange.contains(use.instruction) {
+    let destroy = use.instruction
+    let terminator = destroy.parentBlock.terminator
+    // Move the destroy right after the end of the liverange in this block. Don't move it further
+    // to not extend the lifetime of the object, e.g. over a deinit barrier.
+    let reverseInsts = ReverseInstructionList(first: terminator.previous)
+    let lastInRange = reverseInsts.first(where: { liverange.inclusiveRangeContains($0) })!
+    destroy.move(before: lastInRange.next!, context)
+  }
   return true
 }
 
