@@ -27,6 +27,10 @@ extension DestroyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
 
+    if replaceWithDeadEndDestroy(context) {
+      return
+    }
+
     if let phi = Phi(destroyedValue) {
       tryHoistDestroysIntoPredecessors(of: phi, context)
       return
@@ -35,6 +39,33 @@ extension DestroyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
     if let forwardingInst = destroyedValue.asOptimizableForwardingInstruction {
       tryRemoveForwardingInstruction(forwardingInst, context)
     }
+  }
+
+  /// A `destroy_value` which comes after a no-return call is never executed. Therefore it can be
+  /// replaced by a `destroy_value [dead_end]`:
+  /// ```
+  ///   apply %fatalError() : $@convention(thin) () -> Never
+  ///   destroy_value %0
+  ///   unreachable
+  /// ```
+  /// ->
+  /// ```
+  ///   apply %fatalError() : $@convention(thin) () -> Never
+  ///   destroy_value [dead_end] %0
+  ///   unreachable
+  /// ```
+  /// Unlike a regular `destroy_value`, a dead-end destroy doesn't count as a release of an object,
+  /// e.g. for dead object elimination.
+  private func replaceWithDeadEndDestroy(_ context: SimplifyContext) -> Bool {
+    guard !isDeadEnd,
+          parentBlock.terminator is UnreachableInst,
+          ReverseInstructionList(first: previous).contains(where: { ($0 as? ApplyInst)?.isCalleeNoReturn ?? false })
+    else {
+      return false
+    }
+    Builder(before: self, context).createDestroyValue(operand: destroyedValue, isDeadEnd: true)
+    context.erase(instruction: self)
+    return true
   }
 
   /// Moves a `destroy_value` of a phi argument to the phi's predecessor blocks.
