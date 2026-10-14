@@ -276,6 +276,45 @@ extension Instruction {
 }
 
 extension Value {
+  /// True if the value has "none" ownership and does not derive it from an `unchecked_ownership`,
+  /// which only fakes "none" ownership for a value which actually needs a lifetime.
+  func hasGenuineNoneOwnership(_ context: some Context) -> Bool {
+    var worklist = ValueWorklist(context)
+    defer { worklist.deinitialize() }
+
+    worklist.pushIfNotVisited(self)
+    while let value = worklist.pop() {
+
+      if let loadBorrow = value as? LoadBorrowInst, let valueHint = loadBorrow.valueHint {
+        // The `load_borrow` loads the same value as its value hint. This lets us follow value
+        // hint chains created by RLE in loops, where the hint of a `load_borrow` is a phi which
+        // gets an `unchecked_ownership` of the `load_borrow` (or of another `load_borrow` with
+        // the same hint) as incoming value.
+        worklist.pushIfNotVisited(valueHint)
+        continue
+      }
+      if value.ownership != .none {
+        // This also covers an `unchecked_ownership` of a value which still needs a lifetime,
+        // because such an operand has ownership.
+        return false
+      }
+      if let forwarding = value as? ForwardingInstruction {
+        worklist.pushIfNotVisited(contentsOf: forwarding.forwardedOperands.values)
+      } else if let phi = Phi(value) {
+        worklist.pushIfNotVisited(contentsOf: phi.incomingValues)
+      } else if let termResult = TerminatorResult(value) {
+        // A terminator, e.g. a `switch_enum`, forwards its ownership to the block arguments of its
+        // successors. Therefore the argument's "none" ownership can be faked by the terminator's
+        // operand.
+        guard let forwarding = termResult.terminator as? ForwardingInstruction else {
+          return false
+        }
+        worklist.pushIfNotVisited(contentsOf: forwarding.forwardedOperands.values)
+      }
+    }
+    return true
+  }
+
   /// If this address is a projection of a borrowed reference, the `begin_borrow`/`load_borrow` which
   /// introduces that reference's borrow scope. That scope must enclose the lifetime of anything
   /// loaded from this address.

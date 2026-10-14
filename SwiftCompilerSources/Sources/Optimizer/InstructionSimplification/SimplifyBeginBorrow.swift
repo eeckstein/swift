@@ -39,7 +39,7 @@ extension BeginBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
       // ```
       break
     }
-    removeBorrowOfThinFunction(beginBorrow: self, context)
+    removeBorrowOfNoneValue(beginBorrow: self, context)
   }
 }
 
@@ -165,48 +165,48 @@ private func tryReplaceInnerBorrowScope(beginBorrow: BeginBorrowInst, _ context:
   return true
 }
 
-/// Removes the borrow scope of a `thin_to_thick_function` (or a `convert_function` of it):
+/// Removes the borrow scope of a value which has "none" ownership, e.g. a `thin_to_thick_function`
+/// (or a `convert_function` of it) or an aggregate of such values:
 /// ```
 ///   %1 = thin_to_thick_function %0
 ///   %2 = convert_function %1         // ownership: none
-///   %3 = begin_borrow [lexical] %2
-///   // ... uses of %3
-///   end_borrow %3
+///   %3 = struct $S (%2)              // ownership: none
+///   %4 = begin_borrow [lexical] %3
+///   // ... uses of %4
+///   end_borrow %4
 /// ```
 /// ->
 /// ```
 ///   %1 = thin_to_thick_function %0
 ///   %2 = convert_function %1
-///   // ... uses of %2
+///   %3 = struct $S (%2)
+///   // ... uses of %3
 /// ```
-/// The same is done for a `differentiable_function` with "none" ownership, i.e. where all
-/// operands are thin functions.
-private func removeBorrowOfThinFunction(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) {
+/// Such values don't need a lifetime and are compatible with guaranteed values. Therefore the
+/// `begin_borrow` is not needed. This enables e.g. folding a `struct_extract` of the `struct`.
+private func removeBorrowOfNoneValue(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) {
   let borrowedValue = beginBorrow.borrowedValue
   guard borrowedValue.ownership == .none,
-        borrowedValue.lookThroughConvertFunctions.isThinFunction,
+        // Don't remove the borrow if the "none" ownership is faked by an `unchecked_ownership`.
+        borrowedValue.hasGenuineNoneOwnership(context),
         // For simplicity don't go into the trouble of removing reborrow phi arguments.
-        beginBorrow.uses.filter(usersOfType: BranchInst.self).isEmpty else
-  {
+        beginBorrow.uses.filter(usersOfType: BranchInst.self).isEmpty,
+        // An instruction which produces a guaranteed value regardless of its operand ownership, e.g.
+        // `implicitactor_to_opaqueisolation_cast`, needs a borrow scope for its result.
+        !beginBorrow.uses.contains(where: { $0.instruction.hasGuaranteedResultOwnership })
+  else {
     return
   }
-  // `thin_to_thick_function` and `differentiable_function` of thin functions have "none" ownership
-  // and are compatible with guaranteed values. Therefore the `begin_borrow` is not needed.
   beginBorrow.uses.ignore(usersOfType: EndBorrowInst.self).replaceAll(with: borrowedValue, context)
   context.erase(instructionIncludingAllUsers: beginBorrow)
 }
 
-private extension Value {
-  var lookThroughConvertFunctions: Value {
-    if let cfi = self as? ConvertFunctionInst, !cfi.withoutActuallyEscaping {
-      return cfi.fromFunction.lookThroughConvertFunctions
-    }
-    return self
-  }
-
-  var isThinFunction: Bool {
+private extension Instruction {
+  /// True if this is not a borrow introducer, but its result has "guaranteed" ownership even if
+  /// the operand has "none" ownership.
+  var hasGuaranteedResultOwnership: Bool {
     switch self {
-    case is ThinToThickFunctionInst, is DifferentiableFunctionInst:
+    case is BorrowedFromInst, is FunctionExtractIsolationInst, is ImplicitActorToOpaqueIsolationCastInst:
       return true
     default:
       return false
