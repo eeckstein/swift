@@ -28,6 +28,11 @@ struct S3 {
   @_hasStorage let ci: (Int, C)
 }
 
+struct SWithClosure {
+  @_hasStorage let i: Int
+  @_hasStorage let f: () -> ()
+}
+
 sil @takeC : $@convention(thin) (@guaranteed C) -> ()
 sil @takeOwnedC : $@convention(thin) (@owned C) -> ()
 sil @takeS1 : $@convention(thin) (@guaranteed S1) -> ()
@@ -567,6 +572,41 @@ bb0:
   %4 = apply %3(%2) : $@convention(thin) (@guaranteed @callee_guaranteed () -> ()) -> ()
   %5 = apply %2(): $@callee_guaranteed () -> ()
   end_borrow %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @remove_borrow_of_struct_with_thin_function :
+// CHECK:         %3 = struct $SWithClosure
+// ONONE-NEXT:    begin_borrow
+// OPT-NOT:       begin_borrow
+// OPT:           %4 = struct_extract %3
+// CHECK-LABEL: } // end sil function 'remove_borrow_of_struct_with_thin_function'
+sil [ossa] @remove_borrow_of_struct_with_thin_function : $@convention(thin) (Int) -> () {
+bb0(%0 : $Int):
+  %1 = function_ref @simple_func : $@convention(thin) () -> ()
+  %2 = thin_to_thick_function %1 to $@callee_guaranteed () -> ()
+  %3 = struct $SWithClosure (%0, %2)
+  %4 = begin_borrow [lexical] %3
+  %5 = struct_extract %4, #SWithClosure.f
+  %6 = apply %5(): $@callee_guaranteed () -> ()
+  end_borrow %4
+  %r = tuple ()
+  return %r
+}
+
+// The "none" ownership of the struct is faked by an `unchecked_ownership`.
+// CHECK-LABEL: sil [ossa] @dont_remove_borrow_of_struct_with_unchecked_ownership :
+// CHECK:         begin_borrow
+// CHECK-LABEL: } // end sil function 'dont_remove_borrow_of_struct_with_unchecked_ownership'
+sil [ossa] @dont_remove_borrow_of_struct_with_unchecked_ownership : $@convention(thin) (Int, @guaranteed @callee_guaranteed () -> ()) -> () {
+bb0(%0 : $Int, %1 : @guaranteed $@callee_guaranteed () -> ()):
+  %2 = unchecked_ownership %1, forwarding: @none
+  %3 = struct $SWithClosure (%0, %2)
+  %4 = begin_borrow %3
+  %5 = struct_extract %4, #SWithClosure.f
+  %6 = apply %5(): $@callee_guaranteed () -> ()
+  end_borrow %4
   %r = tuple ()
   return %r
 }
