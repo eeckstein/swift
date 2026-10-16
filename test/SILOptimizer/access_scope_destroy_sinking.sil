@@ -19,6 +19,7 @@ struct X {
 var globalX: X
 
 sil_global hidden @globalX : $X
+sil_global hidden @otherGlobalX : $X
 
 sil hidden_external [global_init] @globalAddressor : $@convention(thin) () -> Builtin.RawPointer
 
@@ -251,15 +252,16 @@ bb3:
   return %ret : $()
 }
 
-// Checks that we don't sink a release over a deinit barrier, e.g. a store to a global.
+// Checks that a store to the global of the access scope is not a barrier, because a deinit
+// cannot access the global without an exclusivity violation.
 //
-// CHECK-LABEL: sil @testDeinitBarrier :
+// CHECK-LABEL: sil @testStoreToGlobalInScope :
 // CHECK:         [[LOADED:%.*]] = load
-// CHECK-NEXT:    release_value [[LOADED]]
 // CHECK-NEXT:    store %0 to
 // CHECK-NEXT:    end_access
-// CHECK-LABEL: } // end sil function 'testDeinitBarrier'
-sil @testDeinitBarrier : $@convention(thin) (X) -> () {
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-LABEL: } // end sil function 'testStoreToGlobalInScope'
+sil @testStoreToGlobalInScope : $@convention(thin) (X) -> () {
 bb0(%0 : $X):
   %1 = global_addr @globalX: $*X
   %2 = begin_access [modify] [dynamic] %1 : $*X
@@ -267,6 +269,29 @@ bb0(%0 : $X):
   release_value %3 : $X
   store %0 to %2 : $*X
   end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks that we don't sink a release over a deinit barrier, e.g. a store to another global.
+//
+// CHECK-LABEL: sil @testDeinitBarrier :
+// CHECK:         [[LOADED:%.*]] = load
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-NEXT:    store %0 to
+// CHECK-NEXT:    store %0 to
+// CHECK-NEXT:    end_access
+// CHECK-LABEL: } // end sil function 'testDeinitBarrier'
+sil @testDeinitBarrier : $@convention(thin) (X) -> () {
+bb0(%0 : $X):
+  %1 = global_addr @globalX: $*X
+  %2 = global_addr @otherGlobalX: $*X
+  %3 = begin_access [modify] [dynamic] %1 : $*X
+  %4 = load %3 : $*X
+  release_value %4 : $X
+  store %0 to %2 : $*X
+  store %0 to %3 : $*X
+  end_access %3 : $*X
   %ret = tuple ()
   return %ret : $()
 }
