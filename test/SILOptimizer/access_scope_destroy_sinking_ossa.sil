@@ -1,0 +1,318 @@
+// RUN: %target-sil-opt -access-scope-destroy-sinking %s -enable-sil-verify-all | %FileCheck %s
+
+// Test the AccessScopeDestroySinking pass in OSSA.
+
+sil_stage canonical
+
+import Builtin
+import Swift
+import SwiftShims
+
+class C {}
+
+enum E {
+  case a(C)
+  case b
+}
+
+class Holder {
+  @_hasStorage var e: E
+}
+
+sil @use : $@convention(thin) () -> ()
+
+// CHECK-LABEL: sil [ossa] @sink_within_block :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    store %1 to [init] [[A]]
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'sink_within_block'
+sil [ossa] @sink_within_block : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  %4 = load [take] %3
+  destroy_value %4
+  store %1 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_across_blocks :
+// CHECK:       bb0(%0 : @guaranteed $Holder, %1 : @owned $Optional<C>):
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    switch_enum %1
+// CHECK:       bb3([[NEW:%.*]] : @owned $E):
+// CHECK-NEXT:    store [[NEW]] to [init] [[A]]
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'sink_across_blocks'
+sil [ossa] @sink_across_blocks : $@convention(thin) (@guaranteed Holder, @owned Optional<C>) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $Optional<C>):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  %4 = load [take] %3
+  destroy_value %4
+  switch_enum %1, case #Optional.some!enumelt: bb1, case #Optional.none!enumelt: bb2
+
+bb1(%7 : @owned $C):
+  %8 = enum $E, #E.a!enumelt, %7
+  br bb3(%8)
+
+bb2:
+  %10 = enum $E, #E.b!enumelt
+  br bb3(%10)
+
+bb3(%12 : @owned $E):
+  store %12 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_across_blocks_with_dead_end :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    switch_enum %1
+// CHECK:       bb2:
+// CHECK-NEXT:    destroy_value [dead_end] [[OLD]]
+// CHECK-NEXT:    unreachable
+// CHECK:       bb3({{.*}}):
+// CHECK-NEXT:    enum
+// CHECK-NEXT:    store
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'sink_across_blocks_with_dead_end'
+sil [ossa] @sink_across_blocks_with_dead_end : $@convention(thin) (@guaranteed Holder, @owned Optional<C>) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $Optional<C>):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  %4 = load [take] %3
+  destroy_value %4
+  switch_enum %1, case #Optional.some!enumelt: bb1, case #Optional.none!enumelt: bb2
+
+bb1(%7 : @owned $C):
+  br bb3(%7)
+
+bb2:
+  unreachable
+
+bb3(%11 : @owned $C):
+  %12 = enum $E, #E.a!enumelt, %11
+  store %12 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_across_barrier :
+// CHECK:         [[OLD:%.*]] = load [take]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK-NEXT:    cond_br
+// CHECK:       } // end sil function 'dont_sink_across_barrier'
+sil [ossa] @dont_sink_across_barrier : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  %4 = load [take] %3
+  destroy_value %4
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use : $@convention(thin) () -> ()
+  %a = apply %f() : $@convention(thin) () -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  store %1 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_mark_dependence :
+// CHECK:         [[MD:%.*]] = mark_dependence
+// CHECK-NEXT:    destroy_value [[MD]]
+// CHECK-NEXT:    end_access
+// CHECK:       } // end sil function 'dont_sink_mark_dependence'
+sil [ossa] @dont_sink_mark_dependence : $@convention(thin) (@guaranteed Holder, @owned C) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $C):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [read] [dynamic] %2
+  %4 = mark_dependence [nonescaping] %1 on %3
+  destroy_value %4
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @split_store_assign :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    store %1 to [init] [[A]]
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'split_store_assign'
+sil [ossa] @split_store_assign : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  store %1 to [assign] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @split_store_assign_across_blocks :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    store %1 to [init] [[A]]
+// CHECK-NEXT:    cond_br
+// CHECK:       bb1:
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       bb2:
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'split_store_assign_across_blocks'
+sil [ossa] @split_store_assign_across_blocks : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  store %1 to [assign] %3
+  cond_br undef, bb1, bb2
+
+bb1:
+  end_access %3
+  br bb3
+
+bb2:
+  end_access %3
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_split_store_assign_with_barrier :
+// CHECK:         store %1 to [assign]
+// CHECK-NEXT:    apply
+// CHECK-NEXT:    end_access
+// CHECK:       } // end sil function 'dont_split_store_assign_with_barrier'
+sil [ossa] @dont_split_store_assign_with_barrier : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %f = function_ref @use : $@convention(thin) () -> ()
+  %3 = begin_access [modify] [dynamic] %2
+  store %1 to [assign] %3
+  %a = apply %f() : $@convention(thin) () -> ()
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @split_destroy_addr :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    store %1 to [init] [[A]]
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'split_destroy_addr'
+sil [ossa] @split_destroy_addr : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  destroy_addr %3
+  store %1 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_destroy_on_one_path :
+// CHECK:       bb1:
+// CHECK-NEXT:    destroy_value %1
+// CHECK-NEXT:    br bb3
+// CHECK:       } // end sil function 'dont_sink_destroy_on_one_path'
+sil [ossa] @dont_sink_destroy_on_one_path : $@convention(thin) (@guaranteed Holder, @owned C) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $C):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  cond_br undef, bb1, bb2
+
+bb1:
+  destroy_value %1
+  br bb3
+
+bb2:
+  %7 = enum $E, #E.a!enumelt, %1
+  store %7 to [assign] %3
+  br bb3
+
+bb3:
+  end_access %3
+  %r = tuple ()
+  return %r
+}
+
+class Holder2 {
+  @_hasStorage var e: E
+}
+
+// CHECK-LABEL: sil [ossa] @sink_out_of_nested_scopes :
+// CHECK:         [[OLD:%.*]] = load [take]
+// CHECK-NEXT:    store %2 to [init]
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'sink_out_of_nested_scopes'
+sil [ossa] @sink_out_of_nested_scopes : $@convention(thin) (@guaranteed Holder, @guaranteed Holder2, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @guaranteed $Holder2, %2 : @owned $E):
+  %3 = ref_element_addr %0, #Holder.e
+  %4 = ref_element_addr %1, #Holder2.e
+  %5 = begin_access [read] [dynamic] %3
+  %6 = begin_access [modify] [dynamic] %4
+  store %2 to [assign] %6
+  end_access %6
+  end_access %5
+  %r = tuple ()
+  return %r
+}
+
+// A barrier in a dead-end block prevents sinking.
+//
+// CHECK-LABEL: sil [ossa] @dont_sink_with_barrier_in_dead_end :
+// CHECK:         [[OLD:%.*]] = load [take]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK-NEXT:    switch_enum %1
+// CHECK:       } // end sil function 'dont_sink_with_barrier_in_dead_end'
+sil [ossa] @dont_sink_with_barrier_in_dead_end : $@convention(thin) (@guaranteed Holder, @owned Optional<C>) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $Optional<C>):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = begin_access [modify] [dynamic] %2
+  %4 = load [take] %3
+  destroy_value %4
+  switch_enum %1, case #Optional.some!enumelt: bb1, case #Optional.none!enumelt: bb2
+
+bb1(%7 : @owned $C):
+  br bb3(%7)
+
+bb2:
+  %f = function_ref @use : $@convention(thin) () -> ()
+  %a = apply %f() : $@convention(thin) () -> ()
+  unreachable
+
+bb3(%11 : @owned $C):
+  %12 = enum $E, #E.a!enumelt, %11
+  store %12 to [init] %3
+  end_access %3
+  %r = tuple ()
+  return %r
+}
