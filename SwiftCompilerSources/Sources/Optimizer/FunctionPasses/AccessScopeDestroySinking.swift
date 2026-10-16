@@ -157,7 +157,7 @@ private func canSink(_ destroy: Destroy, outOf beginAccess: BeginAccessInst, sco
       // There is a path from the `begin_access` to a scope end which doesn't go through the destroy.
       return false
     }
-    if inst.isBarrierForDestroySinking {
+    if inst.isBarrierForDestroySinking(outOf: beginAccess) {
       return false
     }
     // Don't sink a destroy over another destroy of the same value.
@@ -283,8 +283,8 @@ private func createDeadEndDestroys(of value: Value, at scopeEnds: [Instruction],
 }
 
 private extension Instruction {
-  var isBarrierForDestroySinking: Bool {
-    if isDeinitBarrier {
+  func isBarrierForDestroySinking(outOf beginAccess: BeginAccessInst) -> Bool {
+    if isDeinitBarrier && !onlyAccessesMemory(of: beginAccess) {
       // This includes calls, which hide many dangers, from checking reference counts, to beginning
       // keypath access, to forcing memory to be live.
       return true
@@ -305,5 +305,45 @@ private extension Instruction {
     default:
       return false
     }
+  }
+
+  /// Returns true for loads and stores which only access the memory of the access scope, e.g.
+  ///
+  /// ```
+  ///   %a = begin_access [modify] [dynamic] %global
+  ///   %old = load [take] %a
+  ///   destroy_value %old
+  ///   store %new to [init] %a      // not a barrier, though it writes to a global
+  ///   end_access %a
+  /// ```
+  ///
+  /// Such an instruction is a deinit barrier if the memory is a global or a pointer. But a deinit
+  /// cannot observe the memory of the access scope without violating exclusivity: within a
+  /// `modify` scope, it must not access the memory at all, and within a `read` scope, it can
+  /// only read it.
+  private func onlyAccessesMemory(of beginAccess: BeginAccessInst) -> Bool {
+    guard beginAccess.enforcement == .dynamic || beginAccess.enforcement == .static else {
+      return false
+    }
+    let address: Value
+    switch self {
+    case let load as LoadInst:
+      address = load.address
+    case let loadBorrow as LoadBorrowInst:
+      address = loadBorrow.address
+    case let endBorrow as EndBorrowInst:
+      guard let loadBorrow = endBorrow.borrow as? LoadBorrowInst else {
+        return false
+      }
+      address = loadBorrow.address
+    case let store as StoreInst:
+      address = store.destination
+    default:
+      return false
+    }
+    if case .access(let scope) = address.enclosingAccessScope {
+      return scope == beginAccess
+    }
+    return false
   }
 }
