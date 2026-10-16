@@ -105,6 +105,8 @@ PASS(RedundantLoadElimination, "redundant-load-elimination",
      "Redundant Load Elimination")
 PASS(RedundantOverflowCheckRemoval, "remove-redundant-overflow-checks",
      "Redundant Overflow Check Removal")
+PASS(AccessScopeDestroySinking, "access-scope-destroy-sinking",
+     "Sinks destroys out of access scopes")
 PASS(DeadAccessScopeElimination, "dead-access-scope-elimination",
      "Removes dead, non-conflicting access scopes")
 PASS(DeadStoreElimination, "dead-store-elimination",
@@ -229,8 +231,6 @@ LEGACY_PASS(AccessEnforcementDom, "access-enforcement-dom",
      "Remove dominated access checks with no nested conflict")
 LEGACY_PASS(AccessEnforcementOpts, "access-enforcement-opts",
      "Access Enforcement Optimization")
-LEGACY_PASS(AccessEnforcementReleaseSinking, "access-enforcement-release",
-     "Access Enforcement Release Sinking")
 LEGACY_PASS(AccessEnforcementSelection, "access-enforcement-selection",
      "Access Enforcement Selection")
 LEGACY_PASS(AccessEnforcementWMO, "access-enforcement-wmo",

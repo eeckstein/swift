@@ -411,10 +411,6 @@ void addHighLevelLoopOptPasses(SILPassPipelinePlan &P) {
   P.addSimplifyCFG();
   // Optimize access markers for better LICM: might merge accesses
   // It will also set the no_nested_conflict for dynamic accesses
-  // AccessEnforcementReleaseSinking results in non-canonical OSSA.
-  // It is only used to expose opportunities in AccessEnforcementOpts
-  // before CanonicalOSSA re-hoists destroys.
-  P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
   P.addLoopInvariantCodeMotion();
   // Simplify CFG after LICM that creates new exit blocks
@@ -422,10 +418,6 @@ void addHighLevelLoopOptPasses(SILPassPipelinePlan &P) {
   // LICM might have added new merging potential by hoisting
   // we don't want to restart the pipeline - ignore the
   // potential of merging out of two loops
-  // AccessEnforcementReleaseSinking results in non-canonical OSSA.
-  // It is only used to expose opportunities in AccessEnforcementOpts
-  // before CanonicalOSSA re-hoists destroys.
-  P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
   // Start of loop unrolling passes.
   P.addArrayCountPropagation();
@@ -868,7 +860,6 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
 
   // Optimize access markers for better LICM: might merge accesses
   // It will also set the no_nested_conflict for dynamic accesses
-  P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
   P.addLoopInvariantCodeMotion();
   P.addCOWOpts();
@@ -877,7 +868,6 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
   // LICM might have added new merging potential by hoisting
   // we don't want to restart the pipeline - ignore the
   // potential of merging out of two loops
-  P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
 
   // Sometimes stack promotion can catch cases only at this late stage of the
@@ -910,7 +900,6 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
   P.addCodeSinking();
   // Optimize access markers for improved IRGen after all other optimizations.
   P.addOptimizeHopToExecutor();
-  P.addAccessEnforcementReleaseSinking();
   P.addAccessEnforcementOpts();
   P.addAccessEnforcementWMO();
   P.addAccessEnforcementDom();
@@ -1065,6 +1054,10 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   addLateLoopOptPassPipeline(P);
 
   P.addLateCopyToBorrowOptimization();
+
+  // Sink destroys (including the implicit destroys of `store [assign]`) out of access scopes.
+  // This lets the following AccessEnforcementOpts/WMO remove more access checks.
+  P.addAccessScopeDestroySinking();
 
   // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
   // requires for unowned values actually need to become a retain/release pair.

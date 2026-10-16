@@ -17,7 +17,7 @@
 /// - Should run immediately before the AccessEnforcementWMO to share
 ///   AccessStorageAnalysis results.
 ///
-/// - Benefits from running after AccessEnforcementReleaseSinking.
+/// - Benefits from running after AccessScopeDestroySinking.
 ///
 /// This pass optimizes access enforcement as follows:
 ///
