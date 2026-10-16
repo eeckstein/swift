@@ -1,6 +1,6 @@
-// RUN: %target-sil-opt -sil-print-types -access-enforcement-release %s -enable-sil-verify-all | %FileCheck %s
+// RUN: %target-sil-opt -sil-print-types -access-scope-destroy-sinking %s -enable-sil-verify-all | %FileCheck %s
 //
-// Test the AccessEnforcementReleaseSinking pass in isolation.
+// Test the AccessScopeDestroySinking pass in isolation.
 // This ensures that no upstream passes have removed SIL-level access markers
 // that are required to ensure the pass is not overly optimistic.
 
@@ -69,19 +69,19 @@ bb1:
   return %ret : $()
 }
 
-// public func testMultiBlocklBailOnRelease() {
-// Checks bailing (for now) on the simple case due to the release being in a different block
+// public func testMultiBlocklSinkToEndAccessBlock() {
+// Checks sinking a release into the block of the end_access
 //
-// CHECK-LABEL: sil @testMultiBlocklBailOnRelease : $@convention(thin) () -> () {
+// CHECK-LABEL: sil @testMultiBlocklSinkToEndAccessBlock : $@convention(thin) () -> () {
 // CHECK: [[GLOBAL:%.*]] = global_addr @globalX : $*X
 // CHECK-NEXT: [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*X
 // CHECK-NEXT: [[LOADED:%.*]] = load [[BEGIN]] : $*X
-// CHECK-NEXT: release_value [[LOADED]]
 // CHECK-NEXT: br bb1
 // CHECK: bb1
 // CHECK-NEXT: end_access [[BEGIN]] : $*X
-// CHECK-LABEL: } // end sil function 'testMultiBlocklBailOnRelease'
-sil @testMultiBlocklBailOnRelease : $@convention(thin) () -> () {
+// CHECK-NEXT: release_value [[LOADED]]
+// CHECK-LABEL: } // end sil function 'testMultiBlocklSinkToEndAccessBlock'
+sil @testMultiBlocklSinkToEndAccessBlock : $@convention(thin) () -> () {
 bb0:
   %0 = global_addr @globalX: $*X
   %1 = begin_access [modify] [dynamic] %0 : $*X
@@ -216,6 +216,170 @@ bb0:
   return %ret : $()
 }
 
+// Checks sinking a release across a diamond into the end_access block
+//
+// CHECK-LABEL: sil @testSinkAcrossDiamond :
+// CHECK:       bb0(%0 : $X):
+// CHECK-NEXT:    [[GLOBAL:%.*]] = global_addr @globalX : $*X
+// CHECK-NEXT:    [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*X
+// CHECK-NEXT:    [[LOADED:%.*]] = load [[BEGIN]] : $*X
+// CHECK-NEXT:    integer_literal
+// CHECK-NEXT:    cond_br
+// CHECK:       bb3:
+// CHECK-NEXT:    end_access [[BEGIN]] : $*X
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-NOT:     release_value
+// CHECK-LABEL: } // end sil function 'testSinkAcrossDiamond'
+sil @testSinkAcrossDiamond : $@convention(thin) (X) -> () {
+bb0(%0 : $X):
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb1, bb2
+
+bb1:
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks that we don't sink a release over a deinit barrier, e.g. a store to a global.
+//
+// CHECK-LABEL: sil @testDeinitBarrier :
+// CHECK:         [[LOADED:%.*]] = load
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-NEXT:    store %0 to
+// CHECK-NEXT:    end_access
+// CHECK-LABEL: } // end sil function 'testDeinitBarrier'
+sil @testDeinitBarrier : $@convention(thin) (X) -> () {
+bb0(%0 : $X):
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  store %0 to %2 : $*X
+  end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks sinking a release to multiple end_accesses and ignoring dead-end blocks
+//
+// CHECK-LABEL: sil @testSinkToMultipleEndAccesses :
+// CHECK:       bb0:
+// CHECK-NEXT:    [[GLOBAL:%.*]] = global_addr @globalX : $*X
+// CHECK-NEXT:    [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*X
+// CHECK-NEXT:    [[LOADED:%.*]] = load [[BEGIN]] : $*X
+// CHECK-NEXT:    integer_literal
+// CHECK-NEXT:    cond_br
+// CHECK:       bb1:
+// CHECK-NEXT:    end_access [[BEGIN]] : $*X
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK:       bb2:
+// CHECK-NEXT:    cond_br
+// CHECK:       bb3:
+// CHECK-NEXT:    end_access [[BEGIN]] : $*X
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK:       bb4:
+// CHECK-NEXT:    unreachable
+// CHECK-LABEL: } // end sil function 'testSinkToMultipleEndAccesses'
+sil @testSinkToMultipleEndAccesses : $@convention(thin) () -> () {
+bb0:
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb1, bb2
+
+bb1:
+  end_access %2 : $*X
+  br bb5
+
+bb2:
+  cond_br %5, bb3, bb4
+
+bb3:
+  end_access %2 : $*X
+  br bb5
+
+bb4:
+  unreachable
+
+bb5:
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks that we don't sink across a barrier in a successor block
+//
+// CHECK-LABEL: sil @testBarrierInSuccessorBlock :
+// CHECK:         [[LOADED:%.*]] = load
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-NEXT:    integer_literal
+// CHECK-NEXT:    cond_br
+// CHECK-LABEL: } // end sil function 'testBarrierInSuccessorBlock'
+sil @testBarrierInSuccessorBlock : $@convention(thin) () -> () {
+bb0:
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb1, bb2
+
+bb1:
+  %u = function_ref @globalAddressor : $@convention(thin) () -> Builtin.RawPointer
+  %a = apply %u() : $@convention(thin) () -> Builtin.RawPointer
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks sinking a release across a loop within the access scope
+//
+// CHECK-LABEL: sil @testLoopInAccessScope :
+// CHECK:         [[LOADED:%.*]] = load
+// CHECK-NEXT:    br bb1
+// CHECK:       bb3:
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-LABEL: } // end sil function 'testLoopInAccessScope'
+sil @testLoopInAccessScope : $@convention(thin) () -> () {
+bb0:
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  br bb1
+
+bb1:
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
 // testSinkAfterEscapingClosureCheck:
 // <rdar://problem/45846920> TestFoundation, TestProcess, closure
 // argument passed as @noescape to Objective-C has escaped
@@ -277,6 +441,64 @@ bb0(%0 : $IntWrapper):
   destroy_addr %blockaddr : $*@callee_guaranteed() -> ()
   dealloc_stack %allocblock : $*@block_storage @callee_guaranteed () -> ()
   strong_release %box : ${ var Builtin.Int64 }
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks that we don't sink a release which is inside a loop within the access scope
+//
+// CHECK-LABEL: sil @testReleaseInLoop :
+// CHECK:       bb1:
+// CHECK-NEXT:    [[LOADED:%.*]] = load
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-LABEL: } // end sil function 'testReleaseInLoop'
+sil @testReleaseInLoop : $@convention(thin) () -> () {
+bb0:
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  br bb1
+
+bb1:
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  end_access %2 : $*X
+  %ret = tuple ()
+  return %ret : $()
+}
+
+// Checks sinking a release with a dead-end block in the access scope
+//
+// CHECK-LABEL: sil @testDeadEndBlock :
+// CHECK:         [[LOADED:%.*]] = load
+// CHECK-NEXT:    integer_literal
+// CHECK-NEXT:    cond_br
+// CHECK:       bb1:
+// CHECK-NEXT:    unreachable
+// CHECK:       bb2:
+// CHECK-NEXT:    end_access
+// CHECK-NEXT:    release_value [[LOADED]]
+// CHECK-LABEL: } // end sil function 'testDeadEndBlock'
+sil @testDeadEndBlock : $@convention(thin) () -> () {
+bb0:
+  %1 = global_addr @globalX: $*X
+  %2 = begin_access [modify] [dynamic] %1 : $*X
+  %3 = load %2 : $*X
+  release_value %3 : $X
+  %5 = integer_literal $Builtin.Int1, 0
+  cond_br %5, bb1, bb2
+
+bb1:
+  unreachable
+
+bb2:
+  end_access %2 : $*X
   %ret = tuple ()
   return %ret : $()
 }
