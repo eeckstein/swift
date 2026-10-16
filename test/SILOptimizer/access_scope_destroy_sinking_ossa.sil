@@ -19,6 +19,9 @@ class Holder {
   @_hasStorage var e: E
 }
 
+sil_global @globalE : $E
+sil_global @otherGlobal : $Builtin.Int64
+
 sil @use : $@convention(thin) () -> ()
 
 // CHECK-LABEL: sil [ossa] @sink_within_block :
@@ -313,6 +316,52 @@ bb3(%11 : @owned $C):
   %12 = enum $E, #E.a!enumelt, %11
   store %12 to [init] %3
   end_access %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_over_store_to_global_in_scope :
+// CHECK:         [[A:%.*]] = begin_access
+// CHECK-NEXT:    [[OLD:%.*]] = load [take] [[A]]
+// CHECK-NEXT:    [[C:%.*]] = copy_value %0
+// CHECK-NEXT:    store [[C]] to [init] [[A]]
+// CHECK-NEXT:    [[L:%.*]] = load_borrow [[A]]
+// CHECK-NEXT:    end_borrow [[L]]
+// CHECK-NEXT:    end_access [[A]]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK:       } // end sil function 'sink_over_store_to_global_in_scope'
+sil [ossa] @sink_over_store_to_global_in_scope : $@convention(thin) (@guaranteed E) -> () {
+bb0(%0 : @guaranteed $E):
+  %1 = global_addr @globalE : $*E
+  %2 = begin_access [modify] [dynamic] %1
+  %3 = load [take] %2
+  destroy_value %3
+  %5 = copy_value %0
+  store %5 to [init] %2
+  %7 = load_borrow %2
+  end_borrow %7
+  end_access %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_over_store_to_other_global :
+// CHECK:         [[OLD:%.*]] = load [take]
+// CHECK-NEXT:    destroy_value [[OLD]]
+// CHECK-NEXT:    integer_literal
+// CHECK-NEXT:    store
+// CHECK:       } // end sil function 'dont_sink_over_store_to_other_global'
+sil [ossa] @dont_sink_over_store_to_other_global : $@convention(thin) (@guaranteed Holder, @owned E) -> () {
+bb0(%0 : @guaranteed $Holder, %1 : @owned $E):
+  %2 = ref_element_addr %0, #Holder.e
+  %3 = global_addr @otherGlobal : $*Builtin.Int64
+  %4 = begin_access [modify] [dynamic] %2
+  %5 = load [take] %4
+  destroy_value %5
+  %7 = integer_literal $Builtin.Int64, 0
+  store %7 to [trivial] %3
+  store %1 to [init] %4
+  end_access %4
   %r = tuple ()
   return %r
 }
