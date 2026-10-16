@@ -1055,6 +1055,10 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
 
   P.addLateCopyToBorrowOptimization();
 
+  // Must run before AccessScopeDestroySinking, because it removes some of the destroys
+  // which would be sunk.
+  P.addTrivialEnumCaseDestroyElimination();
+
   // Sink destroys (including the implicit destroys of `store [assign]`) out of access scopes.
   // This lets the following AccessEnforcementOpts/WMO remove more access checks.
   P.addAccessScopeDestroySinking();

@@ -57,6 +57,7 @@ swift_compiler_sources(Optimizer
   StripObjectHeaders.swift
   TempLValueElimination.swift
   TempRValueElimination.swift
+  TrivialEnumCaseDestroyElimination.swift
   TrivialOwnershipElimination.swift
   UnownedCopyElimination.swift
   PackSpecialization.swift
