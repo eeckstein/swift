@@ -109,6 +109,8 @@ PASS(RedundantOverflowCheckRemoval, "remove-redundant-overflow-checks",
      "Redundant Overflow Check Removal")
 PASS(AccessScopeDestroySinking, "access-scope-destroy-sinking",
      "Sinks destroys out of access scopes")
+PASS(TrivialEnumCaseDestroyElimination, "trivial-enum-case-destroy-elimination",
+     "Removes destroys of values in memory which are known to be trivial enum cases")
 PASS(DeadAccessScopeElimination, "dead-access-scope-elimination",
      "Removes dead, non-conflicting access scopes")
 PASS(DeadStoreElimination, "dead-store-elimination",
