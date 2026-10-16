@@ -88,7 +88,21 @@ extension SwitchEnumInst : OnoneSimplifiable, SILCombineSimplifiable {
   ///   bb2:
   /// ```
   /// This requires that the enum's lifetime ends in _all_ case blocks, either with an
-  /// `unchecked_enum_data` or with a `destroy_value`.
+  /// `unchecked_enum_data`, a `destroy_value` or with a redundant `switch_enum` of the owned enum.
+  /// Such a redundant `switch_enum` is replaced by a branch to its successor for the known case:
+  /// ```
+  ///     %1 = begin_borrow %0
+  ///     switch_enum %1, case #someCase: bb1, case #otherCase: bb2
+  ///   bb1(%payloadArgument : @guaranteed):
+  ///     end_borrow %1
+  ///     switch_enum %0, case #someCase: bb3, case #otherCase: bb4
+  /// ```
+  /// ->
+  /// ```
+  ///     switch_enum %0, case #someCase: bb1, case #otherCase: bb2
+  ///   bb1(%payloadArgument : @owned):
+  ///     br bb3(%payloadArgument)
+  /// ```
   private func forwardBorrowToOwned(_ context: SimplifyContext) -> Bool {
     guard let beginBorrow = enumOp as? BeginBorrowInst,
           beginBorrow.uses.ignoreDebugUses.ignore(user: self).hasOnlyUsers(ofType: EndBorrowInst.self),
@@ -127,6 +141,10 @@ extension SwitchEnumInst : OnoneSimplifiable, SILCombineSimplifiable {
         }
       case is DestroyValueInst:
         break
+      case let innerSwitch as SwitchEnumInst:
+        guard canFold(redundantSwitch: innerSwitch, inCaseBlock: block) else {
+          return false
+        }
       default:
         return false
       }
@@ -162,6 +180,8 @@ extension SwitchEnumInst : OnoneSimplifiable, SILCombineSimplifiable {
           // itself consumes the enum and there is nothing left to destroy in the case block.
           context.erase(instruction: destroy)
         }
+      case let innerSwitch as SwitchEnumInst:
+        fold(redundantSwitch: innerSwitch, inCaseBlock: block, context)
       default:
         fatalError("unexpected user of the owned enum")
       }
@@ -174,6 +194,49 @@ extension SwitchEnumInst : OnoneSimplifiable, SILCombineSimplifiable {
     context.erase(instructionIncludingAllUsers: beginBorrow)
 
     return true
+  }
+
+  private func canFold(redundantSwitch: SwitchEnumInst, inCaseBlock caseBlock: BasicBlock) -> Bool {
+    guard let caseIndex = uniqueCase(forSuccessor: caseBlock) else {
+      return false
+    }
+    let target = redundantSwitch.getSuccessor(forCaseIndex: caseIndex)
+    if target.arguments.count != caseBlock.arguments.count {
+      return false
+    }
+    // The payload argument is consumed by the new branch, which is the case block's terminator.
+    // Therefore all its uses must be in the case block.
+    if let payloadArgument = ownedPayloadArgument(of: caseBlock),
+       !payloadArgument.uses.allSatisfy({ $0.instruction.parentBlock == caseBlock })
+    {
+      return false
+    }
+    return true
+  }
+
+  private func fold(redundantSwitch: SwitchEnumInst, inCaseBlock caseBlock: BasicBlock, _ context: SimplifyContext) {
+    let target = redundantSwitch.getSuccessor(forCaseIndex: uniqueCase(forSuccessor: caseBlock)!)
+    let builder = Builder(before: redundantSwitch, context)
+    builder.createBranch(to: target, arguments: caseBlock.arguments.map { $0 })
+    context.erase(instruction: redundantSwitch)
+  }
+
+  /// Returns the enum case of `successor` if it's the only case which branches to `successor`.
+  private func uniqueCase(forSuccessor successor: BasicBlock) -> Int? {
+    var caseIndex: Int? = nil
+    for (index, caseSuccessor) in cases where caseSuccessor == successor {
+      if caseIndex != nil {
+        return nil
+      }
+      caseIndex = index
+    }
+    if let defaultBlock = getSuccessorForDefault(), defaultBlock == successor {
+      if caseIndex != nil {
+        return nil
+      }
+      return getUniqueCaseForDefault()
+    }
+    return caseIndex
   }
 }
 
