@@ -976,7 +976,11 @@ bool SimplifyCFG::tryJumpThreading(BranchInst *BI) {
         // Jump threading a literal is only worth it if it can simplify the
         // branch condition. Otherwise we would just duplicate code, which can
         // lead to exponential code growth for chains of diamond-shaped CFGs.
-        if ((isa<IntegerLiteralInst>(V) || isa<FloatLiteralInst>(V)) &&
+        // Float literals are not considered: a floating point comparison is
+        // typically data dependent and LLVM can turn the diamond into a
+        // branch-free `select`. Jump threading would replace it with
+        // unpredictable branches.
+        if (isa<IntegerLiteralInst>(V) &&
             conditionDependsOnArgument(condBr, DestBB->getArgument(i))) {
           ThreadingBudget = 4;
           break;
