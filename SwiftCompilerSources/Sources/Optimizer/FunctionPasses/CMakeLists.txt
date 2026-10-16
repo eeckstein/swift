@@ -60,6 +60,7 @@ swift_compiler_sources(Optimizer
   StripObjectHeaders.swift
   TempLValueElimination.swift
   TempRValueElimination.swift
+  TrivialEnumCaseDestroyElimination.swift
   TrivialOwnershipElimination.swift
   Verifier.swift
   PackTypeElimination.swift

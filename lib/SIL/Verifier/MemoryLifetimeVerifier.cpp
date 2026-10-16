@@ -56,7 +56,8 @@ class MemoryLifetimeVerifier {
   bool isValueTrivialAt(int locIdx, SILInstruction *atInst);
 
   /// Returns true if an instruction in the range between \p start and \p end
-  /// stores a trivial enum case into the enum location \p loc.
+  /// stores a trivial enum case or a value without ownership into the
+  /// location \p loc.
   bool storesTrivialValue(int locIdx,
                          SILBasicBlock::reverse_iterator start,
                          SILBasicBlock::reverse_iterator end);
@@ -243,6 +244,10 @@ bool MemoryLifetimeVerifier::storesTrivialValue(int locIdx,
     if (auto *SI = dyn_cast<StoreInst>(&inst)) {
       const Location *loc = locations.getLocation(SI->getDest());
       if (loc && loc->isSubLocation(locIdx)) {
+        // A value without ownership doesn't need to be destroyed, even if its
+        // type is not trivial, e.g. a trivial enum case or a String literal.
+        if (SI->getSrc()->getOwnershipKind() == OwnershipKind::None)
+          return true;
         auto ty = SI->getSrc()->getType();
         if (ty.isOrHasEnum() || ty.isFunction()) {
           return

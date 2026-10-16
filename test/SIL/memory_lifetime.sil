@@ -489,6 +489,66 @@ bb0(%0 : $Int):
   return %13 : $()
 }
 
+// A trivial enum case, stored with `[init]`, doesn't need to be destroyed.
+sil [ossa] @test_init_store_of_trivial_enum_case : $@convention(thin) (@owned T) -> () {
+bb0(%0 : @owned $T):
+  %1 = alloc_stack $Optional<T>
+  %2 = enum $Optional<T>, #Optional.none!enumelt
+  store %2 to [init] %1 : $*Optional<T>
+  %4 = enum $Optional<T>, #Optional.some!enumelt, %0 : $T
+  store %4 to [init] %1 : $*Optional<T>
+  destroy_addr %1 : $*Optional<T>
+  %7 = enum $Optional<T>, #Optional.none!enumelt
+  store %7 to [init] %1 : $*Optional<T>
+  dealloc_stack %1 : $*Optional<T>
+  %r = tuple ()
+  return %r : $()
+}
+
+// After a `switch_enum` to a trivial case, the memory doesn't need to be destroyed.
+sil [ossa] @test_trivial_enum_case_from_switch : $@convention(thin) (@owned Optional<T>, @owned T) -> () {
+bb0(%0 : @owned $Optional<T>, %1 : @owned $T):
+  %2 = alloc_stack $Optional<T>
+  store %0 to [init] %2 : $*Optional<T>
+  %4 = load_borrow %2 : $*Optional<T>
+  switch_enum %4 : $Optional<T>, case #Optional.none!enumelt: bb1, case #Optional.some!enumelt: bb2
+
+bb1:
+  end_borrow %4 : $Optional<T>
+  %7 = enum $Optional<T>, #Optional.some!enumelt, %1 : $T
+  store %7 to [init] %2 : $*Optional<T>
+  br bb3
+
+bb2(%10 : @guaranteed $T):
+  end_borrow %4 : $Optional<T>
+  destroy_value %1 : $T
+  br bb3
+
+bb3:
+  destroy_addr %2 : $*Optional<T>
+  dealloc_stack %2 : $*Optional<T>
+  %r = tuple ()
+  return %r : $()
+}
+
+struct BridgeObjectWrapper {
+  var b: Builtin.BridgeObject
+}
+
+// A non-trivial value without ownership (like a String literal) doesn't need to be destroyed.
+sil [ossa] @test_init_store_of_none_ownership_struct : $@convention(thin) (@owned BridgeObjectWrapper, Builtin.Int64) -> () {
+bb0(%0 : @owned $BridgeObjectWrapper, %1 : $Builtin.Int64):
+  %2 = alloc_stack $BridgeObjectWrapper
+  %3 = value_to_bridge_object %1 : $Builtin.Int64
+  %4 = struct $BridgeObjectWrapper (%3 : $Builtin.BridgeObject)
+  store %4 to [init] %2 : $*BridgeObjectWrapper
+  store %0 to [init] %2 : $*BridgeObjectWrapper
+  destroy_addr %2 : $*BridgeObjectWrapper
+  dealloc_stack %2 : $*BridgeObjectWrapper
+  %r = tuple ()
+  return %r : $()
+}
+
 sil [ossa] @test_trivial_enum_case1 : $@convention(thin) (@owned T) -> () {
 bb0(%0 : @owned $T):
   %1 = alloc_stack $Optional<T>
