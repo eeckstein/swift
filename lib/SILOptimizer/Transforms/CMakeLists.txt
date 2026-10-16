@@ -2,7 +2,6 @@ target_sources(swiftSILOptimizer PRIVATE
   ARCCodeMotion.cpp
   AccessEnforcementDom.cpp
   AccessEnforcementOpts.cpp
-  AccessEnforcementReleaseSinking.cpp 
   AccessEnforcementWMO.cpp
   ArrayCountPropagation.cpp
   COWOpts.cpp
