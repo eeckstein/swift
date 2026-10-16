@@ -712,3 +712,112 @@ bb3:
   return %11 : $()
 }
 
+
+// A redundant `switch_enum` of the owned enum in a case block is folded into a branch.
+//
+// CHECK-LABEL: sil [ossa] @forward_borrow_redundant_switch :
+// CHECK:       bb0(%0 : @owned $EC):
+// CHECK-NEXT:    switch_enum %0 : $EC, case #EC.K!enumelt: bb1, case #EC.L!enumelt: bb2
+// CHECK:       bb1([[PAYLOAD:%.*]] : @owned $C):
+// CHECK-NEXT:    br bb3([[PAYLOAD]] : $C)
+// CHECK:       bb2:
+// CHECK-NEXT:    br bb4
+// CHECK:       bb3([[ARG:%.*]] : @owned $C):
+// CHECK-NEXT:    destroy_value [[ARG]]
+// CHECK:       } // end sil function 'forward_borrow_redundant_switch'
+sil [ossa] @forward_borrow_redundant_switch : $@convention(thin) (@owned EC) -> () {
+bb0(%0 : @owned $EC):
+  %1 = begin_borrow %0 : $EC
+  switch_enum %1 : $EC, case #EC.K!enumelt: bb1, case #EC.L!enumelt: bb2
+
+bb1(%3 : @guaranteed $C):
+  end_borrow %1 : $EC
+  switch_enum %0 : $EC, case #EC.K!enumelt: bb3, case #EC.L!enumelt: bb4
+
+bb2:
+  end_borrow %1 : $EC
+  destroy_value %0 : $EC
+  br bb5
+
+bb3(%8 : @owned $C):
+  destroy_value %8 : $C
+  br bb5
+
+bb4:
+  unreachable
+
+bb5:
+  %11 = tuple ()
+  return %11 : $()
+}
+
+// The redundant `switch_enum` is in the case block of a no-payload case.
+//
+// CHECK-LABEL: sil [ossa] @forward_borrow_redundant_switch_no_payload :
+// CHECK:       bb0(%0 : @owned $EC):
+// CHECK-NEXT:    switch_enum %0 : $EC, case #EC.K!enumelt: bb1, case #EC.L!enumelt: bb2
+// CHECK:       bb1([[PAYLOAD:%.*]] : @owned $C):
+// CHECK-NEXT:    destroy_value [[PAYLOAD]]
+// CHECK-NEXT:    br bb4
+// CHECK:       bb2:
+// CHECK-NEXT:    br bb3
+// CHECK:       } // end sil function 'forward_borrow_redundant_switch_no_payload'
+sil [ossa] @forward_borrow_redundant_switch_no_payload : $@convention(thin) (@owned EC) -> () {
+bb0(%0 : @owned $EC):
+  %1 = begin_borrow %0 : $EC
+  switch_enum %1 : $EC, case #EC.K!enumelt: bb1, case #EC.L!enumelt: bb2
+
+bb1(%3 : @guaranteed $C):
+  end_borrow %1 : $EC
+  destroy_value %0 : $EC
+  br bb5
+
+bb2:
+  end_borrow %1 : $EC
+  switch_enum %0 : $EC, case #EC.K!enumelt: bb3, case #EC.L!enumelt: bb4
+
+bb3(%8 : @owned $C):
+  destroy_value %8 : $C
+  unreachable
+
+bb4:
+  br bb5
+
+bb5:
+  %11 = tuple ()
+  return %11 : $()
+}
+
+// The case of the outer case block is not unique.
+//
+// CHECK-LABEL: sil [ossa] @dont_forward_borrow_redundant_switch_in_default_block :
+// CHECK:         begin_borrow
+// CHECK:       } // end sil function 'dont_forward_borrow_redundant_switch_in_default_block'
+sil [ossa] @dont_forward_borrow_redundant_switch_in_default_block : $@convention(thin) (@owned E) -> () {
+bb0(%0 : @owned $E):
+  %1 = begin_borrow %0 : $E
+  switch_enum %1 : $E, case #E.A!enumelt: bb1, default bb2
+
+bb1:
+  end_borrow %1 : $E
+  destroy_value %0 : $E
+  br bb3
+
+bb2(%5 : @guaranteed $E):
+  end_borrow %1 : $E
+  switch_enum %0 : $E, case #E.A!enumelt: bb4, case #E.B!enumelt: bb5, case #E.C!enumelt: bb6
+
+bb3:
+  %11 = tuple ()
+  return %11 : $()
+
+bb4:
+  unreachable
+
+bb5(%8 : @owned $String):
+  destroy_value %8 : $String
+  br bb3
+
+bb6(%9 : $Int):
+  br bb3
+}
