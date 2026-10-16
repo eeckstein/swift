@@ -333,3 +333,37 @@ bb6:
   %15 = tuple ()
   return %15 : $()
 }
+
+sil @use_fp : $@convention(thin) (Builtin.FPIEEE64) -> ()
+
+// Don't jump thread a float literal, even if the branch condition depends on it.
+// A floating point comparison is typically data dependent and LLVM can turn the
+// diamond into a branch-free select.
+//
+// CHECK-LABEL: sil @dont_jumpthread_float_literal :
+// CHECK:       bb3([[A:%.*]] : $Builtin.FPIEEE64):
+// CHECK:         builtin "fcmp_olt_FPIEEE64"({{%.*}} : $Builtin.FPIEEE64, [[A]] : $Builtin.FPIEEE64)
+// CHECK-NEXT:    cond_br
+// CHECK:       } // end sil function 'dont_jumpthread_float_literal'
+sil @dont_jumpthread_float_literal : $@convention(thin) (Builtin.Int1, Builtin.FPIEEE64) -> () {
+bb0(%0 : $Builtin.Int1, %1 : $Builtin.FPIEEE64):
+  cond_br %0, bb1, bb2
+bb1:
+  br bb3(%1 : $Builtin.FPIEEE64)
+bb2:
+  %5 = float_literal $Builtin.FPIEEE64, 0x0
+  br bb3(%5 : $Builtin.FPIEEE64)
+bb3(%7 : $Builtin.FPIEEE64):
+  %8 = float_literal $Builtin.FPIEEE64, 0x0
+  %9 = builtin "fcmp_olt_FPIEEE64"(%8 : $Builtin.FPIEEE64, %7 : $Builtin.FPIEEE64) : $Builtin.Int1
+  cond_br %9, bb4, bb5
+bb4:
+  %11 = function_ref @use_fp : $@convention(thin) (Builtin.FPIEEE64) -> ()
+  %12 = apply %11(%7) : $@convention(thin) (Builtin.FPIEEE64) -> ()
+  br bb6
+bb5:
+  br bb6
+bb6:
+  %15 = tuple ()
+  return %15 : $()
+}
