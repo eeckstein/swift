@@ -126,6 +126,12 @@ private func getSpecializationKind(for argument: FunctionArgument,
     return nil
   }
   if argument.uses.ignoreDebugUses.isEmpty {
+    // Don't remove a dead generic metatype argument. IRGen uses it as a source for the type
+    // metadata (including its generic arguments) which the function may need. Without it,
+    // the metadata must be instantiated with a runtime call.
+    if argument.type.isMetatype, argument.type.hasPrimaryArchetype {
+      return nil
+    }
     return .dead
   }
 
