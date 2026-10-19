@@ -923,3 +923,25 @@ bb0(%0 : $Builtin.Int1, %1 : $Builtin.Int1):
   return %2
 }
 
+
+// CHECK-LABEL: sil @string_object_or_zero :
+// CHECK-NOT:     builtin
+// CHECK:         return %0
+// CHECK:       } // end sil function 'string_object_or_zero'
+sil @string_object_or_zero : $@convention(thin) (Builtin.Int64) -> Builtin.Int64 {
+bb0(%0 : $Builtin.Int64):
+  %1 = integer_literal $Builtin.Int64, 0
+  %2 = builtin "stringObjectOr_Int64"(%0 : $Builtin.Int64, %1 : $Builtin.Int64) : $Builtin.Int64
+  return %2
+}
+
+// CHECK-LABEL: sil @string_object_or_non_zero :
+// CHECK:         [[B:%.*]] = builtin "stringObjectOr_Int64"
+// CHECK:         return [[B]]
+// CHECK:       } // end sil function 'string_object_or_non_zero'
+sil @string_object_or_non_zero : $@convention(thin) (Builtin.Int64) -> Builtin.Int64 {
+bb0(%0 : $Builtin.Int64):
+  %1 = integer_literal $Builtin.Int64, 1
+  %2 = builtin "stringObjectOr_Int64"(%0 : $Builtin.Int64, %1 : $Builtin.Int64) : $Builtin.Int64
+  return %2
+}
