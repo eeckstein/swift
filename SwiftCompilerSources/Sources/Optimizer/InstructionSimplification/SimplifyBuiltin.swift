@@ -59,6 +59,8 @@ extension BuiltinInst : OnoneSimplifiable, SILCombineSimplifiable {
         }
       case .Xor:
         simplifyNegation(context)
+      case .StringObjectOr:
+        simplifyStringObjectOr(context)
       default:
         if let literal = context.constantFold(builtin: self) {
           uses.replaceAll(with: literal, context)
@@ -292,6 +294,22 @@ private extension BuiltinInst {
       replace(with: negated, context)
     }
     return true
+  }
+
+  /// Or-ing zero doesn't change the operand:
+  /// ```
+  ///   %2 = builtin "stringObjectOr_Int64"(%1, 0)
+  /// ```
+  /// ->
+  /// ```
+  ///   // uses of %1
+  /// ```
+  func simplifyStringObjectOr(_ context: SimplifyContext) {
+    guard let literal = arguments[1] as? IntegerLiteralInst, literal.value == 0 else {
+      return
+    }
+    uses.replaceAll(with: arguments[0], context)
+    context.erase(instruction: self)
   }
 
   /// Replaces a builtin "xor", which negates its operand comparison
