@@ -178,6 +178,7 @@ private func registerSwiftPasses() {
   registerForSILCombine(UncheckedOwnershipInst.self, { run(UncheckedOwnershipInst.self, $0) })
   registerForSILCombine(WitnessMethodInst.self,     { run(WitnessMethodInst.self, $0) })
   registerForSILCombine(UncheckedAddrCastInst.self, { run(UncheckedAddrCastInst.self, $0) })
+  registerForSILCombine(UncheckedBitwiseCastInst.self, { run(UncheckedBitwiseCastInst.self, $0) })
   registerForSILCombine(UnconditionalCheckedCastInst.self, { run(UnconditionalCheckedCastInst.self, $0) })
   registerForSILCombine(AllocStackInst.self,        { run(AllocStackInst.self, $0) })
   registerForSILCombine(ApplyInst.self,             { run(ApplyInst.self, $0) })

@@ -1,0 +1,124 @@
+// RUN: %target-sil-opt -enable-sil-verify-all %s -simplification -simplify-instruction=unchecked_bitwise_cast | %FileCheck %s
+
+// REQUIRES: PTRSIZE=64
+
+import Swift
+import Builtin
+
+class C {}
+
+// CHECK-LABEL: sil [ossa] @guaranteed_reference :
+// CHECK:         [[C:%.*]] = unchecked_ref_cast %0 to $Builtin.BridgeObject
+// CHECK:         copy_value [[C]]
+// CHECK:       } // end sil function 'guaranteed_reference'
+sil [ossa] @guaranteed_reference : $@convention(thin) (@guaranteed C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @guaranteed $C):
+  %1 = unchecked_trivial_bit_cast %0 to $UInt64
+  %2 = struct_extract %1, #UInt64._value
+  %3 = unchecked_bitwise_cast %2 to $Builtin.BridgeObject
+  debug_value %3, let, name "x"
+  %4 = copy_value %3
+  return %4
+}
+
+// CHECK-LABEL: sil [ossa] @borrowed_existential :
+// CHECK:         [[B:%.*]] = begin_borrow %0
+// CHECK:         [[E:%.*]] = init_existential_ref [[B]]
+// CHECK:         [[C:%.*]] = unchecked_ref_cast [[E]] to $Builtin.BridgeObject
+// CHECK:         copy_value [[C]]
+// CHECK:       } // end sil function 'borrowed_existential'
+sil [ossa] @borrowed_existential : $@convention(thin) (@owned C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @owned $C):
+  %1 = begin_borrow %0
+  %2 = init_existential_ref %1 : $C : $C, $AnyObject
+  %3 = unchecked_trivial_bit_cast %2 to $UInt64
+  %4 = struct_extract %3, #UInt64._value
+  %5 = unchecked_bitwise_cast %4 to $Builtin.BridgeObject
+  %6 = copy_value %5
+  end_borrow %1
+  destroy_value %0
+  return %6
+}
+
+// CHECK-LABEL: sil [ossa] @use_outside_borrow_scope :
+// CHECK:         unchecked_bitwise_cast
+// CHECK-NOT:     unchecked_ref_cast
+// CHECK:       } // end sil function 'use_outside_borrow_scope'
+sil [ossa] @use_outside_borrow_scope : $@convention(thin) (@owned C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @owned $C):
+  %1 = begin_borrow %0
+  %2 = unchecked_trivial_bit_cast %1 to $UInt64
+  %3 = struct_extract %2, #UInt64._value
+  %4 = unchecked_bitwise_cast %3 to $Builtin.BridgeObject
+  end_borrow %1
+  %5 = copy_value %4
+  destroy_value %0
+  return %5
+}
+
+// CHECK-LABEL: sil [ossa] @bitwise_cast_outside_borrow_scope :
+// CHECK:         unchecked_bitwise_cast
+// CHECK-NOT:     unchecked_ref_cast
+// CHECK:       } // end sil function 'bitwise_cast_outside_borrow_scope'
+sil [ossa] @bitwise_cast_outside_borrow_scope : $@convention(thin) (@owned C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @owned $C):
+  %1 = begin_borrow %0
+  %2 = unchecked_trivial_bit_cast %1 to $UInt64
+  %3 = struct_extract %2, #UInt64._value
+  end_borrow %1
+  %4 = unchecked_bitwise_cast %3 to $Builtin.BridgeObject
+  %5 = copy_value %4
+  destroy_value %0
+  return %5
+}
+
+// CHECK-LABEL: sil [ossa] @non_copy_use :
+// CHECK:         unchecked_bitwise_cast
+// CHECK-NOT:     unchecked_ref_cast
+// CHECK:       } // end sil function 'non_copy_use'
+sil [ossa] @non_copy_use : $@convention(thin) (@guaranteed C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @guaranteed $C):
+  %1 = unchecked_trivial_bit_cast %0 to $UInt64
+  %2 = struct_extract %1, #UInt64._value
+  %3 = unchecked_bitwise_cast %2 to $Builtin.BridgeObject
+  %4 = unchecked_ownership_conversion %3, @unowned to @owned
+  return %4
+}
+
+// CHECK-LABEL: sil [ossa] @owned_reference :
+// CHECK:         unchecked_bitwise_cast
+// CHECK-NOT:     unchecked_ref_cast
+// CHECK:       } // end sil function 'owned_reference'
+sil [ossa] @owned_reference : $@convention(thin) (@owned C) -> @owned Builtin.BridgeObject {
+bb0(%0 : @owned $C):
+  %1 = unchecked_trivial_bit_cast %0 to $UInt64
+  %2 = struct_extract %1, #UInt64._value
+  %3 = unchecked_bitwise_cast %2 to $Builtin.BridgeObject
+  %4 = copy_value %3
+  destroy_value %0
+  return %4
+}
+
+// CHECK-LABEL: sil [ossa] @non_reference_result :
+// CHECK:         unchecked_bitwise_cast
+// CHECK:       } // end sil function 'non_reference_result'
+sil [ossa] @non_reference_result : $@convention(thin) (@guaranteed C) -> UnsafeRawPointer {
+bb0(%0 : @guaranteed $C):
+  %1 = unchecked_trivial_bit_cast %0 to $UInt64
+  %2 = struct_extract %1, #UInt64._value
+  %3 = unchecked_bitwise_cast %2 to $UnsafeRawPointer
+  return %3
+}
+
+// CHECK-LABEL: sil @non_ossa :
+// CHECK:         [[C:%.*]] = unchecked_ref_cast %0 to $Builtin.BridgeObject
+// CHECK:         return [[C]]
+// CHECK:       } // end sil function 'non_ossa'
+sil @non_ossa : $@convention(thin) (@guaranteed C) -> Builtin.BridgeObject {
+bb0(%0 : $C):
+  %1 = unchecked_trivial_bit_cast %0 to $UInt64
+  %2 = struct_extract %1, #UInt64._value
+  %3 = unchecked_bitwise_cast %2 to $Builtin.BridgeObject
+  strong_retain %3
+  return %3
+}
