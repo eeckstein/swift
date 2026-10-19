@@ -24,7 +24,7 @@ extension BeginBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
       if tryReplaceBorrowWithOwnedOperand(beginBorrow: self, context) {
         return
       }
-      if tryRemoveBorrowedConvertFunction(beginBorrow: self, context) {
+      if tryRemoveBorrowedForwardingCast(beginBorrow: self, context) {
         return
       }
     case .guaranteed:
@@ -152,13 +152,45 @@ private func tryReplaceBorrowWithOwnedOperand(beginBorrow: BeginBorrowInst, _ co
 ///   end_borrow %2
 ///   destroy_value %0
 /// ```
-private func tryRemoveBorrowedConvertFunction(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) -> Bool {
-  guard let convert = beginBorrow.borrowedValue as? ConvertFunctionInst,
-        !convert.withoutActuallyEscaping,
-        convert.fromFunction.ownership == .owned
+///
+/// The same is done for an owned `unchecked_ref_cast` or `upcast` if all uses of the borrow scopes are
+/// `unchecked_ref_cast`s:
+/// ```
+///   %1 = unchecked_ref_cast %0 : $C to $Builtin.BridgeObject
+///   %2 = begin_borrow %1
+///   %3 = unchecked_ref_cast %2 to $D
+///   // ... uses of %3
+///   end_borrow %2
+///   destroy_value %1
+/// ```
+/// ->
+/// ```
+///   %2 = begin_borrow %0
+///   %3 = unchecked_ref_cast %2 to $D
+///   // ... uses of %3
+///   end_borrow %2
+///   destroy_value %0
+/// ```
+/// Besides enabling combining the casts, this lets IRGen emit a native release of the original
+/// reference instead of e.g. a `swift_bridgeObjectRelease`.
+private func tryRemoveBorrowedForwardingCast(beginBorrow: BeginBorrowInst, _ context: SimplifyContext) -> Bool {
+  guard let convert = beginBorrow.borrowedValue as? SingleValueInstruction & UnaryInstruction,
+        convert.operand.value.ownership == .owned
   else {
     return false
   }
+  let isBorrowUseConvertible: (Instruction) -> Bool
+  switch convert {
+  case let cfi as ConvertFunctionInst where !cfi.withoutActuallyEscaping:
+    isBorrowUseConvertible = { ($0 as? ConvertFunctionInst)?.withoutActuallyEscaping == false }
+  case is UncheckedRefCastInst, is UpcastInst:
+    // An `unchecked_ref_cast` can cast from any reference type. Therefore it's fine to replace its operand
+    // with the original operand of `convert`.
+    isBorrowUseConvertible = { $0 is UncheckedRefCastInst }
+  default:
+    return false
+  }
+
   for use in convert.uses {
     switch use.instruction {
     case beginBorrow:
@@ -166,7 +198,7 @@ private func tryRemoveBorrowedConvertFunction(beginBorrow: BeginBorrowInst, _ co
         switch borrowUse.instruction {
         case is EndBorrowInst:
           break
-        case let cfi as ConvertFunctionInst where !cfi.withoutActuallyEscaping:
+        case let inst where isBorrowUseConvertible(inst):
           break
         default:
           return false
@@ -181,16 +213,17 @@ private func tryRemoveBorrowedConvertFunction(beginBorrow: BeginBorrowInst, _ co
     }
   }
 
+  let fromValue = convert.operand.value
   for use in convert.uses {
     switch use.instruction {
     case beginBorrow:
       let builder = Builder(before: beginBorrow, context)
-      let newBorrow = builder.createBeginBorrow(of: convert.fromFunction,
+      let newBorrow = builder.createBeginBorrow(of: fromValue,
                                                 isLexical: beginBorrow.isLexical,
                                                 hasPointerEscape: beginBorrow.hasPointerEscape)
       beginBorrow.replace(with: newBorrow, context)
     case is DestroyValueInst:
-      use.set(to: convert.fromFunction, context)
+      use.set(to: fromValue, context)
     case let debugValue as DebugValueInst:
       context.erase(instruction: debugValue)
     default:
