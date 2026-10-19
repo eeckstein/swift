@@ -274,6 +274,48 @@ bb0(%0 : $Int):
   return %r
 }
 
+// A `debug_value undef` of a generic type doesn't make the specialized function generic.
+// CHECK-LABEL: sil shared [ossa] @$s15undef_debug_valTf4d_n : $@convention(thin) () -> Int {
+// CHECK-NOT:     debug_value
+// CHECK:       } // end sil function '$s15undef_debug_valTf4d_n'
+sil [ossa] @undef_debug_val : $@convention(thin) <T> (@guaranteed GenS<T>) -> Int {
+bb0(%0 : @guaranteed $GenS<T>):
+  debug_value undef : $GenS<T>, let, name "x"
+  %1 = integer_literal $Builtin.Int64, 0
+  %2 = struct $Int (%1)
+  return %2
+}
+
+// CHECK-LABEL: sil [ossa] @call_undef_debug_val :
+// CHECK:         [[F:%.*]] = function_ref @$s15undef_debug_valTf4d_n : $@convention(thin) () -> Int
+// CHECK:           = apply [[F]]() : $@convention(thin) () -> Int
+// CHECK:       } // end sil function 'call_undef_debug_val'
+sil [ossa] @call_undef_debug_val : $@convention(thin) (@guaranteed GenS<Int>) -> Int {
+bb0(%0 : @guaranteed $GenS<Int>):
+  %1 = function_ref @undef_debug_val : $@convention(thin) <T> (@guaranteed GenS<T>) -> Int
+  %2 = apply %1<Int>(%0) : $@convention(thin) <T> (@guaranteed GenS<T>) -> Int
+  return %2
+}
+
+sil [ossa] @implicitly_generic_undef : $@convention(thin) <T> (Int) -> () {
+bb0(%0 : $Int):
+  fix_lifetime undef : $GenS<T>
+  %3 = tuple ()
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_implicitly_generic_undef :
+// CHECK:         [[F:%.*]] = function_ref @$s24implicitly_generic_undefTf4d_n : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:           = apply [[F]]<S>() : $@convention(thin) <τ_0_0> () -> ()
+// CHECK:       } // end sil function 'call_implicitly_generic_undef'
+sil [ossa] @call_implicitly_generic_undef : $@convention(thin) (Int) -> () {
+bb0(%0 : $Int):
+  %3 = function_ref @implicitly_generic_undef : $@convention(thin) <T> (Int) -> ()
+  %4 = apply %3<S>(%0) : $@convention(thin) <T> (Int) -> ()
+  %r = tuple ()
+  return %r
+}
+
 // A dead generic metatype argument is kept, because IRGen uses it as a source for the type metadata.
 sil [ossa] @dead_generic_metatype : $@convention(thin) <T> (@thick T.Type, Int) -> () {
 bb0(%0 : $@thick T.Type, %1 : $Int):
