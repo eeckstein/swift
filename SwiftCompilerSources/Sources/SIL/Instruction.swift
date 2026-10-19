@@ -1027,7 +1027,9 @@ final public class UncheckedTrivialBitCastInst : SingleValueInstruction, UnaryIn
   public var fromValue: Value { operand.value }
 }
 
-final public class UncheckedBitwiseCastInst : SingleValueInstruction, UnaryInstruction {}
+final public class UncheckedBitwiseCastInst : SingleValueInstruction, UnaryInstruction {
+  public var fromValue: Value { operand.value }
+}
 final public class UncheckedValueCastInst : SingleValueInstruction, UnaryInstruction {
   public var fromValue: Value { operand.value }
 }
