@@ -968,6 +968,14 @@ private func specialize(function: Function,
 
   moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
       (specializedFunction, specializedContext) in
+    if !isGeneric {
+      // A `debug_value undef` doesn't count as a use of a generic parameter (see
+      // `implicitlyUsesGenericParameter`). Remove it, because its type is not valid
+      // in the non-generic specialized function.
+      specializedContext.erase(instructions: specializedFunction.instructions.lazy.filter {
+        $0 is DebugValueInst && $0.operands.contains { $0.value.isUndefWithPrimaryArchetype }
+      })
+    }
     var offset = 0
     for spec in argumentSpecializations {
       let arg = specializedFunction.arguments[spec.argumentIndex + offset]
@@ -1253,6 +1261,11 @@ private extension Function {
       if inst.results.contains(where: { $0.type.hasPrimaryArchetype }) {
         return true
       }
+      if !(inst is DebugValueInst),
+         inst.operands.contains(where: { $0.value.isUndefWithPrimaryArchetype })
+      {
+        return true
+      }
       switch inst {
       case let apply as ApplySite:
         if apply.substitutionMap.usesGenericParameter {
@@ -1271,6 +1284,12 @@ private extension Function {
       }
     }
     return false
+  }
+}
+
+private extension Value {
+  var isUndefWithPrimaryArchetype: Bool {
+    self is Undef && type.hasPrimaryArchetype
   }
 }
 
