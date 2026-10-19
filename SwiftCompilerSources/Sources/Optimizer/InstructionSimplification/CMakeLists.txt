@@ -59,6 +59,7 @@ swift_compiler_sources(Optimizer
   SimplifyTuplePackElementAddr.swift
   SimplifyTypeValue.swift
   SimplifyUncheckedAddrCast.swift
+  SimplifyUncheckedBitwiseCast.swift
   SimplifyUncheckedEnumData.swift
   SimplifyUncheckedOwnership.swift
   SimplifyUncheckedOwnershipConversion.swift

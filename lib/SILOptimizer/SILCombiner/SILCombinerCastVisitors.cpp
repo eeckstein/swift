@@ -554,7 +554,7 @@ SILInstruction *SILCombiner::visitUncheckedTrivialBitCastInst(
 
 SILInstruction *
 SILCombiner::
-visitUncheckedBitwiseCastInst(UncheckedBitwiseCastInst *UBCI) {
+legacyVisitUncheckedBitwiseCastInst(UncheckedBitwiseCastInst *UBCI) {
   // (unchecked_bitwise_cast Y->Z (unchecked_bitwise_cast X->Y x))
   // OR (unchecked_trivial_cast Y->Z (unchecked_bitwise_cast X->Y x))
   //   ->
