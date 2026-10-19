@@ -499,12 +499,7 @@ bb0:
 }
 
 // CHECK-LABEL: sil [ossa] @remove_borrowed_convert_function :
-// CHECK:         [[B:%.*]] = begin_borrow %0
-// CHECK-NEXT:    [[C:%.*]] = convert_function [[B]] : {{.*}} to $@callee_guaranteed () -> ()
-// CHECK-NEXT:    [[N:%.*]] = convert_escape_to_noescape [[C]]
-// CHECK:         apply %{{[0-9]+}}([[N]])
-// CHECK:         end_borrow [[B]]
-// CHECK-NEXT:    destroy_value %0
+// CHECK-NOT:     begin_borrow
 // CHECK-LABEL: } // end sil function 'remove_borrowed_convert_function'
 sil [ossa] @remove_borrowed_convert_function : $@convention(thin) (@owned @callee_guaranteed () -> ()) -> () {
 bb0(%0 : @owned $@callee_guaranteed () -> ()):
@@ -523,7 +518,7 @@ bb0(%0 : @owned $@callee_guaranteed () -> ()):
 
 // CHECK-LABEL: sil [ossa] @dont_remove_borrowed_convert_function :
 // CHECK:         [[C:%.*]] = convert_function %0
-// CHECK-NEXT:    begin_borrow [[C]]
+// CHECK-NOT:     begin_borrow
 // CHECK-LABEL: } // end sil function 'dont_remove_borrowed_convert_function'
 sil [ossa] @dont_remove_borrowed_convert_function : $@convention(thin) (@owned @callee_guaranteed () -> ()) -> () {
 bb0(%0 : @owned $@callee_guaranteed () -> ()):
