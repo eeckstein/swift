@@ -264,8 +264,6 @@ public:
   SILInstruction *visitCondBranchInst(CondBranchInst *CBI);
   SILInstruction *
   visitUncheckedTrivialBitCastInst(UncheckedTrivialBitCastInst *UTBCI);
-  SILInstruction *
-  visitUncheckedBitwiseCastInst(UncheckedBitwiseCastInst *UBCI);
   SILInstruction *visitSelectEnumInst(SelectEnumInst *EIT);
   SILInstruction *visitSelectEnumAddrInst(SelectEnumAddrInst *EIT);
   SILInstruction *visitAllocExistentialBoxInst(AllocExistentialBoxInst *S);
