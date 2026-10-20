@@ -1113,12 +1113,21 @@ bool SimplifyCFG::simplifyBranchOperands(OperandValueArrayRef Operands) {
   return callbacks.hadCallbackInvocation();
 }
 
-static bool onlyHasTerminatorAndDebugInsts(SILBasicBlock *BB) {
+/// Returns true if \p BB only contains debug instructions and a terminator.
+/// If \p endBorrows is not null, also `end_borrow` instructions are accepted
+/// and collected in \p endBorrows.
+static bool onlyHasTerminatorAndDebugInsts(
+    SILBasicBlock *BB, SmallVectorImpl<EndBorrowInst *> *endBorrows = nullptr) {
   TermInst *Terminator = BB->getTerminator();
   SILBasicBlock::iterator Iter = BB->begin();
   while (&*Iter != Terminator) {
-    if (!(&*Iter)->isDebugInstruction())
+    if (auto *ebi = dyn_cast<EndBorrowInst>(&*Iter)) {
+      if (!endBorrows)
+        return false;
+      endBorrows->push_back(ebi);
+    } else if (!(&*Iter)->isDebugInstruction()) {
       return false;
+    }
     ++Iter;
   }
   return true;
@@ -1132,9 +1141,16 @@ struct TrampolineDest {
   SILBasicBlock *destBB = nullptr;
   // Source block's branch args after bypassing targetBB.
   SmallVector<SILValue, 4> newSourceBranchArgs;
+  // `end_borrow` instructions in targetBB which must be copied to the end of
+  // the source block when bypassing targetBB.
+  SmallVector<EndBorrowInst *, 2> endBorrows;
 
   TrampolineDest() {}
-  TrampolineDest(SILBasicBlock *sourceBB, SILBasicBlock *targetBB);
+  /// If \p allowEndBorrows is true, targetBB may contain `end_borrow`
+  /// instructions. This requires that the source block ends with a `br`, so
+  /// that the `end_borrow`s can be copied into the source block.
+  TrampolineDest(SILBasicBlock *sourceBB, SILBasicBlock *targetBB,
+                 bool allowEndBorrows = false);
   TrampolineDest(const TrampolineDest &) = delete;
   TrampolineDest &operator=(const TrampolineDest &) = delete;
   TrampolineDest(TrampolineDest &&) = default;
@@ -1154,9 +1170,17 @@ struct TrampolineDest {
 } // end anonymous namespace
 
 TrampolineDest::TrampolineDest(SILBasicBlock *sourceBB,
-                               SILBasicBlock *targetBB) {
+                               SILBasicBlock *targetBB,
+                               bool allowEndBorrows) {
   // Ignore blocks with more than one instruction.
-  if (!onlyHasTerminatorAndDebugInsts(targetBB))
+  if (!onlyHasTerminatorAndDebugInsts(targetBB,
+                                      allowEndBorrows ? &endBorrows : nullptr))
+    return;
+
+  // Don't bother with block arguments in combination with `end_borrow`s:
+  // a block argument could be a value which is borrowed from one of the ended
+  // borrow scopes.
+  if (!endBorrows.empty() && targetBB->getNumArguments() != 0)
     return;
 
   auto *targetBranch = dyn_cast<BranchInst>(targetBB->getTerminator());
@@ -1354,12 +1378,17 @@ bool SimplifyCFG::simplifyBranchBlock(BranchInst *BI) {
 
   // If the destination block is a simple trampoline (jump to another block)
   // then jump directly.
-  if (auto trampolineDest = TrampolineDest(BB, DestBB)) {
+  if (auto trampolineDest =
+          TrampolineDest(BB, DestBB, /*allowEndBorrows=*/true)) {
     LLVM_DEBUG(llvm::dbgs()
                << "jump to trampoline from bb" << BB->getDebugID() << " to bb"
                << trampolineDest.destBB->getDebugID() << '\n');
-    SILBuilderWithScope(BI).createBranch(BI->getLoc(), trampolineDest.destBB,
-                                         trampolineDest.newSourceBranchArgs);
+    SILBuilderWithScope builder(BI);
+    for (EndBorrowInst *endBorrow : trampolineDest.endBorrows) {
+      builder.createEndBorrow(endBorrow->getLoc(), endBorrow->getOperand());
+    }
+    builder.createBranch(BI->getLoc(), trampolineDest.destBB,
+                         trampolineDest.newSourceBranchArgs);
     // Eliminating the trampoline can expose opportunities to improve the
     // new block we branch to.
     substitutedBlockPreds(DestBB, trampolineDest.destBB);
