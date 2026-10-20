@@ -383,6 +383,83 @@ bb3(%4 : $Int64):
   return %4 : $Int64
 }
 
+// CHECK-LABEL: sil [ossa] @elim_trampoline_end_borrow :
+// CHECK:         [[B:%.*]] = begin_borrow %1
+// CHECK-NEXT:    cond_br %3, bb3, bb2
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK-NEXT:    br bb5
+// CHECK:       bb3:
+// CHECK-NEXT:    apply
+// CHECK-NEXT:    end_borrow [[B]]
+// CHECK:         br bb5
+// CHECK:       bb5:
+// CHECK-NEXT:    destroy_value %1
+// CHECK:       } // end sil function 'elim_trampoline_end_borrow'
+sil [ossa] @elim_trampoline_end_borrow : $@convention(thin) (Builtin.Int1, @owned Klass, Int64, Builtin.Int1) -> Int64 {
+bb0(%0 : $Builtin.Int1, %1 : @owned $Klass, %2 : $Int64, %3 : $Builtin.Int1):
+  %4 = function_ref @use_klass : $@convention(thin) (@guaranteed Klass) -> ()
+  cond_br %0, bb1, bb5
+
+bb1:
+  %6 = begin_borrow %1 : $Klass
+  cond_br %3, bb2, bb3
+
+bb2:
+  %8 = apply %4(%6) : $@convention(thin) (@guaranteed Klass) -> ()
+  br bb4
+
+bb3:
+  br bb4
+
+bb4:
+  end_borrow %6 : $Klass
+  debug_value %0 : $Builtin.Int1
+  br bb6(%2 : $Int64)
+
+bb5:
+  %14 = apply %4(%1) : $@convention(thin) (@guaranteed Klass) -> ()
+  br bb6(%2 : $Int64)
+
+bb6(%16 : $Int64):
+  destroy_value %1 : $Klass
+  return %16 : $Int64
+}
+
+// CHECK-LABEL: sil [ossa] @dont_elim_trampoline_end_borrow_with_arg :
+// CHECK:       bb4([[A:%.*]] : $Int64):
+// CHECK-NEXT:    end_borrow
+// CHECK-NEXT:    br bb6([[A]] : $Int64)
+// CHECK:       } // end sil function 'dont_elim_trampoline_end_borrow_with_arg'
+sil [ossa] @dont_elim_trampoline_end_borrow_with_arg : $@convention(thin) (Builtin.Int1, @owned Klass, Int64, Int64, Builtin.Int1) -> Int64 {
+bb0(%0 : $Builtin.Int1, %1 : @owned $Klass, %2 : $Int64, %3 : $Int64, %4 : $Builtin.Int1):
+  %5 = function_ref @use_klass : $@convention(thin) (@guaranteed Klass) -> ()
+  cond_br %0, bb1, bb5
+
+bb1:
+  %7 = begin_borrow %1 : $Klass
+  cond_br %4, bb2, bb3
+
+bb2:
+  %9 = apply %5(%7) : $@convention(thin) (@guaranteed Klass) -> ()
+  br bb4(%2 : $Int64)
+
+bb3:
+  br bb4(%3 : $Int64)
+
+bb4(%12 : $Int64):
+  end_borrow %7 : $Klass
+  br bb6(%12 : $Int64)
+
+bb5:
+  %15 = apply %5(%1) : $@convention(thin) (@guaranteed Klass) -> ()
+  br bb6(%2 : $Int64)
+
+bb6(%17 : $Int64):
+  destroy_value %1 : $Klass
+  return %17 : $Int64
+}
+
 // CHECK-LABEL: @elim_trampoline3
 // CHECK:  cond_br %0, bb1, bb2
 // CHECK:bb1:
