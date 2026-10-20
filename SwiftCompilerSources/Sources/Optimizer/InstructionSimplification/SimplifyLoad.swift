@@ -463,7 +463,7 @@ private func globalLoadedViaAddressor(pointer: Value) -> GlobalVariable? {
   return nil
 }
 
-private func transitivelyErase(load: LoadInst, _ context: SimplifyContext) {
+func transitivelyErase(load: SingleValueInstruction, _ context: SimplifyContext) {
   var inst: SingleValueInstruction = load
   while inst.uses.isEmpty {
     if inst.operands.count != 1 {
