@@ -253,12 +253,13 @@ bb0(%0 : @owned $Klass):
   return %7 : $()
 }
 
+// The stored `struct` is not destructured, but its operand is used directly.
 // CHECK-LABEL: promote_partial_load :
-// CHECK:         [[S:%.*]] = struct $NonTrivialStruct
+// CHECK-NOT:     struct $
 // CHECK-NOT:     store
-// CHECK:         [[D:%.*]] = destructure_struct [[S]]
+// CHECK-NOT:     destructure_struct
 // CHECK-NOT:     load
-// CHECK:         return [[D]]
+// CHECK:         return %0
 // CHECK-LABEL: } // end sil function 'promote_partial_load'
 sil [ossa] @promote_partial_load : $@convention(thin) (@owned Klass) -> @owned Klass {
 bb0(%0 : @owned $Klass):
@@ -520,10 +521,12 @@ bb2:
   return %23 : $()
 }
 
-// Make sure we form a single SILArgument.
+// Both paths store the same values. Therefore no SILArgument is needed.
 //
 // CHECK-LABEL: silargument_agg_in_one_block :
-// CHECK: bb3([[ARG1:%.*]] : @owned $Klass, [[ARG2:%.*]] : @owned $Klass):
+// CHECK: bb3:
+// CHECK-NOT: = load
+// CHECK: struct $TwoField (%0 : $Klass, %1 : $Klass)
 // CHECK-NOT: = load
 // CHECK-LABEL: } // end sil function 'silargument_agg_in_one_block'
 sil hidden [ossa] @silargument_agg_in_one_block : $@convention(thin) (@owned Klass, @owned Klass) -> () {
@@ -1320,6 +1323,51 @@ bb0(%0 : $*Agg2, %1 : @owned $Klass):
   %8 = load [take] %6 : $*Klass
   store %1 to [init] %6 : $*Klass
   return %8 : $Klass
+}
+
+// CHECK-LABEL: sil [ossa] @load_take_from_store_of_nested_aggregate :
+// CHECK-NOT:     struct $
+// CHECK-NOT:     tuple (
+// CHECK-NOT:     destructure_struct
+// CHECK-NOT:     destructure_tuple
+// CHECK-NOT:     load
+// CHECK:         destroy_value %1
+// CHECK:         return %0
+// CHECK:       } // end sil function 'load_take_from_store_of_nested_aggregate'
+sil [ossa] @load_take_from_store_of_nested_aggregate : $@convention(thin) (@owned Klass, @owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass, %1 : @owned $Klass):
+  %2 = alloc_stack $Agg2
+  %3 = tuple (%0 : $Klass, %1 : $Klass)
+  %4 = struct $Agg2 (%3 : $(Klass, Klass))
+  store %4 to [init] %2 : $*Agg2
+  %5 = struct_element_addr %2 : $*Agg2, #Agg2.t
+  %6 = tuple_element_addr %5 : $*(Klass, Klass), 0
+  %7 = load [take] %6 : $*Klass
+  %8 = tuple_element_addr %5 : $*(Klass, Klass), 1
+  %9 = load [take] %8 : $*Klass
+  destroy_value %9 : $Klass
+  dealloc_stack %2 : $*Agg2
+  return %7 : $Klass
+}
+
+// The `struct` has another use. Therefore it must be destructured.
+// CHECK-LABEL: sil [ossa] @load_take_from_store_of_multi_use_struct :
+// CHECK:         [[S:%.*]] = struct $NonTrivialStruct (%0 : $Klass)
+// CHECK:         [[F:%.*]] = destructure_struct [[S]]
+// CHECK-NOT:     load
+// CHECK:         return [[F]]
+// CHECK:       } // end sil function 'load_take_from_store_of_multi_use_struct'
+sil [ossa] @load_take_from_store_of_multi_use_struct : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %1 = alloc_stack $NonTrivialStruct
+  %2 = struct $NonTrivialStruct (%0 : $Klass)
+  %3 = copy_value %2 : $NonTrivialStruct
+  store %2 to [init] %1 : $*NonTrivialStruct
+  %4 = struct_element_addr %1 : $*NonTrivialStruct, #NonTrivialStruct.val
+  %5 = load [take] %4 : $*Klass
+  destroy_value %3 : $NonTrivialStruct
+  dealloc_stack %1 : $*NonTrivialStruct
+  return %5 : $Klass
 }
 
 

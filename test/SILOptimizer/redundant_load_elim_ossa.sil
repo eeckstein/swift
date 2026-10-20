@@ -1660,9 +1660,9 @@ bb0(%0 : $UInt64):
 
 // CHECK-LABEL: sil [ossa] @struct_of_optional_none :
 // CHECK:         [[E:%.*]] = enum
-// CHECK:         [[S:%.*]] = struct $S ([[E]] : $Optional<String>)
-// CHECK:         [[F:%.*]] = destructure_struct [[S]]
-// CHECK:         return [[F]]
+// CHECK-NOT:     struct $S
+// CHECK-NOT:     destructure_struct
+// CHECK:         return [[E]]
 // CHECK-LABEL: } // end sil function 'struct_of_optional_none'
 sil [ossa] @struct_of_optional_none : $@convention(thin) () -> @owned Optional<String> {
 bb0:
@@ -1678,9 +1678,9 @@ bb0:
 
 // CHECK-LABEL: sil [ossa] @tuple_of_optional_none :
 // CHECK:         [[E:%.*]] = enum
-// CHECK:         [[T:%.*]] = tuple ([[E]] : $Optional<String>, %0 : $Int)
-// CHECK:         ([[F:%.*]], [[G:%.*]]) = destructure_tuple [[T]]
-// CHECK:         return [[F]]
+// CHECK-NOT:     tuple (
+// CHECK-NOT:     destructure_tuple
+// CHECK:         return [[E]]
 // CHECK-LABEL: } // end sil function 'tuple_of_optional_none'
 sil [ossa] @tuple_of_optional_none : $@convention(thin) (Int) -> @owned Optional<String> {
 bb0(%0 : $Int):
