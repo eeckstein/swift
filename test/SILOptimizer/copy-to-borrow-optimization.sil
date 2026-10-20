@@ -4602,3 +4602,102 @@ bb3:
   %r = tuple ()
   return %r
 }
+
+// CHECK-LABEL: sil [ossa] @store_owned_to_stack :
+// CHECK:         [[V:%.*]] = apply
+// CHECK:         [[SB:%.*]] = store_borrow [[V]] to
+// CHECK:         apply {{%.*}}([[SB]])
+// CHECK-NEXT:    end_borrow [[SB]]
+// CHECK-NEXT:    destroy_value [[V]]
+// CHECK-NOT:     destroy_addr
+// CHECK:       } // end sil function 'store_owned_to_stack'
+sil [ossa] @store_owned_to_stack : $@convention(thin) () -> () {
+bb0:
+  %0 = function_ref @getKlass : $@convention(thin) () -> @owned Klass
+  %1 = apply %0() : $@convention(thin) () -> @owned Klass
+  %2 = alloc_stack $Klass
+  store %1 to [init] %2
+  %4 = function_ref @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@in_guaranteed Klass) -> ()
+  destroy_addr %2
+  dealloc_stack %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @store_owned_to_stack_multiple_destroys :
+// CHECK:         [[SB:%.*]] = store_borrow %0 to
+// CHECK:       bb1:
+// CHECK-NEXT:    end_borrow [[SB]]
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       bb2:
+// CHECK-NEXT:    end_borrow [[SB]]
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       } // end sil function 'store_owned_to_stack_multiple_destroys'
+sil [ossa] @store_owned_to_stack_multiple_destroys : $@convention(thin) (@owned Klass) -> () {
+bb0(%0 : @owned $Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2
+  %4 = function_ref @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@in_guaranteed Klass) -> ()
+  cond_br undef, bb1, bb2
+bb1:
+  destroy_addr %2
+  br bb3
+bb2:
+  destroy_addr %2
+  br bb3
+bb3:
+  dealloc_stack %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_convert_store_owned_to_stack_with_write :
+// CHECK:         store %0 to [init]
+// CHECK-NOT:     store_borrow
+// CHECK:       } // end sil function 'dont_convert_store_owned_to_stack_with_write'
+sil [ossa] @dont_convert_store_owned_to_stack_with_write : $@convention(thin) (@owned Klass) -> () {
+bb0(%0 : @owned $Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2
+  %4 = function_ref @inout_klass_user : $@convention(thin) (@inout Klass) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@inout Klass) -> ()
+  destroy_addr %2
+  dealloc_stack %2
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_convert_store_owned_to_stack_with_take :
+// CHECK:         store %0 to [init]
+// CHECK-NOT:     store_borrow
+// CHECK:       } // end sil function 'dont_convert_store_owned_to_stack_with_take'
+sil [ossa] @dont_convert_store_owned_to_stack_with_take : $@convention(thin) (@owned Klass) -> @owned Klass {
+bb0(%0 : @owned $Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2
+  %4 = function_ref @use_inguaranteed : $@convention(thin) (@in_guaranteed Klass) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@in_guaranteed Klass) -> ()
+  %6 = load [take] %2
+  dealloc_stack %2
+  return %6
+}
+
+// CHECK-LABEL: sil [ossa] @dont_convert_store_owned_to_stack_with_load :
+// CHECK:         store %0 to [init]
+// CHECK-NOT:     store_borrow
+// CHECK:       } // end sil function 'dont_convert_store_owned_to_stack_with_load'
+sil [ossa] @dont_convert_store_owned_to_stack_with_load : $@convention(thin) (@owned Klass) -> () {
+bb0(%0 : @owned $Klass):
+  %2 = alloc_stack $Klass
+  store %0 to [init] %2
+  %3 = load [copy] %2
+  %4 = function_ref @guaranteed_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  %5 = apply %4(%3) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %3
+  destroy_addr %2
+  dealloc_stack %2
+  %r = tuple ()
+  return %r
+}

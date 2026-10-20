@@ -80,6 +80,23 @@ import SIL
 /// Splitting the load and store doesn't work for enums where projecting the payload address is
 /// destructive. Such cases are handled by `lateCopyToBorrowOptimization`.
 ///
+/// 4. replaces a `store [init]` of an owned value to a stack location, which is only read and
+///    finally destroyed, with a `store_borrow`:
+///
+/// ```
+///   store %0 to [init] %1             // %1 = alloc_stack
+///   apply %f(%1)                      // @in_guaranteed
+///   destroy_addr %1
+/// ```
+/// ->
+/// ```
+///   %2 = store_borrow %0 to %1
+///   apply %f(%2)
+///   end_borrow %2
+///   destroy_value %0
+/// ```
+/// This avoids re-loading the value from memory for destroying it.
+///
 let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization") {
   (function: Function, context: FunctionPassContext) in
 
@@ -119,6 +136,13 @@ let copyToBorrowOptimization = FunctionPass(name: "copy-to-borrow-optimization")
           break
         }
         if removeDead(copy: copy, context) {
+          changedInIteration = true
+        }
+      case let store as StoreInst:
+        if !context.continueWithNextSubpassRun(for: store) {
+          return
+        }
+        if optimize(store: store, context) {
           changedInIteration = true
         }
       default:
@@ -572,6 +596,23 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   return true
 }
 
+private func optimize(store: StoreInst, _ context: FunctionPassContext) -> Bool {
+  guard store.source.ownership == .owned,
+        // Don't interfere with mem2reg and redundant-load-elimination, which can completely remove
+        // an `alloc_stack` which is only accessed by loads.
+        !store.destination.uses.contains(where: { $0.instruction is LoadInst || $0.instruction is LoadBorrowInst })
+  else {
+    return false
+  }
+  var ends = IterableInstructionSet(context)
+  defer { ends.deinitialize() }
+  guard canConvertToStoreBorrow(store: store, ends: &ends, context) else {
+    return false
+  }
+  changeStoreToStoreBorrow(store: store, outerScopes: [], destroyStoredValue: true, context)
+  return true
+}
+
 /// Moves `destroy_value`s of the owned `value` which are inside the `liverange` of its copy to the
 /// end of the `liverange`, if the `liverange` also ends in their (dead-end) blocks:
 /// ```
@@ -727,47 +768,13 @@ struct OwnedToGuaranteedUses {
     for forwardingUse in forwardingUses where liverange.inclusiveRangeContains(forwardingUse.instruction){
       switch forwardingUse.instruction {
       case let store as StoreInst:
-        changeStoreToStoreBorrow(store: store, outerScopes: outerScopes)
+        changeStoreToStoreBorrow(store: store, outerScopes: outerScopes, destroyStoredValue: false, context)
       case let destroy as DestroyValueInst:
         context.erase(instruction: destroy)
       default:
         forwardingUse.changeOwnership(from: .owned, to: .guaranteed, context)
       }
     }
-  }
-
-  private func changeStoreToStoreBorrow(store: StoreInst, outerScopes: [BeginBorrowValue]) {
-    let allocStack = store.destination
-    let builder = Builder(before: store, context)
-    let storeBorrow = builder.createStoreBorrow(source: store.source, destination: allocStack)
-
-    for use in allocStack.uses {
-      switch use.instruction {
-      case storeBorrow, is DeallocStackInst:
-        break
-      case let destroy as DestroyAddrInst:
-        // If we already inserted new `end_borrow`s for outer scopes (and their enclosing scopes) we need
-        // to make sure that the `end_borrow`s for the `store_borrow` (= an inner scope) are inserted
-        // before the `end_borrow`s of the outer scopes.
-        var insertionPoint: Instruction = destroy
-        while let prev = insertionPoint.previous,
-              outerScopes.contains(where: { prev.isEndBorrow(ofScope: $0) })
-        {
-          insertionPoint = prev
-        }
-        Builder(before: insertionPoint, context).createEndBorrow(of: storeBorrow)
-        context.erase(instruction: destroy)
-      case let debugValue as DebugValueInst:
-        if debugValue.parentBlock != storeBorrow.parentBlock || !storeBorrow.strictlyDominatesInBlock(debugValue) {
-          debugValue.move(before: storeBorrow.next!, context)
-        }
-        fallthrough
-      default:
-        use.set(to: storeBorrow, context)
-      }
-    }
-    context.erase(instruction: store)
-
   }
 
   private mutating func findNonDestroyingLiverangeExits(of forwardingInst: ForwardingInstruction) {
@@ -789,6 +796,46 @@ struct OwnedToGuaranteedUses {
     forwardingUses.deinitialize()
     ends.deinitialize()
   }
+}
+
+/// If `destroyStoredValue` is true, the stored (owned) value is destroyed after the `store_borrow`'s
+/// `end_borrow`s, i.e. at the places of the original `destroy_addr`s.
+private func changeStoreToStoreBorrow(store: StoreInst, outerScopes: [BeginBorrowValue],
+                                      destroyStoredValue: Bool, _ context: FunctionPassContext) {
+  let allocStack = store.destination
+  let builder = Builder(before: store, context)
+  let storeBorrow = builder.createStoreBorrow(source: store.source, destination: allocStack)
+
+  for use in allocStack.uses {
+    switch use.instruction {
+    case storeBorrow, is DeallocStackInst:
+      break
+    case let destroy as DestroyAddrInst:
+      // If we already inserted new `end_borrow`s for outer scopes (and their enclosing scopes) we need
+      // to make sure that the `end_borrow`s for the `store_borrow` (= an inner scope) are inserted
+      // before the `end_borrow`s of the outer scopes.
+      var insertionPoint: Instruction = destroy
+      while let prev = insertionPoint.previous,
+            outerScopes.contains(where: { prev.isEndBorrow(ofScope: $0) })
+      {
+        insertionPoint = prev
+      }
+      let builder = Builder(before: insertionPoint, context)
+      builder.createEndBorrow(of: storeBorrow)
+      if destroyStoredValue {
+        builder.createDestroyValue(operand: store.source)
+      }
+      context.erase(instruction: destroy)
+    case let debugValue as DebugValueInst:
+      if debugValue.parentBlock != storeBorrow.parentBlock || !storeBorrow.strictlyDominatesInBlock(debugValue) {
+        debugValue.move(before: storeBorrow.next!, context)
+      }
+      fallthrough
+    default:
+      use.set(to: storeBorrow, context)
+    }
+  }
+  context.erase(instruction: store)
 }
 
 /// Checks if the `store` stores to an `alloc_stack` and that no other instructions (beside `destroy_addr`)
