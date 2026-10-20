@@ -106,7 +106,10 @@ extension LoadBorrowInst : OnoneSimplifiable, SILCombineSimplifiable {
     for endBorrow in uses.endingLifetime.users(ofType: EndBorrowInst.self) {
       Builder(after: endBorrow, context).createDestroyValue(operand: initVal)
     }
-    replace(with: beginBorrow, context)
+    uses.replaceAll(with: beginBorrow, context)
+    // Also erases a builtin "once" on which the global_addr depends on. This is fine
+    // because we only replace the load if the global init function doesn't have any side effect.
+    transitivelyErase(load: self, context)
     return true
   }
 

@@ -270,12 +270,14 @@ bb0:
 // Same, but the initializer value is not a static initializer of the global. It's taken from the
 // global's init-once function, which is also erased if it has no side effects.
 // CHECK-LABEL: sil [ossa] @load_borrow_global_let_init_fn :
+// CHECK-NOT:     builtin "once"
 // CHECK-NOT:     global_addr
 // CHECK:         [[GV:%.*]] = global_value @gobj_storage
 // CHECK:         [[B:%.*]] = begin_borrow [[GV]]
 // CHECK:         apply {{%.*}}([[B]])
 // CHECK:         end_borrow [[B]]
 // CHECK:         destroy_value [[GV]]
+// CHECK-NOT:     builtin "once"
 // CHECK:       } // end sil function 'load_borrow_global_let_init_fn'
 sil [ossa] @load_borrow_global_let_init_fn : $@convention(thin) (Builtin.RawPointer) -> () {
 bb0(%0 : $Builtin.RawPointer):
