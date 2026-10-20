@@ -342,6 +342,28 @@ bb0(%0 : @owned $C, %1 : $*Int):
   return %6
 }
 
+// Same as copy_of_borrow, but the owned value is copied directly (like in `Array._adoptStorage`).
+//
+// CHECK-LABEL: sil [ossa] @copy_of_owned_value :
+// CHECK:         [[A:%.*]] = address_to_pointer
+// CHECK-NEXT:    end_borrow
+// CHECK-NEXT:    [[B:%.*]] = upcast %0 to $B
+// CHECK-NEXT:    [[T:%.*]] = tuple ([[B]], [[A]])
+// CHECK-NEXT:    return [[T]]
+// CHECK:       } // end sil function 'copy_of_owned_value'
+sil [ossa] @copy_of_owned_value : $@convention(thin) (@owned C) -> @owned (B, Builtin.RawPointer) {
+bb0(%0 : @owned $C):
+  %1 = begin_borrow %0
+  %2 = copy_value %0
+  %3 = upcast %2 to $B
+  %4 = ref_tail_addr %1, $Int
+  %5 = address_to_pointer %4 to $Builtin.RawPointer
+  end_borrow %1
+  destroy_value %0
+  %6 = tuple (%3, %5)
+  return %6
+}
+
 // -----------------------------------------------------------------------------
 // negative tests (optimization must NOT fire)
 // -----------------------------------------------------------------------------
@@ -428,6 +450,20 @@ bb0(%0 : @owned $C):
   end_borrow %1
   apply undef(%3) : $@convention(thin) (@guaranteed B) -> ()
   apply undef(%0) : $@convention(thin) (@guaranteed C) -> ()
+  destroy_value %0
+  return %3
+}
+
+// The copy is the last use of the owned value.
+//
+// CHECK-LABEL: sil [ossa] @no_copy_of_owned_value_copy_is_last_use :
+// CHECK:         copy_value
+// CHECK:       } // end sil function 'no_copy_of_owned_value_copy_is_last_use'
+sil [ossa] @no_copy_of_owned_value_copy_is_last_use : $@convention(thin) (@owned C) -> @owned B {
+bb0(%0 : @owned $C):
+  apply undef(%0) : $@convention(thin) (@guaranteed C) -> ()
+  %2 = copy_value %0
+  %3 = upcast %2 to $B
   destroy_value %0
   return %3
 }
