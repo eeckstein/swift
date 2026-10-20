@@ -21,7 +21,7 @@ extension CopyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
       return
     }
     if !context.preserveDebugInfo {
-      if tryRemoveCopyOfBorrow(copy: self, context) {
+      if tryRemoveCopyOfOwnedValue(copy: self, context) {
         return
       }
       tryRemoveProjectedCopy(copy: self, context)
@@ -29,7 +29,8 @@ extension CopyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
   }
 }
 
-/// Remove a `copy_value` of a borrowed owned value if the copy outlives the owned value.
+/// Remove a `copy_value` of an owned value - or of a borrow of an owned value - if the copy
+/// outlives the owned value.
 ///
 /// ```
 ///   %2 = begin_borrow %1
@@ -49,6 +50,8 @@ extension CopyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
 ///   destroy_value %4
 /// ```
 ///
+/// The same is done if the `copy_value` directly copies the owned value (`copy_value %1`).
+///
 /// This extends the owned value's lifetime to the end of the copy's lifetime. It never shortens
 /// any lifetime.
 ///
@@ -57,13 +60,15 @@ extension CopyValueInst : OnoneSimplifiable, SILCombineSimplifiable {
 ///   * There are no uses of the copy or its forwarding instructions before the last use of the
 ///     owned value
 ///
-private func tryRemoveCopyOfBorrow(copy: CopyValueInst, _ context: SimplifyContext) -> Bool {
+private func tryRemoveCopyOfOwnedValue(copy: CopyValueInst, _ context: SimplifyContext) -> Bool {
   let block = copy.parentBlock
 
-  guard let beginBorrow = copy.fromValue as? BeginBorrowInst else {
-    return false
+  let ownedValue: Value
+  if let beginBorrow = copy.fromValue as? BeginBorrowInst {
+    ownedValue = beginBorrow.borrowedValue
+  } else {
+    ownedValue = copy.fromValue
   }
-  let ownedValue = beginBorrow.borrowedValue
 
   guard ownedValue.ownership == .owned,
         // Find the destroy_value of the owned value in the same block as copy.
