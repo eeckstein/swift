@@ -580,7 +580,11 @@ private func replace(load: LoadingInstruction,
     // The value becomes available at the position of the available load/store. As `provideValue` can
     // delete that instruction, anchor the position at its predecessor instruction.
     let block = availableValue.instruction.parentBlock
-    let predecessorInst = availableValue.instruction.previous
+    var predecessorInst = availableValue.instruction.previous
+    // Splitting a store can also delete the `struct` and `tuple` instructions which define the stored value.
+    while let inst = predecessorInst, inst is StructInst || inst is TupleInst {
+      predecessorInst = inst.previous
+    }
     let value = provideValue(for: load, from: availableValue, context)
     if let predecessorInst {
       ssaUpdater.addAvailableValue(value, after: predecessorInst)
@@ -688,7 +692,7 @@ private func shrinkMemoryLifetime(to availableValue: AvailableValue,
       builder.createDestroyAddr(address: availableStore.destination)
       availableStore.set(ownership: .initialize, context)
     }
-    let projectedStore = availableStore.split(alongPath: projectionPath, context)
+    let projectedStore = availableStore.split(alongPath: projectionPath, useConstructureOperands: true, context)
     let valueToAdd = projectedStore.source
     context.erase(instruction: projectedStore)
     return valueToAdd
