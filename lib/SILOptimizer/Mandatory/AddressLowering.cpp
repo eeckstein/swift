@@ -2566,7 +2566,7 @@ static SingleValueInstruction *getLoadFromStableAddress(SILValue argValue,
   SILValue addr;
   bool isTrivialLoad = false;
   if (auto *lbi = dyn_cast<LoadBorrowInst>(argValue)) {
-    addr = lbi->getOperand();
+    addr = lbi->getAddress();
   } else if (auto *li = dyn_cast<LoadInst>(argValue)) {
     if (li->getOwnershipQualifier() != LoadOwnershipQualifier::Trivial)
       return nullptr;
