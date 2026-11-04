@@ -1010,7 +1010,8 @@ public:
 
   /// Look up the function mapped to the given move only nominal type decl.
   /// Returns null on failure.
-  SILFunction *lookUpMoveOnlyDeinitFunction(const NominalTypeDecl *nomDecl);
+  SILFunction *lookUpMoveOnlyDeinitFunction(const NominalTypeDecl *nomDecl,
+                                            bool deserializeLazily = true);
 
   /// Look up the differentiability witness with the given name.
   SILDifferentiabilityWitness *lookUpDifferentiabilityWitness(StringRef name);

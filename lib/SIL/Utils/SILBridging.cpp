@@ -944,8 +944,10 @@ BridgedOwnedString BridgedContext::getModuleDescription() const {
   return BridgedOwnedString(str);
 }
 
-OptionalBridgedFunction BridgedContext::lookUpNominalDeinitFunction(BridgedDeclObj nominal)  const {
-  return {context->getModule()->lookUpMoveOnlyDeinitFunction(nominal.getAs<swift::NominalTypeDecl>())};
+OptionalBridgedFunction BridgedContext::lookUpNominalDeinitFunction(BridgedDeclObj nominal,
+                                                                    bool deserializeLazily) const {
+  return {context->getModule()->lookUpMoveOnlyDeinitFunction(nominal.getAs<swift::NominalTypeDecl>(),
+                                                             deserializeLazily)};
 }
 
 OptionalBridgedFunction BridgedContext::

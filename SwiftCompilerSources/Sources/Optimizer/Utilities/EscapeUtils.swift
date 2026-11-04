@@ -326,7 +326,7 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
   typealias Path = EscapeUtilityTypes.EscapePath
   
   init(visitor: V, complexityBudget: Int = Int.max, _ context: some Context) {
-    self.calleeAnalysis = context.calleeAnalysis
+    self.context = context
     self.visitor = visitor
     self.complexityBudget = complexityBudget
   }
@@ -618,42 +618,71 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
   
   /// Check whether the value escapes through the deinitializer
   private func handleDestroy(of value: Value, path: Path) -> WalkResult {
+    let type = value.type.objectType
 
-    // Even if this is a destroy_value of a struct/tuple/enum, the called destructor(s) only take a
-    // single class reference as parameter.
-    let p = path.projectionPath.popAllValueFields()
-
-    if p.isEmpty {
-      // The object to destroy (= the argument of the destructor) cannot escape itself.
+    if type.isClass, let exactTy = path.knownType {
+      let p = path.projectionPath
+      if p.isEmpty {
+        // The object to destroy (= the argument of the destructor) cannot escape itself.
+        return .continueWalk
+      }
+      if !visitor.followLoads && p.matches(pattern: SmallProjectionPath(.anyValueFields).push(.anyClassField)) {
+        // Any address of a class property of the object to destroy cannot escape the destructor.
+        return .continueWalk
+      }
+      if path.followStores {
+        return isEscaping
+      }
+      // We know the exact type, so there is only a single destructor which can be called.
+      guard let destructor = context.calleeAnalysis.getClassDestructor(ofExactType: exactTy),
+            !destructor.effects.escapeEffects.canEscape(argumentIndex: 0, path: pathForArgumentEscapeChecking(p))
+      else {
+        return isEscaping
+      }
       return .continueWalk
     }
-    if !visitor.followLoads && p.matches(pattern: SmallProjectionPath(.anyValueFields).push(.anyClassField)) {
-      // Any address of a class property of the object to destroy cannot escape the destructor.
-      // (Whereas a value stored in such a property could escape.)
-      return .continueWalk
-    }
 
-    if path.followStores {
-      return isEscaping
-    }
-    if let exactTy = path.knownType {
-      guard let destructor = calleeAnalysis.getDestructor(ofExactType: exactTy) else {
-        return isEscaping
-      }
-      if destructor.effects.escapeEffects.canEscape(argumentIndex: 0, path: pathForArgumentEscapeChecking(p)) {
-        return isEscaping
-      }
-    } else {
-      // We don't know the exact type, so get all possible called destructure from
-      // the callee analysis.
-      guard let destructors = calleeAnalysis.getDestructors(of: value.type) else {
-        return isEscaping
-      }
-      for destructor in destructors {
-        if destructor.effects.escapeEffects.canEscape(argumentIndex: 0, path: pathForArgumentEscapeChecking(p)) {
-          return isEscaping
+    guard context.calleeAnalysis.allDestructorsSatisfy(
+      of: type, in: value.parentFunction,
+      { destructor, destructedType in
+        if destructedType.isClass {
+          // Even if this is a destroy_value of a struct/tuple/enum, the called destructor(s) only take a
+          // single class reference as parameter.
+          let classInstancePath = path.projectionPath.popAllValueFields()
+
+          if classInstancePath.isEmpty {
+            // The object to destroy (= the argument of the destructor) cannot escape itself.
+            return true
+          }
+          if !visitor.followLoads,
+             classInstancePath.matches(pattern: SmallProjectionPath(.anyValueFields).push(.anyClassField))
+          {
+            // Any address of a class property of the object to destroy cannot escape the destructor.
+            // (Whereas a value stored in such a property could escape.)
+            return true
+          }
+          if path.followStores {
+            return false
+          }
+          return !destructor.effects.escapeEffects.canEscape(argumentIndex: 0,
+                                                             path: pathForArgumentEscapeChecking(classInstancePath))
         }
-      }
+
+        // The deinit of a non-copyable value type.
+        if path.followStores {
+          return false
+        }
+        if destructedType != type {
+          // The deinit is called for a field or payload of `value`. We don't know the path from `value` to
+          // the deinit's argument.
+          return false
+        }
+        return !destructor.effects.escapeEffects.canEscape(argumentIndex: 0,
+                                                           path: pathForArgumentEscapeChecking(path.projectionPath))
+      },
+      context)
+    else {
+      return isEscaping
     }
     return .continueWalk
   }
@@ -699,7 +728,7 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
       return isEscaping
     }
 
-    guard let callees = calleeAnalysis.getCallees(callee: apply.callee) else {
+    guard let callees = context.calleeAnalysis.getCallees(callee: apply.callee) else {
       // The callees are not know, e.g. if the callee is a closure, class method, etc.
       return isEscaping
     }
@@ -898,7 +927,7 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
   private mutating
   func walkUpApplyResult(apply: FullApplySite,
                          path: Path) -> WalkResult {
-    guard let callees = calleeAnalysis.getCallees(callee: apply.callee) else {
+    guard let callees = context.calleeAnalysis.getCallees(callee: apply.callee) else {
       return .abortWalk
     }
 
@@ -946,8 +975,8 @@ fileprivate struct EscapeWalker<V: EscapeVisitor> : ValueDefUseWalker,
   // Used to avoid quadratic complexity in some scenarios.
   var complexityBudget: Int
 
-  private let calleeAnalysis: CalleeAnalysis
-  
+  private let context: any Context
+
   //===--------------------------------------------------------------------===//
   //                          private utility functions
   //===--------------------------------------------------------------------===//

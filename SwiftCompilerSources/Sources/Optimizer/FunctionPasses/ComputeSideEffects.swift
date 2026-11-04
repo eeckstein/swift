@@ -340,20 +340,34 @@ private struct CollectedEffects {
       (calleeArgumentIndex: apply.calleeArgumentIndex(of: $0)!,
        callerArgument: $0.value)
     }
-    addEffects(ofFunctions: callees, withArguments: args)
+    // The argument summary for @in_cxx is insufficient in OSSA because the function body does not contain the
+    // destroy. But the call is still effectively a release from the caller's perspective.
+    guard let callees else {
+      // We don't know which function(s) are called.
+      globalEffects = .worstEffects
+      for (_, argument) in args {
+        addEffects(.worstEffects, to: argument)
+      }
+      return
+    }
+    for callee in callees {
+      addEffects(ofFunction: callee, withArguments: args)
+    }
   }
 
   private mutating func addDestroyEffects(ofValue value: Value) {
     // First thing: add the destroy effect itself.
     addEffects(.destroy, to: value)
 
-    if value.type.isClass {
-      // Treat destroying a class value just like a call to it's destructor(s).
-      let destructors = calleeAnalysis.getDestructors(of: value.type)
-      let theSelfArgument = CollectionOfOne((calleeArgumentIndex: 0, callerArgument: value))
-      addEffects(ofFunctions: destructors, withArguments: theSelfArgument)
-    } else {
-      // TODO: dig into the type and check for destructors of individual class fields
+    let theSelfArgument = CollectionOfOne((calleeArgumentIndex: 0, callerArgument: value))
+    if !calleeAnalysis.allDestructorsSatisfy(of: value.type, in: value.parentFunction, { destructor, destroyedType in
+        // If the destructor is called for a field or payload of `value`, the destructor's argument effects are
+        // relative to that sub-value and not to `value` itself.
+        addEffects(ofFunction: destructor, withArguments: theSelfArgument,
+                   isCalledForSubValue: destroyedType != value.type)
+        return true
+      }, context)
+    {
       addEffects(.worstEffects, to: value)
       globalEffects = .worstEffects
     }
@@ -370,58 +384,49 @@ private struct CollectedEffects {
     addEffects(.write, to: address)
 
     // Second: add all effects of (potential) destructors which might be called if the destroy deallocates an object.
-    // Note that we don't need to add any effects specific to the `address`, because the memory location is not
-    // affected by a destructor of the stored value (and effects don't include anything which is loaded from memory).
-    if let destructors = calleeAnalysis.getDestructors(of: address.type) {
-      for destructor in destructors {
+    if !calleeAnalysis.allDestructorsSatisfy(of: address.type, in: address.parentFunction, { destructor, _ in
+        // Note that we don't need to add any effects specific to the `address`, because the memory location is not
+        // affected by a destructor of the stored value (and effects don't include anything which is loaded from memory).
         globalEffects.merge(with: destructor.getSideEffects())
-      }
-    } else {
+        return true
+      }, context)
+    {
       globalEffects = .worstEffects
     }
   }
 
-  private mutating func addEffects<Arguments: Sequence>(ofFunctions callees: FunctionArray?,
-                                                        withArguments arguments: Arguments)
-                                   where Arguments.Element == (calleeArgumentIndex: Int, callerArgument: Value) {
-    // The argument summary for @in_cxx is insufficient in OSSA because the function body does not contain the
-    // destroy. But the call is still effectively a release from the caller's perspective.
-    guard let callees = callees else {
-      // We don't know which function(s) are called.
-      globalEffects = .worstEffects
-      for (_, argument) in arguments {
-        addEffects(.worstEffects, to: argument)
-      }
-      return
-    }
-    for callee in callees {
-      if let sideEffects = callee.effects.sideEffects {
-        globalEffects.merge(with: sideEffects.global)
-      } else {
-        // The callee doesn't have any computed effects. At least we can do better
-        // if it has any defined effect attribute (like e.g. `[readnone]`).
-        globalEffects.merge(with: callee.definedGlobalEffects)
-      }
+  private mutating func addEffects<Arguments: Sequence>(
+                           ofFunction callee: Function,
+                           withArguments arguments: Arguments,
+                           isCalledForSubValue: Bool = false)
+                           where Arguments.Element == (calleeArgumentIndex: Int, callerArgument: Value) {
+    if let sideEffects = callee.effects.sideEffects {
+      globalEffects.merge(with: sideEffects.global)
+    } else {
+      // The callee doesn't have any computed effects. At least we can do better
+      // if it has any defined effect attribute (like e.g. `[readnone]`).
+      globalEffects.merge(with: callee.definedGlobalEffects)
     }
 
     for (calleeArgIdx, argument) in arguments {
-      for callee in callees {
-        if let sideEffects = callee.effects.sideEffects {
-          let calleeEffect = sideEffects.getArgumentEffects(for: calleeArgIdx)
-
-          // Merge the callee effects into this function's effects
-          if let calleePath = calleeEffect.read    { addEffects(.read,    to: argument, fromInitialPath: calleePath) }
-          if let calleePath = calleeEffect.write   { addEffects(.write,   to: argument, fromInitialPath: calleePath) }
-          if let calleePath = calleeEffect.copy    { addEffects(.copy,    to: argument, fromInitialPath: calleePath) }
-          if let calleePath = calleeEffect.destroy { addEffects(.destroy, to: argument, fromInitialPath: calleePath) }
-        } else {
-          let convention = callee.argumentConventions[calleeArgIdx]
-          let wholeArgument = argument.at(defaultPath(for: argument))
-          let calleeEffects = callee.getSideEffects(forArgument: wholeArgument,
-                                                    atIndex: calleeArgIdx,
-                                                    withConvention: convention)
-          addEffects(calleeEffects.restrictedTo(argument: wholeArgument, withConvention: convention), to: argument)
+      if let sideEffects = callee.effects.sideEffects {
+        let calleeEffect = sideEffects.getArgumentEffects(for: calleeArgIdx)
+        let toCallerPath = { (calleePath: SmallProjectionPath) in
+          isCalledForSubValue ? calleePath.push(.anyValueFields) : calleePath
         }
+
+        // Merge the callee effects into this function's effects
+        if let calleePath = calleeEffect.read    { addEffects(.read,    to: argument, fromInitialPath: toCallerPath(calleePath)) }
+        if let calleePath = calleeEffect.write   { addEffects(.write,   to: argument, fromInitialPath: toCallerPath(calleePath)) }
+        if let calleePath = calleeEffect.copy    { addEffects(.copy,    to: argument, fromInitialPath: toCallerPath(calleePath)) }
+        if let calleePath = calleeEffect.destroy { addEffects(.destroy, to: argument, fromInitialPath: toCallerPath(calleePath)) }
+      } else {
+        let convention = callee.argumentConventions[calleeArgIdx]
+        let wholeArgument = argument.at(defaultPath(for: argument))
+        let calleeEffects = callee.getSideEffects(forArgument: wholeArgument,
+                                                  atIndex: calleeArgIdx,
+                                                  withConvention: convention)
+        addEffects(calleeEffects.restrictedTo(argument: wholeArgument, withConvention: convention), to: argument)
       }
     }
   }

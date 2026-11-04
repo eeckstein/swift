@@ -793,10 +793,11 @@ lookUpFunctionInVTable(ClassDecl *Class, SILDeclRef Member) {
 }
 
 SILFunction *
-SILModule::lookUpMoveOnlyDeinitFunction(const NominalTypeDecl *nomDecl) {
+SILModule::lookUpMoveOnlyDeinitFunction(const NominalTypeDecl *nomDecl,
+                                        bool deserializeLazily) {
   assert(!nomDecl->canBeCopyable());
 
-  auto *tbl = lookUpMoveOnlyDeinit(nomDecl);
+  auto *tbl = lookUpMoveOnlyDeinit(nomDecl, deserializeLazily);
 
   // Bail, if the lookup of VTable fails.
   if (!tbl) {

@@ -43,20 +43,92 @@ struct CalleeAnalysis {
     return FunctionArray(bridged: bridged.getCallees(callee.bridged))
   }
 
-  func getDestructor(ofExactType type: Type) -> Function? {
-    let destructors = FunctionArray(bridged: bridged.getDestructors(type.bridged, /*isExactType*/ true))
-    if destructors.count == 1 {
-      return destructors[0]
-    }
-    return nil
-  }
-
-  func getDestructors(of type: Type) -> FunctionArray? {
-    let bridgedDtors = bridged.getDestructors(type.bridged, /*isExactType*/ false)
-    if bridgedDtors.isIncomplete() {
+  func getClassDestructors(of type: Type, isExactType: Bool) -> FunctionArray? {
+    precondition(type.isClass)
+    let destructors = FunctionArray(bridged: bridged.getDestructors(type.bridged, isExactType))
+    if destructors.isIncomplete {
       return nil
     }
-    return FunctionArray(bridged: bridgedDtors)
+    return destructors
+  }
+
+  func getClassDestructor(ofExactType type: Type) -> Function? {
+    guard let destructors = getClassDestructors(of: type, isExactType: true) else {
+      return nil
+    }
+    return destructors.singleElement
+  }
+
+  /// Returns true if `predicate` is true for all destructors and deinits which may be called if a value
+  /// of `type` is destroyed.
+  ///
+  /// The predicate is called with the destructor and the type of the destroyed (sub-)value which is passed
+  /// as argument to the destructor:
+  /// * For a class type these are the destructors of the class and all its sub-classes.
+  ///   The argument of such a destructor is the class reference.
+  /// * For a non-copyable value type with a deinit this is the deinit, which also destroys the fields.
+  ///   The argument of such a deinit is the value itself.
+  /// * For other aggregates (structs, tuples, enums) these are the destructors of the fields and payloads.
+  ///
+  /// If `deinitIsDropped` is true, the deinit of a non-copyable `type` is not called (e.g. because it's
+  /// the result of a `drop_deinit`), but only the destructors of its fields.
+  ///
+  /// Returns false if not all destructors are known.
+  func allDestructorsSatisfy(of type: Type, in function: Function,
+                             deinitIsDropped: Bool = false,
+                             _ predicate: (Function, Type) -> Bool,
+                             recursionDepth: Int = 0,
+                             _ context: some Context) -> Bool
+  {
+    // Destroying a weak or unowned reference doesn't run a destructor.
+    if type.isTrivial(in: function) || type.isReferenceStorageType {
+      return true
+    }
+    // Bail on deeply nested and recursive types.
+    if recursionDepth >= 16 {
+      return false
+    }
+    if type.isClass {
+      guard let destructors = getClassDestructors(of: type, isExactType: false) else {
+        return false
+      }
+      return destructors.allSatisfy { predicate($0, type) }
+    }
+    if type.isValueTypeWithDeinit && !deinitIsDropped {
+      // Don't deserialize the deinit: an analysis must not change the module.
+      guard let deinitFunc = context.lookupSpecializedDeinit(ofType: type) ??
+                             context.lookupDeinit(ofNominal: type.nominal!, deserializeLazily: false)
+      else {
+        return false
+      }
+      return predicate(deinitFunc, type)
+    }
+    if type.isStruct {
+      guard let fields = type.getNominalFields(in: function) else {
+        return false
+      }
+      return fields.allSatisfy {
+        allDestructorsSatisfy(of: $0, in: function, predicate, recursionDepth: recursionDepth + 1, context)
+      }
+    }
+    if type.isTuple {
+      return type.tupleElements.allSatisfy {
+        allDestructorsSatisfy(of: $0, in: function, predicate, recursionDepth: recursionDepth + 1, context)
+      }
+    }
+    if type.isEnum {
+      guard let enumCases = type.getEnumCases(in: function) else {
+        return false
+      }
+      return enumCases.allSatisfy {
+        if let payload = $0.payload {
+          return allDestructorsSatisfy(of: payload, in: function, predicate, recursionDepth: recursionDepth + 1, context)
+        }
+        return true
+      }
+    }
+    // Existentials, archetypes, closures, boxes, bridge objects, etc.
+    return false
   }
 
   /// Returns the global (i.e. not argument specific) side effects of an apply.
@@ -152,6 +224,8 @@ struct FunctionArray : RandomAccessCollection, FormattedLikeArray {
 
   var startIndex: Int { 0 }
   var endIndex: Int { bridged.getCount() }
+
+  var isIncomplete: Bool { bridged.isIncomplete() }
 
   subscript(_ index: Int) -> Function {
     return bridged.getCallee(index).function

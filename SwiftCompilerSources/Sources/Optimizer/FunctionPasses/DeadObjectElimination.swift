@@ -1084,7 +1084,7 @@ private struct DestructorSideEffects {
       return nil
     }
 
-    guard let destructorFn = context.calleeAnalysis.getDestructor(ofExactType: allocRef.type) else {
+    guard let destructorFn = context.calleeAnalysis.getClassDestructor(ofExactType: allocRef.type) else {
       return nil
     }
 

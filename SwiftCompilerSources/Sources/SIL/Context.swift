@@ -46,8 +46,10 @@ extension Context {
   /// represented as opaque SSA values in Raw SIL rather than as raw addresses.
   public var usesOpaqueValues: Bool { _bridged.usesOpaqueValues() }
 
-  public func lookupDeinit(ofNominal: NominalTypeDecl) -> Function? {
-    _bridged.lookUpNominalDeinitFunction(ofNominal.bridged).function
+  /// Looks up the deinit of a non-copyable struct or enum.
+  /// If `deserializeLazily` is false, the deinit is only found if it's already in the module.
+  public func lookupDeinit(ofNominal: NominalTypeDecl, deserializeLazily: Bool = true) -> Function? {
+    _bridged.lookUpNominalDeinitFunction(ofNominal.bridged, deserializeLazily).function
   }
 
   /// Looks up the specialized deinit for a concrete type, if one was created.
