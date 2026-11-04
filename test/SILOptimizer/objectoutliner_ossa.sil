@@ -283,6 +283,34 @@ bb0:
   return %r : $()
 }
 
+sil @$s3Obj_deallocating_deinit : $@convention(method) (@owned Obj) -> ()
+
+// CHECK-LABEL: sil [ossa] @handle_deinit_call :
+// CHECK:         [[G:%[0-9]+]] = global_value @handle_deinit_callTv_ : $Obj
+// CHECK-NOT:     store
+// CHECK-NOT:     apply
+// CHECK:         end_lifetime [[G]]
+// CHECK-NEXT:    tuple
+// CHECK:       } // end sil function 'handle_deinit_call'
+sil [ossa] @handle_deinit_call : $@convention(thin) () -> () {
+bb0:
+  %0 = integer_literal $Builtin.Word, 0
+  %3 = integer_literal $Builtin.Int64, 3
+  %4 = struct $Int64 (%3 : $Builtin.Int64)
+  %5 = alloc_ref [stack] [tail_elems $Int64 * %0 : $Builtin.Word] $Obj
+  %b = begin_borrow %5
+  %6 = ref_element_addr %b : $Obj, #Obj.value
+  store %4 to [trivial] %6 : $*Int64
+  end_borrow %b
+  %10 = end_cow_mutation %5 : $Obj
+  %11 = begin_dealloc_ref %10 : $Obj of %5 : $Obj
+  %12 = function_ref @$s3Obj_deallocating_deinit : $@convention(method) (@owned Obj) -> ()
+  %13 = apply %12(%11) : $@convention(method) (@owned Obj) -> ()
+  dealloc_stack_ref %5 : $Obj
+  %r = tuple ()
+  return %r : $()
+}
+
 // CHECK-LABEL: sil [ossa] @dont_outline_without_end_cow_mutation
 // CHECK: alloc_ref
 // CHECK: store
