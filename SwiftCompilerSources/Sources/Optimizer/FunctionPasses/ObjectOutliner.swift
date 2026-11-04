@@ -355,6 +355,11 @@ private func isValidUseOfObject(_ use: Operand) -> Bool {
     }
     return true
 
+  case let apply as ApplyInst:
+    // A non-inlined deallocation of the object, e.g. created by the ClassDestroyDevirtualizer.
+    // It is removed in `rewriteUses`.
+    return apply.isDeallocation(of: use)
+
   case let bi as BuiltinInst:
     switch bi.id {
     case .ICMP_EQ, .ICMP_NE:
@@ -452,6 +457,15 @@ private func rewriteUses(of startValue: Value, _ context: FunctionPassContext) {
   while let inst = worklist.pop() {
     switch inst {
     case let beginDealloc as BeginDeallocRefInst:
+      // A statically initialized object is never deallocated.
+      for use in Array(beginDealloc.uses) {
+        if let deallocation = use.instruction as? ApplyInst, deallocation.isDeallocation(of: use) {
+          if deallocation.parentFunction.hasOwnership {
+            Builder(before: deallocation, context).createEndLifetime(of: beginDealloc)
+          }
+          context.erase(instruction: deallocation)
+        }
+      }
       worklist.pushIfNotVisited(usersOf: beginDealloc)
       let builder = Builder(before: beginDealloc, context)
       if !beginDealloc.parentFunction.hasOwnership {
@@ -615,5 +629,22 @@ private extension GlobalValueInst {
   /// Assuming the global is an Array, returns the number of elements = tail elements.
   var numArrayElements: Int {
     (global.staticInitValue! as! ObjectInst).tailOperands.count
+  }
+}
+
+private extension ApplyInst {
+  /// True if this is a call of a deallocating deinit with the `begin_dealloc_ref` `object` as self:
+  /// ```
+  ///   %1 = begin_dealloc_ref %0 of %allocRef
+  ///   %2 = apply @deallocating_deinit(%1)
+  /// ```
+  /// Note that we cannot check if the callee is a destructor, because a deserialized or
+  /// specialized deinit doesn't have a decl context. But a `begin_dealloc_ref` can only be
+  /// consumed by the deallocation of the object.
+  func isDeallocation(of object: Operand) -> Bool {
+    return object.value is BeginDeallocRefInst &&
+           numArguments == 1 &&
+           object == argumentOperands[0] &&
+           convention(of: object)?.isConsumed == true
   }
 }
