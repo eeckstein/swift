@@ -292,6 +292,30 @@ bb0(%0 : $Builtin.RawPointer):
   return %8 : $()
 }
 
+// Same, but the load_borrow has a value hint, which must not prevent erasing the "once".
+// CHECK-LABEL: sil [ossa] @load_borrow_global_let_init_fn_with_value_hint :
+// CHECK-NOT:     builtin "once"
+// CHECK-NOT:     global_addr
+// CHECK:         [[GV:%.*]] = global_value @gobj_storage
+// CHECK:         [[B:%.*]] = begin_borrow [[GV]]
+// CHECK:         apply {{%.*}}([[B]])
+// CHECK:         end_borrow [[B]]
+// CHECK:         destroy_value [[GV]]
+// CHECK-NOT:     builtin "once"
+// CHECK:       } // end sil function 'load_borrow_global_let_init_fn_with_value_hint'
+sil [ossa] @load_borrow_global_let_init_fn_with_value_hint : $@convention(thin) (Builtin.RawPointer, @guaranteed B) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : @guaranteed $B):
+  %2 = function_ref @init_gobj : $@convention(c) () -> ()
+  %3 = builtin "once"(%0 : $Builtin.RawPointer, %2 : $@convention(c) () -> ()) : $Builtin.SILToken
+  %4 = global_addr @gobj : $*B depends_on %3
+  %5 = load_borrow %4, value_hint %1
+  %6 = function_ref @useB : $@convention(thin) (@guaranteed B) -> ()
+  %7 = apply %6(%5) : $@convention(thin) (@guaranteed B) -> ()
+  end_borrow %5 : $B
+  %9 = tuple ()
+  return %9 : $()
+}
+
 // If the value hint of the load_borrow doesn't need to be kept alive by a borrow scope, the
 // load_borrow can be replaced by it.
 // CHECK-LABEL: sil [ossa] @load_borrow_with_ownership_free_value_hint :

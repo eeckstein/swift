@@ -466,11 +466,18 @@ private func globalLoadedViaAddressor(pointer: Value) -> GlobalVariable? {
 func transitivelyErase(load: SingleValueInstruction, _ context: SimplifyContext) {
   var inst: SingleValueInstruction = load
   while inst.uses.isEmpty {
-    if inst.operands.count != 1 {
+    let operand: Value
+    if let loadBorrow = inst as? LoadBorrowInst {
+      // Ignore the optional value hint operand.
+      operand = loadBorrow.address
+    } else if inst.operands.count == 1 {
+      operand = inst.operands[0].value
+    } else {
       context.erase(instruction: inst)
       return
     }
-    guard let operandInst = inst.operands[0].value as? SingleValueInstruction else {
+    guard let operandInst = operand as? SingleValueInstruction else {
+      context.erase(instruction: inst)
       return
     }
     context.erase(instruction: inst)
