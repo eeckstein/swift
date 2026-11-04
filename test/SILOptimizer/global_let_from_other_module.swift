@@ -1,7 +1,6 @@
 // RUN: %empty-directory(%t)
 // RUN: %target-build-swift -O -wmo -parse-as-library -disable-cmo -emit-module -emit-module-path=%t/Module.swiftmodule -module-name=Module -DMODULE %s -c -o %t/module.o
-// TODO: ARCSequenceOpts miscompiles, therefore disabled. With OSSA, this optimization will go away soon, anyway.
-// RUN: %target-build-swift -O -wmo -module-name=Main -I%t %s -emit-sil -Xllvm -sil-disable-pass=arc-sequence-opts | %FileCheck %s
+// RUN: %target-build-swift -O -wmo -module-name=Main -I%t %s -emit-sil | %FileCheck %s
 
 // REQUIRES: optimized_stdlib
 
