@@ -1610,7 +1610,6 @@ private func collectDeinitBarriers(
 ) {
   log("liverange during collectDeinitBarriers:\n\(liverange)")
 
-  let calleeAnalysis = context.calleeAnalysis
   let defInst = def.definingInstruction
   let defBlock = def.parentBlock
 
@@ -1628,7 +1627,7 @@ private func collectDeinitBarriers(
       if inst == defInst || liverange.inclusiveRangeContains(inst) {
         return .hitBoundary
       }
-      if inst.isDeinitBarrier(calleeAnalysis) {
+      if inst.isDeinitBarrier(context) {
         return .foundBarrier(inst)
       }
     }

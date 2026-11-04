@@ -130,7 +130,6 @@ private func tryEliminate(copy: CopyLikeInstruction, keepDebugInfo: Bool, _ cont
   }
 
   let aliasAnalysis = context.aliasAnalysis
-  let calleeAnalysis = context.calleeAnalysis
 
   if aliasAnalysis.mayAlias(allocStack, copy.destinationAddress) {
     // Catch the very unusual corner case where the copy is writing back to it's source address - the alloc_stack.
@@ -175,7 +174,7 @@ private func tryEliminate(copy: CopyLikeInstruction, keepDebugInfo: Bool, _ cont
     }
 
     // We must not shrink the liverange of an existing value in the destination.
-    if needDestroyEarly && inst.isDeinitBarrier(calleeAnalysis) {
+    if needDestroyEarly && inst.isDeinitBarrier(context) {
       return
     }
 

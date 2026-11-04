@@ -449,7 +449,23 @@ entry:
 ; CHECK-NOT: swift_unknownObjectRetain
 ; CHECK-NOT: swift_unknownObjectRelease
 ; CHECK: ret
-define void @unknownretainmotion_forwarding(ptr %P, ptr %R, ptr %B) {
+define void @unknownretainmotion_forwarding(ptr %P, ptr %R) {
+entry:
+  %res = tail call ptr @swift_unknownObjectRetain(ptr %P)
+  store ptr %res, ptr %R, align 4
+  tail call void @swift_unknownObjectRelease(ptr %res) nounwind
+  ret void
+}
+
+; A release must not be moved over another release, because the deinitializer
+; of the other object may observe the released object.
+; CHECK-LABEL: @unknownretainmotion_over_release
+; CHECK:      store ptr %P, ptr %R, align 4
+; CHECK-NEXT: tail call ptr @swift_unknownObjectRetain(ptr %P)
+; CHECK-NEXT: call void @swift_bridgeObjectRelease(ptr %B)
+; CHECK-NEXT: tail call void @swift_unknownObjectRelease(ptr %P)
+; CHECK-NEXT: ret
+define void @unknownretainmotion_over_release(ptr %P, ptr %R, ptr %B) {
 entry:
   %res = tail call ptr @swift_unknownObjectRetain(ptr %P)
   store ptr %res, ptr %R, align 4

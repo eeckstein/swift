@@ -16,6 +16,7 @@
 #include "swift/SIL/SILModule.h"
 #include "swift/SIL/Test.h"
 #include "swift/SILOptimizer/OptimizerBridging.h"
+#include "swift/SILOptimizer/PassManager/PassManager.h"
 #include "swift/SILOptimizer/PassManager/Transforms.h"
 #include "swift/SILOptimizer/Utils/InstOptUtils.h"
 
@@ -69,13 +70,14 @@ getMemoryBehavior(FullApplySite as, bool observeRetains) {
 
 bool swift::isDeinitBarrier(SILInstruction *const instruction,
                             BasicCalleeAnalysis *bca) {
-  if (!instructionIsDeinitBarrierFunction || !bca) {
+  if (!instructionIsDeinitBarrierFunction || !bca || !bca->getPassManager()) {
     return true;
   }
   BridgedInstruction inst = {
       cast<SILNode>(const_cast<SILInstruction *>(instruction))};
-  BridgedCalleeAnalysis analysis = {bca};
-  return instructionIsDeinitBarrierFunction(inst, analysis);
+  BridgedContext context = {
+      bca->getPassManager()->getSwiftPassInvocation()->getCurrent()};
+  return instructionIsDeinitBarrierFunction(inst, context);
 }
 
 namespace swift::test {

@@ -871,6 +871,13 @@ There are four kinds:
 3.  accesses of pointers
 4.  accesses of exclusive variables defined globally or as a class member
 
+Calls to functions which contain deinit barriers are deinit barriers as
+well. The same applies to destroys (e.g. `destroy_value`, `destroy_addr`,
+`store [assign]`): a destroy is a deinit barrier if a deinitializer which
+may be run by the destroy contains a deinit barrier. If not all potential
+deinitializers are known, e.g. for existentials, generic types or closures,
+the destroy is conservatively treated as a deinit barrier.
+
 Examples:
 
 1.  Given an instance of a class which owns a file handle and closes the

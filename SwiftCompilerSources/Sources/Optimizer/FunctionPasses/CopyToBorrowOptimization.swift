@@ -176,9 +176,8 @@ private func removeDead(copy: CopyValueInst, _ context: FunctionPassContext) -> 
   for user in copy.users {
     worklist.pushPredecessors(of: user)
   }
-  let calleeAnalysis = context.calleeAnalysis
   while let inst = worklist.pop() {
-    if inst.isDeinitBarrier(calleeAnalysis) {
+    if inst.isDeinitBarrier(context) {
       return false
     }
     worklist.pushPredecessors(of: inst, ignoring: copy)

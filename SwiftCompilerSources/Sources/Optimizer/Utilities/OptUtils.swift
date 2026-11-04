@@ -637,7 +637,7 @@ extension Instruction {
     }
     guard type.isMoveOnly else {
       // Non-trivial copyable types only have to consider deinit-barriers for classes.
-      return isDeinitBarrier(context.calleeAnalysis)
+      return isDeinitBarrier(context)
     }
 
     // Check side-effects of non-copyable deinits.

@@ -96,7 +96,7 @@ struct BridgedCalleeAnalysis {
   SWIFT_IMPORT_UNSAFE CalleeList getCallees(BridgedValue callee) const;
   SWIFT_IMPORT_UNSAFE CalleeList getDestructors(BridgedType type, bool isExactType) const;
 
-  typedef bool (* _Nonnull IsDeinitBarrierFn)(BridgedInstruction, BridgedCalleeAnalysis bca);
+  typedef bool (* _Nonnull IsDeinitBarrierFn)(BridgedInstruction, BridgedContext context);
   typedef BridgedMemoryBehavior (* _Nonnull GetMemBehvaiorFn)(
         BridgedInstruction apply, bool observeRetains, BridgedCalleeAnalysis bca);
 

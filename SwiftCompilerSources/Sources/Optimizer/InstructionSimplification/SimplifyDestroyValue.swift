@@ -198,6 +198,6 @@ private extension Value {
 
 private func isDeinitBarrierInBlock(before instruction: Instruction, _ context: SimplifyContext) -> Bool {
   return ReverseInstructionList(first: instruction.previous).contains(where: {
-    $0.isDeinitBarrier(context.calleeAnalysis)
+    $0.isDeinitBarrier(context)
   })
 }

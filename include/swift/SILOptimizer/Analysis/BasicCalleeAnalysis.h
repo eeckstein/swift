@@ -30,6 +30,7 @@ namespace swift {
 
 class BasicCalleeAnalysis : public SILAnalysis {
   SILModule &M;
+  SILPassManager *PM = nullptr;
   std::unique_ptr<CalleeCache> Cache;
 
 public:
@@ -42,6 +43,10 @@ public:
   static bool classof(const SILAnalysis *S) {
     return S->getKind() == SILAnalysisKind::BasicCallee;
   }
+
+  virtual void initialize(SILPassManager *pm) override { PM = pm; }
+
+  SILPassManager *getPassManager() const { return PM; }
 
   /// Invalidate all information in this analysis.
   virtual void invalidate() override {

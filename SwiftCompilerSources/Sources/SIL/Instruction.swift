@@ -156,7 +156,8 @@ public class Instruction : CustomStringConvertible, Hashable {
 
   public final var isDeinitBarrier: Bool {
     switch self {
-    case SIL.isFullApplySite, is EndApplyInst, is AbortApplyInst, is YieldInst:
+    case SIL.isFullApplySite, is EndApplyInst, is AbortApplyInst, is YieldInst,
+         is DestroyValueInst, is DestroyAddrInst:
       return true
 
     case is LoadWeakInst, is LoadUnownedInst, is StrongCopyUnownedValueInst, is StrongCopyUnmanagedValueInst:
@@ -197,13 +198,17 @@ public class Instruction : CustomStringConvertible, Hashable {
       }
 
     default:
-      // Accessing memory via an arbitrary pointer or a global is a deinit barrier, because it may
-      // conflict with such an access in a de-initializer.
-      return mayReadOrWriteMemory &&
-             operands.contains { op in
-               FindPointerOrGlobalWalker.mayAccessPointerOrGlobal(op.value)
-             }
+      return mayAccessPointerOrGlobal
     }
+  }
+
+  /// True if the instruction may access memory via an arbitrary pointer or a global.
+  /// This is a deinit barrier, because it may conflict with such an access in a de-initializer.
+  public final var mayAccessPointerOrGlobal: Bool {
+    return mayReadOrWriteMemory &&
+           operands.contains { op in
+             FindPointerOrGlobalWalker.mayAccessPointerOrGlobal(op.value)
+           }
   }
 
   public final var isEndOfScopeMarker: Bool {

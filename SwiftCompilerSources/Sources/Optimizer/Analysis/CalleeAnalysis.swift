@@ -19,8 +19,8 @@ struct CalleeAnalysis {
   static func register() {
     BridgedCalleeAnalysis.registerAnalysis(
       // isDeinitBarrierFn:
-      { (inst : BridgedInstruction, bca: BridgedCalleeAnalysis) -> Bool in
-        return inst.instruction.isDeinitBarrier(bca.analysis)
+      { (inst : BridgedInstruction, bridgedCtxt: BridgedContext) -> Bool in
+        return inst.instruction.isDeinitBarrier(FunctionPassContext(_bridged: bridgedCtxt))
       },
       // getMemBehaviorFn
       { (bridgedApply: BridgedInstruction, observeRetains: Bool, bca: BridgedCalleeAnalysis) -> BridgedMemoryBehavior in
@@ -205,17 +205,49 @@ extension Instruction {
   ///
   /// Deinitialization barriers constrain variable lifetimes. Lexical
   /// end_borrow, destroy_value, and destroy_addr cannot be hoisted above them.
-  final func isDeinitBarrier(_ analysis: CalleeAnalysis) -> Bool {
-    if self.isFullApplySite {
-      return (self as! FullApplySite).isBarrier(analysis)
+  final func isDeinitBarrier(_ context: some Context) -> Bool {
+    let destroyedValue: Value
+    switch self {
+
+    case SIL.isFullApplySite:
+      return (self as! FullApplySite).isBarrier(context.calleeAnalysis)
+    case let eai as EndApplyInst:
+      return eai.isBarrier(context.calleeAnalysis)
+    case let aai as AbortApplyInst:
+      return aai.isBarrier(context.calleeAnalysis)
+
+    case let dv as DestroyValueInst:
+      // Dead-end destroys are lowered to no-ops.
+      if dv.isDeadEnd {
+        return false
+      }
+      destroyedValue = dv.destroyedValue
+    case let da as DestroyAddrInst:
+      destroyedValue = da.destroyedAddress
+    case let store as StoreInst:
+      guard store.storeOwnership == .assign else {
+        return isDeinitBarrier
+      }
+      destroyedValue = store.destination
+    case is CopyAddrInst, is ExplicitCopyAddrInst:
+      let sda = self as! SourceDestAddrInstruction
+      if sda.isInitializationOfDestination {
+        return isDeinitBarrier
+      }
+      destroyedValue = sda.destination
+    default:
+      return isDeinitBarrier
     }
-    if let eai = self as? EndApplyInst {
-      return eai.isBarrier(analysis)
+    // Besides destroying a value, the instruction may also access memory via a pointer or global.
+    if mayAccessPointerOrGlobal {
+      return true
     }
-    if let aai = self as? AbortApplyInst {
-      return aai.isBarrier(analysis)
-    }
-    return isDeinitBarrier
+    // Destroying the result of a `drop_deinit` doesn't call the deinit, but only destroys the fields.
+    let deinitIsDropped = destroyedValue is DropDeinitInst
+    return !context.calleeAnalysis.allDestructorsSatisfy(of: destroyedValue.type.objectType, in: parentFunction,
+                                                         deinitIsDropped: deinitIsDropped,
+                                                         { destructor, _ in !destructor.isDeinitBarrier },
+                                                         context)
   }
 }
 

@@ -303,24 +303,15 @@ static bool performLocalReleaseMotion(CallInst &Release, BasicBlock &BB,
     case RT_UnknownObjectRelease:
     case RT_BridgeRelease:
     case RT_ObjCRelease:
-    case RT_Release: {
-      // If we get to a release, we can generally ignore it and scan past it.
-      // However, if we get to a release of obviously the same object, we stop
-      // scanning here because it should have already be moved as early as
-      // possible, so there is no reason to move its friend to the same place.
-      //
-      // NOTE: If this occurs frequently, maybe we can have a release(Obj, N)
-      // API to drop multiple retain counts at once.
-      CallInst &ThisRelease = cast<CallInst>(*BBI);
-      Value *ThisReleasedObject = ThisRelease.getArgOperand(0);
-      ThisReleasedObject = RC.getSwiftRCIdentityRoot(ThisReleasedObject);
-      if (ThisReleasedObject == ReleasedObject) {
-        //Release.dump(); ThisRelease.dump(); BB.getParent()->dump();
-        ++BBI;
-        goto OutOfLoop;
-      }
-      continue;
-    }
+    case RT_Release:
+      // Don't move the release past another release. A release of a different
+      // object may run a deinitializer which observes the released object, e.g.
+      // via a weak or unowned reference.
+      // A release of obviously the same object should have already been moved
+      // as early as possible, so there is no reason to move its friend to the
+      // same place.
+      ++BBI;
+      goto OutOfLoop;
 
     case RT_UnknownObjectRetain:
     case RT_BridgeRetain:
