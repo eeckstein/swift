@@ -1,0 +1,85 @@
+// RUN: %target-sil-opt -enable-sil-verify-all %s -lower-aggregate-destroys | %FileCheck %s
+
+sil_stage canonical
+
+import Builtin
+import Swift
+
+class C {}
+
+struct S {
+  var i: Int
+  var c: C
+}
+
+struct Nested {
+  var s: S
+  var b: Bool
+}
+
+struct TwoRefs {
+  var c1: C
+  var c2: C
+}
+
+struct WithDeinit: ~Copyable {
+  var i: Int
+  var c: C
+  deinit
+}
+
+// CHECK-LABEL: sil [ossa] @struct_with_single_nontrivial_field :
+// CHECK:         ({{%.*}}, [[C:%.*]]) = destructure_struct %0
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       } // end sil function 'struct_with_single_nontrivial_field'
+sil [ossa] @struct_with_single_nontrivial_field : $@convention(thin) (@owned S) -> () {
+bb0(%0 : @owned $S):
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @nested_struct_and_tuple :
+// CHECK:         ([[T:%.*]], {{%.*}}) = destructure_tuple %0
+// CHECK-NEXT:    ([[S:%.*]], {{%.*}}) = destructure_struct [[T]]
+// CHECK-NEXT:    ({{%.*}}, [[C:%.*]]) = destructure_struct [[S]]
+// CHECK-NEXT:    destroy_value [[C]]
+// CHECK:       } // end sil function 'nested_struct_and_tuple'
+sil [ossa] @nested_struct_and_tuple : $@convention(thin) (@owned (Nested, Int)) -> () {
+bb0(%0 : @owned $(Nested, Int)):
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @two_nontrivial_fields :
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'two_nontrivial_fields'
+sil [ossa] @two_nontrivial_fields : $@convention(thin) (@owned TwoRefs) -> () {
+bb0(%0 : @owned $TwoRefs):
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @struct_with_deinit :
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'struct_with_deinit'
+sil [ossa] @struct_with_deinit : $@convention(thin) (@owned WithDeinit) -> () {
+bb0(%0 : @owned $WithDeinit):
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dead_end_destroy :
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value [dead_end] %0
+// CHECK:       } // end sil function 'dead_end_destroy'
+sil [ossa] @dead_end_destroy : $@convention(thin) (@owned S) -> () {
+bb0(%0 : @owned $S):
+  destroy_value [dead_end] %0
+  unreachable
+}

@@ -1110,6 +1110,9 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   // This lets the following AccessEnforcementOpts/WMO remove more access checks.
   P.addAccessScopeDestroySinking();
 
+  // Runs late, because destructuring aggregates can prevent other optimizations.
+  P.addLowerAggregateDestroys();
+
   // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
   // requires for unowned values actually need to become a retain/release pair.
   P.addUnownedCopyElimination();
