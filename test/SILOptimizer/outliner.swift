@@ -122,10 +122,10 @@ public func testOutlining() {
 // CHECK:   %3 = function_ref @$sSS10FoundationE19_bridgeToObjectiveCSo8NSStringCyF : $@convention(method) (@guaranteed String) -> @owned NSString
 // CHECK:   %4 = apply %3(%0) : $@convention(method) (@guaranteed String) -> @owned NSString
 // CHECK:   %5 = enum $Optional<NSString>, #Optional.some!enumelt, %4 : $NSString
-// CHECK:   release_value %0 : $String
-// CHECK:   %7 = apply %2(%5, %1) : $@convention(objc_method) (Optional<NSString>, Gizmo) -> ()
+// CHECK:   strong_release {{%[0-9]+}} : $Builtin.BridgeObject
+// CHECK:   [[R:%.*]] = apply %2(%5, %1) : $@convention(objc_method) (Optional<NSString>, Gizmo) -> ()
 // CHECK:   release_value %5 : $Optional<NSString>
-// CHECK:   return %7 : $()
+// CHECK:   return [[R]] : $()
 // CHECK: } // end sil function '$sSo5GizmoC14stringPropertySSSgvsToTembnn_'
 
 // xCHECK-LABEL: sil shared [noinline] @$sSo5GizmoC12modifyString_10withNumber0D6FoobarSSSgAF_SiypSgtFToTembnnnb_ : $@convention(thin) (@owned String, Int, Optional<AnyObject>, Gizmo) -> @owned Optional<String> {

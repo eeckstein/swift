@@ -30,7 +30,7 @@ public func testArray() {
   // CHECK-NEXT: apply [[FN]]([[DEP_POINTER]])
   // CHECK-NOT: release
   // CHECK-NOT: {{^bb[0-9]+:}}
-  // CHECK: release_value {{%.+}} : $Array<Int>
+  // CHECK: strong_release {{%.+}} : $Builtin.BridgeObject
   // CHECK-NEXT: [[EMPTY:%.+]] = tuple ()
   // CHECK-NEXT: return [[EMPTY]]
 }
@@ -46,7 +46,7 @@ public func testArrayToOptional() {
   // CHECK-NEXT: apply [[FN]]([[OPT_POINTER]])
   // CHECK-NOT: release
   // CHECK-NOT: {{^bb[0-9]+:}}
-  // CHECK: release_value {{%.+}} : $Array<Int>
+  // CHECK: strong_release {{%.+}} : $Builtin.BridgeObject
   // CHECK-NEXT: [[EMPTY:%.+]] = tuple ()
   // CHECK-NEXT: return [[EMPTY]]
 }
@@ -150,7 +150,8 @@ func takeDictionaryPointer(_: UnsafePointer<Dictionary<Int, Int>>)
 // CHECK: [[D:%.*]] = load %0 : $*Dictionary<Int, Int>
 // CHECK: fix_lifetime [[D]] : $Dictionary<Int, Int>
 // CHECK: [[D2:%.*]] = load %0 : $*Dictionary<Int, Int>
-// CHECK: release_value [[D2]] : $Dictionary<Int, Int>
+// CHECK: struct_extract [[D2]] : $Dictionary<Int, Int>, #Dictionary._variant
+// CHECK: strong_release {{%.*}} : $Builtin.BridgeObject
 // CHECK: dealloc_stack [[A]] : $*Dictionary<Int, Int>
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion22dictionaryToRawPointeryyF'
 public func dictionaryToRawPointer() {
@@ -190,7 +191,8 @@ public func eagerMoveToPointer(@_eagerMove o: consuming AnyObject ) {
 // CHECK:   [[S:%.*]] = load [[A]] : $*String
 // CHECK:   fix_lifetime [[S]] : $String
 // CHECK:   [[S2:%.*]] = load [[A]] : $*String
-// CHECK:   release_value [[S2]] : $String
+// CHECK:   struct_extract [[S2]] : $String, #String._guts
+// CHECK:   strong_release {{%.*}} : $Builtin.BridgeObject
 // CHECK:   dealloc_stack [[A]] : $*String
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion15stringToPointer2ssySS_tF'
 public func stringToPointer(ss: String) {
@@ -206,7 +208,8 @@ public func stringToPointer(ss: String) {
 // CHECK:   [[D:%.*]] = load [[A]] : $*Dictionary<Int, Int>
 // CHECK:   fix_lifetime [[D]] : $Dictionary<Int, Int>
 // CHECK:   [[D2:%.*]] = load [[A]] : $*Dictionary<Int, Int>
-// CHECK:   release_value [[D2]] : $Dictionary<Int, Int>
+// CHECK:   struct_extract [[D2]] : $Dictionary<Int, Int>, #Dictionary._variant
+// CHECK:   strong_release {{%.*}} : $Builtin.BridgeObject
 // CHECK:   dealloc_stack [[A]] : $*Dictionary<Int, Int>
 // CHECK-LABEL: } // end sil function '$s18pointer_conversion19dictionaryToPointer2ddySDyS2iG_tF'
 public func dictionaryToPointer(dd: Dictionary<Int, Int>) {
