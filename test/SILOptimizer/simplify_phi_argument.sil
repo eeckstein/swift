@@ -600,3 +600,48 @@ bb2:
 bb3(%6 : @owned $S):
   return %6 : $S
 }
+
+// An owned phi whose incoming values all have no ownership gets no ownership.
+// CHECK-LABEL: sil [ossa] @owned_phi_with_none_incoming_values :
+// CHECK:       bb3([[P:%.*]] : $Optional<C>):
+// CHECK:       } // end sil function 'owned_phi_with_none_incoming_values'
+sil [ossa] @owned_phi_with_none_incoming_values : $@convention(thin) (Builtin.Int1) -> () {
+bb0(%0 : $Builtin.Int1):
+  cond_br %0, bb1, bb2
+
+bb1:
+  %2 = enum $Optional<C>, #Optional.none!enumelt
+  br bb3(%2 : $Optional<C>)
+
+bb2:
+  %4 = enum $Optional<C>, #Optional.none!enumelt
+  br bb3(%4 : $Optional<C>)
+
+bb3(%6 : @owned $Optional<C>):
+  destroy_value %6 : $Optional<C>
+  %8 = tuple ()
+  return %8 : $()
+}
+
+// CHECK-LABEL: sil [ossa] @owned_phi_with_owned_incoming_value :
+// CHECK:       bb3([[P:%.*]] : @owned $Optional<C>):
+// CHECK:         destroy_value [[P]]
+// CHECK:       } // end sil function 'owned_phi_with_owned_incoming_value'
+sil [ossa] @owned_phi_with_owned_incoming_value : $@convention(thin) (Builtin.Int1, @owned C) -> () {
+bb0(%0 : $Builtin.Int1, %1 : @owned $C):
+  cond_br %0, bb1, bb2
+
+bb1:
+  destroy_value %1 : $C
+  %3 = enum $Optional<C>, #Optional.none!enumelt
+  br bb3(%3 : $Optional<C>)
+
+bb2:
+  %5 = enum $Optional<C>, #Optional.some!enumelt, %1 : $C
+  br bb3(%5 : $Optional<C>)
+
+bb3(%7 : @owned $Optional<C>):
+  destroy_value %7 : $Optional<C>
+  %9 = tuple ()
+  return %9 : $()
+}

@@ -4389,8 +4389,8 @@ bb0(%0 : @guaranteed $Builtin.NativeObject):
 // to false.
 // CHECK-LABEL: sil [ossa] @test_classify_fold :
 // CHECK-NOT: classify_bridge_object
-// CHECK: destroy_value
-// CHECK: [[LITERAL:%.*]] = integer_literal $Builtin.Int1, 0
+// CHECK-DAG: destroy_value
+// CHECK-DAG: [[LITERAL:%.*]] = integer_literal $Builtin.Int1, 0
 // CHECK: return [[LITERAL]]
 // CHECK: } // end sil function 'test_classify_fold'
 sil [ossa] @test_classify_fold : $@convention(thin) (@owned _ContiguousArrayStorage<B>) -> Builtin.Int1 {
