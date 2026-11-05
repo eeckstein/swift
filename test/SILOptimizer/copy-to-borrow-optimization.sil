@@ -4898,3 +4898,21 @@ bb0(%0 : @owned $Klass):
   %r = tuple ()
   return %r
 }
+
+// CHECK-LABEL: sil [ossa] @load_copy_with_fix_lifetime :
+// CHECK:         [[LB:%.*]] = load_borrow
+// CHECK:         fix_lifetime %0
+// CHECK:         apply {{%.*}}([[LB]])
+// CHECK:         end_borrow [[LB]]
+// CHECK:       } // end sil function 'load_copy_with_fix_lifetime'
+sil [ossa] @load_copy_with_fix_lifetime : $@convention(thin) (@guaranteed Klass) -> () {
+bb0(%0 : @guaranteed $Klass):
+  %1 = ref_element_addr %0, #Klass.base
+  %2 = load [copy] %1
+  fix_lifetime %0
+  %4 = function_ref @readonly_klass_user : $@convention(thin) (@guaranteed Klass) -> ()
+  %5 = apply %4(%2) : $@convention(thin) (@guaranteed Klass) -> ()
+  destroy_value %2
+  %r = tuple ()
+  return %r
+}
