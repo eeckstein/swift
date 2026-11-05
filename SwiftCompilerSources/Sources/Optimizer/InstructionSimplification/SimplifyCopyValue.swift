@@ -74,7 +74,13 @@ private func tryRemoveCopyOfOwnedValue(copy: CopyValueInst, _ context: SimplifyC
         // Find the destroy_value of the owned value in the same block as copy.
         let destroy = ownedValue.uses.users(ofType: DestroyValueInst.self).first(where: { $0.parentBlock == block }),
         let lastUse = findLastUse(of: ownedValue, before: destroy),
-        copy.strictlyDominatesInBlock(lastUse),
+        copy.dominatesInBlock(lastUse),
+        // If the copy itself is the last use, the owned value must be destroyed immediately after the
+        // copy. Otherwise the copy could be destroyed before the owned value, and replacing the copy
+        // would shorten the owned value's lifetime:
+        //   %2 = copy_value %1
+        //   destroy_value %1
+        lastUse != copy || copy.isImmediatelyFollowed(by: destroy),
         let boundary = lastUse.next,
         checkForwardingChain(from: copy, outsideLiverangeEndingAt: boundary)
   else {
@@ -87,6 +93,17 @@ private func tryRemoveCopyOfOwnedValue(copy: CopyValueInst, _ context: SimplifyC
 
   context.erase(instruction: destroy)
   return true
+}
+
+private extension Instruction {
+  /// True if `other` is the next instruction, ignoring debug instructions.
+  func isImmediatelyFollowed(by other: Instruction) -> Bool {
+    var inst = next
+    while let i = inst, i is DebugValueInst {
+      inst = i.next
+    }
+    return inst == other
+  }
 }
 
 /// Returns the last instruction before `destroy` in the block which uses `ownedValue`, including
@@ -114,11 +131,20 @@ private func findLastUse(of ownedValue: Value, before destroy: DestroyValueInst)
       for endInst in beginBorrow.endInstructions {
         update(with: endInst)
       }
-    } else if use.ownership == .borrow {
-      // Other borrowing instructions (e.g. `begin_apply`, `partial_apply [on_stack]`,
-      // `mark_dependence [nonescaping]`) keep `ownedValue` alive beyond the instruction itself.
-      // For simplicity we don't compute the ends of their scopes.
-      return nil
+    } else {
+      switch use.ownership {
+      case .borrow:
+        // Other borrowing instructions (e.g. `begin_apply`, `partial_apply [on_stack]`,
+        // `mark_dependence [nonescaping]`) keep `ownedValue` alive beyond the instruction itself.
+        // For simplicity we don't compute the ends of their scopes.
+        return nil
+      case .interiorPointer, .anyInteriorPointer, .pointerEscape, .bitwiseEscape, .forwardingUnowned:
+        // The result of such an instruction (e.g. an address projection or an unowned reference)
+        // can be used after the instruction - and those uses depend on `ownedValue` being alive.
+        return nil
+      default:
+        break
+      }
     }
     update(with: use.instruction)
   }
