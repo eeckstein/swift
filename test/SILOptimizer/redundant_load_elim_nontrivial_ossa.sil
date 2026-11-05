@@ -97,6 +97,7 @@ sil_global @total_nontrivialstruct : $NonTrivialStruct
 
 sil @use : $@convention(thin) (Builtin.Int32) -> ()
 sil @use_Klass : $@convention(thin) (@owned Klass) -> ()
+sil @use_klass_guaranteed : $@convention(thin) (@guaranteed Klass) -> ()
 sil @borrow_and_produce_klass : $@convention(thin) (@guaranteed Klass) -> @owned Klass
 sil @use_nontrivialstruct : $@convention(thin) (@owned NonTrivialStruct) -> ()
 sil @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
@@ -1427,6 +1428,43 @@ bb2:
 bb3:
   %7 = tuple ()
   return %7 : $()
+}
+
+// The lifetime border (after the apply) is in a loop which doesn't contain the load and the
+// removed `load_borrow`. Don't insert a `load [take]` and a `store` into the loop.
+// CHECK-LABEL: @load_take_dont_store_back_in_loop :
+// CHECK:       bb2:
+// CHECK-NEXT:    apply
+// CHECK-NEXT:    br bb1
+// CHECK:       bb3:
+// CHECK-NEXT:    load_borrow %2
+// CHECK:         load [take] %2
+// CHECK:       } // end sil function 'load_take_dont_store_back_in_loop'
+sil [ossa] @load_take_dont_store_back_in_loop : $@convention(thin) (@owned NonTrivialStruct, Builtin.Int1) -> () {
+bb0(%0 : @owned $NonTrivialStruct, %1 : $Builtin.Int1):
+  %2 = alloc_stack $NonTrivialStruct
+  store %0 to [init] %2 : $*NonTrivialStruct
+  %4 = function_ref @modify_nontrivialstruct : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  br bb1
+
+bb1:
+  cond_br %1, bb2, bb3
+
+bb2:
+  %6 = apply %4(%2) : $@convention(thin) (@inout NonTrivialStruct) -> ()
+  br bb1
+
+bb3:
+  %8 = load_borrow %2 : $*NonTrivialStruct
+  %9 = struct_extract %8 : $NonTrivialStruct, #NonTrivialStruct.val
+  %10 = function_ref @use_klass_guaranteed : $@convention(thin) (@guaranteed Klass) -> ()
+  %11 = apply %10(%9) : $@convention(thin) (@guaranteed Klass) -> ()
+  end_borrow %8 : $NonTrivialStruct
+  %13 = load [take] %2 : $*NonTrivialStruct
+  destroy_value %13 : $NonTrivialStruct
+  dealloc_stack %2 : $*NonTrivialStruct
+  %r = tuple ()
+  return %r : $()
 }
 
 // Like `load_take_exit_block_projected_address`, but the load is within an access scope.

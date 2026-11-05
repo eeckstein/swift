@@ -907,6 +907,32 @@ private struct Liverange {
       if loadBorrows.isEmpty {
         return false
       }
+      // Don't insert a load at a border which is in a loop that doesn't contain the load or one of
+      // the removed `load_borrow`s. The inserted load would be executed more often than the removed
+      // instructions. In case of a `load [take]` it would also require to store back the value in the
+      // loop, e.g.
+      //
+      //   bb1:                         // loop header
+      //     cond_br %c, bb2, bb3
+      //   bb2:
+      //     apply %f(%addr)            // killing instruction: the border is after it
+      //     br bb1
+      //   bb3:
+      //     %2 = load_borrow %addr
+      //     ...
+      //     %3 = load [take] %addr     // the load
+      //
+      let loopTree = context.loopTree
+      let isInLoopWithoutRemovedLoads = { (inst: Instruction) -> Bool in
+        guard let loop = loopTree.innermostLoop(of: inst.parentBlock) else {
+          return false
+        }
+        return !loop.contains(block: self.load.parentBlock) &&
+               !self.loadBorrows.contains(where: { loop.contains(block: $0.parentBlock) })
+      }
+      if killingInstructions.contains(where: isInLoopWithoutRemovedLoads) {
+        return false
+      }
       if functionEntryReached {
         availableValues.append(.lifetimeBorder(functionEntry))
       }
