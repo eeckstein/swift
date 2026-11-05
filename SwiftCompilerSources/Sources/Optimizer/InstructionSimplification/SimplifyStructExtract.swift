@@ -14,10 +14,26 @@ import SIL
 
 extension StructExtractInst : OnoneSimplifiable, SILCombineSimplifiable {
   func simplify(_ context: SimplifyContext) {
-    guard let structInst = self.struct as? StructInst else {
+    if let structInst = self.struct as? StructInst {
+      context.tryReplaceRedundantInstructionPair(first: structInst, second: self,
+                                                 with: structInst.operands[fieldIndex].value)
       return
     }
-    context.tryReplaceRedundantInstructionPair(first: structInst, second: self,
-                                               with: structInst.operands[fieldIndex].value)
+    // Replace struct_extract(begin_borrow(struct(x))) -> x, if x has no ownership:
+    // ```
+    //   %1 = struct $S (%0, %owned)    // %0 has "none" ownership
+    //   %2 = begin_borrow %1
+    //   %3 = struct_extract %2, #S.field0
+    // ```
+    // ->
+    // ```
+    //   // replace %3 with %0
+    // ```
+    if let borrowedStruct = self.struct.lookThroughBorrow as? StructInst,
+       case let field = borrowedStruct.operands[fieldIndex].value,
+       field.ownership == .none
+    {
+      self.replace(with: field, context)
+    }
   }
 }
