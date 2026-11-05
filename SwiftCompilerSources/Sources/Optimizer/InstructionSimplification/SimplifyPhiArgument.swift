@@ -15,6 +15,8 @@ import SIL
 extension Phi {
   // Triggered from `BranchInst.simplify`
   func simplify(_ context: SimplifyContext) {
+    canonicalizeOwnershipToNone(context)
+
     if replacePhiWithIncomingValue(phi: self, context) {
       return
     }
@@ -32,6 +34,32 @@ extension Phi {
     }
     if sinkIncomingAggregates(context) {
       return
+    }
+  }
+
+  /// If none of the incoming values has ownership, the ownership of an owned phi must be `.none`:
+  /// ```
+  ///   bb1:
+  ///     %1 = enum $Optional<C>, #Optional.none!enumelt   // ownership: none
+  ///     br bb3(%1)
+  ///   bb2:
+  ///     br bb3(%2)                                      // %2 has ownership "none"
+  ///   bb3(%3 : @owned $Optional<C>):                    // -> ownership: none
+  ///     destroy_value %3                                // removed by SimplifyDestroyValue
+  /// ```
+  ///
+  /// This is similar to `ForwardingInstruction.canonicalizeOwnershipToNone`.
+  private func canonicalizeOwnershipToNone(_ context: SimplifyContext) {
+    guard value.ownership == .owned,
+          // Move-only values are always owned.
+          !value.type.isMoveOnly,
+          incomingValues.allSatisfy({ $0.ownership == .none })
+    else {
+      return
+    }
+    value.set(ownership: .none, context)
+    for use in value.uses {
+      context.notifyInstructionChanged(use.instruction)
     }
   }
 

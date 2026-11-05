@@ -55,6 +55,36 @@ bb0:
   return %4 : $()
 }
 
+sil @makeC : $@convention(thin) () -> @owned C
+sil @useNoescape : $@convention(thin) (@guaranteed @noescape @callee_guaranteed () -> ()) -> ()
+sil @consumeOptionalClosure : $@convention(thin) (@owned Optional<@callee_guaranteed () -> ()>) -> ()
+sil @makeClosure : $@convention(thin) () -> @owned @callee_guaranteed () -> ()
+
+// The copy is the last use of the owned value.
+// CHECK-LABEL: sil [ossa] @remove_copy_followed_by_destroy :
+// CHECK:         [[C:%.*]] = apply
+// CHECK-NOT:     copy_value
+// CHECK-NOT:     destroy_value [[C]]
+// CHECK:         convert_escape_to_noescape [[C]]
+// CHECK:         enum $Optional<@callee_guaranteed () -> ()>, #Optional.some!enumelt, [[C]]
+// CHECK:       } // end sil function 'remove_copy_followed_by_destroy'
+sil [ossa] @remove_copy_followed_by_destroy : $@convention(thin) () -> () {
+bb0:
+  %0 = function_ref @makeClosure : $@convention(thin) () -> @owned @callee_guaranteed () -> ()
+  %1 = apply %0() : $@convention(thin) () -> @owned @callee_guaranteed () -> ()
+  %2 = copy_value %1 : $@callee_guaranteed () -> ()
+  destroy_value %1 : $@callee_guaranteed () -> ()
+  %4 = convert_escape_to_noescape %2 : $@callee_guaranteed () -> () to $@noescape @callee_guaranteed () -> ()
+  %5 = function_ref @useNoescape : $@convention(thin) (@guaranteed @noescape @callee_guaranteed () -> ()) -> ()
+  %6 = apply %5(%4) : $@convention(thin) (@guaranteed @noescape @callee_guaranteed () -> ()) -> ()
+  destroy_value %4 : $@noescape @callee_guaranteed () -> ()
+  %8 = enum $Optional<@callee_guaranteed () -> ()>, #Optional.some!enumelt, %2 : $@callee_guaranteed () -> ()
+  %9 = function_ref @consumeOptionalClosure : $@convention(thin) (@owned Optional<@callee_guaranteed () -> ()>) -> ()
+  %10 = apply %9(%8) : $@convention(thin) (@owned Optional<@callee_guaranteed () -> ()>) -> ()
+  %11 = tuple ()
+  return %11 : $()
+}
+
 // CHECK-LABEL: sil [ossa] @dont_remove_copy_of_idra_builtin :
 // CHECK:         %2 = copy_value %1
 // CHECK:       } // end sil function 'dont_remove_copy_of_idra_builtin'
@@ -454,7 +484,8 @@ bb0(%0 : @owned $C):
   return %3
 }
 
-// The copy is the last use of the owned value.
+// The copy is the last use of the owned value, but the owned value is not destroyed
+// immediately after the copy.
 //
 // CHECK-LABEL: sil [ossa] @no_copy_of_owned_value_copy_is_last_use :
 // CHECK:         copy_value
