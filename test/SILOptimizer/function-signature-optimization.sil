@@ -359,6 +359,49 @@ bb0:
   return %r
 }
 
+sil [Osize] [ossa] @dead_arg_osize : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  return %1
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_arg_osize :
+// CHECK:         [[F:%.*]] = function_ref @dead_arg_osize :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'call_dead_arg_osize'
+sil [ossa] @call_dead_arg_osize : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  %2 = function_ref @dead_arg_osize : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  %3 = apply %2(%0, %1) : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  return %3
+}
+
+sil public_external [ossa] @dead_arg_external : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  return %1
+}
+
+// CHECK-LABEL: sil [thunk] [ossa] @call_dead_arg_external_from_thunk :
+// CHECK:         [[F:%.*]] = function_ref @dead_arg_external :
+// CHECK:         apply [[F]](%0, %1)
+// CHECK:       } // end sil function 'call_dead_arg_external_from_thunk'
+sil [thunk] [ossa] @call_dead_arg_external_from_thunk : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  %2 = function_ref @dead_arg_external : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  %3 = apply %2(%0, %1) : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  return %3
+}
+
+// CHECK-LABEL: sil [ossa] @call_dead_arg_external :
+// CHECK:         [[F:%.*]] = function_ref @$s17dead_arg_externalTf4dn_n :
+// CHECK:         apply [[F]](%1)
+// CHECK:       } // end sil function 'call_dead_arg_external'
+sil [ossa] @call_dead_arg_external : $@convention(thin) (@guaranteed AnyObject, Int) -> Int {
+bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
+  %2 = function_ref @dead_arg_external : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  %3 = apply %2(%0, %1) : $@convention(thin) (@guaranteed AnyObject, Int) -> Int
+  return %3
+}
+
 //===----------------------------------------------------------------------===//
 //                    Owned -> guaranteed result conversion
 //===----------------------------------------------------------------------===//

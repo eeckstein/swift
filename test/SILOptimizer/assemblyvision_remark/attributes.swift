@@ -18,15 +18,17 @@ func useKlass(_ k: Klass) {}
 @_semantics("optremark")
 @inline(never)
 public func forceOptRemark() {
-    let x = getGlobal() // expected-remark {{release of type 'Klass'}}
-    useKlass(x)
+    let x = getGlobal()
+    useKlass(x) // expected-remark {{release of type 'Klass'}}
+                // expected-note @-2 {{of 'x'}}
 }
 
 @_semantics("optremark.sil-assembly-vision-remark-gen")
 @inline(never)
 public func forceOptRemark2() {
-    let x = getGlobal() // expected-remark {{release of type 'Klass'}}
-    useKlass(x)
+    let x = getGlobal()
+    useKlass(x) // expected-remark {{release of type 'Klass'}}
+                // expected-note @-2 {{of 'x'}}
 }
 
 @_semantics("optremark.fail")

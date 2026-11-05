@@ -90,6 +90,14 @@ private extension FullApplySite {
           callee.hasOwnership,
           callee.shouldOptimize,
           callee.isDefinition,
+          // The specialized function is an additional function, unless the original function
+          // can be removed. Also, it has shared linkage which prevents the LLVM MachineOutliner
+          // from outlining code from it.
+          !callee.isOptimizedForSize,
+          // Specializing a function which is defined in another module creates a copy of it.
+          // This is not worth it if it's called from a thunk, e.g. a witness thunk which
+          // just forwards to a generic default implementation in the stdlib.
+          !(callee.isDefinedExternally && parentFunction.thunkKind != .noThunk),
           callee.blocks.contains(where: { $0.terminator.isFunctionExiting }),
           !callee.convention.hasLifetimeDependencies()
     else {
