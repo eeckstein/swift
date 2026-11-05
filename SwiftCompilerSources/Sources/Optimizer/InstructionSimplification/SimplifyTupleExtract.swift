@@ -17,11 +17,20 @@ extension TupleExtractInst : OnoneSimplifiable, SILCombineSimplifiable {
 
     // Replace tuple_extract(tuple(x)) -> x
 
-    guard let tupleInst = tuple as? TupleInst else {
+    if let tupleInst = tuple as? TupleInst {
+      context.tryReplaceRedundantInstructionPair(first: tupleInst, second: self,
+                                                 with: tupleInst.operands[fieldIndex].value)
       return
     }
-    context.tryReplaceRedundantInstructionPair(first: tupleInst, second: self,
-                                               with: tupleInst.operands[fieldIndex].value)
+
+    // Replace tuple_extract(begin_borrow(tuple(x))) -> x, if x has no ownership.
+    // See the corresponding struct_extract simplification.
+    if let borrowedTuple = tuple.lookThroughBorrow as? TupleInst,
+       case let element = borrowedTuple.operands[fieldIndex].value,
+       element.ownership == .none
+    {
+      self.replace(with: element, context)
+    }
   }
 }
 
