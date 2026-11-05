@@ -955,6 +955,8 @@ private func collectInitialMemoryWriteBlocks(of load: LoadInst,
       continue
     }
     if inst.mayWrite(toAddress: load.address, aliasAnalysis),
+       // A `fix_lifetime` doesn't write to memory (alias analysis is conservative for it).
+       !(inst is FixLifetimeInst),
        !inst.isEndBorrow(ofScope: baseBorrow),
        !inst.isEndOfBorrowScopeNotHoldingLoadedAddress(worklist),
        // A `destroy_value` which ends the lifetime of the loaded value itself is replaced by an
