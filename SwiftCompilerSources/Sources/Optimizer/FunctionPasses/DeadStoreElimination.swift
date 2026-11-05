@@ -92,6 +92,10 @@ private func tryEliminate(store: StoreInst, complexityBudget: inout Int, _ conte
     case .dead:
       context.erase(instruction: store)
     case .maybePartiallyDead(let subPath):
+      if store.storeOwnership == .initialize {
+        // We don't split an initializing store of a value without ownership.
+        break
+      }
       // Check if the a partial store would really be dead to avoid unnecessary splitting.
       switch store.isDead(at: subPath, complexityBudget: &complexityBudget, context) {
         case .alive, .maybePartiallyDead:
@@ -125,7 +129,11 @@ private extension StoreInst {
   }
 
   func isDead(at accessPath: AccessPath, complexityBudget: inout Int, _ context: FunctionPassContext) -> DataflowResult {
-    var scanner = InstructionScanner(storePath: accessPath, storeAddress: self.destination, context.aliasAnalysis)
+    var scanner = InstructionScanner(storePath: accessPath, storeAddress: self.destination,
+                                     // If the dead store is removed, the memory is not initialized anymore.
+                                     // Therefore a successive store must not destroy the old value.
+                                     requireInitializingSuccessiveStore: storeOwnership == .initialize,
+                                     context.aliasAnalysis)
     let storageDefBlock = accessPath.base.reference?.referenceRoot.parentBlock
 
     switch scanner.scan(instructions: InstructionList(first: self.next), complexityBudget: &complexityBudget) {
@@ -180,9 +188,21 @@ private extension StoreInst {
       //   store %1 to [trivial] %0  // <- cannot delete this store!
       //   store %2 to [assign] %0
       return source.type.isTrivial(in: parentFunction)
-    case .initialize, .assign:
+    case .initialize:
+      // A value without ownership, e.g. a trivial enum case or a bridge object literal, doesn't keep
+      // anything alive. Memory which holds such a value counts as uninitialized, e.g.
+      //   %1 = enum $Optional<String>, #Optional.none!enumelt
+      //   store %1 to [init] %0   // <- can be deleted
+      //   store %2 to [init] %0
+      if source.ownership == .none {
+        return true
+      }
       // In OSSA, non-trivial values cannot be dead-store eliminated because that could shrink
       // the lifetime of the original stored value (because it's not kept in memory anymore).
+      return false
+    case .assign:
+      // Besides shrinking the lifetime of the stored value (see above), removing an assign would also
+      // remove the destroy of the old value.
       return false
     }
   }
@@ -191,13 +211,17 @@ private extension StoreInst {
 private struct InstructionScanner {
   private let storePath: AccessPath
   private let storeAddress: Value
+  private let requireInitializingSuccessiveStore: Bool
   private let aliasAnalysis: AliasAnalysis
 
   private(set) var potentiallyDeadSubpath: AccessPath? = nil
 
-  init(storePath: AccessPath, storeAddress: Value, _ aliasAnalysis: AliasAnalysis) {
+  init(storePath: AccessPath, storeAddress: Value, requireInitializingSuccessiveStore: Bool,
+       _ aliasAnalysis: AliasAnalysis
+  ) {
     self.storePath = storePath
     self.storeAddress = storeAddress
+    self.requireInitializingSuccessiveStore = requireInitializingSuccessiveStore
     self.aliasAnalysis = aliasAnalysis
   }
 
@@ -213,6 +237,9 @@ private struct InstructionScanner {
       case let successiveStore as StoreInst:
         let successivePath = successiveStore.destination.accessPath
         if successivePath.isEqualOrContains(storePath) {
+          if requireInitializingSuccessiveStore && successiveStore.storeOwnership != .initialize {
+            return .alive
+          }
           return .dead
         }
         if potentiallyDeadSubpath == nil,

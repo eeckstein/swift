@@ -867,6 +867,9 @@ static void addLowLevelPassPipeline(SILPassPipelinePlan &P) {
 
   P.addDeadObjectElimination();
   P.addObjectOutliner();
+  // Converts a `store [assign]` to memory which contains a value without ownership to a
+  // `store [init]`. This enables DeadStoreElimination to remove the previous initialization.
+  P.addTrivialEnumCaseDestroyElimination();
   P.addDeadStoreElimination();
   P.addDCE();
   P.addSimplification();
