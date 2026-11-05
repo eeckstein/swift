@@ -61,6 +61,10 @@ final public class Function : CustomStringConvertible, HasShortDescription, Hash
   /// and the function has no `@_optimize(none)` attribute.
   public var shouldOptimize: Bool { bridged.shouldOptimize() }
 
+  /// True if this function is optimized for code size, i.e. the module is compiled with `-Osize`
+  /// or the function has an `@_optimize(size)` attribute.
+  public var optimizeForSize: Bool { bridged.optimizeForSize() }
+
   public var wasDeserializedCanonical: Bool { bridged.wasDeserializedCanonical() }
   
   public var hasOwnershipForTrivialValues: Bool {

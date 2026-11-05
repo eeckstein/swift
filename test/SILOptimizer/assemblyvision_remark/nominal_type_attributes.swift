@@ -17,6 +17,8 @@ struct Struct {
                           // expected-note @-8 {{of 'global'}}
                           // expected-remark @-4 {{retain of type '}}
                           // expected-note @-10 {{of 'global'}}
+                          // expected-remark @-6 {{release of type '}}
+                          // expected-note @-12 {{of 'global}}
     }
 }
 
@@ -31,11 +33,13 @@ struct Struct2 {
 enum Enum {
     func callPrintMe() {
         callPrint(global) // expected-remark {{begin exclusive access to value of type '}}
-                          // expected-note @-25 {{of 'global'}}
-                          // expected-remark @-2 {{end exclusive access to value of type '}}
                           // expected-note @-27 {{of 'global'}}
-                          // expected-remark @-4 {{retain of type '}}
+                          // expected-remark @-2 {{end exclusive access to value of type '}}
                           // expected-note @-29 {{of 'global'}}
+                          // expected-remark @-4 {{retain of type '}}
+                          // expected-note @-31 {{of 'global'}}
+                          // expected-remark @-6 {{release of type '}}
+                          // expected-note @-33 {{of 'global}}
     }
 }
 
