@@ -47,7 +47,7 @@ public func testLetStruct() {
 // CHECK-LABEL: sil @$s4Main19testGenericVarArrayyyF :
 // CHECK:         retain_value
 // CHECK:         apply
-// CHECK:         release_value
+// CHECK:         strong_release
 // CHECK:       } // end sil function '$s4Main19testGenericVarArrayyyF'
 public func testGenericVarArray() {
   consumeSequence(globalVarArray)

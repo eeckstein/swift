@@ -108,6 +108,7 @@ private func registerSwiftPasses() {
   registerPass(deadAccessScopeElimination, { deadAccessScopeElimination.run($0) })
   registerPass(accessScopeDestroySinking, { accessScopeDestroySinking.run($0) })
   registerPass(trivialEnumCaseDestroyElimination, { trivialEnumCaseDestroyElimination.run($0) })
+  registerPass(lowerAggregateDestroys, { lowerAggregateDestroys.run($0) })
   registerPass(deadObjectElimination, { deadObjectElimination.run($0) })
   registerPass(mandatoryDeadObjectElimination, { mandatoryDeadObjectElimination.run($0) })
   registerPass(deadStoreElimination, { deadStoreElimination.run($0) })
