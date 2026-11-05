@@ -36,3 +36,35 @@ bb0(%0 : @guaranteed $String, %1 : @guaranteed $String):
   return %4 : $String
 }
 
+
+// CHECK-LABEL: sil [ossa] @tuple_extract_of_borrowed_tuple_none_element :
+// CHECK:         [[B:%.*]] = begin_borrow
+// CHECK-NOT:     tuple_extract
+// CHECK:         end_borrow [[B]]
+// CHECK:         return %0
+// CHECK:       } // end sil function 'tuple_extract_of_borrowed_tuple_none_element'
+sil [ossa] @tuple_extract_of_borrowed_tuple_none_element : $@convention(thin) (Int, @owned String) -> Int {
+bb0(%0 : $Int, %1 : @owned $String):
+  %2 = tuple (%0 : $Int, %1 : $String)
+  %3 = begin_borrow %2 : $(Int, String)
+  %4 = tuple_extract %3 : $(Int, String), 0
+  end_borrow %3 : $(Int, String)
+  destroy_value %2 : $(Int, String)
+  return %4 : $Int
+}
+
+// CHECK-LABEL: sil [ossa] @tuple_extract_of_borrowed_tuple_owned_element :
+// CHECK:         [[B:%.*]] = begin_borrow
+// CHECK:         [[E:%.*]] = tuple_extract [[B]], 1
+// CHECK:         copy_value [[E]]
+// CHECK:       } // end sil function 'tuple_extract_of_borrowed_tuple_owned_element'
+sil [ossa] @tuple_extract_of_borrowed_tuple_owned_element : $@convention(thin) (Int, @owned String) -> @owned String {
+bb0(%0 : $Int, %1 : @owned $String):
+  %2 = tuple (%0 : $Int, %1 : $String)
+  %3 = begin_borrow %2 : $(Int, String)
+  %4 = tuple_extract %3 : $(Int, String), 1
+  %5 = copy_value %4 : $String
+  end_borrow %3 : $(Int, String)
+  destroy_value %2 : $(Int, String)
+  return %5 : $String
+}
