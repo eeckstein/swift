@@ -41,3 +41,40 @@ bb0(%0 : @guaranteed $String, %1 : @guaranteed $String):
   return %4 : $String
 }
 
+
+struct IntAndString {
+  var i: Int
+  var s: String
+}
+
+// CHECK-LABEL: sil [ossa] @struct_extract_of_borrowed_struct_none_field :
+// CHECK:         [[B:%.*]] = begin_borrow
+// CHECK-NOT:     struct_extract
+// CHECK:         end_borrow [[B]]
+// CHECK:         return %0
+// CHECK:       } // end sil function 'struct_extract_of_borrowed_struct_none_field'
+sil [ossa] @struct_extract_of_borrowed_struct_none_field : $@convention(thin) (Int, @owned String) -> Int {
+bb0(%0 : $Int, %1 : @owned $String):
+  %2 = struct $IntAndString (%0 : $Int, %1 : $String)
+  %3 = begin_borrow %2 : $IntAndString
+  %4 = struct_extract %3 : $IntAndString, #IntAndString.i
+  end_borrow %3 : $IntAndString
+  destroy_value %2 : $IntAndString
+  return %4 : $Int
+}
+
+// CHECK-LABEL: sil [ossa] @struct_extract_of_borrowed_struct_owned_field :
+// CHECK:         [[B:%.*]] = begin_borrow
+// CHECK:         [[E:%.*]] = struct_extract [[B]], #IntAndString.s
+// CHECK:         copy_value [[E]]
+// CHECK:       } // end sil function 'struct_extract_of_borrowed_struct_owned_field'
+sil [ossa] @struct_extract_of_borrowed_struct_owned_field : $@convention(thin) (Int, @owned String) -> @owned String {
+bb0(%0 : $Int, %1 : @owned $String):
+  %2 = struct $IntAndString (%0 : $Int, %1 : $String)
+  %3 = begin_borrow %2 : $IntAndString
+  %4 = struct_extract %3 : $IntAndString, #IntAndString.s
+  %5 = copy_value %4 : $String
+  end_borrow %3 : $IntAndString
+  destroy_value %2 : $IntAndString
+  return %5 : $String
+}
