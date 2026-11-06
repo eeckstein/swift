@@ -944,7 +944,20 @@ static void addLateLoopOptPassPipeline(SILPassPipelinePlan &P) {
 // - have no reason to run before any other SIL optimizations.
 // - don't require IRGen information.
 static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
-  P.addCodeSinking();
+  P.addLateCopyToBorrowOptimization();
+
+  // Must run before AccessScopeDestroySinking, because it removes some of the destroys
+  // which would be sunk.
+  P.addTrivialEnumCaseDestroyElimination();
+
+  // Sink destroys (including the implicit destroys of `store [assign]`) out of access scopes.
+  // This lets the following AccessEnforcementOpts/WMO remove more access checks.
+  P.addAccessScopeDestroySinking();
+
+  // Runs late, because destructuring aggregates can prevent other optimizations.
+  P.addLowerAggregateDestroys();
+
+//  P.addCodeSinking();
   // Optimize access markers for improved IRGen after all other optimizations.
   P.addOptimizeHopToExecutor();
   P.addAccessEnforcementOpts();
@@ -962,9 +975,6 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
   // Needs to run again at the end of the pipeline (after all de-virtualizations
   // are done) in case an optimization pass de-virtualizes a witness method call.
   P.addEmbeddedWitnessCallSpecialization();
-
-  // Emits remarks on all functions with @_assemblyVision attribute.
-  P.addAssemblyVisionRemarkGenerator();
 
   // In optimized builds, do the inter-procedural analysis in a module pass.
   P.addStackProtection();
@@ -1094,24 +1104,11 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   // (CapturePropagation).
   addLowLevelPassPipeline(P);
 
-  P.startPipeline("non-OSSA");
-
   P.addKillInvalidDebugValues();
 
   addLateLoopOptPassPipeline(P);
 
-  P.addLateCopyToBorrowOptimization();
-
-  // Must run before AccessScopeDestroySinking, because it removes some of the destroys
-  // which would be sunk.
-  P.addTrivialEnumCaseDestroyElimination();
-
-  // Sink destroys (including the implicit destroys of `store [assign]`) out of access scopes.
-  // This lets the following AccessEnforcementOpts/WMO remove more access checks.
-  P.addAccessScopeDestroySinking();
-
-  // Runs late, because destructuring aggregates can prevent other optimizations.
-  P.addLowerAggregateDestroys();
+  addLastChanceOptPassPipeline(P);
 
   // Must run immediately before ownership is lowered: it decides which of the copies which OSSA
   // requires for unowned values actually need to become a retain/release pair.
@@ -1119,7 +1116,13 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
 
   P.addOwnershipModelEliminator();
 
-  addLastChanceOptPassPipeline(P);
+  P.startPipeline("non-OSSA");
+
+  // CodeSinking doesn't support OSSA.
+  P.addCodeSinking();
+
+  // Emits remarks on all functions with @_assemblyVision attribute.
+  P.addAssemblyVisionRemarkGenerator();
 
   // Has only an effect if the -sil-based-debuginfo option is specified.
   addSILDebugInfoGeneratorPipeline(P);
