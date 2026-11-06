@@ -979,7 +979,7 @@ private func canSplitLiveranges(of load: LoadInst,
                                 atExitsOf liverange: InstructionRange,
                                 _ context: FunctionPassContext
 ) -> Bool {
-  var walker = InteriorUseWalker(definingValue: load, ignoreEscape: false, visitInnerUses: true, context) {
+  var walker = InteriorUseWalker(definingValue: load, ignoreEscape: true, visitInnerUses: true, context) {
       (operand: Operand) -> WalkResult in
     if operand.value == load {
       // We can always split the top-level "owned" liverange by inserting `copy_value`s at exit blocks.
@@ -1003,7 +1003,54 @@ private func canSplitLiveranges(of load: LoadInst,
   }
   defer { walker.deinitialize() }
 
-  return walker.visitUses() == .continueWalk
+  guard walker.visitUses() == .continueWalk else {
+    return false
+  }
+  switch walker.pointerStatus {
+  case .nonescaping:
+    return true
+  case .escaping(let operands):
+    return operands.allSatisfy { isNonEscapingClosureConversion($0, within: liverange, context) }
+  case .unknown:
+    return false
+  }
+}
+
+/// Returns true if `operand` is the operand of a `convert_escape_to_noescape` and the resulting
+/// non-escaping closure - including all values which are derived from it - is only used within `liverange`.
+///
+/// `convert_escape_to_noescape` has "pointer escape" operand ownership. But the non-escaping closure can
+/// only be used as long as the original closure is alive, e.g.
+/// ```
+///   %1 = load [copy] %addr                // -> load_borrow
+///   %2 = convert_escape_to_noescape %1
+///   apply %2()
+///   destroy_value %2
+///   destroy_value %1                      // -> end_borrow
+/// ```
+private func isNonEscapingClosureConversion(_ operand: Operand,
+                                            within liverange: InstructionRange,
+                                            _ context: FunctionPassContext
+) -> Bool {
+  guard let conversion = operand.instruction as? ConvertEscapeToNoEscapeInst else {
+    return false
+  }
+  var worklist = ValueWorklist(context)
+  defer { worklist.deinitialize() }
+  worklist.pushIfNotVisited(conversion)
+
+  while let value = worklist.pop() {
+    for use in value.uses.ignoreDebugUses {
+      let user = use.instruction
+      if !liverange.inclusiveRangeContains(user) || user is TermInst {
+        return false
+      }
+      for result in user.results {
+        worklist.pushIfNotVisited(result)
+      }
+    }
+  }
+  return true
 }
 
 private func splitLiverange(of load: LoadInst,
