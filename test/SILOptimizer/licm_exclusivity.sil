@@ -16,6 +16,8 @@ var globalX: X
 
 sil_global hidden @globalX : $X
 
+sil_global hidden @globalObj : $Builtin.NativeObject
+
 var globalY: X
 
 sil_global hidden @globalY : $X
@@ -333,6 +335,45 @@ bb1:
   %m1 = begin_access [modify] [dynamic] %0 : $*X
   store %r2 to %m1 : $*X
   end_access %m1 : $*X
+  cond_br undef, bb3, bb2
+
+bb2:
+  %10 = tuple ()
+  return %10 : $()
+
+bb3:
+  br bb1
+}
+
+// Like hoist_modify_over_static_access, but in OSSA, where the static access contains a `load_borrow`.
+// The `end_borrow` (which alias analysis reports as a write) must not prevent hoisting the "modify"
+// access, because the whole borrow scope is inside the loop and therefore inside the widened access scope.
+//
+// CHECK-LABEL: sil [ossa] @hoist_modify_over_static_access_with_load_borrow : $@convention(thin) () -> () {
+// CHECK:         [[GLOBAL:%.*]] = global_addr @globalObj : $*Builtin.NativeObject
+// CHECK:         [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*Builtin.NativeObject
+// CHECK:         br bb1
+// CHECK:       bb1:
+// CHECK-NEXT:    begin_access [read] [static] [[GLOBAL]] : $*Builtin.NativeObject
+// CHECK:       bb2:
+// CHECK:         end_access [[BEGIN]] : $*Builtin.NativeObject
+// CHECK-LABEL: } // end sil function 'hoist_modify_over_static_access_with_load_borrow'
+sil [ossa] @hoist_modify_over_static_access_with_load_borrow : $@convention(thin) () -> () {
+bb0:
+  %0 = global_addr @globalObj : $*Builtin.NativeObject
+  br bb1
+
+bb1:
+  %r1 = begin_access [read] [static] %0 : $*Builtin.NativeObject
+  %r2 = load_borrow %r1 : $*Builtin.NativeObject
+  fix_lifetime %r2 : $Builtin.NativeObject
+  end_borrow %r2 : $Builtin.NativeObject
+  end_access %r1 : $*Builtin.NativeObject
+  %m1 = begin_access [modify] [dynamic] %0 : $*Builtin.NativeObject
+  %l = load [take] %m1 : $*Builtin.NativeObject
+  %mv = move_value %l : $Builtin.NativeObject
+  store %mv to [init] %m1 : $*Builtin.NativeObject
+  end_access %m1 : $*Builtin.NativeObject
   cond_br undef, bb3, bb2
 
 bb2:
