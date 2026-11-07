@@ -141,6 +141,14 @@ public class Instruction : CustomStringConvertible, Hashable {
     return bridged.maySuspend()
   }
 
+  public final var isAllocatingStack: Bool {
+    return bridged.isAllocatingStack()
+  }
+
+  public final var isDeallocatingStack: Bool {
+    return bridged.isDeallocatingStack()
+  }
+
   public final var mayRelease: Bool {
     return bridged.mayRelease()
   }

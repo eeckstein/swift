@@ -1,0 +1,476 @@
+// RUN: %target-sil-opt -enable-sil-verify-all %s -code-sinking | %FileCheck %s
+
+sil_stage canonical
+
+import Builtin
+import Swift
+import SwiftShims
+
+class X {
+  @_hasStorage var i: Int
+  func ping() -> Int
+}
+
+class Y : X {
+}
+
+struct S {
+  var x: X
+  var i: Int
+}
+
+sil @use_int : $@convention(thin) (Int) -> ()
+sil @use_x : $@convention(thin) (@guaranteed X) -> ()
+sil @use_ptr : $@convention(thin) (Builtin.RawPointer) -> ()
+
+// CHECK-LABEL: sil [ossa] @sink_guaranteed_forwarding :
+// CHECK:       bb0(%0 : @guaranteed $Y):
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    upcast %0
+// CHECK-NEXT:    class_method
+// CHECK-NEXT:    apply
+// CHECK:       } // end sil function 'sink_guaranteed_forwarding'
+sil [ossa] @sink_guaranteed_forwarding : $@convention(thin) (@guaranteed Y) -> () {
+bb0(%0 : @guaranteed $Y):
+  %1 = upcast %0 to $X
+  %2 = class_method %1, #X.ping : (X) -> () -> Int, $@convention(method) (@guaranteed X) -> Int
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = apply %2(%1) : $@convention(method) (@guaranteed X) -> Int
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_into_borrow_scope :
+// CHECK:       bb0(%0 : @owned $X):
+// CHECK-NEXT:    begin_borrow
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    ref_element_addr
+// CHECK-NEXT:    load [trivial]
+// CHECK:       } // end sil function 'sink_into_borrow_scope'
+sil [ossa] @sink_into_borrow_scope : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = begin_borrow %0
+  %2 = ref_element_addr %1, #X.i
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = load [trivial] %2
+  end_borrow %1
+  br bb3
+
+bb2:
+  end_borrow %1
+  br bb3
+
+bb3:
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_guaranteed_struct_extract :
+// CHECK:       bb0(%0 : @guaranteed $S):
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    struct_extract %0, #S.x
+// CHECK:         function_ref @use_x
+// CHECK-NEXT:    apply
+// CHECK:       } // end sil function 'sink_guaranteed_struct_extract'
+sil [ossa] @sink_guaranteed_struct_extract : $@convention(thin) (@guaranteed S) -> () {
+bb0(%0 : @guaranteed $S):
+  %1 = struct_extract %0, #S.x
+  %f = function_ref @use_x : $@convention(thin) (@guaranteed X) -> ()
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = apply %f(%1) : $@convention(thin) (@guaranteed X) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// A trivial result is not bound to the borrow scope.
+// CHECK-LABEL: sil [ossa] @dont_sink_trivial_extract_out_of_borrow_scope :
+// CHECK:         begin_borrow
+// CHECK-NEXT:    struct_extract
+// CHECK-NEXT:    end_borrow
+// CHECK:       } // end sil function 'dont_sink_trivial_extract_out_of_borrow_scope'
+sil [ossa] @dont_sink_trivial_extract_out_of_borrow_scope : $@convention(thin) (@owned S) -> () {
+bb0(%0 : @owned $S):
+  %1 = begin_borrow %0
+  %2 = struct_extract %1, #S.i
+  end_borrow %1
+  destroy_value %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use_int : $@convention(thin) (Int) -> ()
+  %3 = apply %f(%2) : $@convention(thin) (Int) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_pointer_escape :
+// CHECK:         begin_borrow
+// CHECK-NEXT:    ref_to_raw_pointer
+// CHECK-NEXT:    end_borrow
+// CHECK:       } // end sil function 'dont_sink_pointer_escape'
+sil [ossa] @dont_sink_pointer_escape : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = begin_borrow %0
+  %2 = ref_to_raw_pointer %1 to $Builtin.RawPointer
+  end_borrow %1
+  destroy_value %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use_ptr : $@convention(thin) (Builtin.RawPointer) -> ()
+  %3 = apply %f(%2) : $@convention(thin) (Builtin.RawPointer) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_instantaneous_use_within_borrow_scope :
+// CHECK:       bb0(%0 : @owned $X):
+// CHECK-NEXT:    begin_borrow
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    class_method
+// CHECK-NEXT:    apply
+// CHECK:       } // end sil function 'sink_instantaneous_use_within_borrow_scope'
+sil [ossa] @sink_instantaneous_use_within_borrow_scope : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = begin_borrow %0
+  %2 = class_method %1, #X.ping : (X) -> () -> Int, $@convention(method) (@guaranteed X) -> Int
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = apply %2(%1) : $@convention(method) (@guaranteed X) -> Int
+  end_borrow %1
+  br bb3
+
+bb2:
+  end_borrow %1
+  br bb3
+
+bb3:
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_instantaneous_use_before_end_borrow :
+// CHECK:       bb1:
+// CHECK-NEXT:    ref_to_raw_pointer
+// CHECK-NEXT:    end_borrow
+// CHECK:       } // end sil function 'sink_instantaneous_use_before_end_borrow'
+sil [ossa] @sink_instantaneous_use_before_end_borrow : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = begin_borrow %0
+  %2 = ref_to_raw_pointer %1 to $Builtin.RawPointer
+  cond_br undef, bb1, bb2
+
+bb1:
+  end_borrow %1
+  %f = function_ref @use_ptr : $@convention(thin) (Builtin.RawPointer) -> ()
+  %3 = apply %f(%2) : $@convention(thin) (Builtin.RawPointer) -> ()
+  br bb3
+
+bb2:
+  end_borrow %1
+  br bb3
+
+bb3:
+  destroy_value %0
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_address_escape_out_of_borrow_scope :
+// CHECK:         ref_element_addr
+// CHECK-NEXT:    address_to_pointer
+// CHECK-NEXT:    end_borrow
+// CHECK:       } // end sil function 'dont_sink_address_escape_out_of_borrow_scope'
+sil [ossa] @dont_sink_address_escape_out_of_borrow_scope : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = begin_borrow %0
+  %2 = ref_element_addr %1, #X.i
+  %3 = address_to_pointer %2 to $Builtin.RawPointer
+  end_borrow %1
+  destroy_value %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use_ptr : $@convention(thin) (Builtin.RawPointer) -> ()
+  %4 = apply %f(%3) : $@convention(thin) (Builtin.RawPointer) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_address_escape_within_borrow_scope :
+// CHECK:       bb1:
+// CHECK-NEXT:    ref_element_addr
+// CHECK-NEXT:    address_to_pointer
+// CHECK:       } // end sil function 'sink_address_escape_within_borrow_scope'
+sil [ossa] @sink_address_escape_within_borrow_scope : $@convention(thin) (@guaranteed X) -> () {
+bb0(%0 : @guaranteed $X):
+  %1 = ref_element_addr %0, #X.i
+  %2 = address_to_pointer %1 to $Builtin.RawPointer
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use_ptr : $@convention(thin) (Builtin.RawPointer) -> ()
+  %3 = apply %f(%2) : $@convention(thin) (Builtin.RawPointer) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_unchecked_ownership_out_of_borrow_scope :
+// CHECK:         load_borrow
+// CHECK-NEXT:    unchecked_ownership
+// CHECK-NEXT:    end_borrow
+// CHECK:       } // end sil function 'dont_sink_unchecked_ownership_out_of_borrow_scope'
+sil [ossa] @dont_sink_unchecked_ownership_out_of_borrow_scope : $@convention(thin) (@inout S, @owned S) -> () {
+bb0(%0 : $*S, %1 : @owned $S):
+  %2 = load_borrow %0
+  %3 = unchecked_ownership %2, forwarding: @none
+  end_borrow %2
+  store %1 to [assign] %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  %4 = struct_extract %3, #S.i
+  %f = function_ref @use_int : $@convention(thin) (Int) -> ()
+  %5 = apply %f(%4) : $@convention(thin) (Int) -> ()
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_consuming :
+// CHECK:       bb0(%0 : @owned $Y):
+// CHECK-NEXT:    upcast %0
+// CHECK-NEXT:    cond_br
+// CHECK:       } // end sil function 'dont_sink_consuming'
+sil [ossa] @dont_sink_consuming : $@convention(thin) (@owned Y) -> () {
+bb0(%0 : @owned $Y):
+  %1 = upcast %0 to $X
+  cond_br undef, bb1, bb2
+
+bb1:
+  %f = function_ref @use_x : $@convention(thin) (@guaranteed X) -> ()
+  %3 = apply %f(%1) : $@convention(thin) (@guaranteed X) -> ()
+  destroy_value %1
+  br bb3
+
+bb2:
+  destroy_value %1
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_instantaneous_use_of_owned :
+// CHECK:       bb0(%0 : @owned $X):
+// CHECK-NEXT:    class_method %0
+// CHECK-NEXT:    destroy_value %0
+// CHECK:       } // end sil function 'dont_sink_instantaneous_use_of_owned'
+sil [ossa] @dont_sink_instantaneous_use_of_owned : $@convention(thin) (@owned X) -> () {
+bb0(%0 : @owned $X):
+  %1 = class_method %0, #X.ping : (X) -> () -> Int, $@convention(method) (@guaranteed X) -> Int
+  destroy_value %0
+  cond_br undef, bb1, bb2
+
+bb1:
+  %2 = enum $Optional<@convention(method) (@guaranteed X) -> Int>, #Optional.some!enumelt, %1
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_chain :
+// CHECK:       bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    pointer_to_address
+// CHECK-NEXT:    index_addr
+// CHECK-NEXT:    load [trivial]
+// CHECK:       } // end sil function 'sink_chain'
+sil [ossa] @sink_chain : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+  %2 = pointer_to_address %0 to [strict] $*Int
+  %3 = index_addr %2, %1
+  cond_br undef, bb1, bb2
+
+bb1:
+  %4 = load [trivial] %3
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_into_loop :
+// CHECK:       bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+// CHECK-NEXT:    pointer_to_address
+// CHECK-NEXT:    index_addr
+// CHECK-NEXT:    br bb1
+// CHECK:       } // end sil function 'dont_sink_into_loop'
+sil [ossa] @dont_sink_into_loop : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+  %2 = pointer_to_address %0 to [strict] $*Int
+  %3 = index_addr %2, %1
+  br bb1
+
+bb1:
+  %4 = load [trivial] %3
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_within_loop :
+// CHECK:       bb1:
+// CHECK-NEXT:    cond_br undef, bb2, bb3
+// CHECK:       bb2:
+// CHECK-NEXT:    index_addr
+// CHECK-NEXT:    load [trivial]
+// CHECK:       } // end sil function 'sink_within_loop'
+sil [ossa] @sink_within_loop : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+  %2 = pointer_to_address %0 to [strict] $*Int
+  br bb1
+
+bb1:
+  %3 = index_addr %2, %1
+  cond_br undef, bb2, bb3
+
+bb2:
+  %4 = load [trivial] %3
+  br bb1
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_out_of_loop :
+// CHECK:       bb1:
+// CHECK-NEXT:    cond_br undef, bb2, bb3
+// CHECK:       bb3:
+// CHECK-NEXT:    pointer_to_address
+// CHECK-NEXT:    index_addr
+// CHECK-NEXT:    load [trivial]
+// CHECK:       } // end sil function 'sink_out_of_loop'
+sil [ossa] @sink_out_of_loop : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+  %2 = pointer_to_address %0 to [strict] $*Int
+  br bb1
+
+bb1:
+  %3 = index_addr %2, %1
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  %4 = load [trivial] %3
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_into_other_loop :
+// CHECK:       bb1:
+// CHECK-NEXT:    cond_br undef, bb2, bb3
+// CHECK:       bb3:
+// CHECK-NEXT:    pointer_to_address
+// CHECK-NEXT:    index_addr
+// CHECK-NEXT:    br bb4
+// CHECK:       } // end sil function 'dont_sink_into_other_loop'
+sil [ossa] @dont_sink_into_other_loop : $@convention(thin) (Builtin.RawPointer, Builtin.Word) -> () {
+bb0(%0 : $Builtin.RawPointer, %1 : $Builtin.Word):
+  %2 = pointer_to_address %0 to [strict] $*Int
+  br bb1
+
+bb1:
+  %3 = index_addr %2, %1
+  cond_br undef, bb2, bb3
+
+bb2:
+  br bb1
+
+bb3:
+  br bb4
+
+bb4:
+  %4 = load [trivial] %3
+  cond_br undef, bb5, bb6
+
+bb5:
+  br bb4
+
+bb6:
+  %r = tuple ()
+  return %r
+}

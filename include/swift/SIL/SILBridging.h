@@ -809,6 +809,8 @@ struct BridgedInstruction {
   BRIDGED_INLINE bool mayRelease() const;
   BRIDGED_INLINE bool mayHaveSideEffects() const;
   BRIDGED_INLINE bool maySuspend() const;
+  BRIDGED_INLINE bool isAllocatingStack() const;
+  BRIDGED_INLINE bool isDeallocatingStack() const;
   BRIDGED_INLINE bool shouldBeForwarding() const;
   BRIDGED_INLINE bool isIdenticalTo(BridgedInstruction inst) const;
   BRIDGED_INLINE SwiftInt getRawIndexInBlock() const;

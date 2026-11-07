@@ -61,6 +61,8 @@
 
 PASS(AllocBoxToStack, "allocbox-to-stack",
      "stack promotion of box objects")
+PASS(CodeSinking, "code-sinking",
+     "Sinks side-effect free instructions closer to their users")
 PASS(CopySinking, "copy-sinking",
      "Sinks copy instructions over terminator instructions")
 PASS(CopyToBorrowOptimization, "copy-to-borrow-optimization",
@@ -282,8 +284,6 @@ LEGACY_PASS(CapturePromotion, "capture-promotion",
 
 LEGACY_PASS(ClosureLifetimeFixup, "closure-lifetime-fixup",
      "Closure Lifetime Fixup")
-LEGACY_PASS(CodeSinking, "code-sinking",
-     "Code Sinking")
 LEGACY_PASS(ComputeDominanceInfo, "compute-dominance-info",
      "Compute Dominance Information for Testing")
 LEGACY_PASS(ComputeLoopInfo, "compute-loop-info",
