@@ -22,6 +22,5 @@ target_sources(swiftSILOptimizer PRIVATE
   SILSROA.cpp
   DestroyAddrHoisting.cpp
   SimplifyCFG.cpp
-  Sink.cpp
   StringOptimization.cpp)
 

@@ -965,7 +965,6 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
   // Runs late, because destructuring aggregates can prevent other optimizations.
   P.addLowerAggregateDestroys();
 
-//  P.addCodeSinking();
   // Optimize access markers for improved IRGen after all other optimizations.
   P.addOptimizeHopToExecutor();
   P.addAccessEnforcementOpts();
@@ -986,6 +985,9 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
 
   // In optimized builds, do the inter-procedural analysis in a module pass.
   P.addStackProtection();
+
+  // Sink instructions after all other optimizations, e.g. after LICM.
+  P.addCodeSinking();
 }
 
 static void addSILDebugInfoGeneratorPipeline(SILPassPipelinePlan &P) {
@@ -1132,9 +1134,6 @@ SILPassPipelinePlan::getPerformancePassPipeline(const SILOptions &Options) {
   P.addOwnershipModelEliminator();
 
   P.startPipeline("non-OSSA");
-
-  // CodeSinking doesn't support OSSA.
-  P.addCodeSinking();
 
   // Emits remarks on all functions with @_assemblyVision attribute.
   P.addAssemblyVisionRemarkGenerator();
