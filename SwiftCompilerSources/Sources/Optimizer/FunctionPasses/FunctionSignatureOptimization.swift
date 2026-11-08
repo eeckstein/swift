@@ -357,22 +357,21 @@ private extension ApplyInst {
   /// The destroys of the result are replaced by the end of a borrow scope.
   func replace(withGuaranteedResultApplyOf specializedFunction: Function, arguments: [Value],
                _ context: FunctionPassContext) {
-    let builder = Builder(before: self, context)
-    let calleeRef = builder.createFunctionRef(specializedFunction)
-    let newApply = builder.createApply(function: calleeRef, substitutionMap,
-                                       arguments: arguments,
-                                       isNonThrowing: isNonThrowing,
-                                       isNonAsync: isNonAsync)
-    let beginBorrow = builder.createBeginBorrow(of: newApply)
-    for use in uses {
-      if let destroy = use.instruction as? DestroyValueInst {
-        Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
-        context.erase(instruction: destroy)
-      } else if use.instruction != beginBorrow {
-        use.set(to: beginBorrow, context)
-      }
+    let beginBorrow = replace(withBorrowedResultApplyOf: specializedFunction, arguments: arguments, context)
+    for destroy in beginBorrow.uses.users(ofType: DestroyValueInst.self) {
+      Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
+      context.erase(instruction: destroy)
     }
-    replace(with: newApply, context)
+  }
+
+  /// Replaces this apply with an apply of `specializedFunction`, which returns the result as `@guaranteed`.
+  /// All uses of the original result are replaced by a borrow scope of the new result, which is returned.
+  func replace(withBorrowedResultApplyOf specializedFunction: Function, arguments: [Value],
+               _ context: FunctionPassContext) -> BeginBorrowInst {
+    let newApply = replace(withCallTo: specializedFunction, arguments: arguments, context) as! ApplyInst
+    let beginBorrow = Builder(after: newApply, context).createBeginBorrow(of: newApply)
+    newApply.uses.ignore(user: beginBorrow).replaceAll(with: beginBorrow, context)
+    return beginBorrow
   }
 }
 
@@ -710,24 +709,6 @@ private func mayModifyMemory(_ address: Value, after startInst: Instruction,
   return false
 }
 
-private extension LoadInst {
-  /// The index of the function argument whose memory this load reads, or nil if the loaded memory
-  /// is not owned by the caller.
-  var borrowSourceArgumentIndex: Int? {
-    switch address.enclosingAccessScope {
-    case .access, .dependence:
-      // A `load_borrow` must not be used after the end of its enclosing access scope, but the
-      // returned borrow escapes to the caller.
-      return nil
-    case .base(let accessBase):
-      if case .argument(let argument) = accessBase {
-        return argument.index
-      }
-      return nil
-    }
-  }
-}
-
 private extension FullApplySite {
   func canBenefit(from parameterSpecializations: [ArgumentSpecialization], _ context: FunctionPassContext) -> Bool {
     for spec in parameterSpecializations {
@@ -882,14 +863,8 @@ private func specialize(function: Function,
   moduleContext.moveFunctionBody(from: function, to: specializedFunction)
 
   moduleContext.transform(function: function) { context in
-
-    function.set(thunkKind: .signatureOptimizedThunk, context)
-
-    let newEntryBlock = function.appendNewBlock(context)
-    var newApplyArgs = [Value]()
-    for origArg in specializedFunction.arguments {
-      newApplyArgs.append(newEntryBlock.addFunctionArgument(type: origArg.type, context))
-    }
+    var newApplyArgs = createThunkEntryBlock(in: function, withArgumentsOf: specializedFunction, context)
+    let newEntryBlock = function.entryBlock
     var toCleanup = [Value]()
     var offset = 0
     for spec in argumentSpecializations {
@@ -918,51 +893,15 @@ private func specialize(function: Function,
       }
     }
 
-    let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
-    let fri = builder.createFunctionRef(specializedFunction)
+    // TODO: handle return_borrow
+    let newApplySite = createForwardingApply(
+      to: specializedFunction, in: function,
+      arguments: newApplyArgs,
+      substitutionMap: isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
+      template: callerSiteApply,
+      location: function.location,
+      context)
 
-    let newApplySite: Instruction
-
-    switch callerSiteApply {
-    case let applyInst as ApplyInst:
-      let newApply = builder.createApply(function: fri,
-                                         isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
-                                         arguments: newApplyArgs,
-                                         isNonThrowing: applyInst.isNonThrowing,
-                                         isNonAsync: applyInst.isNonAsync)
-
-      // TODO: handle return_borrow
-      builder.createReturn(of: newApply)
-      newApplySite = newApply
-
-    case let tryApply as TryApplyInst:
-      let normalBlock = function.appendNewBlock(context)
-      let errorBlock = function.appendNewBlock(context)
-      newApplySite = builder.createTryApply(function: fri,
-                                             isGeneric ? function.forwardingSubstitutionMap : SubstitutionMap(),
-                                             arguments: newApplyArgs,
-                                             normalBlock: normalBlock, errorBlock: errorBlock,
-                                             isNonAsync: tryApply.isNonAsync)
-
-      let retTy = function.mapTypeIntoEnvironment(specializedFunction.resultType)
-      let returnVal = normalBlock.addArgument(type: retTy,
-                                              ownership: tryApply.normalBlock.arguments[0].ownership,
-                                              context)
-      Builder(atEndOf: normalBlock, location: newApplySite.location, context).createReturn(of: returnVal)
-
-      if tryApply.errorBlock.arguments.isEmpty {
-        Builder(atEndOf: errorBlock, location: newApplySite.location, context).createThrowAddr()
-      } else {
-        let errorInterfaceTy = function.convention.errorResult!.getReturnValueType(of: function)
-        let errorTy = function.mapTypeIntoEnvironment(errorInterfaceTy.rawType)
-        let errorVal = errorBlock.addArgument(type: errorTy.loweredType(in: function),
-                                              ownership: tryApply.errorBlock.arguments[0].ownership,
-                                              context)
-        Builder(atEndOf: errorBlock, location: newApplySite.location, context).createThrow(of: errorVal)
-      }
-    default:
-      fatalError("unsupported apply")
-    }
     Builder.insert(after: newApplySite, context) { builder in
       for v in toCleanup {
         if v is BeginBorrowInst {
@@ -1039,66 +978,31 @@ private func specialize(function: Function,
 
 /// Creates a specialized version of `function` which returns its single direct result as `@guaranteed`.
 /// The original `function` becomes a thunk which calls the specialized function and copies the result.
+///
+/// If `forwardedArgument` is not nil, the specialized function also takes this `@owned` argument as
+/// `@guaranteed`. Its result is forwarded from this argument.
+/// Otherwise the result is borrowed from the arguments at `borrowSources`.
 private func specializeWithGuaranteedResult(function: Function,
-                                            borrowedFrom argumentIndices: [Int],
+                                            borrowedFrom borrowSources: [Int] = [],
+                                            forwardedFrom forwardedArgument: Int? = nil,
                                             callerSiteApply: ApplyInst,
                                             _ moduleContext: ModulePassContext) -> Function
 {
-  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: [],
+  var argumentSpecializations = [ArgumentSpecialization]()
+  var specializedParams = Array(function.convention.parameters)
+  if let forwardedArgument {
+    argumentSpecializations.append(ArgumentSpecialization(argumentIndex: forwardedArgument, kind: .ownedToGuaranteed))
+    let paramIdx = function.argumentConventions.parameterIndex(ofArgumentIndex: forwardedArgument)!
+    specializedParams[paramIdx] = specializedParams[paramIdx].with(convention: .directGuaranteed)
+  }
+
+  let specializedFuncName = moduleContext.mangle(withSignatureSpecializedArguments: argumentSpecializations,
                                                  resultOwnedToGuaranteed: true,
                                                  from: function)
 
   if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
     return existingFunction
   }
-
-  let specializedResults = function.convention.formalResults.map {
-    ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
-               hasLoweredAddresses: $0.hasLoweredAddresses)
-  }
-
-  let specializedFunction = moduleContext.createSpecializedFunctionDeclaration(
-      from: function, withName: specializedFuncName,
-      withParams: Array(function.convention.parameters),
-      withResults: specializedResults)
-
-  moduleContext.moveFunctionBody(from: function, to: specializedFunction)
-
-  moduleContext.transform(function: function) { context in
-    createGuaranteedResultThunk(in: function, calling: specializedFunction, callerSiteApply: callerSiteApply,
-                                context)
-  }
-
-  moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
-      (specializedFunction, specializedContext) in
-    convertResultToGuaranteed(in: specializedFunction, borrowedFrom: argumentIndices, specializedContext)
-  }
-  moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
-  return specializedFunction
-}
-
-/// Creates a specialized version of `function` which takes the `@owned` argument at `argumentIndex`
-/// as `@guaranteed` and returns its single direct result, which is forwarded from this argument, as
-/// `@guaranteed`. The original `function` becomes a thunk which calls the specialized function and
-/// copies the result.
-private func specializeWithGuaranteedResult(function: Function,
-                                            forwardedFrom argumentIndex: Int,
-                                            callerSiteApply: ApplyInst,
-                                            _ moduleContext: ModulePassContext) -> Function
-{
-  let specializedFuncName = moduleContext.mangle(
-      withSignatureSpecializedArguments: [ArgumentSpecialization(argumentIndex: argumentIndex,
-                                                                 kind: .ownedToGuaranteed)],
-      resultOwnedToGuaranteed: true,
-      from: function)
-
-  if let existingFunction = moduleContext.lookupFunction(name: specializedFuncName) {
-    return existingFunction
-  }
-
-  var specializedParams = Array(function.convention.parameters)
-  let paramIdx = function.argumentConventions.parameterIndex(ofArgumentIndex: argumentIndex)!
-  specializedParams[paramIdx] = specializedParams[paramIdx].with(convention: .directGuaranteed)
 
   let specializedResults = function.convention.formalResults.map {
     ResultInfo(type: $0.type, convention: .guaranteed, options: $0.options,
@@ -1114,19 +1018,23 @@ private func specializeWithGuaranteedResult(function: Function,
 
   moduleContext.transform(function: function) { context in
     createGuaranteedResultThunk(in: function, calling: specializedFunction, callerSiteApply: callerSiteApply,
-                                borrowing: argumentIndex, context)
+                                borrowing: forwardedArgument, context)
   }
 
   moduleContext.buildSpecializedFunction(specializedFunction: specializedFunction) {
       (specializedFunction, specializedContext) in
-    let returnInst = specializedFunction.returnInstruction as! ReturnInst
-    convertForwardingChainToGuaranteed(from: specializedFunction.arguments[argumentIndex],
-                                       to: returnInst.returnedValue, specializedContext)
+    if let forwardedArgument {
+      let returnInst = specializedFunction.returnInstruction as! ReturnInst
+      convertForwardingChainToGuaranteed(from: specializedFunction.arguments[forwardedArgument],
+                                         to: returnInst.returnedValue, specializedContext)
 
-    // The borrow scope of the guaranteed argument doesn't end in the function.
-    let builder = Builder(before: returnInst, specializedContext)
-    builder.createReturnBorrow(of: returnInst.returnedValue, fromScopes: [])
-    specializedContext.erase(instruction: returnInst)
+      // The borrow scope of the guaranteed argument doesn't end in the function.
+      let builder = Builder(before: returnInst, specializedContext)
+      builder.createReturnBorrow(of: returnInst.returnedValue, fromScopes: [])
+      specializedContext.erase(instruction: returnInst)
+    } else {
+      convertResultToGuaranteed(in: specializedFunction, borrowedFrom: borrowSources, specializedContext)
+    }
   }
   moduleContext.notifyNewFunction(function: specializedFunction, derivedFrom: function)
   return specializedFunction
@@ -1140,13 +1048,8 @@ private func createGuaranteedResultThunk(in function: Function, calling speciali
                                          callerSiteApply: ApplyInst,
                                          borrowing borrowedArgument: Int? = nil,
                                          _ context: FunctionPassContext) {
-  function.set(thunkKind: .signatureOptimizedThunk, context)
-
-  let newEntryBlock = function.appendNewBlock(context)
-  var newApplyArgs: [Value] = specializedFunction.arguments.map {
-    newEntryBlock.addFunctionArgument(type: $0.type, context)
-  }
-  let builder = Builder(atEndOf: newEntryBlock, location: function.location, context)
+  var newApplyArgs = createThunkEntryBlock(in: function, withArgumentsOf: specializedFunction, context)
+  let builder = Builder(atEndOf: function.entryBlock, location: function.location, context)
 
   // The returned value is borrowed from the argument. Therefore the owned argument must be
   // borrowed for the lifetime of the returned value.
@@ -1197,14 +1100,7 @@ private func convertResultToGuaranteed(in specializedFunction: Function,
       copy.replace(with: beginBorrow, context)
 
     case let apply as ApplyInst:
-      let builder = Builder(before: apply, context)
-      let calleeRef = builder.createFunctionRef(specializedFunction)
-      let newApply = builder.createApply(function: calleeRef, apply.substitutionMap,
-                                         arguments: Array(apply.arguments),
-                                         isNonThrowing: apply.isNonThrowing,
-                                         isNonAsync: apply.isNonAsync)
-      let beginBorrow = builder.createBeginBorrow(of: newApply)
-      apply.replace(with: beginBorrow, context)
+      _ = apply.replace(withBorrowedResultApplyOf: specializedFunction, arguments: Array(apply.arguments), context)
 
     case let argument as Argument:
       let phi = Phi(argument)!
@@ -1243,18 +1139,6 @@ private func convertForwardingChainToGuaranteed(from argument: FunctionArgument,
     value = fwdInst.forwardedOperands.first(where: { $0.value.ownership != .none })!.value
   }
   argument.set(ownership: .guaranteed, context)
-}
-
-private extension Value {
-  /// True if this value introduces a borrow scope which ends within this function.
-  var isLocalBorrowScope: Bool {
-    switch self {
-    case is BeginBorrowInst, is LoadBorrowInst:
-      return true
-    default:
-      return false
-    }
-  }
 }
 
 private extension ParameterInfo {

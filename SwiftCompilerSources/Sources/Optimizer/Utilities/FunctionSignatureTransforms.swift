@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AST
 import SIL
 
 extension ArgumentConventions {
@@ -112,7 +113,8 @@ func specializeByRemovingMetatypeArguments(apply: FullApplySite, _ context: Modu
   }
 
   context.transform(function: apply.parentFunction) { funcContext in
-    replace(apply: apply, to: specializedCallee, funcContext)
+    let args = Array(apply.arguments.filter { !$0.type.isRemovableMetatype(in: apply.parentFunction) })
+    apply.replace(withCallTo: specializedCallee, arguments: args, funcContext)
   }
 }
 
@@ -139,8 +141,7 @@ private func createSpecializedFunction(
   let thunk = originalFunction
 
   context.transform(function: thunk) { funcContext in
-    thunk.set(thunkKind: .signatureOptimizedThunk, funcContext)
-    createEntryBlock(in: thunk, usingArguments: specializedFunction.arguments, funcContext)
+    _ = createThunkEntryBlock(in: thunk, withArgumentsOf: specializedFunction, funcContext)
   }
 
   context.transform(function: specializedFunction) { funcContext in
@@ -148,10 +149,12 @@ private func createSpecializedFunction(
   }
 
   context.transform(function: thunk) { funcContext in
-    createForwardingApply(to: specializedFunction,
-                          in: thunk,
-                          originalApply: apply,
-                          debugLocation: thunkLoc,
+    createForwardingApply(to: specializedFunction, in: thunk,
+                          arguments: thunk.arguments.filter { !$0.type.isRemovableMetatype(in: thunk) },
+                          substitutionMap: SubstitutionMap(),
+                          template: apply,
+                          copySpecializationInfo: true,
+                          location: thunkLoc,
                           funcContext)
   }
 
@@ -173,17 +176,6 @@ private func getAliveParameters(of originalFunction: Function) -> ([ParameterInf
   return (aliveParams, hasSelfParameter)
 }
 
-private func createEntryBlock(
-  in function: Function,
-  usingArguments: some Sequence<FunctionArgument>,
-  _ context: FunctionPassContext
-) {
-  let entryBlock = function.appendNewBlock(context)
-  for arg in usingArguments {
-    _ = entryBlock.addFunctionArgument(type: arg.type, context)
-  }
-}
-
 private func removeMetatypArguments(in specializedFunction: Function, _ context: FunctionPassContext) {
   let entryBlock = specializedFunction.entryBlock
   var funcArgIdx = 0
@@ -202,75 +194,75 @@ private func removeMetatypArguments(in specializedFunction: Function, _ context:
   }
 }
 
-private func createForwardingApply(
-  to specializedFunction: Function,
-  in thunk: Function,
-  originalApply: FullApplySite,
-  debugLocation: Location,
-  _ context: FunctionPassContext
-) {
-  let applyArgs = Array(thunk.arguments.filter { !$0.type.isRemovableMetatype(in: thunk) })
-
-  let builder = Builder(atEndOf: thunk.entryBlock, location: debugLocation, context)
-  let callee = builder.createFunctionRef(specializedFunction)
-
-  // Use the original apply as template to create the forwarding apply
-  switch originalApply {
-  case let ai as ApplyInst:
-    let newApply = builder.createApply(function: callee,
-                                       ai.substitutionMap,
-                                       arguments: applyArgs,
-                                       isNonThrowing: ai.isNonThrowing,
-                                       isNonAsync: ai.isNonAsync,
-                                       specializationInfo: ai.specializationInfo)
-    builder.createReturn(of: newApply)
-  case let tai as TryApplyInst:
-    let normalBlock = thunk.appendNewBlock(context)
-    let errorBlock = thunk.appendNewBlock(context)
-    builder.createTryApply(function: callee,
-                           tai.substitutionMap,
-                           arguments: applyArgs,
-                           normalBlock: normalBlock,
-                           errorBlock: errorBlock,
-                           specializationInfo: tai.specializationInfo)
-    let originalArg = tai.normalBlock.arguments[0]
-    let returnVal = normalBlock.addArgument(type: originalArg.type, ownership: originalArg.ownership, context)
-    let returnBuilder = Builder(atEndOf: normalBlock, location: debugLocation, context)
-    returnBuilder.createReturn(of: returnVal)
-
-    let errorArg = tai.errorBlock.arguments[0]
-    let errorVal = errorBlock.addArgument(type: errorArg.type, ownership: errorArg.ownership, context)
-    let errorBuilder = Builder(atEndOf: errorBlock, location: debugLocation, context)
-    errorBuilder.createThrow(of: errorVal)
-  default:
-    fatalError("unknown full apply instruction \(originalApply)")
-  }
+/// Creates the entry block of `thunk` with the same arguments as `specializedFunction` and returns
+/// the new arguments.
+func createThunkEntryBlock(in thunk: Function, withArgumentsOf specializedFunction: Function,
+                           _ context: FunctionPassContext) -> [Value] {
+  thunk.set(thunkKind: .signatureOptimizedThunk, context)
+  let entryBlock = thunk.appendNewBlock(context)
+  return specializedFunction.arguments.map { entryBlock.addFunctionArgument(type: $0.type, context) }
 }
 
-private func replace(apply: FullApplySite, to specializedCallee: Function, _ context: FunctionPassContext) {
-  let builder = Builder(before: apply, context)
-  let callee = builder.createFunctionRef(specializedCallee)
-  let args = Array(apply.arguments.filter { !$0.type.isRemovableMetatype(in: apply.parentFunction) })
-  switch apply {
-  case let ai as ApplyInst:
-    let newApply = builder.createApply(function: callee,
-                                       ai.substitutionMap,
-                                       arguments: args,
-                                       isNonThrowing: ai.isNonThrowing,
-                                       isNonAsync: ai.isNonAsync,
-                                       specializationInfo: ai.specializationInfo)
-    ai.uses.replaceAll(with: newApply, context)
-  case let tai as TryApplyInst:
-    builder.createTryApply(function: callee,
-                           tai.substitutionMap,
-                           arguments: args,
-                           normalBlock: tai.normalBlock,
-                           errorBlock: tai.errorBlock,
-                           specializationInfo: tai.specializationInfo)
+/// Creates an apply of `specializedFunction` at the end of the entry block of `thunk`, which returns
+/// the result of the specialized function and - in case of a `try_apply` - throws its error.
+/// The kind of the apply and its flags (and, if `copySpecializationInfo` is true, its specialization
+/// info) are taken from `template`.
+@discardableResult
+func createForwardingApply(
+  to specializedFunction: Function,
+  in thunk: Function,
+  arguments: [Value],
+  substitutionMap: SubstitutionMap,
+  template: FullApplySite,
+  copySpecializationInfo: Bool = false,
+  location: Location,
+  _ context: FunctionPassContext
+) -> FullApplySite {
+  let builder = Builder(atEndOf: thunk.entryBlock, location: location, context)
+  let calleeRef = builder.createFunctionRef(specializedFunction)
+
+  switch template {
+  case let applyInst as ApplyInst:
+    let newApply = builder.createApply(function: calleeRef, substitutionMap,
+                                       arguments: arguments,
+                                       isNonThrowing: applyInst.isNonThrowing,
+                                       isNonAsync: applyInst.isNonAsync,
+                                       specializationInfo: copySpecializationInfo ? applyInst.specializationInfo
+                                                                                  : ApplyInst.SpecializationInfo())
+    builder.createReturn(of: newApply)
+    return newApply
+
+  case let tryApply as TryApplyInst:
+    let normalBlock = thunk.appendNewBlock(context)
+    let errorBlock = thunk.appendNewBlock(context)
+    let newTryApply = builder.createTryApply(function: calleeRef, substitutionMap,
+                                             arguments: arguments,
+                                             normalBlock: normalBlock, errorBlock: errorBlock,
+                                             isNonAsync: tryApply.isNonAsync,
+                                             specializationInfo: copySpecializationInfo ? tryApply.specializationInfo
+                                                                                        : ApplyInst.SpecializationInfo())
+
+    let retTy = thunk.mapTypeIntoEnvironment(specializedFunction.resultType)
+    let returnVal = normalBlock.addArgument(type: retTy,
+                                            ownership: tryApply.normalBlock.arguments[0].ownership,
+                                            context)
+    Builder(atEndOf: normalBlock, location: location, context).createReturn(of: returnVal)
+
+    if tryApply.errorBlock.arguments.isEmpty {
+      Builder(atEndOf: errorBlock, location: location, context).createThrowAddr()
+    } else {
+      let errorInterfaceTy = thunk.convention.errorResult!.getReturnValueType(of: thunk)
+      let errorTy = thunk.mapTypeIntoEnvironment(errorInterfaceTy.rawType)
+      let errorVal = errorBlock.addArgument(type: errorTy.loweredType(in: thunk),
+                                            ownership: tryApply.errorBlock.arguments[0].ownership,
+                                            context)
+      Builder(atEndOf: errorBlock, location: location, context).createThrow(of: errorVal)
+    }
+    return newTryApply
+
   default:
-    fatalError("unknown full apply instruction \(apply)")
+    fatalError("unsupported apply \(template)")
   }
-  context.erase(instruction: apply)
 }
 
 private extension Type {
