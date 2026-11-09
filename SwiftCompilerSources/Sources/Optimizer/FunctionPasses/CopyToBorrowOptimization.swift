@@ -48,6 +48,26 @@ import SIL
 ///     to stack locations which can be converted to `store_borrow`.
 /// * The (forward-extended) lifetime of the load or copy ends with `destroy_value`(s).
 ///
+/// For a `copy_value` of a guaranteed value, the (forward-extended) copy may also have consuming uses
+/// which don't support guaranteed ownership. Then a new copy is inserted at each such use. This avoids
+/// the copy on paths where it is only destroyed:
+/// ```
+///   %1 = copy_value %0   // %0 = a guaranteed value
+///   cond_br %c, bb1, bb2
+///   bb1:
+///     destroy_value %1
+///   bb2:
+///     apply %consume(%1)
+/// ```
+/// ->
+/// ```
+///   cond_br %c, bb1, bb2
+///   bb1:
+///   bb2:
+///     %2 = copy_value %0
+///     apply %consume(%2)
+/// ```
+///
 /// As an additional related optimization, "dead" `copy_value` instructions are removed:
 /// ```
 ///   %2 = copy_value %1
@@ -567,7 +587,10 @@ private func optimize(load: LoadInst, _ context: FunctionPassContext) -> Bool {
 private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bool {
   var collectedUses = OwnedToGuaranteedUses(context)
   defer { collectedUses.deinitialize() }
-  if !collectedUses.collectUses(of: copy) {
+  if !collectedUses.collectUses(of: copy, allowConsumingUses: copy.fromValue.ownership == .guaranteed) {
+    return false
+  }
+  if !collectedUses.consumingUses.isEmpty && !collectedUses.isBeneficialToCopyAtConsumingUses {
     return false
   }
 
@@ -576,6 +599,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   // or borrow scope must cover them, too. Those are included in `ends`.
   var liverange = InstructionRange(begin: copy, ends: collectedUses.ends, context)
   defer { liverange.deinitialize() }
+  liverange.insert(contentsOf: collectedUses.consumingUses.lazy.map { $0.instruction })
 
   switch copy.fromValue.ownership {
   case .owned:
@@ -596,6 +620,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
   }
 
   remove(copy: copy, collectedUses: collectedUses, liverange: liverange)
+  collectedUses.insertCopiesAtConsumingUses()
   return true
 }
 
@@ -703,13 +728,19 @@ struct OwnedToGuaranteedUses {
   // E.g. the none-case of a switch_enum of an Optional.
   private(set) var ends: IterableInstructionSet
 
+  // Lifetime ending uses which cannot be converted to guaranteed ownership, e.g. an owned argument
+  // of an apply. Only collected if `collectUses` is called with `allowConsumingUses`.
+  private(set) var consumingUses = [Operand]()
+
   init(_ context: FunctionPassContext) {
     self.context = context
     self.forwardingUses = Stack(context)
     self.ends = IterableInstructionSet(context)
   }
 
-  mutating func collectUses(of initialValue: SingleValueInstruction) -> Bool {
+  /// If `allowConsumingUses` is true, lifetime ending uses which cannot be converted to guaranteed
+  /// ownership are collected in `consumingUses` instead of failing.
+  mutating func collectUses(of initialValue: SingleValueInstruction, allowConsumingUses: Bool = false) -> Bool {
     var worklist = ValueWorklist(context)
     defer { worklist.deinitialize() }
 
@@ -729,14 +760,14 @@ struct OwnedToGuaranteedUses {
           findNonDestroyingLiverangeExits(of: forwardingInst)
           worklist.pushIfNotVisited(contentsOf: forwardingInst.forwardedResults.lazy.filter { $0.ownership == .owned})
 
-        case let store as StoreInst:
+        case let store as StoreInst where canConvertToStoreBorrow(store: store, ends: &ends, context):
           assert(use == store.sourceOperand)
-          guard canConvertToStoreBorrow(store: store, ends: &ends, context) else {
-            return false
-          }
           forwardingUses.append(use)
         default:
-          return false
+          if !allowConsumingUses {
+            return false
+          }
+          consumingUses.append(use)
         }
       }
     }
@@ -777,6 +808,37 @@ struct OwnedToGuaranteedUses {
       default:
         forwardingUse.changeOwnership(from: .owned, to: .guaranteed, context)
       }
+    }
+  }
+
+  /// Removing a copy - which has consuming uses - is beneficial if copies are only needed at the consuming
+  /// uses, but not on (non dead-end) paths where the copy is destroyed.
+  /// Note that a consuming use is executed at most once per execution of the original copy.
+  /// Therefore this never increases the number of executed copies.
+  var isBeneficialToCopyAtConsumingUses: Bool {
+    let deadEndBlocks = context.deadEndBlocks
+    var numDestroys = 0
+    for use in forwardingUses where use.instruction is DestroyValueInst {
+      if !deadEndBlocks.isDeadEnd(use.instruction.parentBlock) {
+        numDestroys += 1
+      }
+    }
+    // Don't increase code size: each new copy should replace at least one destroy.
+    return numDestroys >= consumingUses.count
+  }
+
+  /// Copies the (now guaranteed) operand values of the `consumingUses`.
+  func insertCopiesAtConsumingUses() {
+    for use in consumingUses {
+      // The consuming instructions are ends of the liverange. Therefore, extending a borrow scope
+      // to overlap the liverange inserts `end_borrow`s right before the consuming instructions.
+      // The copies must be inserted before those `end_borrow`s to be inside the borrow scopes.
+      var insertionPoint = use.instruction
+      while let prev = insertionPoint.previous, prev is EndBorrowInst {
+        insertionPoint = prev
+      }
+      let copy = Builder(before: insertionPoint, context).createCopyValue(operand: use.value)
+      use.set(to: copy, context)
     }
   }
 

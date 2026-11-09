@@ -157,11 +157,11 @@ func lookThroughEnum(x: Klass?) -> Klass {
 }
 
 func castAsQuestion(x: Klass) -> SubKlass? {
-    x as? SubKlass // expected-remark {{retain of type 'SubKlass'}}
+    x as? SubKlass // expected-remark {{retain of type 'Optional<SubKlass>'}}
 }
 
 func castAsQuestionDiamond(x: Klass) -> SubKlass? {
-    guard let y = x as? SubKlass else { // expected-remark {{retain of type 'SubKlass'}}
+    guard let y = x as? SubKlass else { // expected-remark {{retain of type 'Optional<SubKlass>'}}
                                         // expected-note @-1 {{of 'y'}}
         return nil
     }
@@ -171,7 +171,7 @@ func castAsQuestionDiamond(x: Klass) -> SubKlass? {
 }
 
 func castAsQuestionDiamondGEP(x: KlassPair) -> SubKlass? {
-    guard let y = x.lhs as? SubKlass else { // expected-remark {{retain of type 'SubKlass'}}
+    guard let y = x.lhs as? SubKlass else { // expected-remark {{retain of type 'Optional<SubKlass>'}}
                                             // expected-note @-1 {{of 'y'}}
         return nil
     }
