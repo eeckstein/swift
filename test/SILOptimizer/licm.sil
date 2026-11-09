@@ -1916,8 +1916,8 @@ class ClassWithObjects {
 // CHECK-LABEL: sil [ossa] @hoist_access_with_load_borrow_ending_after_end_access :
 // CHECK:       bb0(%0 : @guaranteed $ClassWithObjects):
 // CHECK:         [[A1:%.*]] = begin_access [read] [dynamic] [no_nested_conflict] %1
-// CHECK:         [[A2:%.*]] = begin_access [read] [dynamic] [no_nested_conflict] %2
 // CHECK:         [[B1:%.*]] = load_borrow [[A1]]
+// CHECK:         [[A2:%.*]] = begin_access [read] [dynamic] [no_nested_conflict] %2
 // CHECK:         [[B2:%.*]] = load_borrow [[A2]]
 // CHECK:       bb1:
 // CHECK-NEXT:    fix_lifetime [[B1]]
@@ -1925,8 +1925,8 @@ class ClassWithObjects {
 // CHECK-NEXT:    cond_br
 // CHECK:       bb3:
 // CHECK-NEXT:    end_borrow [[B2]]
-// CHECK-NEXT:    end_borrow [[B1]]
 // CHECK-NEXT:    end_access [[A2]]
+// CHECK-NEXT:    end_borrow [[B1]]
 // CHECK-NEXT:    end_access [[A1]]
 // CHECK:       } // end sil function 'hoist_access_with_load_borrow_ending_after_end_access'
 sil [ossa] @hoist_access_with_load_borrow_ending_after_end_access : $@convention(thin) (@guaranteed ClassWithObjects) -> () {

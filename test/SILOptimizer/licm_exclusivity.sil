@@ -242,24 +242,27 @@ bb3:
   br bb1
 }
 
-// public func dont_hoist_access_static_and_dynamic() {
-// Tests bailing out when there's a static and non-distinct conflicting dynamic access
+// public func hoist_dynamic_modify_over_static_read() {
+// Tests hoisting a dynamic access over a non-distinct conflicting static access.
+// The static access does no runtime book-keeping and therefore cannot cause a
+// spurious exclusivity violation when nested in the widened dynamic scope.
 //
-// CHECK-LABEL: sil @dont_hoist_access_static_and_dynamic : $@convention(thin) () -> () {
+// CHECK-LABEL: sil @hoist_dynamic_modify_over_static_read : $@convention(thin) () -> () {
 // CHECK: [[GLOBAL:%.*]] = global_addr @globalX : $*X
 // CHECK: [[GLOBALX:%.*]] = global_addr @globalX : $*X
-// CHECK-NEXT: br bb1
-// CHECK: [[BEGIN:%.*]] = begin_access [read] [static] [[GLOBAL]] : $*X
-// CHECK-NEXT: load
-// CHECK: end_access [[BEGIN]]
 // CHECK: [[BEGINX:%.*]] = begin_access [modify] [dynamic] [[GLOBALX]] : $*X
 // CHECK-NEXT: load
-// CHECK: end_access [[BEGINX]]
-// CHECK: cond_br
-// CHECK: bb2
+// CHECK: [[BEGIN:%.*]] = begin_access [read] [static] [[GLOBAL]] : $*X
+// CHECK-NEXT: load
+// CHECK-NEXT: br bb1
+// CHECK: bb1:
+// CHECK-NEXT: cond_br
+// CHECK: bb2:
+// CHECK-NEXT: end_access [[BEGIN]]
+// CHECK-NEXT: end_access [[BEGINX]]
 // CHECK: return %{{.*}} : $()
-// CHECK-LABEL: } // end sil function 'dont_hoist_access_static_and_dynamic'
-sil @dont_hoist_access_static_and_dynamic : $@convention(thin) () -> () {
+// CHECK-LABEL: } // end sil function 'hoist_dynamic_modify_over_static_read'
+sil @hoist_dynamic_modify_over_static_read : $@convention(thin) () -> () {
 bb0:
   %0 = global_addr @globalX: $*X
   %1 = global_addr @globalX: $*X
