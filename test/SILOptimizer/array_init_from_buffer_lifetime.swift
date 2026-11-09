@@ -11,7 +11,8 @@
 // CHECK:       bb{{[0-9]+}}([[BUF:%[0-9]+]] : $_ContiguousArrayBuffer<UInt8>):
 // CHECK-NOT:     {{strong_release|release_value}}
 // CHECK:         fix_lifetime [[BUF]]
-// CHECK:         release_value [[BUF]]
+// CHECK:         [[B2:%.*]] = struct_extract [[BUF]]
+// CHECK:         strong_release [[B2]]
 // CHECK-NOT:     {{strong_release|release_value}}
 // CHECK:       } // end sil function '$s4test0A9DiscardedyySv_S2itF'
 public func testDiscarded(_ p: UnsafeMutableRawPointer, _ count: Int, _ iterations: Int) {
