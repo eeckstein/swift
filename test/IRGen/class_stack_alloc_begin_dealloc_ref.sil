@@ -1,0 +1,32 @@
+// RUN: %target-swift-frontend -emit-ir %s | %FileCheck %s
+
+sil_stage lowered
+
+import Builtin
+import Swift
+
+class TestClass {
+  @_hasStorage var a : Int64
+  init()
+}
+
+sil_vtable TestClass {}
+
+// The reference operand of the begin_dealloc_ref cannot be traced back to the
+// stack allocation, but the allocation operand of the begin_dealloc_ref
+// references it directly. The stack object must not be passed to the runtime.
+// CHECK-LABEL: define{{( dllexport)?}}{{( protected)?}} swiftcc void @promoted_dealloc_ref_of_untraceable_reference
+// CHECK:     @swift_initStackObject
+// CHECK-NOT: call void @swift_deallocClassInstance
+// CHECK:     ret void
+sil @promoted_dealloc_ref_of_untraceable_reference : $@convention(thin) () -> () {
+bb0:
+  %o1 = alloc_ref [stack] $TestClass
+  %c = unchecked_bitwise_cast %o1 : $TestClass to $TestClass
+  %d = begin_dealloc_ref %c : $TestClass of %o1 : $TestClass
+  dealloc_ref %d : $TestClass
+  dealloc_stack_ref %o1 : $TestClass
+
+  %r = tuple()
+  return %r : $()
+}
