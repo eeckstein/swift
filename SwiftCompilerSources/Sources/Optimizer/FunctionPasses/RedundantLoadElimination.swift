@@ -139,6 +139,7 @@ private extension Instruction {
       case let load as LoadInst:           return load
       case let copy as CopyAddrInst:       return copy
       case let destroy as DestroyAddrInst: return destroy
+      case let loadBorrow as LoadBorrowInst: return loadBorrow
       default:                             return nil
     }
   }

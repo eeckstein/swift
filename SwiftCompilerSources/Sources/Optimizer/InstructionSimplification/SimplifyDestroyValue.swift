@@ -295,7 +295,10 @@ private extension Value {
          is UncheckedRefCastInst,
          is BridgeObjectToRefInst,
          is InitExistentialRefInst,
-         is OpenExistentialRefInst:
+         is OpenExistentialRefInst,
+         // Destroying a differentiable or linear function destroys its component functions.
+         is DifferentiableFunctionInst,
+         is LinearFunctionInst:
       return self as? SingleValueInstruction
 
     default:

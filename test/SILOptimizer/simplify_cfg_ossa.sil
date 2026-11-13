@@ -387,6 +387,7 @@ bb3(%4 : $Int64):
 // CHECK:         [[B:%.*]] = begin_borrow %1
 // CHECK-NEXT:    cond_br %3, bb3, bb2
 // CHECK:       bb2:
+// CHECK:         debug_value
 // CHECK-NEXT:    end_borrow [[B]]
 // CHECK-NEXT:    br bb5
 // CHECK:       bb3:
