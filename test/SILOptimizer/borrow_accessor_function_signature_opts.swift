@@ -1,9 +1,9 @@
 // RUN: %target-swift-frontend -O -emit-sil -sil-verify-all -module-name test %s | %FileCheck %s
 
 // FunctionSignatureOpts removes the dead index of a borrow accessor, and turns
-// the original accessor into a thunk that calls the specialization. In the
-// performance pipeline, FunctionSignatureOpts runs after OSSA is lowered, so
-// the thunk returns the result with a plain return.
+// the original accessor into a thunk that calls the specialization. The
+// specialization stays a method, because its result is borrowed from self.
+// After OSSA is lowered, the thunk returns the result with a plain return.
 // borrow_accessor_function_signature_opts.sil tests the OSSA return_borrow.
 
 public final class Klass {}
@@ -13,7 +13,7 @@ public struct Container {
 
   public init(_ k: Klass) { self.k = k }
 
-  // CHECK-LABEL: sil [signature_optimized_thunk] [heuristic_always_inline] @$s4test9ContainerVyAA5KlassCSicib : $@convention(method) (Int, @guaranteed Container) -> @guaranteed Klass {
+  // CHECK-LABEL: sil [signature_optimized_thunk] [noinline] @$s4test9ContainerVyAA5KlassCSicib : $@convention(method) (Int, @guaranteed Container) -> @guaranteed Klass {
   // CHECK:       bb0(%0 : $Int, %1 : $Container):
   // CHECK:         [[F:%.*]] = function_ref @$s4test9ContainerVyAA5KlassCSicibTf4dn_n : $@convention(method) (@guaranteed Container) -> @guaranteed Klass
   // CHECK:         [[R:%.*]] = apply [[F]](%1)

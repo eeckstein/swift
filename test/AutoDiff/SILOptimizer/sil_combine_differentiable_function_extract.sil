@@ -35,6 +35,11 @@ sil @$s3src3fooyxx_xts18AdditiveArithmeticRz16_Differentiation14DifferentiableRz
 sil @$s3src3fooyxx_xts18AdditiveArithmeticRz16_Differentiation14DifferentiableRzlFsACRzAdERzlTJrSSpSr : $@convention(thin) <τ_0_0 where τ_0_0 : AdditiveArithmetic, τ_0_0 : Differentiable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> (@out τ_0_0, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @out τ_0_2) for <τ_0_0.TangentVector, τ_0_0.TangentVector, τ_0_0.TangentVector>)
 
 // CHECK-LABEL: {{^}}// reverse-mode derivative of bar(_:_:){{$}}
+// CHECK:       [[F:%.*]] = function_ref @$s3src3fooyxx_xts18AdditiveArithmeticRz16_Differentiation14DifferentiableRzlFsACRzAdERzlTJrSSpSr
+// CHECK-NOT:   differentiable_function
+// CHECK:       apply [[F]]<Float>(%{{[0-9]+}}, %{{[0-9]+}}, %{{[0-9]+}})
+// CHECK-NOT:   differentiable_function
+// CHECK:       } // end sil function '$s3src3baryS2f_SftFTJrSSpSr'
 
 // reverse-mode derivative of bar(_:_:)
 sil [ossa] @$s3src3baryS2f_SftFTJrSSpSr : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> (Float, Float)) {
@@ -56,14 +61,10 @@ bb0(%0 : $Float, %1 : $Float):
 
   // function_ref reverse-mode derivative of foo<A>(_:_:)
   %13 = function_ref @$s3src3fooyxx_xts18AdditiveArithmeticRz16_Differentiation14DifferentiableRzlFsACRzAdERzlTJrSSpSr : $@convention(thin) <τ_0_0 where τ_0_0 : AdditiveArithmetic, τ_0_0 : Differentiable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> (@out τ_0_0, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @out τ_0_2) for <τ_0_0.TangentVector, τ_0_0.TangentVector, τ_0_0.TangentVector>) // user: %14
-  // CHECK: %[[#T0:]] = function_ref @$s3src3fooyxx_xts18AdditiveArithmeticRz16_Differentiation14DifferentiableRzlFsACRzAdERzlTJrSSpSr
 
   %14 = partial_apply [callee_guaranteed] %13<Float>() : $@convention(thin) <τ_0_0 where τ_0_0 : AdditiveArithmetic, τ_0_0 : Differentiable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> (@out τ_0_0, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @out τ_0_2) for <τ_0_0.TangentVector, τ_0_0.TangentVector, τ_0_0.TangentVector>) // user: %15
-  // CHECK: %[[#T1:]] = partial_apply [callee_guaranteed] %[[#T0]]<Float>()
-  // CHECK: %[[#T2:]] = copy_value %[[#T1]]
 
   %15 = differentiable_function [parameters 0 1] [results 0] %10 with_derivative {%12, %14} // users: %16, %20
-  // CHECK: %[[#T4:]] = differentiable_function [parameters 0 1] [results 0] %[[#]] with_derivative {%[[#]], %[[#T2]]} // user: %[[#T5:]]
 
   %16 = begin_borrow %15                          // users: %19, %17
   %17 = differentiable_function_extract [vjp] %16 // user: %18
@@ -71,13 +72,10 @@ bb0(%0 : $Float, %1 : $Float):
   end_borrow %16                                  // id: %19
 
   destroy_value %15                               // id: %20
-  // CHECK: destroy_value %[[#T4]] // id: %[[#T5]]
 
   %21 = apply %18(%4, %5, %7) : $@callee_guaranteed (@in_guaranteed Float, @in_guaranteed Float) -> (@out Float, @owned @callee_guaranteed (@in_guaranteed Float) -> (@out Float, @out Float)) // user: %24
-  // CHECK: %[[#]] = apply %[[#T0]]<Float>(%[[#]], %[[#]], %[[#]])
 
   destroy_value %18                               // id: %22
-  // CHECK: destroy_value %[[#T1]]
 
   // function_ref thunk for @escaping @callee_guaranteed (@in_guaranteed Float) -> (@out Float, @out Float)
   %23 = function_ref @$sS3fIegnrr_S3fIegydd_TR : $@convention(thin) (Float, @guaranteed @callee_guaranteed (@in_guaranteed Float) -> (@out Float, @out Float)) -> (Float, Float) // user: %24
@@ -139,6 +137,12 @@ sil_scope 5 { parent 4 inlined_at 2 }
 sil_scope 6 { parent @$s3src7computeyxxxXE_xtlFSd_Tg5 : $@convention(thin) (@guaranteed @noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double>, Double) -> Double inlined_at 5 }
 
 // CHECK-LABEL: {{^}}// caller(){{$}}
+// CHECK:       [[C:%.*]] = thin_to_thick_function %{{[0-9]+}} to $@noescape @callee_guaranteed (Double) -> Double
+// CHECK:       [[T:%.*]] = function_ref @$sS2dIgyd_S2dIegnr_TR :
+// CHECK-NOT:   differentiable_function
+// CHECK:       apply [[T]](%0, %{{[0-9]+}}, [[C]])
+// CHECK-NOT:   differentiable_function
+// CHECK:       } // end sil function '$s3src6callerSdyF'
 
 // caller()
 // Isolation: unspecified
@@ -159,20 +163,16 @@ bb0:
 
   // function_ref thunk for @callee_guaranteed (@unowned Double) -> (@unowned Double)
   %8 = function_ref @$sS2dIgyd_S2dIegnr_TR : $@convention(thin) (@in_guaranteed Double, @guaranteed @noescape @callee_guaranteed (Double) -> Double) -> @out Double // user: %9
-  // CHECK: %[[#A0:]] = function_ref @$sS2dIgyd_S2dIegnr_TR : $@convention(thin) (@in_guaranteed Double, @guaranteed @noescape @callee_guaranteed (Double) -> Double) -> @out Double // users: %[[#]], %[[#]]{{$}}
 
   %9 = partial_apply [callee_guaranteed] %8(%4) : $@convention(thin) (@in_guaranteed Double, @guaranteed @noescape @callee_guaranteed (Double) -> Double) -> @out Double // user: %10
-  // CHECK: %[[#A1:]] = partial_apply [callee_guaranteed] %[[#A0]](%[[#A2:]]) : $@convention(thin) (@in_guaranteed Double, @guaranteed @noescape @callee_guaranteed (Double) -> Double) -> @out Double // user: %[[#A3:]]
 
   %10 = convert_function %9 to $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double> // users: %12, %11
-  // CHECK: %[[#A3:]] = convert_function %[[#A1]] to $@callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double> // users: %[[#]], %[[#]]{{$}}
 
   %11 = copy_value %10 // users: %44, %13
 
   destroy_value %10 // id: %12
 
   %13 = convert_escape_to_noescape %11 to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double> // user: %26
-  // CHECK: %[[#A5:]] = convert_escape_to_noescape %[[#A3]] to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double> // users: %[[#]], %[[#]], %[[#]]{{$}}
 
   // function_ref thunk for @callee_guaranteed (@unowned Double) -> (@unowned Double, @owned @escaping @callee_guaranteed (@unowned Double) -> (@unowned Double))
   %14 = function_ref @$sS4dIegyd_Igydo_S2dxq_Ri_zRi0_zRi__Ri0__r0_lyS2dIsegnr_Iegnro_TR : $@convention(thin) (@in_guaranteed Double, @guaranteed @noescape @callee_guaranteed (Double) -> (Double, @owned @callee_guaranteed (Double) -> Double)) -> (@out Double, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double>) // user: %15
@@ -189,42 +189,34 @@ bb0:
   destroy_value %22 // id: %24
   %25 = convert_escape_to_noescape %23 to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2, τ_0_3> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <τ_0_2, τ_0_3>) for <Double, Double, Double, Double> // user: %26
 
-  // CHECK: %[[#A6:]] = copy_value %[[#A5]]
   %26 = differentiable_function [parameters 0] [results 0] %13 with_derivative {%19, %25} // users: %29, %41
-  // CHECK: %[[#A7:]] = differentiable_function [parameters 0] [results 0] %[[#A6]] with_derivative {%[[#]], %[[#]]} // users: %[[#]], %[[#]]{{$}}
 
   %27 = float_literal $Builtin.FPIEEE64, 0x0 // user: %28
   %28 = struct $Double (%27) // users: %30, %34
   %29 = begin_borrow [lexical] %26 // users: %32, %31, %39
   debug_value %28, let, name "x", argno 2, scope 3 // id: %30
   debug_value %29, let, name "f", argno 1, scope 3 // id: %31
-  // CHECK: debug_value %[[#A7]], let, name "f", argno 1
   %32 = differentiable_function_extract [original] %29 // users: %37, %35
 
   %33 = alloc_stack $Double // users: %38, %37, %36, %34
-  // CHECK: %[[#A8:]] = alloc_stack $Double
   store %28 to [trivial] %33 // id: %34
 
   debug_value %32, let, name "f", argno 1, scope 5 // id: %35
-  // CHECK: debug_value %[[#A5]], let, name "f", argno 1
 
   debug_value %33, let, name "x", argno 2, expr op_deref, scope 5 // id: %36
 
   %37 = apply %32(%0, %33) : $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double>
-  // CHECK: %[[#]] = apply %[[#A0]](%0, %[[#A8]], %[[#A2]])
 
   dealloc_stack %33 // id: %38
   end_borrow %29 // id: %39
   destroy_value %7 // id: %40
 
   destroy_value %26 // id: %41
-  // CHECK: destroy_value %[[#A7]]
 
   %42 = load [trivial] %0 // user: %47
   dealloc_stack %0 // id: %43
 
   destroy_value %11 // id: %44
-  // CHECK: destroy_value %[[#A3]]
 
   destroy_value %17 // id: %45
   destroy_value %23 // id: %46
@@ -273,6 +265,16 @@ sil [ossa] @$s3src8identityyS2fF : $@convention(thin) (Float) -> Float
 sil [transparent] [serialized] [reabstraction_thunk] [ossa] @$sS2fIegnr_S2fIegyd_TR : $@convention(thin) (Float, @guaranteed @callee_guaranteed (@in_guaranteed Float) -> @out Float) -> Float
 
 // CHECK-LABEL: {{^}}// squareVjp(_:){{$}}
+// CHECK:       [[R:%.*]] = alloc_stack $Float
+// CHECK:       [[F:%.*]] = function_ref @$s3src8identityyS2fFTJrSpSr :
+// CHECK:       [[TT:%.*]] = thin_to_thick_function [[F]] to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+// CHECK:       [[TH:%.*]] = function_ref @$sS4fIegyd_Igydo_S2fxq_Ri_zRi0_zRi__Ri0__r0_lyS2fIsegnr_Iegnro_TR :
+// CHECK:       [[S:%.*]] = alloc_stack $Float
+// CHECK:       store %0 to [trivial] [[S]]
+// CHECK-NOT:   differentiable_function
+// CHECK:       apply [[TH]]([[R]], [[S]], [[TT]])
+// CHECK-NOT:   differentiable_function
+// CHECK:       } // end sil function '$s3src9squareVjpySf5value_S2fc8pullbacktSfF'
 
 // squareVjp(_:)
 // Isolation: unspecified
@@ -283,7 +285,6 @@ bb0(%0 : $Float):
   debug_value %0, let, name "x", argno 1          // id: %1
 
   %2 = alloc_stack $Float                         // users: %34, %45, %39
-  // CHECK: %[[#B2:]] = alloc_stack $Float
 
   // function_ref identity(_:)
   %3 = function_ref @$s3src8identityyS2fF : $@convention(thin) (Float) -> Float // user: %6
@@ -292,13 +293,11 @@ bb0(%0 : $Float):
 
   // function_ref reverse-mode derivative of identity(_:)
   %5 = function_ref @$s3src8identityyS2fFTJrSpSr : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float) // user: %8
-  // CHECK: %[[#B5:]] = function_ref @$s3src8identityyS2fFTJrSpSr : $@convention(thin) (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float) // user: %[[#B8:]]
 
   %6 = thin_to_thick_function %3 to $@noescape @callee_guaranteed (Float) -> Float // users: %11, %9; ownership: none
   %7 = thin_to_thick_function %4 to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float) // users: %17, %9; ownership: none
 
   %8 = thin_to_thick_function %5 to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float) // users: %23, %9; ownership: none
-  // CHECK: %[[#B8]] = thin_to_thick_function %[[#B5]] to $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float) // users: %[[#]], %[[#]]; ownership: none
 
   %9 = differentiable_function [parameters 0] [results 0] %6 with_derivative {%7, %8} // user: %38
   // function_ref thunk for @callee_guaranteed (@unowned Float) -> (@unowned Float)
@@ -318,48 +317,36 @@ bb0(%0 : $Float):
 
   // function_ref thunk for @callee_guaranteed (@unowned Float) -> (@unowned Float, @owned @escaping @callee_guaranteed (@unowned Float) -> (@unowned Float))
   %22 = function_ref @$sS4fIegyd_Igydo_S2fxq_Ri_zRi0_zRi__Ri0__r0_lyS2fIsegnr_Iegnro_TR : $@convention(thin) (@in_guaranteed Float, @guaranteed @noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %23
-  // CHECK: %[[#B21:]] = function_ref @$sS4fIegyd_Igydo_S2fxq_Ri_zRi0_zRi__Ri0__r0_lyS2fIsegnr_Iegnro_TR : $@convention(thin) (@in_guaranteed Float, @guaranteed @noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // users: %[[#]], %[[#]]{{$}}
 
   %23 = partial_apply [callee_guaranteed] %22(%8) : $@convention(thin) (@in_guaranteed Float, @guaranteed @noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %24
-  // CHECK: %[[#B22:]] = partial_apply [callee_guaranteed] %[[#B21]](%[[#B8]]) : $@convention(thin) (@in_guaranteed Float, @guaranteed @noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %[[#B23:]]
 
   %24 = convert_function %23 to $@callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2, τ_0_3> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <τ_0_2, τ_0_3>) for <Float, Float, Float, Float> // users: %26, %25
-  // CHECK: %[[#B23]] = convert_function %[[#B22]] to $@callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2, τ_0_3> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <τ_0_2, τ_0_3>) for <Float, Float, Float, Float> // users: %[[#]], %[[#]]{{$}}
 
   %25 = copy_value %24                            // users: %55, %27
 
   destroy_value %24                               // id: %26
 
   %27 = convert_escape_to_noescape %25 to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2, τ_0_3> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <τ_0_2, τ_0_3>) for <Float, Float, Float, Float> // user: %28
-  // CHECK: %[[#B26:]] = convert_escape_to_noescape %[[#B23]] to $@noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1, τ_0_2, τ_0_3> (@in_guaranteed τ_0_0) -> (@out τ_0_1, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <τ_0_2, τ_0_3>) for <Float, Float, Float, Float> // users: %[[#]], %[[#]]{{$}}
-  // CHECK: %[[#B27:]] = copy_value %[[#B26]] // user: %[[#B28:]]
 
   %28 = differentiable_function [parameters 0] [results 0] %15 with_derivative {%21, %27} // users: %29, %37
-  // CHECK: %[[#B28]] = differentiable_function [parameters 0] [results 0] %[[#]] with_derivative {%[[#]], %[[#B27]]} // user: %[[#B34:]]
 
   %29 = begin_borrow [lexical] %28                // users: %32, %36
 
   %30 = alloc_stack $Float                        // users: %35, %34, %31
 
-  // CHECK: %[[#B29:]] = alloc_stack $Float // users: %[[#]], %[[#]], %[[#]]{{$}}
   store %0 to [trivial] %30                       // id: %31
-  // CHECK: store %0 to [trivial] %[[#B29]]
 
   %32 = convert_function %29 to $@differentiable(reverse) @noescape @callee_guaranteed (@in_guaranteed Float) -> @out Float // user: %33
   %33 = differentiable_function_extract [vjp] %32 as $@noescape @callee_guaranteed (@in_guaranteed Float) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %34
 
   %34 = apply %33(%2, %30) : $@noescape @callee_guaranteed (@in_guaranteed Float) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %40
-  // CHECK: %[[#B31:]] = apply %[[#B21]](%[[#B2]], %[[#B29]], %[[#B8]]) : $@convention(thin) (@in_guaranteed Float, @guaranteed @noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)) -> (@out Float, @owned @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Float, Float>) // user: %[[#]]
 
-  // CHECK: destroy_value %[[#B26]]
 
   dealloc_stack %30                               // id: %35
-  // CHECK: dealloc_stack %[[#B29]]
 
   end_borrow %29                                  // id: %36
 
   destroy_value %28                               // id: %37
-  // CHECK: destroy_value %[[#B28]] // id: %[[#B34]]
 
   destroy_value %9                                // id: %38
   %39 = load [trivial] %2                         // users: %47, %46, %43, %51
@@ -382,7 +369,45 @@ bb0(%0 : $Float):
   destroy_value %19                               // id: %54
   destroy_value %25                               // id: %55
 
-  // CHECK: destroy_value %[[#B23]]
 
   return %52                                      // id: %56
 } // end sil function '$s3src9squareVjpySf5value_S2fc8pullbacktSfF'
+
+sil @push_orig : $@convention(thin) (Float, Float) -> Float
+sil @push_jvp : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+sil @push_vjp : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+
+// In OSSA, the `convert_escape_to_noescape` of an owned `differentiable_function`
+// is pushed into its components, although the `differentiable_function` has
+// a `destroy_value` use. The components are converted before the
+// `differentiable_function`, which consumes them. This lets the extract and
+// the closures fold, ending up in a direct call of the vjp.
+//
+// CHECK-LABEL: sil [ossa] @push_noescape_into_owned_differentiable_function :
+// CHECK:       bb0(%0 : $Float, %1 : $Float):
+// CHECK:         [[V:%.*]] = function_ref @push_vjp
+// CHECK-NEXT:    [[R:%.*]] = apply [[V]](%0, %1)
+// CHECK-NEXT:    ([[VAL:%.*]], [[PB:%.*]]) = destructure_tuple [[R]]
+// CHECK-NEXT:    destroy_value [[PB]]
+// CHECK-NEXT:    return [[VAL]]
+// CHECK:       } // end sil function 'push_noescape_into_owned_differentiable_function'
+sil [ossa] @push_noescape_into_owned_differentiable_function : $@convention(thin) (Float, Float) -> Float {
+bb0(%0 : $Float, %1 : $Float):
+  %2 = function_ref @push_orig : $@convention(thin) (Float, Float) -> Float
+  %3 = partial_apply [callee_guaranteed] %2(%1) : $@convention(thin) (Float, Float) -> Float
+  %4 = function_ref @push_jvp : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %5 = partial_apply [callee_guaranteed] %4(%1) : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %6 = function_ref @push_vjp : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %7 = partial_apply [callee_guaranteed] %6(%1) : $@convention(thin) (Float, Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  %8 = differentiable_function [parameters 0] [results 0] %3 with_derivative {%5, %7}
+  %9 = convert_escape_to_noescape %8 to $@differentiable(reverse) @noescape @callee_guaranteed (Float) -> Float
+  %10 = begin_borrow %9
+  %11 = differentiable_function_extract [vjp] %10
+  %12 = apply %11(%0) : $@noescape @callee_guaranteed (Float) -> (Float, @owned @callee_guaranteed (Float) -> Float)
+  (%13, %14) = destructure_tuple %12
+  end_borrow %10
+  destroy_value %9
+  destroy_value %14
+  destroy_value %8
+  return %13
+}

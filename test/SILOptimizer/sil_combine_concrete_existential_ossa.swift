@@ -40,12 +40,15 @@ public func testReturnSelf() -> P {
 
 //===----------------------------------------------------------------------===//
 // testWitnessReturnOptionalSelf: Call to a witness method with an existential
-// self that can be type-propagated. sil-combine should bailout since it does
-// not propagate type substitutions on the return value, and it must walk the
-// Optional type to find Self in the return type.
+// self that can be type-propagated, where the method returns Self? and thus
+// re-wraps the opened existential into the result.
 //
-// Although sil-combine will not replace the self operand, it will still
-// rewrite the witness_method. The devirtualizer then handles the first call.
+// sil-combine propagates the concrete type into the witness_method, the
+// devirtualizer and inliner fold the first call, and the
+// open_existential_ref/init_existential_ref/open_existential_ref round-trip that
+// the first call leaves behind is collapsed (SimplifyOpenExistentialRef). This
+// re-exposes the concrete type to the chained second call, so both calls are
+// devirtualized and inlined away, leaving no apply.
 //===----------------------------------------------------------------------===//
 public protocol PP: class {
   func returnOptionalSelf() -> Self?
@@ -58,24 +61,15 @@ final class CC: PP {
   }
 }
 
-// The second call is not devirtualized: after the first call is devirtualized
-// and inlined, the concrete type sil-combine can prove for its `self` operand
-// is the opened archetype [[O1]] rather than $CC, and propagating an opened
-// archetype is neither ownership-correct (it would consume the owned
-// `open_existential_ref` that the @guaranteed apply only borrows) nor
-// convergent (sil-combine re-simplifies such a cast away and rebuilds it
-// forever). So [[O2]] stays as the operand and the result stays abstract.
-//
 // CHECK-LABEL: sil @$s37sil_combine_concrete_existential_ossa29testWitnessReturnOptionalSelfAA2PP_pSgyF : $@convention(thin) () -> @owned Optional<any PP> {
 // CHECK: [[EI:%.*]] = end_init_let_ref %0
 // CHECK: [[E1:%.*]] = init_existential_ref [[EI]] : $CC : $CC, $any PP
 // CHECK: [[O1:%.*]] = open_existential_ref [[E1]] : $any PP to $@opened({{.*}}, any PP) Self
 // CHECK: [[E2:%.*]] = init_existential_ref [[O1]] : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
-// CHECK: [[O2:%.*]] = open_existential_ref [[E2]] : $any PP to $@opened({{.*}}, any PP) Self
-// CHECK: apply {{%.*}}<@opened({{.*}}, any PP) Self>([[O2]])
-// CHECK: [[E3:%.*]] = init_existential_ref %{{.*}} : $@opened({{.*}}, any PP) Self : $@opened({{.*}}, any PP) Self, $any PP
-// CHECK: [[E:%.*]] = enum $Optional<any PP>, #Optional.some!enumelt, [[E3]] : $any PP
-// CHECK: return
+// CHECK: [[E:%.*]] = enum $Optional<any PP>, #Optional.some!enumelt, [[E2]] : $any PP
+// CHECK-NOT:     apply
+// CHECK-NOT:     witness_method
+// CHECK: return [[E]]
 // CHECK-LABEL: } // end sil function '$s37sil_combine_concrete_existential_ossa29testWitnessReturnOptionalSelfAA2PP_pSgyF'
 public func testWitnessReturnOptionalSelf() -> PP? {
   let p: PP = CC()

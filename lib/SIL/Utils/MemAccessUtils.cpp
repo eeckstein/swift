@@ -797,6 +797,14 @@ protected:
         ref = svi->getOperand(0);
         continue;
       }
+      // The allocation operand of a begin_dealloc_ref is the same object as
+      // its reference operand. Follow it, because the reference operand may
+      // not be traceable back to the allocation, e.g. if it's an
+      // open_existential_ref.
+      if (auto *bdri = dyn_cast<BeginDeallocRefInst>(svi)) {
+        ref = bdri->getAllocation();
+        continue;
+      }
       // If preserveOwnership is true, stop at the first owned root
       if (!isIdentityPreservingRefCast(svi)) {
         break;

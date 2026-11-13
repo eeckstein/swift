@@ -443,19 +443,24 @@ bb0(%0 : $Double):
 // CHECK-NEXT:      %[[#D09:]] = function_ref @$sS4dIegyd_Iegydo_S2dxq_Ri_zRi1_zRi0_zRi__Ri1__Ri0__r0_lyS2dIsegnr_Iegnro_TR25$s3src6squareyS2dFTJrSpSrTf3nnpf_n :
 // CHECK:           %[[#D10:]] = thin_to_thick_function %[[#D09]]
 // CHECK:           %[[#D11:]] = convert_function %[[#D10]] to $@callee_guaranteed @substituted
-// CHECK:           %[[#D12:]] = differentiable_function [parameters 0] [results 0] %[[#D05]] with_derivative {%[[#D08]], %[[#D11]]}
-// CHECK:           %[[#D13:]] = convert_escape_to_noescape %[[#D12]] to $@differentiable(reverse) @noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double>
-// CHECK:           %[[#D14:]] = begin_borrow %[[#D13]]
-// CHECK:           %[[#D15:]] = alloc_stack $Double
-// CHECK:           %[[#D16:]] = alloc_stack $Double
-// CHECK:           %[[#D17:]] = convert_function %[[#D14]] to $@differentiable(reverse) @noescape @callee_guaranteed (@in_guaranteed Double) -> @out Double
-// CHECK:           %[[#D18:]] = differentiable_function_extract [vjp] %[[#D17]] as $@noescape @callee_guaranteed
-// CHECK:           %[[#D19:]] = alloc_stack $Double
-// CHECK-NEXT:      %[[#D20:]] = apply %[[#D18]](%[[#D19]], %[[#D16]])
-// CHECK:           %[[#D21:]] = alloc_stack $Double
-// CHECK:           %[[#D22:]] = apply %[[#D20]](%[[#D15]], %[[#D21]])
-// CHECK:           %[[#D23:]] = load [trivial] %[[#D15]]
-// CHECK:           return %[[#D23]]
+// NOCOMBINE:       %[[#D12:]] = differentiable_function [parameters 0] [results 0] %[[#D05]] with_derivative {%[[#D08]], %[[#D11]]}
+// NOCOMBINE:       %[[#D13:]] = convert_escape_to_noescape %[[#D12]] to $@differentiable(reverse) @noescape @callee_guaranteed @substituted <τ_0_0, τ_0_1> (@in_guaranteed τ_0_0) -> @out τ_0_1 for <Double, Double>
+// NOCOMBINE:       %[[#D14:]] = begin_borrow %[[#D13]]
+// NOCOMBINE:       %[[#D15:]] = alloc_stack $Double
+// NOCOMBINE:       %[[#D16:]] = alloc_stack $Double
+// NOCOMBINE:       %[[#D17:]] = convert_function %[[#D14]] to $@differentiable(reverse) @noescape @callee_guaranteed (@in_guaranteed Double) -> @out Double
+// NOCOMBINE:       %[[#D18:]] = differentiable_function_extract [vjp] %[[#D17]] as $@noescape @callee_guaranteed
+// NOCOMBINE:       %[[#D19:]] = alloc_stack $Double
+// NOCOMBINE-NEXT:      %[[#D20:]] = apply %[[#D18]](%[[#D19]], %[[#D16]])
+// NOCOMBINE:       %[[#D21:]] = alloc_stack $Double
+// NOCOMBINE:       %[[#D22:]] = apply %[[#D20]](%[[#D15]], %[[#D21]])
+// NOCOMBINE:       %[[#D23:]] = load [trivial] %[[#D15]]
+// NOCOMBINE:       return %[[#D23]]
+// COMBINE-NOT:       differentiable_function
+// COMBINE:           %[[#C1:]] = apply %[[#D09]](%{{[0-9]+}}, %{{[0-9]+}})
+// COMBINE:           apply %[[#C1]](%{{[0-9]+}}, %{{[0-9]+}})
+// COMBINE-NOT:       differentiable_function
+// COMBINE:           return
 // CHECK:         } // end sil function '$s3src13test4Evaluatey13TangentVectorQzx_q_xYjrXEt16_Differentiation14DifferentiableRzSFR_AeFR_AceFPQy_Rs_r0_lFSd_SdTg5011$sS2dIegyd_i24Iegnr_TR18$s3src6squareyI10FTf3nnpf_nxq_Ri_zRi1_zRi0_zRi__Ri1__Ri0__r0_lyS2dIsegnr_0h3S4dj28_Iegydo_S2dxq_Ri_zRi1_zRi0_zq2__r2__s7__r0_lyi32Isegnr_Iegnro_TR25$s3src6squareyI17FTJfSpSrTf3nnpf_nxq_xq_Ri_zRi1_zRi0_zRi__Ri1__Ri0__r0_lyq0_q1_Isegnr_Ri_zRi1_zRi0_zRi__Ri1__Ri0__Ri_0_Ri1_0_Ri0_0_Ri_1_Ri1_1_Ri0_1_r2_lyS4dIsegnro_0hnj1_o1_p1_q2_zr2_zs2_zq2__r2__s2__t1_uiv1_w1_xi4FTJrZ11SrTf3nnpf_nxq_xq_Ri_zRi1_zRi0_zRi__Ri1__Ri0__r0_lyq0_q1_Isegnr_Ri_zRi1_zRi0_zRi__Ri1__Ri0__Ri_0_Ri1_0_Ri0_0_Ri_1_Ri1_1_Ri0_1_r2_lyS4dIsegnro_Tf1na_n'
 
 // specialized test4Evaluate<A, B>(_:_:)

@@ -795,8 +795,34 @@ SILInstruction *SILCombiner::visitConvertEscapeToNoEscapeInst(
   // %jvp' = convert_escape_to_noescape %jvp
   // %vjp' = convert_escape_to_noescape %vjp
   // %y = differentiable_function(%orig', %jvp', %vjp')
+  //
+  // In OSSA, the `differentiable_function` consumes its operands and is
+  // destroyed after the uses of `%y`:
+  //
+  // %x = differentiable_function(%orig, %jvp, %vjp)    // owned
+  // %y = convert_escape_to_noescape %x
+  // ...
+  // destroy_value %x
+  //
+  // The conversions of the operands are inserted before the
+  // `differentiable_function`, which keeps the operands alive until its
+  // destroy. The converted noescape operands are trivial and therefore also
+  // the new `differentiable_function`.
   if (auto *DFI = dyn_cast<DifferentiableFunctionInst>(Cvt->getOperand())) {
-    if (hasOneNonDebugUse(DFI)) {
+    bool canPushConversion;
+    if (Cvt->getFunction()->hasOwnership()) {
+      canPushConversion = llvm::all_of(DFI->getUses(), [&](Operand *use) {
+        return use->getUser() == Cvt || use->isLifetimeEnding() ||
+               isa<DebugValueInst>(use->getUser());
+      });
+    } else {
+      canPushConversion = hasOneNonDebugUse(DFI);
+    }
+    if (canPushConversion) {
+      SILBuilderWithScope operandBuilder(
+          Cvt->getFunction()->hasOwnership() ? (SILInstruction *)DFI
+                                             : (SILInstruction *)Cvt,
+          Builder);
       auto createConvertEscapeToNoEscape =
         [&](NormalDifferentiableFunctionTypeComponent extractee) {
           if (!DFI->hasExtractee(extractee))
@@ -807,7 +833,7 @@ SILInstruction *SILCombiner::visitConvertEscapeToNoEscapeInst(
           auto noEscapeFnType =
             fnType->getWithExtInfo(fnType->getExtInfo().withNoEscape());
           auto noEscapeType = SILType::getPrimitiveObjectType(noEscapeFnType);
-          return Builder.createConvertEscapeToNoEscape(
+          return operandBuilder.createConvertEscapeToNoEscape(
             operand.getLoc(), operand, noEscapeType, Cvt->isLifetimeGuaranteed())->getResult(0);
         };
     
