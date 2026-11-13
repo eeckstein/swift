@@ -229,7 +229,12 @@ func createForwardingApply(
                                        isNonAsync: applyInst.isNonAsync,
                                        specializationInfo: copySpecializationInfo ? applyInst.specializationInfo
                                                                                   : ApplyInst.SpecializationInfo())
-    builder.createReturn(of: newApply)
+    if BeginBorrowValue(newApply) != nil {
+      // A `@guaranteed` result is a borrow introducer, whose scope is returned to the caller.
+      builder.createReturnBorrow(of: newApply, fromScopes: [newApply])
+    } else {
+      builder.createReturn(of: newApply)
+    }
     return newApply
 
   case let tryApply as TryApplyInst:

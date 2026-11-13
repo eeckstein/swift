@@ -415,8 +415,7 @@ bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
 // CHECK:         apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
 // CHECK-NOT:     destroy_value
 // CHECK:         [[A:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
-// CHECK-NEXT:    [[BB:%.*]] = begin_borrow [[A]]
-// CHECK-NEXT:    br bb3([[BB]])
+// CHECK-NEXT:    br bb3([[A]])
 // CHECK:       bb3([[P:%.*]] : @reborrow $S):
 // CHECK-NEXT:    [[BF:%.*]] = borrowed [[P]] from ()
 // CHECK-NEXT:    return_borrow [[BF]] from_scopes ([[BF]])
@@ -425,6 +424,7 @@ bb0(%0 : @guaranteed $AnyObject, %1 : $Int):
 // CHECK-LABEL: sil [signature_optimized_thunk] [ossa] @owned_result_load :
 // CHECK:         [[A:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, @inout S, Int, Int) -> @guaranteed S
 // CHECK-NEXT:    [[C:%.*]] = copy_value [[A]]
+// CHECK-NEXT:    end_borrow [[A]]
 // CHECK-NEXT:    return [[C]]
 // CHECK:       } // end sil function 'owned_result_load'
 
@@ -455,9 +455,8 @@ bb3(%15 : @owned $S):
 // CHECK-LABEL: sil [ossa] @call_owned_result_load :
 // CHECK:         [[F:%.*]] = function_ref @$s17owned_result_loadTf4nnnn_g :
 // CHECK:         [[A:%.*]] = apply [[F]](%0, %1, %2, %3)
-// CHECK:         [[B:%.*]] = begin_borrow [[A]]
-// CHECK:         fix_lifetime [[B]]
-// CHECK:         end_borrow [[B]]
+// CHECK-NEXT:    fix_lifetime [[A]]
+// CHECK-NEXT:    end_borrow [[A]]
 // CHECK-NEXT:    tuple
 // CHECK:       } // end sil function 'call_owned_result_load'
 sil [ossa] @call_owned_result_load : $@convention(thin) (@inout S, @inout S, Int, Int) -> () {
@@ -489,6 +488,7 @@ bb0(%0 : @guaranteed $S):
 // CHECK-LABEL: sil [ossa] @call_owned_result_guaranteed_arg :
 // CHECK:         [[F:%.*]] = function_ref @$s27owned_result_guaranteed_argTf4n_g :
 // CHECK:         [[A:%.*]] = apply [[F]](%0)
+// CHECK-NEXT:    end_borrow [[A]]
 // CHECK:       } // end sil function 'call_owned_result_guaranteed_arg'
 sil [ossa] @call_owned_result_guaranteed_arg : $@convention(thin) (@guaranteed S) -> () {
 bb0(%0 : @guaranteed $S):
@@ -510,6 +510,7 @@ bb0(%0 : @guaranteed $S):
 // CHECK:         [[B:%.*]] = begin_borrow %0
 // CHECK:         [[A:%.*]] = apply {{%.*}}([[B]], %1)
 // CHECK:         [[C:%.*]] = copy_value [[A]]
+// CHECK:         end_borrow [[A]]
 // CHECK:         end_borrow [[B]]
 // CHECK:         destroy_value %0
 // CHECK:         return [[C]]
@@ -528,9 +529,8 @@ bb0(%0 : @owned $Wrapper, %1 : $Int):
 // CHECK-NOT:     copy_value
 // CHECK:         [[F:%.*]] = function_ref @$s19forwarded_owned_argTf4gn_g :
 // CHECK:         [[A:%.*]] = apply [[F]](%0, %1)
-// CHECK:         [[B:%.*]] = begin_borrow [[A]]
-// CHECK:         fix_lifetime [[B]]
-// CHECK:         end_borrow [[B]]
+// CHECK-NEXT:    fix_lifetime [[A]]
+// CHECK-NEXT:    end_borrow [[A]]
 // CHECK-NOT:     destroy_value
 // CHECK:       } // end sil function 'call_forwarded_owned_arg'
 sil [ossa] @call_forwarded_owned_arg : $@convention(thin) (@guaranteed Wrapper, Int) -> () {
@@ -751,8 +751,7 @@ sil @s_user : $@convention(thin) (@guaranteed S) -> ()
 // CHECK:         apply {{.*}}([[A1]]) : $@convention(thin) (@guaranteed S) -> ()
 // CHECK:         destroy_value [[A1]]
 // CHECK:         [[A2:%.*]] = apply {{.*}} : $@convention(thin) (@inout S, Builtin.Int1) -> @guaranteed S
-// CHECK-NEXT:    [[BB:%.*]] = begin_borrow [[A2]]
-// CHECK-NEXT:    br bb3([[BB]])
+// CHECK-NEXT:    br bb3([[A2]])
 // CHECK:       } // end sil function '$s34copy_recursive_result_across_writeTf4nn_g'
 sil [ossa] @copy_recursive_result_across_write : $@convention(thin) (@inout S, Builtin.Int1) -> @owned S {
 bb0(%0 : $*S, %1 : $Builtin.Int1):

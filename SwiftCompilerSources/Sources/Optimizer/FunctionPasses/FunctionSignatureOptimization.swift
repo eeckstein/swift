@@ -155,7 +155,10 @@ private func getSpecializationKind(for argument: FunctionArgument,
       return .guaranteedToOwned
     }
     // TODO: should we also explode partially dead trivial structs?
-    if argument.isPartiallyUsed(context) {
+    if argument.isPartiallyUsed(context),
+       // The `@guaranteed` result of a function is borrowed from "self" (see `specialize`).
+       !(argument.parentFunction.convention.hasGuaranteedResult && argument.isSelf)
+    {
       return .explode
     }
   default:
@@ -354,24 +357,15 @@ private func tryConvertForwardedResultToGuaranteed(apply: ApplyInst,
 
 private extension ApplyInst {
   /// Replaces this apply with an apply of `specializedFunction`, which returns the result as `@guaranteed`.
-  /// The destroys of the result are replaced by the end of a borrow scope.
+  /// The `@guaranteed` result of the new apply is a borrow introducer. Therefore the destroys of the
+  /// original result are replaced by `end_borrow`s of the new apply.
   func replace(withGuaranteedResultApplyOf specializedFunction: Function, arguments: [Value],
                _ context: FunctionPassContext) {
-    let beginBorrow = replace(withBorrowedResultApplyOf: specializedFunction, arguments: arguments, context)
-    for destroy in beginBorrow.uses.users(ofType: DestroyValueInst.self) {
-      Builder(before: destroy, context).createEndBorrow(of: beginBorrow)
+    let newApply = replace(withCallTo: specializedFunction, arguments: arguments, context) as! ApplyInst
+    for destroy in newApply.uses.users(ofType: DestroyValueInst.self) {
+      Builder(before: destroy, context).createEndBorrow(of: newApply)
       context.erase(instruction: destroy)
     }
-  }
-
-  /// Replaces this apply with an apply of `specializedFunction`, which returns the result as `@guaranteed`.
-  /// All uses of the original result are replaced by a borrow scope of the new result, which is returned.
-  func replace(withBorrowedResultApplyOf specializedFunction: Function, arguments: [Value],
-               _ context: FunctionPassContext) -> BeginBorrowInst {
-    let newApply = replace(withCallTo: specializedFunction, arguments: arguments, context) as! ApplyInst
-    let beginBorrow = Builder(after: newApply, context).createBeginBorrow(of: newApply)
-    newApply.uses.ignore(user: beginBorrow).replaceAll(with: beginBorrow, context)
-    return beginBorrow
   }
 }
 
@@ -843,8 +837,18 @@ private func specialize(function: Function,
   // We are removing arguments from the original function. If the removed argument is the
   // "self" argument, the specialized function cannot be a "method" anymore. It's in general
   // safe to make it a "thin" function (even if "self" was not removed).
+  // An exception is a function with a `@guaranteed` result: its result is borrowed from "self".
+  // Therefore, if "self" is not removed, the specialized function must stay a "method".
   let representation = function.loweredFunctionType.functionTypeRepresentation
-  let specializedRepresentation = representation == .method || representation == .witnessMethod ? .thin : representation
+  let specializedRepresentation: FunctionTypeRepresentation
+  if function.convention.hasGuaranteedResult,
+     let selfArgIdx = function.selfArgumentIndex,
+     !argumentSpecializations.contains(where: { $0.argumentIndex == selfArgIdx })
+  {
+    specializedRepresentation = .method
+  } else {
+    specializedRepresentation = representation == .method || representation == .witnessMethod ? .thin : representation
+  }
 
   let convention = FunctionConvention(for: function.loweredFunctionType,
                                       hasLoweredAddresses: function.hasLoweredAddresses)
@@ -1069,6 +1073,8 @@ private func createGuaranteedResultThunk(in function: Function, calling speciali
   // The thunk keeps its `@owned` result convention, so it has to take ownership of the
   // borrowed value returned by the specialized function.
   let copy = builder.createCopyValue(operand: newApply)
+  // The `@guaranteed` result of the apply is a borrow introducer.
+  builder.createEndBorrow(of: newApply)
   if let argumentBorrow {
     builder.createEndBorrow(of: argumentBorrow)
     builder.createDestroyValue(operand: argumentBorrow.borrowedValue)
@@ -1100,7 +1106,8 @@ private func convertResultToGuaranteed(in specializedFunction: Function,
       copy.replace(with: beginBorrow, context)
 
     case let apply as ApplyInst:
-      _ = apply.replace(withBorrowedResultApplyOf: specializedFunction, arguments: Array(apply.arguments), context)
+      // The `@guaranteed` result of the new apply is a borrow introducer.
+      apply.replace(withCallTo: specializedFunction, arguments: Array(apply.arguments), context)
 
     case let argument as Argument:
       let phi = Phi(argument)!
