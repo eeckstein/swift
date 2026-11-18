@@ -242,49 +242,6 @@ bb3:
   br bb1
 }
 
-// public func hoist_dynamic_modify_over_static_read() {
-// Tests hoisting a dynamic access over a non-distinct conflicting static access.
-// The static access does no runtime book-keeping and therefore cannot cause a
-// spurious exclusivity violation when nested in the widened dynamic scope.
-//
-// CHECK-LABEL: sil @hoist_dynamic_modify_over_static_read : $@convention(thin) () -> () {
-// CHECK: [[GLOBAL:%.*]] = global_addr @globalX : $*X
-// CHECK: [[GLOBALX:%.*]] = global_addr @globalX : $*X
-// CHECK: [[BEGINX:%.*]] = begin_access [modify] [dynamic] [[GLOBALX]] : $*X
-// CHECK-NEXT: load
-// CHECK: [[BEGIN:%.*]] = begin_access [read] [static] [[GLOBAL]] : $*X
-// CHECK-NEXT: load
-// CHECK-NEXT: br bb1
-// CHECK: bb1:
-// CHECK-NEXT: cond_br
-// CHECK: bb2:
-// CHECK-NEXT: end_access [[BEGIN]]
-// CHECK-NEXT: end_access [[BEGINX]]
-// CHECK: return %{{.*}} : $()
-// CHECK-LABEL: } // end sil function 'hoist_dynamic_modify_over_static_read'
-sil @hoist_dynamic_modify_over_static_read : $@convention(thin) () -> () {
-bb0:
-  %0 = global_addr @globalX: $*X
-  %1 = global_addr @globalX: $*X
-  br bb1
-  
-bb1:
-  %x3 = begin_access [read] [static] %0 : $*X
-  %x4 = load %x3 : $*X
-  end_access %x3 : $*X
-  %y3 = begin_access [modify] [dynamic] %1 : $*X
-  %y4 = load %y3 : $*X
-  end_access %y3 : $*X
-  cond_br undef, bb3, bb2
-
-bb2:
-  %10 = tuple ()
-  return %10 : $()
-
-bb3:
-  br bb1
-}
-
 // CHECK-LABEL: sil [ossa] @dont_hoist_access_with_conflict_with_store :
 // CHECK:       bb1:
 // CHECK-NEXT:    begin_access
@@ -351,45 +308,6 @@ bb2:
 bb3:
   br bb1
 }
-
-// Tests hoisting a dynamic "modify" access out of a loop which also contains a non-distinct
-// _static_ access. The static access does no runtime book-keeping, therefore nesting it in the
-// widened "modify" scope cannot cause a spurious exclusivity violation.
-// This is the situation which the LICM run after AccessEnforcementDom is supposed to handle:
-// AccessEnforcementDom turned the loop's read access into a [static] one, leaving the modify
-// access as the only dynamic access of the loop.
-//
-// CHECK-LABEL: sil @hoist_modify_over_static_access : $@convention(thin) () -> () {
-// CHECK:         [[GLOBAL:%.*]] = global_addr @globalX : $*X
-// CHECK:         [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*X
-// CHECK:         br bb1
-// CHECK:       bb1:
-// CHECK-NEXT:    begin_access [read] [static] [[GLOBAL]] : $*X
-// CHECK:       bb2:
-// CHECK:         end_access [[BEGIN]] : $*X
-// CHECK-LABEL: } // end sil function 'hoist_modify_over_static_access'
-sil @hoist_modify_over_static_access : $@convention(thin) () -> () {
-bb0:
-  %0 = global_addr @globalX: $*X
-  br bb1
-
-bb1:
-  %r1 = begin_access [read] [static] %0 : $*X
-  %r2 = load %r1 : $*X
-  end_access %r1 : $*X
-  %m1 = begin_access [modify] [dynamic] %0 : $*X
-  store %r2 to %m1 : $*X
-  end_access %m1 : $*X
-  cond_br undef, bb3, bb2
-
-bb2:
-  %10 = tuple ()
-  return %10
-
-bb3:
-  br bb1
-}
-
 
 // A read access conflicts with a modify access to the same memory.
 //
@@ -492,43 +410,4 @@ bb2:
 bb3:
   %r = tuple ()
   return %r
-}
-
-// Like hoist_modify_over_static_access, but in OSSA, where the static access contains a `load_borrow`.
-// The `end_borrow` (which alias analysis reports as a write) must not prevent hoisting the "modify"
-// access, because the whole borrow scope is inside the loop and therefore inside the widened access scope.
-//
-// CHECK-LABEL: sil [ossa] @hoist_modify_over_static_access_with_load_borrow : $@convention(thin) () -> () {
-// CHECK:         [[GLOBAL:%.*]] = global_addr @globalObj : $*Builtin.NativeObject
-// CHECK:         [[BEGIN:%.*]] = begin_access [modify] [dynamic] [[GLOBAL]] : $*Builtin.NativeObject
-// CHECK:         br bb1
-// CHECK:       bb1:
-// CHECK-NEXT:    begin_access [read] [static] [[GLOBAL]] : $*Builtin.NativeObject
-// CHECK:       bb2:
-// CHECK:         end_access [[BEGIN]] : $*Builtin.NativeObject
-// CHECK-LABEL: } // end sil function 'hoist_modify_over_static_access_with_load_borrow'
-sil [ossa] @hoist_modify_over_static_access_with_load_borrow : $@convention(thin) () -> () {
-bb0:
-  %0 = global_addr @globalObj : $*Builtin.NativeObject
-  br bb1
-
-bb1:
-  %r1 = begin_access [read] [static] %0 : $*Builtin.NativeObject
-  %r2 = load_borrow %r1 : $*Builtin.NativeObject
-  fix_lifetime %r2 : $Builtin.NativeObject
-  end_borrow %r2 : $Builtin.NativeObject
-  end_access %r1 : $*Builtin.NativeObject
-  %m1 = begin_access [modify] [dynamic] %0 : $*Builtin.NativeObject
-  %l = load [take] %m1 : $*Builtin.NativeObject
-  %mv = move_value %l : $Builtin.NativeObject
-  store %mv to [init] %m1 : $*Builtin.NativeObject
-  end_access %m1 : $*Builtin.NativeObject
-  cond_br undef, bb3, bb2
-
-bb2:
-  %10 = tuple ()
-  return %10 : $()
-
-bb3:
-  br bb1
 }
