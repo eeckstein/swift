@@ -81,7 +81,7 @@ private extension UncheckedBitwiseCastInst {
       }
       var range = InstructionRange(begin: bitCast, ends: users, context)
       defer { range.deinitialize() }
-      return range.isFullyContainedIn(scopeOf: reference)
+      return range.isFullyContainedIn(scopeOf: reference, context)
     case .owned, .unowned:
       // An `unchecked_ref_cast` of an owned value would consume the reference.
       return false
