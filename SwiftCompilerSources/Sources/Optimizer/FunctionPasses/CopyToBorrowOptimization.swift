@@ -603,7 +603,7 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
 
   switch copy.fromValue.ownership {
   case .owned:
-    guard liverange.isFullyContainedIn(scopeOf: copy.fromValue) ||
+    guard liverange.isFullyContainedIn(scopeOf: copy.fromValue, context) ||
           sinkDestroys(of: copy.fromValue, toEndOf: liverange, context)
     else {
       return false

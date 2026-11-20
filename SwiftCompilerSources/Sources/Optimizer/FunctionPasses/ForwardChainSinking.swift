@@ -1,4 +1,4 @@
-//===--- InstructionSinking.swift -----------------------------------------==//
+//===--- ForwardChainSinking.swift -----------------------------------------==//
 //
 // This source file is part of the Swift.org open source project
 //
@@ -47,7 +47,7 @@ import SIL
 /// Only instructions without side effects are moved, and only if all their operands are still
 /// available at the insertion point.
 ///
-let instructionSinking = FunctionPass(name: "instruction-sinking") {
+let forwardChainSinking = FunctionPass(name: "forward-chain-sinking") {
   (function: Function, context: FunctionPassContext) in
 
   // Collect the copies before doing any transformation: sinking moves instructions to a different
@@ -189,7 +189,7 @@ private func collectInstructionsToMove(usersOf copy: CopyValueInst,
     }
   }
 
-  if !allOperandsAvailable(for: toMove, of: copy, at: insertionPoint, within: liverange, context) {
+  if !allOperandsAvailable(for: toMove, of: copy, at: insertionPoint, context) {
     toMove.deinitialize()
     return nil
   }
@@ -214,8 +214,15 @@ private func collectInstructionsToMove(usersOf copy: CopyValueInst,
 private func allOperandsAvailable(for toMove: IterableInstructionSet,
                                   of copy: CopyValueInst,
                                   at insertionPoint: Instruction,
-                                  within liverange: InstructionRange,
                                   _ context: FunctionPassContext) -> Bool {
+  // All instructions in `toMove` are dominated by the copy. Therefore this range contains all paths from
+  // their original locations to the insertion point.
+  // Note that the insertion point - and not the end of the source's liverange - must be the end of the
+  // range: the end of the source's liverange can end the lifetime of an operand, e.g. if it's the
+  // `end_borrow` of a borrow scope which is the base of a moved `mark_dependence`.
+  var range = InstructionRange(begin: copy, ends: [insertionPoint], context)
+  defer { range.deinitialize() }
+
   for inst in toMove {
     for operand in inst.operands {
       let value = operand.value
@@ -229,7 +236,7 @@ private func allOperandsAvailable(for toMove: IterableInstructionSet,
         // `moveRecursively` makes sure that it's moved before its users.
         continue
       }
-      if !value.isAvailable(at: insertionPoint, within: liverange, context) {
+      if !value.isAvailable(at: insertionPoint, alongPathsIn: range, context) {
         return false
       }
     }
@@ -239,30 +246,18 @@ private func allOperandsAvailable(for toMove: IterableInstructionSet,
 
 private extension Value {
   /// Returns true if this value is defined before `insertionPoint` and if it's still valid at that point,
-  /// i.e. it's neither destroyed nor is its borrow scope ended before the insertion point.
-  ///
-  /// It's sufficient to check for lifetime ends within `liverange`, because all instructions between an
-  /// original location within the liverange and the insertion point - which is right behind the end of
-  /// the liverange - are contained in the liverange.
+  /// i.e. it's neither destroyed nor is its borrow scope ended in `range`, which contains all paths from
+  /// the original locations of the moved instructions to the insertion point.
   func isAvailable(at insertionPoint: Instruction,
-                   within liverange: InstructionRange,
+                   alongPathsIn range: InstructionRange,
                    _ context: FunctionPassContext) -> Bool
   {
-    if !definitionDominates(insertionPoint, context.dominatorTree) {
+    if !strictlyDominates(instruction: insertionPoint, context.dominatorTree) {
       return false
     }
     switch ownership {
-    case .owned:
-      return !uses.endingLifetime.contains { liverange.contains($0.instruction) }
-    case .guaranteed:
-      // Only handle values which introduce their own borrow scope. For such values it's sufficient to
-      // check the scope ends: if the scope doesn't end within the liverange, the borrowed value is
-      // alive at the insertion point, too.
-      // TODO: handle forwarded guaranteed values by looking at their borrow introducers.
-      guard let borrowIntroducer = BeginBorrowValue(self) else {
-        return false
-      }
-      return !borrowIntroducer.scopeEndingOperands.contains { liverange.contains($0.instruction) }
+    case .owned, .guaranteed:
+      return range.isFullyContainedIn(scopeOf: self, context)
     case .none:
       // Trivial values don't have a lifetime at all. But the validity of an address depends on the
       // enclosing allocation- and access-scopes, which are not modeled by lifetime ending uses.
@@ -272,18 +267,6 @@ private extension Value {
       // not modeled by lifetime ending uses.
       return false
     }
-  }
-
-  /// Returns true if the definition of this value is located before `inst` on all paths to `inst`.
-  func definitionDominates(_ inst: Instruction, _ domTree: DominatorTree) -> Bool {
-    if let definingInst = definingInstruction {
-      return definingInst.dominates(inst, domTree)
-    }
-    if let arg = self as? Argument {
-      return arg.parentBlock.dominates(inst.parentBlock, domTree)
-    }
-    // E.g. `undef`, which is available everywhere.
-    return true
   }
 }
 

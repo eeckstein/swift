@@ -134,7 +134,7 @@ private extension Instruction {
         // E.g. a `class_method` or a pointer escape, like `ref_to_raw_pointer`. The result is not
         // bound to the borrow scope and we have to check if the borrow scope is still alive at the
         // new location.
-        return operand.value.borrowScopesContain(insertionPoint, context)
+        return operand.value.isAlive(from: self, until: insertionPoint, context)
       }
     case .owned, .unowned:
       // Owned operands are either consumed by this instruction, which ends their lifetime, or
@@ -165,7 +165,7 @@ private extension Instruction {
         case .none:
           return true
         case .guaranteed:
-          return reference.borrowScopesContain(insertionPoint, context)
+          return reference.isAlive(from: self, until: insertionPoint, context)
         case .owned, .unowned:
           return false
         }
@@ -206,18 +206,13 @@ private extension Instruction {
 }
 
 private extension Value {
-  func borrowScopesContain(_ inst: Instruction, _ context: FunctionPassContext) -> Bool {
-    for introducer in getBorrowIntroducers(context) where introducer.hasLocalScope {
-      var scope = InstructionRange(for: introducer.value, context)
-      defer { scope.deinitialize() }
-      scope.insert(contentsOf: introducer.scopeEndingOperands.users)
-
-      // If `inst` is a scope ending instruction, it's still fine to insert before it.
-      if !scope.inclusiveRangeContains(inst) {
-        return false
-      }
-    }
-    return true
+  /// Returns true if the guaranteed `value`, whose borrow scope encloses this instruction, is still alive
+  /// at `insertionPoint`, i.e. no borrow scope of `value` ends between this instruction and `insertionPoint`.
+  /// If `insertionPoint` is a scope ending instruction, it's still fine to insert before it.
+  func isAlive(from begin: Instruction, until insertionPoint: Instruction, _ context: FunctionPassContext) -> Bool {
+    var range = InstructionRange(begin: begin, ends: CollectionOfOne(insertionPoint), context)
+    defer { range.deinitialize() }
+    return range.isFullyContainedIn(scopeOf: self, context)
   }
 }
 
