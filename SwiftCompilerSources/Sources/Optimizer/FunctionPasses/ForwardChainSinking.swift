@@ -99,6 +99,11 @@ private func sinkForwardingUses(of copy: CopyValueInst, _ context: FunctionPassC
 /// Computes the liverange of the copy's source value, or returns nil if the source's liverange is not
 /// a candidate for sinking the copy's users behind it.
 ///
+/// Only the part of the liverange which starts at the copy is relevant, because instructions are only
+/// moved forward and they are always located behind the copy. Therefore the range begins at the copy
+/// and not at the definition of the source. Otherwise control flow between the source's definition and
+/// the copy would result in exits of the range.
+///
 /// Destroys of the source are not part of the liverange: they are located behind the last "real" use
 /// and it's exactly the point behind that last use where instructions are moved to.
 /// ```
@@ -110,7 +115,8 @@ private func sinkForwardingUses(of copy: CopyValueInst, _ context: FunctionPassC
 private func computeLiveRangeOfSource(of copy: CopyValueInst, _ context: FunctionPassContext) -> InstructionRange? {
   let domTree = context.dominatorTree
 
-  var sourceLiverange = InstructionRange(for: copy.fromValue, context)
+  // All instructions which are inserted into the range are dominated by the copy (see below).
+  var sourceLiverange = InstructionRange(begin: copy, context)
   var liverangeIsEmpty = true
 
   for use in copy.fromValue.uses {

@@ -126,6 +126,39 @@ bb0(%0 : @owned $C, %1 : @owned $D):
   return %4
 }
 
+// Control flow between the definition of the source and the copy does not prevent sinking,
+// because only the part of the source's liverange which starts at the copy is relevant.
+//
+// CHECK-LABEL: sil [ossa] @sink_copy_in_one_branch :
+// CHECK:       bb1:
+// CHECK-NEXT:    [[C:%.*]] = copy_value %0
+// CHECK:         apply
+// CHECK-NEXT:    [[S:%.*]] = struct $S ([[C]])
+// CHECK-NEXT:    destroy_value %0
+// CHECK-NEXT:    enum $Optional<S>, #Optional.some!enumelt, [[S]]
+// CHECK:       } // end sil function 'sink_copy_in_one_branch'
+sil [ossa] @sink_copy_in_one_branch : $@convention(thin) (@owned C, Builtin.Int1) -> @owned Optional<S> {
+bb0(%0 : @owned $C, %1 : $Builtin.Int1):
+  cond_br %1, bb1, bb2
+
+bb1:
+  %3 = copy_value %0
+  %4 = struct $S (%3)
+  %5 = function_ref @use : $@convention(thin) (@guaranteed C) -> ()
+  %6 = apply %5(%0) : $@convention(thin) (@guaranteed C) -> ()
+  destroy_value %0
+  %8 = enum $Optional<S>, #Optional.some!enumelt, %4
+  br bb3(%8)
+
+bb2:
+  destroy_value %0
+  %11 = enum $Optional<S>, #Optional.none!enumelt
+  br bb3(%11)
+
+bb3(%13 : @owned $Optional<S>):
+  return %13
+}
+
 // Both copies must be sunk in a single run of the pass. Sinking instructions must not
 // disturb the iteration over the function's instructions.
 //
