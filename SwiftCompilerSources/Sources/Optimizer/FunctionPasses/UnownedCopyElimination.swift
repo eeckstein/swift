@@ -173,7 +173,15 @@ private func replaceWithGuaranteedValue(_ value: SingleValueInstruction,
   }
 
   if mayReleaseReferencedObject(of: value, endingAt: collectedUses.ends, context) {
-    return false
+    // If the value - and all its forwarded values - are only used by unowned uses, it's sufficient
+    // that nothing _before_ those uses can release the object (see `removeCopyWithOnlyUnownedUses`).
+    var unownedUses = Stack<Instruction>(context)
+    defer { unownedUses.deinitialize() }
+    if !collectOnlyUnownedUses(of: value, forwardedVia: collectedUses, to: &unownedUses) ||
+       mayReleaseReferencedObject(of: value, before: unownedUses, context)
+    {
+      return false
+    }
   }
 
   let builder = Builder(before: value, context)
@@ -232,9 +240,62 @@ private func removeCopyWithOnlyUnownedUses(copy: CopyValueInst, _ context: Funct
   return true
 }
 
+/// Collects the non-lifetime-ending uses of the owned `value` and of its forwarded owned values.
+/// Returns false if any of those uses is not an unowned (or debug) use, e.g. a guaranteed argument
+/// of an apply, or if there are no unowned uses at all.
+/// For example, a `load [copy]` of an Optional which is unwrapped and then used as the self
+/// argument of an ObjC method call:
+/// ```
+///   %1 = load [copy] %0
+///   switch_enum %1, case #Optional.some: bb1, case #Optional.none: bb2
+/// bb1(%3 : @owned $C):
+///   %4 = objc_method %3, #C.foo!foreign      // unowned use
+///   %5 = apply %4(%3)                        // unowned use
+///   destroy_value %3
+/// ```
+private func collectOnlyUnownedUses(of value: SingleValueInstruction,
+                                    forwardedVia collectedUses: OwnedToGuaranteedUses,
+                                    to unownedUses: inout Stack<Instruction>) -> Bool
+{
+  func collect(usesOf v: Value, _ unownedUses: inout Stack<Instruction>) -> Bool {
+    for use in v.uses where !use.endsLifetime {
+      switch use.ownership {
+      case .unownedInstantaneousUse:
+        unownedUses.push(use.instruction)
+      case .debugUse:
+        break
+      default:
+        return false
+      }
+    }
+    return true
+  }
+
+  if !collect(usesOf: value, &unownedUses) {
+    return false
+  }
+  for forwardingUse in collectedUses.forwardingUses {
+    switch forwardingUse.instruction {
+    case is DestroyValueInst:
+      break
+    case let forwardingInst as ForwardingInstruction:
+      for result in forwardingInst.forwardedResults where result.ownership == .owned {
+        if !collect(usesOf: result, &unownedUses) {
+          return false
+        }
+      }
+    default:
+      // E.g. a store which is converted to a `store_borrow`. The stored value is used via the
+      // stack location.
+      return false
+    }
+  }
+  return !unownedUses.isEmpty
+}
+
 /// Returns true if any instruction between the `copy` and `uses` - excluding the `uses`
 /// themselves - can drop a reference to the object which `copy` refers to.
-private func mayReleaseReferencedObject(of copy: CopyValueInst,
+private func mayReleaseReferencedObject(of copy: SingleValueInstruction,
                                         before uses: Stack<Instruction>,
                                         _ context: FunctionPassContext) -> Bool
 {
