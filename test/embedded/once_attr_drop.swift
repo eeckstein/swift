@@ -102,12 +102,8 @@ struct Main {
     // CHECK-NEXT: 10
     // CHECK-NEXT: 10
     print(consumedCapture(false, 20))
-    // FIXME: The optimized programs leak the resource, because SILCombine
-    // combines the closure's call in callIf without destroying the capture on
-    // the path that drops the closure (rdar://192544750). Check for its deinit
-    // with CHECK-NEXT once that's fixed.
-    // ONONE-NEXT: deinit
-    // ONONE-NEXT: 20
+    // CHECK-NEXT: deinit
+    // CHECK-NEXT: 20
     // CHECK-NEXT: 0
 
     print(borrowedCapture(true, 30))

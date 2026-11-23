@@ -288,7 +288,7 @@ private func trySinkIntoSuccessor(load: LoadInst, _ context: FunctionPassContext
   let loadBlock = load.parentBlock
   guard let successorOfUses = getSuccessorWhichDominatesUses(of: load, context),
         load.hasDestroys(notDominatedBy: successorOfUses, context),
-        !mayWrite(toAddressOf: load, before: loadBlock.terminator, context)
+        !mayWriteOrEndAccess(toAddressOf: load, before: loadBlock.terminator, context)
   else {
     return false
   }

@@ -625,7 +625,11 @@ private func optimize(copy: CopyValueInst, _ context: FunctionPassContext) -> Bo
 }
 
 private func optimize(store: StoreInst, _ context: FunctionPassContext) -> Bool {
-  guard store.source.ownership == .owned,
+  guard // In the mandatory pipeline, LifetimeResolution relies on the original `store [init]`
+        // to diagnose consumes of the stored value, e.g. a `consuming` parameter which is copied
+        // into its variable's stack location.
+        context.stageFloor != .raw,
+        store.source.ownership == .owned,
         // Don't interfere with mem2reg and redundant-load-elimination, which can completely remove
         // an `alloc_stack` which is only accessed by loads.
         !store.destination.uses.contains(where: { $0.instruction is LoadInst || $0.instruction is LoadBorrowInst })

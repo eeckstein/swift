@@ -1,5 +1,5 @@
 // RUN: %target-swift-frontend %s -emit-ir -O -g -o - \
-// RUN:   -enable-round-trip-debug-types \
+// RUN:   -enable-round-trip-debug-types -disable-llvm-merge-functions-pass \
 // RUN:   -enable-experimental-feature OnceFunctions | %FileCheck %s
 
 // REQUIRES: swift_feature_OnceFunctions

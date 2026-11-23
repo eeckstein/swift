@@ -1,9 +1,9 @@
 // RUN: %empty-directory(%t)
 // RUN: split-file %s %t
 // RUN: %target-swift-frontend -emit-module -O -wmo -parse-as-library -module-name Lib -emit-module-path %t/Lib.swiftmodule %t/Lib.swift
-// RUN: %target-sil-opt -I %t -enable-sil-verify-all -lower-aggregate-instrs %t/main.sil | %FileCheck %s
+// RUN: %target-sil-opt -I %t -enable-sil-verify-all -lower-aggregate-destroys %t/main.sil | %FileCheck %s
 
-// Check that LowerAggregateInstrs does not destroy a field directly when the field's type
+// Check that LowerAggregateDestroys does not destroy a field directly when the field's type
 // has a deinit and metadata the client cannot access.
 
 //--- Lib.swift
@@ -32,38 +32,36 @@ struct Wrapper: ~Copyable {
   var n: Int
 }
 
-// CHECK-LABEL: sil @releaseManager :
-// CHECK-NOT:     struct_extract
-// CHECK:         release_value %0
-// CHECK:       } // end sil function 'releaseManager'
-sil @releaseManager : $@convention(thin) (@owned Manager) -> () {
-bb0(%0 : $Manager):
-  release_value %0 : $Manager
+// CHECK-LABEL: sil [ossa] @destroyManager :
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'destroyManager'
+sil [ossa] @destroyManager : $@convention(thin) (@owned Manager) -> () {
+bb0(%0 : @owned $Manager):
+  destroy_value %0
   %r = tuple ()
-  return %r : $()
+  return %r
 }
 
-// CHECK-LABEL: sil @releaseWrapper :
-// CHECK:         [[M:%.*]] = struct_extract %0, #Wrapper.m
-// CHECK-NOT:     struct_extract
-// CHECK:         release_value [[M]]
-// CHECK:       } // end sil function 'releaseWrapper'
-sil @releaseWrapper : $@convention(thin) (@owned Wrapper) -> () {
-bb0(%0 : $Wrapper):
-  release_value %0 : $Wrapper
+// CHECK-LABEL: sil [ossa] @destroyWrapper :
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value %0
+// CHECK:       } // end sil function 'destroyWrapper'
+sil [ossa] @destroyWrapper : $@convention(thin) (@owned Wrapper) -> () {
+bb0(%0 : @owned $Wrapper):
+  destroy_value %0
   %r = tuple ()
-  return %r : $()
+  return %r
 }
 
-// CHECK-LABEL: sil @destroyWrapperAddr :
-// CHECK:         [[W:%.*]] = load %0
-// CHECK:         [[M:%.*]] = struct_extract [[W]], #Wrapper.m
-// CHECK-NOT:     struct_extract
-// CHECK:         release_value [[M]]
-// CHECK:       } // end sil function 'destroyWrapperAddr'
-sil @destroyWrapperAddr : $@convention(thin) (@in Wrapper) -> () {
-bb0(%0 : $*Wrapper):
-  destroy_addr %0 : $*Wrapper
+// CHECK-LABEL: sil [ossa] @destroyTupleWithManager :
+// CHECK:         ({{%.*}}, [[M:%.*]]) = destructure_tuple %0
+// CHECK-NOT:     destructure_struct
+// CHECK:         destroy_value [[M]]
+// CHECK:       } // end sil function 'destroyTupleWithManager'
+sil [ossa] @destroyTupleWithManager : $@convention(thin) (@owned (Int, Manager)) -> () {
+bb0(%0 : @owned $(Int, Manager)):
+  destroy_value %0
   %r = tuple ()
-  return %r : $()
+  return %r
 }

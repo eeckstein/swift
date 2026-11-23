@@ -100,7 +100,7 @@ class Throwing {
 // CHECK-NEXT:    dealloc_partial_ref [[SELF]], [[METATYPE]]
 // CHECK:         cond_br {{%.*}}, [[X_INIT:bb[0-9]+]], {{bb[0-9]+}}
 // CHECK:       [[X_INIT]]:
-// CHECK-NEXT:    [[BORROW:%.*]] = begin_borrow [[SELF]]
+// CHECK:         [[BORROW:%.*]] = begin_borrow [[SELF]]
 // CHECK-NEXT:    [[X:%.*]] = ref_element_addr [[BORROW]], #Partial.x
 // CHECK-NEXT:    destroy_addr [[X]]
 // CHECK-NEXT:    end_borrow [[BORROW]]
@@ -129,7 +129,7 @@ class Partial {
 // CHECK:         cond_br {{%.*}}, {{bb[0-9]+}}, {{bb[0-9]+}}
 // CHECK:         cond_br {{%.*}}, [[FAIL:bb[0-9]+]], {{bb[0-9]+}}
 // CHECK:       [[FAIL]]:
-// CHECK-NEXT:    [[LOADED:%.*]] = load [trivial] [[BITS]]
+// CHECK:         [[LOADED:%.*]] = load [trivial] [[BITS]]
 // CHECK-NEXT:    [[MASK:%.*]] = integer_literal $Builtin.Int2, 1
 // CHECK-NEXT:    [[X_BIT:%.*]] = builtin "and_Int2"([[LOADED]], [[MASK]])
 // CHECK-NEXT:    [[ZERO:%.*]] = integer_literal $Builtin.Int2, 0
@@ -156,7 +156,7 @@ class Conditional {
 // CHECK-LABEL: sil hidden [ossa] [opaque] @$s4test15ThrowsPartiallyCACyKcfc :
 // CHECK:         [[SELF:%.*]] = end_init_let_ref %0
 // CHECK:       bb2([[ERROR:%.*]] : @owned $any Error):
-// CHECK-NEXT:    [[BORROW:%.*]] = begin_borrow [[SELF]]
+// CHECK:         [[BORROW:%.*]] = begin_borrow [[SELF]]
 // CHECK-NEXT:    [[X:%.*]] = ref_element_addr [[BORROW]], #ThrowsPartially.x
 // CHECK-NEXT:    destroy_addr [[X]]
 // CHECK-NEXT:    end_borrow [[BORROW]]
@@ -191,7 +191,7 @@ class ThrowsPartially {
 // CHECK-NEXT:    [[X2_ACCESS:%.*]] = begin_access [modify] [dynamic] [[X2]]
 // CHECK-NEXT:    store {{.*}} to [init] [[X2_ACCESS]]
 // CHECK:       [[ERROR_BB]]([[ERROR:%.*]] : @owned $any Error):
-// CHECK-NEXT:    [[BORROW:%.*]] = begin_borrow [[SELF]]
+// CHECK:         [[BORROW:%.*]] = begin_borrow [[SELF]]
 // CHECK-NEXT:    [[Y:%.*]] = ref_element_addr [[BORROW]], #ConsumedThenThrows.y
 // CHECK-NEXT:    destroy_addr [[Y]]
 // CHECK-NEXT:    end_borrow [[BORROW]]
