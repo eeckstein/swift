@@ -609,6 +609,12 @@ void addFunctionPasses(SILPassPipelinePlan &P,
   // SILCombine can expose further opportunities for SimplifyCFG.
   P.addSimplifyCFG();
 
+  if (OpLevel == OptimizationLevelKind::LowLevel) {
+    // Merging read access scopes helps RLE: it can then remove loads of the same location from
+    // merged scopes, because instructions inside a read-only access scope (e.g. a `destroy_value`)
+    // cannot write to the accessed memory.
+    P.addAccessEnforcementOpts();
+  }
   // Merging borrow scopes helps CSE
   P.addMergeBorrowScopes();
   P.addCommonSubexpressionElimination();
@@ -970,6 +976,10 @@ static void addLastChanceOptPassPipeline(SILPassPipelinePlan &P) {
   P.addAccessEnforcementOpts();
   P.addAccessEnforcementWMO();
   P.addAccessEnforcementDom();
+  // Removed access scopes might enable converting a `load [copy]` to a `load_borrow`.
+  // In contrast to a `load [copy]`, a `load_borrow` can be hoisted by LICM, because there
+  // is no `destroy_value` which may write to the loaded memory location.
+  P.addCopyToBorrowOptimization();
   // addAccessEnforcementDom might provide potential for LICM:
   // A loop might have only one dynamic access now, i.e. hoistable
   P.addLoopInvariantCodeMotion();
