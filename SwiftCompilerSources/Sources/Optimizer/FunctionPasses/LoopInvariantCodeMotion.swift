@@ -132,6 +132,9 @@ private func analyzeInstructions(
   _ analyzedInstructions: inout AnalyzedInstructions,
   _ context: FunctionPassContext
 ) {
+  var destroysOfLoadedCopies = Stack<(DestroyValueInst, LoadInst)>(context)
+  defer { destroysOfLoadedCopies.deinitialize() }
+
   for bb in loop.loopBlocks {
     for inst in bb.instructions {
       switch inst {
@@ -145,6 +148,11 @@ private func analyzeInstructions(
         continue // Don't set `hasOtherMemReadingInsts`
       case let storeInst as StoreInst:
         analyzedInstructions.stores.append(storeInst)
+      case let destroy as DestroyValueInst:
+        if let load = destroy.destroyedValue.sourceOfLoadedCopy(in: loop) {
+          destroysOfLoadedCopies.append((destroy, load))
+          continue // Decided below if this is a side effect
+        }
       default:
         break
       }
@@ -152,6 +160,57 @@ private func analyzeInstructions(
         analyzedInstructions.loopSideEffects.append(inst)
       } else if inst.mayReadFromMemory {
         analyzedInstructions.loopReadOnlyEffects.append(inst)
+      }
+    }
+  }
+
+  // A `destroy_value` of a value which is (a copy of) a `load [copy]` in the loop cannot release the
+  // last reference - and therefore cannot run a deinit - if the loaded memory location is not written
+  // in the loop: the memory location still holds a reference to the destroyed object. Such a destroy
+  // doesn't have any side effects.
+  // ```
+  //   bb_loop:
+  //     %1 = load [copy] %0
+  //     ...
+  //     destroy_value %1    // no side effects, if nothing else in the loop writes to %0
+  // ```
+  // It's correct to only check the other side effects (i.e. ignoring all other destroys of loaded copies):
+  // to run a deinit, a destroy needs a preceding write to the loaded memory location by another destroy
+  // which runs a deinit. Therefore no such destroy can be the first to run a deinit.
+  if destroysOfLoadedCopies.isEmpty {
+    return
+  }
+  let otherSideEffects = Array(analyzedInstructions.loopSideEffects)
+  for (destroy, load) in destroysOfLoadedCopies {
+    if otherSideEffects.contains(where: { $0.mayWrite(toAddress: load.address, context.aliasAnalysis) }) {
+      analyzedInstructions.loopSideEffects.append(destroy)
+    }
+  }
+}
+
+private extension Value {
+  /// Returns the `load [copy]` inside `loop` from which this value is forwarded or copied.
+  func sourceOfLoadedCopy(in loop: Loop) -> LoadInst? {
+    var value: Value = self
+    while true {
+      switch value {
+      case let load as LoadInst:
+        if load.loadOwnership == .copy, loop.contains(block: load.parentBlock) {
+          return load
+        }
+        return nil
+      case let copy as CopyValueInst:
+        value = copy.fromValue
+      default:
+        // Look through forwarding instructions which forward a single owned operand, like a
+        // `destructure_struct` or `unchecked_ref_cast`. Phis are not supported.
+        guard let fwd = value.forwardingInstruction,
+              let forwardedOp = fwd.singleForwardedOperand,
+              forwardedOp.value.ownership == .owned
+        else {
+          return nil
+        }
+        value = forwardedOp.value
       }
     }
   }
