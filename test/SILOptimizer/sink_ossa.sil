@@ -474,3 +474,95 @@ bb6:
   %r = tuple ()
   return %r
 }
+
+// CHECK-LABEL: sil [ossa] @sink_with_debug_value :
+// CHECK:       bb0(%0 : @guaranteed $Y):
+// CHECK-NEXT:    cond_br undef, bb1, bb2
+// CHECK:       bb1:
+// CHECK-NEXT:    [[U:%.*]] = upcast %0
+// CHECK-NEXT:    debug_value [[U]], let, name "x"
+// CHECK-NEXT:    class_method
+// CHECK-NEXT:    apply
+// CHECK:       bb2:
+// CHECK-NEXT:    br bb3
+// CHECK:       } // end sil function 'sink_with_debug_value'
+sil [ossa] @sink_with_debug_value : $@convention(thin) (@guaranteed Y) -> () {
+bb0(%0 : @guaranteed $Y):
+  %1 = upcast %0 to $X
+  debug_value %1, let, name "x"
+  %2 = class_method %1, #X.ping : (X) -> () -> Int, $@convention(method) (@guaranteed X) -> Int
+  cond_br undef, bb1, bb2
+
+bb1:
+  %3 = apply %2(%1) : $@convention(method) (@guaranteed X) -> Int
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @sink_with_debug_value_in_other_blocks :
+// CHECK:       bb0(%0 : @guaranteed $Y):
+// CHECK-NEXT:    cond_br undef, bb1, bb4
+// CHECK:       bb1:
+// CHECK-NEXT:    cond_br undef, bb2, bb3
+// CHECK:       bb2:
+// CHECK-NEXT:    [[U:%.*]] = upcast %0
+// CHECK-NEXT:    debug_value [[U]], let, name "x"
+// CHECK-NEXT:    debug_value [[U]], let, name "y"
+// CHECK:         = function_ref
+// CHECK-NEXT:    apply
+// CHECK:       bb4:
+// CHECK-NEXT:    br bb5
+// CHECK:       } // end sil function 'sink_with_debug_value_in_other_blocks'
+sil [ossa] @sink_with_debug_value_in_other_blocks : $@convention(thin) (@guaranteed Y) -> () {
+bb0(%0 : @guaranteed $Y):
+  %1 = upcast %0 to $X
+  cond_br undef, bb1, bb4
+
+bb1:
+  cond_br undef, bb2, bb3
+
+bb2:
+  debug_value %1, let, name "y"
+  %f = function_ref @use_x : $@convention(thin) (@guaranteed X) -> ()
+  %a = apply %f(%1) : $@convention(thin) (@guaranteed X) -> ()
+  br bb5
+
+bb3:
+  br bb5
+
+bb4:
+  debug_value %1, let, name "x"
+  br bb5
+
+bb5:
+  %r = tuple ()
+  return %r
+}
+
+// CHECK-LABEL: sil [ossa] @dont_sink_only_debug_uses :
+// CHECK:       bb0(%0 : @guaranteed $Y):
+// CHECK-NEXT:    upcast
+// CHECK-NEXT:    cond_br
+// CHECK:       } // end sil function 'dont_sink_only_debug_uses'
+sil [ossa] @dont_sink_only_debug_uses : $@convention(thin) (@guaranteed Y) -> () {
+bb0(%0 : @guaranteed $Y):
+  %1 = upcast %0 to $X
+  cond_br undef, bb1, bb2
+
+bb1:
+  debug_value %1, let, name "x"
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %r = tuple ()
+  return %r
+}

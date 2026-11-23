@@ -39,6 +39,10 @@ import SIL
 ///
 /// Instructions are never sunk into a loop.
 ///
+/// `debug_value` uses don't prevent sinking. Otherwise generating debug info would change the
+/// optimized code. `debug_value`s which are not dominated by the new location of the instruction
+/// are moved right after the sunk instruction.
+///
 /// The pass also works on OSSA. Owned operands prevent sinking: either the instruction consumes
 /// the operand or its results are not bound to the operand's liverange. Instructions with
 /// guaranteed operands are sunk if their results are bound to the borrow scope (e.g. `upcast` with
@@ -88,6 +92,21 @@ private extension Instruction {
       return
     }
     move(before: insertionPoint, context)
+    moveNonDominatedDebugUses(destBlock: destBlock, before: insertionPoint, domTree, context)
+  }
+
+  /// Moves all `debug_value` uses which are not dominated by the new location of this instruction
+  /// (the begin of `destBlock`) to `insertionPoint`, i.e. right after this instruction.
+  func moveNonDominatedDebugUses(destBlock: BasicBlock, before insertionPoint: Instruction,
+                                 _ domTree: DominatorTree, _ context: FunctionPassContext) {
+    for result in results {
+      for debugValue in result.uses.users(ofType: DebugValueInst.self)
+        where !destBlock.dominates(debugValue.parentBlock, domTree)
+      {
+        // Moving the instruction doesn't change the use list.
+        debugValue.move(before: insertionPoint, context)
+      }
+    }
   }
 
   var canBeSunk: Bool {
@@ -179,12 +198,12 @@ private extension Instruction {
     return !value.type.isNoEscapeFunction
   }
 
-  /// Returns the nearest common dominator block of all users, or nil if it's the parent block of
-  /// this instruction or if there are no users.
+  /// Returns the nearest common dominator block of all non-debug users, or nil if it's the parent
+  /// block of this instruction or if there are no such users.
   func blockDominatingAllUsers(_ domTree: DominatorTree) -> BasicBlock? {
     var destBlock: BasicBlock? = nil
     for result in results {
-      for use in result.uses {
+      for use in result.uses.ignoreDebugUses {
         let userBlock = use.instruction.parentBlock
         if userBlock == parentBlock {
           return nil
