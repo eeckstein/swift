@@ -1537,6 +1537,21 @@ static SILValue skipInvert(SILValue Cond, bool &Inverted,
   return Cond;
 }
 
+/// Returns true if \p I may have side effects which prevent moving a cond_fail
+/// across it.
+///
+/// In OSSA, `end_borrow`s and dead-end `destroy_value`s - e.g. which complete
+/// lifetimes in a trap block - don't generate any code.
+static bool mayHaveSideEffectsForCondFail(SILInstruction *I) {
+  if (isa<EndBorrowInst>(I))
+    return false;
+  if (auto *DVI = dyn_cast<DestroyValueInst>(I)) {
+    if (DVI->isDeadEnd())
+      return false;
+  }
+  return I->mayHaveSideEffects();
+}
+
 /// Returns the first cond_fail if it is the first side-effect
 /// instruction in this block.
 static CondFailInst *getFirstCondFail(SILBasicBlock *BB) {
@@ -1544,7 +1559,7 @@ static CondFailInst *getFirstCondFail(SILBasicBlock *BB) {
   // Skip instructions that don't have side-effects.
   auto It = BB->begin();
   while (It != BB->end() && !(CondFail = dyn_cast<CondFailInst>(It))) {
-    if (It->mayHaveSideEffects())
+    if (mayHaveSideEffectsForCondFail(&*It))
       return nullptr;
     ++It;
   }
@@ -1565,7 +1580,7 @@ static CondFailInst *getUnConditionalFail(SILBasicBlock *BB, SILValue Cond,
   auto *condfailBB = BB;
   if (isa<BranchInst>(BB->getTerminator())) {
     for (auto It = BB->begin(); It != BB->end(); ++It) {
-      if (It->mayHaveSideEffects())
+      if (mayHaveSideEffectsForCondFail(&*It))
         return nullptr;
     }
     condfailBB = BB->getSingleSuccessorBlock();
