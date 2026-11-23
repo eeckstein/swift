@@ -97,14 +97,28 @@ private extension Instruction {
 
   /// Moves all `debug_value` uses which are not dominated by the new location of this instruction
   /// (the begin of `destBlock`) to `insertionPoint`, i.e. right after this instruction.
+  ///
+  /// A `debug_value` (with a transform) can have multiple operands. If not all other operands
+  /// dominate the new location, the `debug_value` cannot be moved and is deleted instead.
   func moveNonDominatedDebugUses(destBlock: BasicBlock, before insertionPoint: Instruction,
                                  _ domTree: DominatorTree, _ context: FunctionPassContext) {
+    var nonDominatedDebugValues = [DebugValueInst]()
     for result in results {
       for debugValue in result.uses.users(ofType: DebugValueInst.self)
-        where !destBlock.dominates(debugValue.parentBlock, domTree)
+        where !destBlock.dominates(debugValue.parentBlock, domTree) &&
+              // A debug_value can use multiple results of this instruction.
+              !nonDominatedDebugValues.contains(debugValue)
       {
-        // Moving the instruction doesn't change the use list.
+        nonDominatedDebugValues.append(debugValue)
+      }
+    }
+    for debugValue in nonDominatedDebugValues {
+      if debugValue.operands.allSatisfy({
+        $0.value is Undef || $0.value.strictlyDominates(instruction: insertionPoint, domTree)
+      }) {
         debugValue.move(before: insertionPoint, context)
+      } else {
+        context.erase(instruction: debugValue)
       }
     }
   }
@@ -190,7 +204,7 @@ private extension Instruction {
         }
       case .stack, .global, .argument, .pointer:
         return true
-      case .yield, .storeBorrow, .index, .unidentified:
+      case .yield, .storeBorrow, .index, .unidentified, .borrowMutateAccessor:
         return false
       }
     }

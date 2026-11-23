@@ -566,3 +566,40 @@ bb3:
   %r = tuple ()
   return %r
 }
+
+// CHECK-LABEL: sil [ossa] @sink_with_multi_operand_debug_value :
+// CHECK:       [[B:%.*]] = builtin "ssub_with_overflow_Int64"
+// CHECK:       bb1:
+// CHECK-NEXT:    [[E:%.*]] = tuple_extract [[B]], 1
+// CHECK-NEXT:    debug_value ([[E]], %0), let, name "x"
+// CHECK:       bb3:
+// CHECK-NEXT:    [[E0:%.*]] = tuple_extract [[B]], 0
+// CHECK-NEXT:    return [[E0]]
+// CHECK:       } // end sil function 'sink_with_multi_operand_debug_value'
+sil [ossa] @sink_with_multi_operand_debug_value : $@convention(thin) (Builtin.Int64, Builtin.Int1) -> Builtin.Int64 {
+bb0(%0 : $Builtin.Int64, %c : $Builtin.Int1):
+  %1 = builtin "ssub_with_overflow_Int64"(%0, %0, %c) : $(Builtin.Int64, Builtin.Int1)
+  %2 = tuple_extract %1, 1
+  cond_br %c, bb1, bb2
+
+bb1:
+  %3 = builtin "int_expect_Int1"(%2, %c) : $Builtin.Int1
+  br bb3
+
+bb2:
+  br bb3
+
+bb3:
+  %4 = tuple_extract %1, 0
+  debug_value (%2 : $Builtin.Int1, %0 : $Builtin.Int64), let, name "x", transform {
+  bb0(%t0 : $Builtin.Int1, %t1 : $Builtin.Int64):
+    %t2 = tuple (%t1, %t0)
+    return %t2
+  }
+  debug_value (%2 : $Builtin.Int1, %4 : $Builtin.Int64), let, name "y", transform {
+  bb0(%t0 : $Builtin.Int1, %t1 : $Builtin.Int64):
+    %t2 = tuple (%t1, %t0)
+    return %t2
+  }
+  return %4
+}
